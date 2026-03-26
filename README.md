@@ -25,11 +25,19 @@ When `/opsx:verify` runs, OpenSpec artifacts (`specs/`) are automatically fed in
 
 ## Install
 
+Install directly from GitHub (no npm publish needed):
+
 ```bash
-npm install -g openspec-playwright
+npm install -g wxhou/openspec-playwright
 ```
 
-Or use directly with npx:
+Or with full URL:
+
+```bash
+npm install -g git+https://github.com/wxhou/openspec-playwright.git
+```
+
+Or use with npx (no installation):
 
 ```bash
 npx openspec-playwright verify --change my-feature
