@@ -4,7 +4,7 @@
   "description": "OpenSpec + Playwright Test Agents integration for automated E2E verification",
   "type": "module",
   "bin": {
-    "openspec-pw": "./dist/index.js"
+    "openspec-pw": "./bin/openspec-pw.js"
   },
   "scripts": {
     "build": "tsc",
