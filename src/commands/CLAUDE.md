@@ -22,4 +22,5 @@
 | #5477 | 10:46 AM | 🟣 | Added Playwright browser installation step to openspec-pw init | ~219 |
 | #5386 | 9:47 AM | 🔄 | Cleaned up unused imports in init.ts | ~100 |
 | #5384 | " | 🔴 | Fixed missing readFileSync import in doctor.ts | ~159 |
+| #5382 | 9:46 AM | 🔄 | Doctor command checks seed test file existence | ~156 |
 </claude-mem-context>
