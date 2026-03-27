@@ -1,9 +1,10 @@
 import { execSync } from 'child_process';
-import { readFileSync, writeFileSync, mkdirSync, } from 'fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, } from 'fs';
 import { join } from 'path';
 import chalk from 'chalk';
 const SKILL_SRC = new URL('../../.claude/skills/openspec-e2e', import.meta.url).pathname;
 const CMD_SRC = new URL('../../.claude/commands/opsx/e2e.md', import.meta.url).pathname;
+const SCHEMA_DIR = new URL('../../schemas', import.meta.url).pathname;
 export async function update(options) {
     console.log(chalk.blue('\n🔄 Updating OpenSpec + Playwright E2E\n'));
     const projectRoot = process.cwd();
@@ -32,7 +33,7 @@ export async function update(options) {
             execSync(`mkdir -p ${tmpDir} && tar -xzf ${tmpSkill} -C ${tmpDir}`, { stdio: 'pipe' });
             const skillSrc = `${tmpDir}/openspec-playwright-main/.claude/skills/openspec-e2e/SKILL.md`;
             const cmdSrc = `${tmpDir}/openspec-playwright-main/.claude/commands/opsx/e2e.md`;
-            installSkillFrom(skillSrc, cmdSrc, projectRoot);
+            installSkillFrom(`${tmpDir}/openspec-playwright-main/.claude/skills/openspec-e2e/SKILL.md`, `${tmpDir}/openspec-playwright-main/.claude/commands/opsx/e2e.md`, `${tmpDir}/openspec-playwright-main/schemas/playwright-e2e`, projectRoot);
             console.log(chalk.green('  ✓ Skill & command updated to latest'));
         }
         catch {
@@ -48,9 +49,9 @@ export async function update(options) {
     console.log(chalk.gray('  Then run /opsx:e2e <change-name> to verify.\n'));
 }
 function installSkill(projectRoot) {
-    installSkillFrom(SKILL_SRC, CMD_SRC, projectRoot);
+    installSkillFrom(SKILL_SRC, CMD_SRC, SCHEMA_DIR + '/playwright-e2e', projectRoot);
 }
-function installSkillFrom(skillSrc, cmdSrc, projectRoot) {
+function installSkillFrom(skillSrc, cmdSrc, schemaSrc, projectRoot) {
     const skillDir = join(projectRoot, '.claude', 'skills', 'openspec-e2e');
     const cmdDir = join(projectRoot, '.claude', 'commands');
     mkdirSync(skillDir, { recursive: true });
@@ -61,5 +62,30 @@ function installSkillFrom(skillSrc, cmdSrc, projectRoot) {
     const cmdContent = readFileSync(cmdSrc, 'utf-8');
     writeFileSync(join(cmdDir, 'opsx', 'e2e.md'), cmdContent);
     console.log(chalk.green(`  ✓ Command updated: /opsx:e2e`));
+    installSchemaFrom(schemaSrc, projectRoot);
+}
+function installSchemaFrom(schemaSrc, projectRoot) {
+    const schemaDest = join(projectRoot, 'openspec', 'schemas', 'playwright-e2e');
+    mkdirSync(schemaDest, { recursive: true });
+    // Copy schema.yaml
+    const schemaYamlSrc = join(schemaSrc, 'schema.yaml');
+    if (existsSync(schemaYamlSrc)) {
+        writeFileSync(join(schemaDest, 'schema.yaml'), readFileSync(schemaYamlSrc));
+    }
+    // Copy templates
+    const templatesSrc = join(schemaSrc, 'templates');
+    const templatesDest = join(schemaDest, 'templates');
+    if (existsSync(templatesSrc)) {
+        mkdirSync(templatesDest, { recursive: true });
+        const templateFiles = ['test-plan.md', 'report.md', 'e2e-test.ts', 'playwright.config.ts'];
+        for (const file of templateFiles) {
+            const src = join(templatesSrc, file);
+            const dest = join(templatesDest, file);
+            if (existsSync(src)) {
+                writeFileSync(dest, readFileSync(src));
+            }
+        }
+    }
+    console.log(chalk.green('  ✓ Schema updated: openspec/schemas/playwright-e2e/'));
 }
 //# sourceMappingURL=update.js.map
