@@ -3,9 +3,9 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, } from 'fs';
 import { join } from 'path';
 import chalk from 'chalk';
 import { readFile } from 'fs/promises';
-const TEMPLATE_DIR = new URL('../templates', import.meta.url).pathname;
-const SKILL_SRC = new URL('../.claude/skills/openspec-e2e', import.meta.url).pathname;
-const CMD_SRC = new URL('../.claude/commands/opsx/e2e.md', import.meta.url).pathname;
+const TEMPLATE_DIR = new URL('../../templates', import.meta.url).pathname;
+const SKILL_SRC = new URL('../../.claude/skills/openspec-e2e', import.meta.url).pathname;
+const CMD_SRC = new URL('../../.claude/commands/opsx/e2e.md', import.meta.url).pathname;
 export async function init(options) {
     console.log(chalk.blue('\n🔧 OpenSpec + Playwright E2E Setup\n'));
     const projectRoot = process.cwd();
