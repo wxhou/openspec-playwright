@@ -37,34 +37,37 @@ export async function doctor() {
         console.log(chalk.gray('    Run: openspec init'));
         allOk = false;
     }
-    // Playwright
-    console.log(chalk.blue('\n─── Playwright ───'));
-    const hasPlaywrightDir = existsSync(join(projectRoot, '.github'));
-    if (hasPlaywrightDir) {
-        console.log(chalk.green('  ✓ Playwright Test Agents initialized'));
+    // Playwright browsers
+    console.log(chalk.blue('\n─── Playwright Browsers ───'));
+    try {
+        const pw = execSync('npx playwright --version', { encoding: 'utf-8' }).trim();
+        console.log(chalk.green(`  ✓ Playwright ${pw}`));
     }
-    else {
-        console.log(chalk.red('  ✗ Playwright Test Agents not initialized'));
-        console.log(chalk.gray('    Run: npx playwright init-agents --loop=claude'));
+    catch {
+        console.log(chalk.red('  ✗ Playwright browsers not installed'));
+        console.log(chalk.gray('    Run: npx playwright install --with-deps'));
         allOk = false;
     }
-    // Playwright MCP
+    // Playwright MCP (global)
     console.log(chalk.blue('\n─── Playwright MCP ───'));
-    const settingsPath = join(projectRoot, '.claude', 'settings.local.json');
-    let mcpConfigured = false;
-    if (existsSync(settingsPath)) {
+    const homeDir = process.env.HOME ?? '';
+    const claudeJsonPath = join(homeDir, '.claude.json');
+    let mcpInstalled = false;
+    if (existsSync(claudeJsonPath)) {
         try {
-            const settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
-            if (settings.mcpServers?.['playwright-e2e']) {
-                mcpConfigured = true;
+            const claudeJson = JSON.parse(readFileSync(claudeJsonPath, 'utf-8'));
+            const globalMcp = claudeJson?.mcpServers ?? {};
+            const localMcp = claudeJson?.projects?.[projectRoot]?.mcpServers ?? {};
+            if (globalMcp['playwright'] || localMcp['playwright']) {
+                mcpInstalled = true;
             }
         }
         catch {
             // ignore
         }
     }
-    if (mcpConfigured) {
-        console.log(chalk.green('  ✓ Playwright MCP configured'));
+    if (mcpInstalled) {
+        console.log(chalk.green('  ✓ Playwright MCP installed globally'));
     }
     else {
         console.log(chalk.red('  ✗ Playwright MCP not configured'));
@@ -90,7 +93,7 @@ export async function doctor() {
     }
     else {
         console.log(chalk.yellow('  ⚠ seed.spec.ts not found (optional)'));
-        console.log(chalk.gray('    Run: openspec-pw init --no-seed false'));
+        console.log(chalk.gray('    Run: openspec-pw init'));
     }
     // Summary
     console.log(chalk.blue('\n─── Summary ───'));
