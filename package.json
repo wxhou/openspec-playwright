@@ -7,7 +7,7 @@
     "openspec-pw": "./bin/openspec-pw.js"
   },
   "scripts": {
-    "build": "npx --yes typescript tsc",
+    "build": "npx --yes tsc",
     "prepare": "npm run build"
   },
   "dependencies": {
