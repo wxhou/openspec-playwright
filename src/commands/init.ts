@@ -52,17 +52,28 @@ export async function init(options: InitOptions) {
   // 3. Install Playwright MCP (global)
   if (options.mcp !== false) {
     console.log(chalk.blue('\n─── Installing Playwright MCP ───'));
-    try {
-      execSync('claude mcp add playwright npx @playwright/mcp@latest', {
-        cwd: projectRoot,
-        stdio: 'inherit',
-      });
-      console.log(chalk.green('  ✓ Playwright MCP installed globally'));
-      console.log(chalk.gray('  (Restart Claude Code to activate)'));
-    } catch {
-      console.log(chalk.yellow('  ⚠ Failed to run claude mcp add'));
-      console.log(chalk.gray('  Run manually: claude mcp add playwright npx @playwright/mcp@latest'));
-      console.log(chalk.gray('  (Restart Claude Code to activate the MCP server)'));
+
+    // Check if playwright MCP already exists in global config
+    const claudeJsonPath = join(process.env.HOME ?? '', '.claude.json');
+    const claudeJson = existsSync(claudeJsonPath) ? JSON.parse(readFileSync(claudeJsonPath, 'utf-8')) : {};
+    const globalMcp = claudeJson?.mcpServers ?? {};
+    const localMcp = claudeJson?.projects?.[projectRoot]?.mcpServers ?? {};
+
+    if (globalMcp['playwright'] || localMcp['playwright']) {
+      console.log(chalk.green('  ✓ Playwright MCP already installed'));
+    } else {
+      try {
+        execSync('claude mcp add playwright npx @playwright/mcp@latest', {
+          cwd: projectRoot,
+          stdio: 'inherit',
+        });
+        console.log(chalk.green('  ✓ Playwright MCP installed globally'));
+        console.log(chalk.gray('  (Restart Claude Code to activate)'));
+      } catch {
+        console.log(chalk.yellow('  ⚠ Failed to run claude mcp add'));
+        console.log(chalk.gray('  Run manually: claude mcp add playwright npx @playwright/mcp@latest'));
+        console.log(chalk.gray('  (Restart Claude Code to activate the MCP server)'));
+      }
     }
   }
 
