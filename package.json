@@ -7,8 +7,8 @@
     "openspec-pw": "./bin/openspec-pw.js"
   },
   "scripts": {
-    "build": "npx --yes tsc",
-    "prepare": "npm run build"
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "chalk": "^5.3.0",
