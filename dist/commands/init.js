@@ -135,9 +135,9 @@ async function installSkill(projectRoot) {
     writeFileSync(join(skillDir, 'SKILL.md'), skillContent);
     console.log(chalk.green(`  ✓ Skill installed: /openspec-e2e`));
     // Copy command
-    mkdirSync(cmdDir, { recursive: true });
+    mkdirSync(join(cmdDir, 'opsx'), { recursive: true });
     const cmdContent = await readFile(CMD_SRC, 'utf-8');
-    writeFileSync(join(cmdDir, 'e2e.md'), cmdContent);
+    writeFileSync(join(cmdDir, 'opsx', 'e2e.md'), cmdContent);
     console.log(chalk.green(`  ✓ Command installed: /opsx:e2e`));
 }
 async function generateSeedTest(projectRoot) {
