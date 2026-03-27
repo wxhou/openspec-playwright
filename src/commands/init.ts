@@ -169,6 +169,7 @@ async function installSchema(projectRoot: string) {
   const schemaDest = join(projectRoot, 'openspec', 'schemas', 'playwright-e2e');
   const schemaFiles = ['schema.yaml'];
 
+  mkdirSync(schemaDest, { recursive: true });
   for (const file of schemaFiles) {
     const src = join(schemaSrc, file);
     const dest = join(schemaDest, file);
