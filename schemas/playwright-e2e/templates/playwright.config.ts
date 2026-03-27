@@ -23,6 +23,8 @@ if (existsSync(pkgPath)) {
 
 export default defineConfig({
   testDir: '../tests/playwright',
+  // Keep test artifacts inside tests/playwright/ instead of project root
+  outputDir: '../tests/playwright/test-results',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
