@@ -7,7 +7,7 @@ A setup tool that integrates OpenSpec's spec-driven development with Playwright'
 ## Install
 
 ```bash
-npm install -g https://github.com/wxhou/openspec-playwright/archive/refs/heads/main.tar.gz
+npm install -g openspec-playwright
 ```
 
 ## Setup

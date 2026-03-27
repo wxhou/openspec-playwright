@@ -7,7 +7,7 @@
 ## 安装
 
 ```bash
-npm install -g https://github.com/wxhou/openspec-playwright/archive/refs/heads/main.tar.gz
+npm install -g openspec-playwright
 ```
 
 ## 初始化
