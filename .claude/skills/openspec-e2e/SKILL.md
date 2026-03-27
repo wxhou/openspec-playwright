@@ -18,8 +18,14 @@ Run Playwright E2E verification for an OpenSpec change. This skill reads the spe
 
    If a name is provided, use it. Otherwise:
    - Infer from conversation context if the user mentioned a change
-   - Auto-select if only one active change exists (has specs in `openspec/changes/<name>/specs/`)
+   - Auto-select if only one active change exists
    - If ambiguous, run `openspec list --json` to get available changes and use the **AskUserQuestion tool** to let the user select
+
+   After selecting, confirm the change is ready for E2E:
+   ```bash
+   openspec status --change "<name>" --json
+   ```
+   If no specs exist (`openspec/changes/<name>/specs/` is empty), inform the user and stop. E2E requires specs to generate tests from.
 
    Always announce: "Using change: <name>" and how to override (e.g., `/opsx:e2e <other>`).
 
@@ -46,11 +52,13 @@ Run Playwright E2E verification for an OpenSpec change. This skill reads the spe
 
    b. **Find dev script**: Read `package.json` → look for scripts in order: `dev` → `start` → `serve` → `preview`. Use the first found.
 
-   c. **Check existing playwright.config.ts**:
-      - If `playwright.config.ts` exists with a `webServer` config → verify the URL matches `BASE_URL`. If mismatched, update it.
-      - If no `webServer` config → add one.
-
-   d. **Generate or update `playwright.config.ts`**:
+   c. **Merge playwright.config.ts** (non-destructive):
+      - If `playwright.config.ts` exists → READ it first. Extract existing `webServer`, `use.baseURL`, and `projects` array.
+        - If `webServer.url` differs from `BASE_URL` → ASK user to choose (config URL vs BASE_URL from seed.spec.ts). Do NOT auto-overwrite.
+        - If `use.baseURL` missing → add it (preserve all other `use` fields).
+        - If no `webServer` block → add it.
+        - Preserve ALL other existing config: browsers, retries, timeouts, reporters, fullyParallel, etc. — do NOT replace them.
+      - If `playwright.config.ts` does not exist → generate minimal config:
       ```typescript
       import { defineConfig } from '@playwright/test';
 
@@ -64,25 +72,17 @@ Run Playwright E2E verification for an OpenSpec change. This skill reads the spe
         use: {
           baseURL: 'http://localhost:5173',
         },
-        projects: [
-          // Auth setup runs first (all projects depend on it)
-          { name: 'setup', testMatch: /.*auth\.setup\.ts/ },
-          // Default test project (authenticated)
-          {
-            name: 'chromium',
-            use: { storageState: './playwright/.auth/user.json' },
-            dependencies: ['setup'],
-          },
-        ],
       });
       ```
+      - If `projects` needed for auth (Step 3.5) → merge them into existing projects array, don't replace the whole array.
 
-   e. Playwright handles the full lifecycle: start → wait for URL → test → stop. If server is already running, `reuseExistingServer: true` skips the start.
+   d. Playwright handles the full lifecycle: start → wait for URL → test → stop. If server is already running, `reuseExistingServer: true` skips the start.
 
    **Graceful Degradation**:
    - If no dev script found in `package.json` → prompt user to add one, or start manually and re-run
    - If `seed.spec.ts` doesn't exist → proceed without BASE_URL extraction, use `reuseExistingServer: false` and prompt user to start server
    - If `playwright.config.ts` can't be written → log warning and fall back to existing config
+   - If webServer URL conflicts with existing config → always ASK user, never auto-overwrite
 
 3. **Read OpenSpec specs and detect auth requirements**
 
@@ -94,9 +94,27 @@ Run Playwright E2E verification for an OpenSpec change. This skill reads the spe
    - Acceptance criterion
    - Expected behavior
 
-   Then detect if authentication is required by checking if specs mention:
-   - Keywords: "login", "signin", "auth", "authenticated", "protected", "dashboard", "profile"
-   - Roles: "admin", "user", "member", "guest", "premium"
+   Then detect if authentication is required. Mark as "auth required" only when BOTH conditions are met:
+
+   **Condition A — Explicit requirement markers** (in requirement names or descriptions):
+   - "login", "signin", "logout", "authenticate"
+   - "protected", "authenticated", "session"
+   - "unauthorized", "require login"
+
+   **Condition B — Context indicators** (in the same or nearby content):
+   - Protected route/page mention: "/dashboard", "/profile", "/settings", "/admin"
+   - Role mentions in requirement context: "admin", "user", "member"
+   - Redirect after login: "redirect to", "navigate to dashboard"
+
+   **Exclude false positives** — do NOT mark as auth required when "auth" appears only in:
+   - HTTP header examples (`Authorization: Bearer ...`, `auth: ...`)
+   - Code snippets showing API calls
+   - Descriptions of OTHER (non-auth) requirements
+
+   **Confidence levels**:
+   - High confidence (auto-proceed to Step 3.5): Multiple explicit markers AND context indicators both present
+   - Medium confidence (proceed to Step 3.5 with note): Single explicit marker, context unclear
+   - Low confidence (skip auth, proceed to Step 4): No explicit markers found
 
    **If auth is required**, proceed to Step 3.5.
 
@@ -143,34 +161,27 @@ Run Playwright E2E verification for an OpenSpec change. This skill reads the spe
       - Detect role names from specs: "admin" → `./playwright/.auth/admin.json`, "user" → `./playwright/.auth/user.json`
       - Each role gets its own `setup('authenticate as <role>')` block
 
-   d. **Update playwright.config.ts** to add auth projects:
-      ```typescript
-      // Find existing config content and merge
-      const projects = [];
-
-      // Check for multi-user auth files
-      if (existsSync('./playwright/.auth/admin.json')) {
+   d. **Merge auth projects into playwright.config.ts** (non-destructive):
+      - Read existing `playwright.config.ts`
+      - Extract existing `projects` array
+      - Check for multi-user auth files:
+        ```typescript
+        const projects = [];
+        if (existsSync('./playwright/.auth/admin.json')) {
+          projects.push({
+            name: 'admin',
+            use: { storageState: './playwright/.auth/admin.json' },
+            dependencies: ['setup'],
+          });
+        }
         projects.push({
-          name: 'admin',
-          use: { storageState: './playwright/.auth/admin.json' },
+          name: 'chromium',
+          use: { storageState: './playwright/.auth/user.json' },
           dependencies: ['setup'],
         });
-      }
-
-      projects.push({
-        name: 'chromium',
-        use: { storageState: './playwright/.auth/user.json' },
-        dependencies: ['setup'],
-      });
-
-      // Replace or insert projects in playwright.config.ts
-      export default defineConfig({
-        projects: [
-          { name: 'setup', testMatch: /.*auth\.setup\.ts/ },
-          ...projects,
-        ],
-      });
-      ```
+        ```
+      - Merge auth projects INTO existing `projects` array — do NOT replace the whole array. Only add/replace `setup` and auth-dependent projects. Preserve all other existing projects (e.g., multi-browser, multi-region).
+      - If `projects` array doesn't exist in config → add it alongside existing config fields.
 
    e. **Prompt user with next steps**:
       ```
@@ -285,3 +296,13 @@ Run Playwright E2E verification for an OpenSpec change. This skill reads the spe
 - Do not overwrite files outside `specs/playwright/`, `tests/playwright/`, `openspec/reports/`, `playwright.config.ts`, `tests/auth.setup.ts`, or `tests/playwright/credentials.yaml`
 - Cap auto-heal attempts at 3 to prevent infinite loops
 - If no change is specified, always ask the user to select rather than guessing
+
+**Idempotency Rules**
+
+When re-running E2E on the same change:
+
+- If `test-plan.md` already exists → read it, use it, do NOT regenerate unless user explicitly asks
+- If `test.spec.ts` already exists → read it, diff against test-plan, add only missing test cases (preserve existing test implementations)
+- If `auth.setup.ts` already exists → verify it matches expected format, update only if stale or incorrect
+- If report already exists for the same timestamp → write new report with new timestamp, do not overwrite
+- If `playwright.config.ts` was manually modified since last run → ASK user before overwriting, never auto-overwrite user changes
