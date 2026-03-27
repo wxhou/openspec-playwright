@@ -1,5 +1,5 @@
 import { execSync } from 'child_process';
-import { existsSync, readFileSync, writeFileSync, mkdirSync, } from 'fs';
+import { existsSync, writeFileSync, mkdirSync, } from 'fs';
 import { join } from 'path';
 import chalk from 'chalk';
 import { readFile } from 'fs/promises';
@@ -64,10 +64,22 @@ export async function init(options) {
             }
         }
     }
-    // 5. Configure Playwright MCP
+    // 5. Install Playwright MCP (global)
     if (options.mcp !== false) {
-        console.log(chalk.blue('\n─── Configuring Playwright MCP ───'));
-        await configurePlaywrightMCP(projectRoot);
+        console.log(chalk.blue('\n─── Installing Playwright MCP ───'));
+        try {
+            execSync('claude mcp add playwright npx @playwright/mcp@latest', {
+                cwd: projectRoot,
+                stdio: 'inherit',
+            });
+            console.log(chalk.green('  ✓ Playwright MCP installed globally'));
+            console.log(chalk.gray('  (Restart Claude Code to activate)'));
+        }
+        catch {
+            console.log(chalk.yellow('  ⚠ Failed to run claude mcp add'));
+            console.log(chalk.gray('  Run manually: claude mcp add playwright npx @playwright/mcp@latest'));
+            console.log(chalk.gray('  (Restart Claude Code to activate the MCP server)'));
+        }
     }
     // 6. Copy skill files
     console.log(chalk.blue('\n─── Installing Claude Code Skill ───'));
@@ -90,40 +102,6 @@ export async function init(options) {
     console.log(chalk.gray('  /opsx:e2e reads your OpenSpec specs and runs Playwright'));
     console.log(chalk.gray('  E2E tests through a three-agent pipeline:'));
     console.log(chalk.gray('  Planner → Generator → Healer\n'));
-}
-async function configurePlaywrightMCP(projectRoot) {
-    const claudeDir = join(projectRoot, '.claude');
-    mkdirSync(claudeDir, { recursive: true });
-    const settingsPath = join(claudeDir, 'settings.local.json');
-    let settings = {};
-    if (existsSync(settingsPath)) {
-        try {
-            settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
-        }
-        catch {
-            // ignore
-        }
-    }
-    if (!settings.mcpServers) {
-        settings.mcpServers = {};
-    }
-    const playwrightMCP = {
-        command: 'npx',
-        args: ['@playwright/mcp', 'start'],
-    };
-    // Check if already configured
-    const existingKeys = Object.keys(settings.mcpServers);
-    const hasPlaywrightMCP = existingKeys.some((k) => settings.mcpServers[k]?.command === 'npx' &&
-        settings.mcpServers[k]?.args?.includes('@playwright/mcp'));
-    if (hasPlaywrightMCP) {
-        console.log(chalk.green('  ✓ Playwright MCP already configured'));
-    }
-    else {
-        settings.mcpServers['playwright-e2e'] = playwrightMCP;
-        writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
-        console.log(chalk.green('  ✓ Playwright MCP configured in .claude/settings.local.json'));
-        console.log(chalk.gray('  (Restart Claude Code to activate the MCP server)'));
-    }
 }
 async function installSkill(projectRoot) {
     const skillsDir = join(projectRoot, '.claude', 'skills');

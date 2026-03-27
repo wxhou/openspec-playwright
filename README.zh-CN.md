@@ -67,7 +67,7 @@ openspec-pw doctor        # 检查前置条件
 
 1. 运行 `npx playwright install --with-deps`
 2. 运行 `npx playwright init-agents --loop=claude`
-3. 在 `.claude/settings.local.json` 中配置 Playwright MCP
+3. 通过 `claude mcp add` 全局安装 Playwright MCP
 4. 安装 `/opsx:e2e` 命令和 `/openspec-e2e` skill
 5. 生成 `tests/playwright/seed.spec.ts`、`auth.setup.ts`、`credentials.yaml`
 
@@ -110,7 +110,7 @@ npx playwright test --project=setup
 
 ### MCP 服务器
 
-Playwright MCP 配置在 `.claude/settings.local.json` 中。设置后需重启 Claude Code 生效。
+Playwright MCP 通过 `claude mcp add` 全局安装。设置后需重启 Claude Code 生效。
 
 ## 许可
 

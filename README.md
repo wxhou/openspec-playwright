@@ -67,7 +67,7 @@ openspec-pw doctor        # Check prerequisites
 
 1. Runs `npx playwright install --with-deps`
 2. Runs `npx playwright init-agents --loop=claude`
-3. Configures Playwright MCP in `.claude/settings.local.json`
+3. Installs Playwright MCP globally via `claude mcp add`
 4. Installs `/opsx:e2e` command and `/openspec-e2e` skill
 5. Generates `tests/playwright/seed.spec.ts`, `auth.setup.ts`, `credentials.yaml`
 
@@ -110,14 +110,14 @@ Edit `tests/playwright/credentials.yaml`:
 
 ### MCP server
 
-The Playwright MCP is configured in `.claude/settings.local.json`. Restart Claude Code after setup to activate.
+Playwright MCP is installed globally via `claude mcp add`. Restart Claude Code after setup to activate.
 
 ## Architecture
 
 ```
 openspec-pw (CLI - setup only)
   ├── Installs Playwright agents (.github/)
-  ├── Configures Playwright MCP
+  ├── Installs Playwright MCP globally via claude mcp add
   ├── Installs Claude Code skill (/openspec-e2e)
   └── Installs command (/opsx:e2e)
 
