@@ -7,7 +7,7 @@ const program = new Command();
 program
   .name('openspec-pw')
   .description('OpenSpec + Playwright E2E verification setup tool')
-  .version('0.1.0');
+  .version('0.1.1');
 
 program
   .command('init')
