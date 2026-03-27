@@ -69,7 +69,28 @@ openspec-pw doctor        # 检查前置条件
 2. 运行 `npx playwright init-agents --loop=claude`
 3. 在 `.claude/settings.local.json` 中配置 Playwright MCP
 4. 安装 `/opsx:e2e` 命令和 `/openspec-e2e` skill
-5. 生成 `tests/playwright/seed.spec.ts` 模板
+5. 生成 `tests/playwright/seed.spec.ts`、`auth.setup.ts`、`credentials.yaml`
+
+## 认证
+
+如果你的应用需要登录，配置一次凭证后，所有测试自动以已登录状态运行。
+
+```bash
+# 1. 编辑凭证
+vim tests/playwright/credentials.yaml
+
+# 2. 设置环境变量
+export E2E_USERNAME=your-email@example.com
+export E2E_PASSWORD=your-password
+
+# 3. 录制登录（一次性 — 打开浏览器，手动登录一次）
+npx playwright test --project=setup
+
+# 4. 后续所有测试自动复用登录状态
+/opsx:e2e my-feature
+```
+
+支持 **API 登录**（推荐）和 **UI 登录**（备选）。多用户测试（管理员 vs 普通用户）在 `credentials.yaml` 中添加多个用户，`/opsx:e2e` 会从 specs 自动检测角色。
 
 ## 自定义
 
@@ -79,6 +100,13 @@ openspec-pw doctor        # 检查前置条件
 - 基础 URL
 - 常用选择器
 - Page Object 方法
+
+### 认证凭证
+
+编辑 `tests/playwright/credentials.yaml`：
+- 设置登录 API 端点（或留空使用 UI 登录）
+- 配置测试用户凭证
+- 为角色测试添加多用户
 
 ### MCP 服务器
 

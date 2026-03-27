@@ -64,6 +64,16 @@ Run Playwright E2E verification for an OpenSpec change. This skill reads the spe
         use: {
           baseURL: 'http://localhost:5173',
         },
+        projects: [
+          // Auth setup runs first (all projects depend on it)
+          { name: 'setup', testMatch: /.*auth\.setup\.ts/ },
+          // Default test project (authenticated)
+          {
+            name: 'chromium',
+            use: { storageState: './playwright/.auth/user.json' },
+            dependencies: ['setup'],
+          },
+        ],
       });
       ```
 
@@ -74,7 +84,7 @@ Run Playwright E2E verification for an OpenSpec change. This skill reads the spe
    - If `seed.spec.ts` doesn't exist → proceed without BASE_URL extraction, use `reuseExistingServer: false` and prompt user to start server
    - If `playwright.config.ts` can't be written → log warning and fall back to existing config
 
-3. **Read OpenSpec specs**
+3. **Read OpenSpec specs and detect auth requirements**
 
    Read all files from `openspec/changes/<name>/specs/*.md`. These are the requirements that E2E tests must cover.
 
@@ -84,6 +94,113 @@ Run Playwright E2E verification for an OpenSpec change. This skill reads the spe
    - Acceptance criterion
    - Expected behavior
 
+   Then detect if authentication is required by checking if specs mention:
+   - Keywords: "login", "signin", "auth", "authenticated", "protected", "dashboard", "profile"
+   - Roles: "admin", "user", "member", "guest", "premium"
+
+   **If auth is required**, proceed to Step 3.5.
+
+   **If no auth required**, skip to Step 4.
+
+3.5. **Configure authentication**
+
+   Detect auth approach (prefer API over UI):
+
+   a. **Check for login API**: If specs mention `/api/auth/login` or similar endpoints → use API login:
+      ```typescript
+      // tests/auth.setup.ts
+      import { test as setup } from '@playwright/test';
+
+      setup('authenticate', async ({ page }) => {
+        const res = await page.request.post(`${process.env.BASE_URL}/api/auth/login`, {
+          data: {
+            username: process.env.E2E_USERNAME,
+            password: process.env.E2E_PASSWORD,
+          },
+        });
+        if (!res.ok()) throw new Error(`Login failed: ${res.status()}`);
+        await page.context().storageState({ path: './playwright/.auth/user.json' });
+      });
+      ```
+
+   b. **If no API found → UI login** (generate template with prompts):
+      ```typescript
+      // tests/auth.setup.ts
+      import { test as setup } from '@playwright/test';
+
+      setup('authenticate', async ({ page }) => {
+        await page.goto(`${process.env.BASE_URL}/login`);
+        // TODO: update selectors to match your login page
+        await page.fill('[data-testid="username"]', process.env.E2E_USERNAME!);
+        await page.fill('[data-testid="password"]', process.env.E2E_PASSWORD!);
+        await page.click('[data-testid="login-button"]');
+        await page.waitForURL(/\/(dashboard|home)/);
+        await page.context().storageState({ path: './playwright/.auth/user.json' });
+      });
+      ```
+
+   c. **Multi-user support**: If specs mention multiple roles (e.g., "admin" AND "user"), generate a separate setup for each:
+      - Detect role names from specs: "admin" → `./playwright/.auth/admin.json`, "user" → `./playwright/.auth/user.json`
+      - Each role gets its own `setup('authenticate as <role>')` block
+
+   d. **Update playwright.config.ts** to add auth projects:
+      ```typescript
+      // Find existing config content and merge
+      const projects = [];
+
+      // Check for multi-user auth files
+      if (existsSync('./playwright/.auth/admin.json')) {
+        projects.push({
+          name: 'admin',
+          use: { storageState: './playwright/.auth/admin.json' },
+          dependencies: ['setup'],
+        });
+      }
+
+      projects.push({
+        name: 'chromium',
+        use: { storageState: './playwright/.auth/user.json' },
+        dependencies: ['setup'],
+      });
+
+      // Replace or insert projects in playwright.config.ts
+      export default defineConfig({
+        projects: [
+          { name: 'setup', testMatch: /.*auth\.setup\.ts/ },
+          ...projects,
+        ],
+      });
+      ```
+
+   e. **Prompt user with next steps**:
+      ```
+      Authentication required. To set up credentials:
+
+      1. Create tests/playwright/credentials.yaml:
+         ```yaml
+         api: /api/auth/login   # or leave empty for UI login
+         users:
+           - name: user
+             username: your-email@example.com
+             password: your-password
+         ```
+
+      2. Set credentials as environment variables:
+         export E2E_USERNAME=your-email@example.com
+         export E2E_PASSWORD=your-password
+
+      3. Run auth setup (one-time):
+         npx playwright test --project=setup
+         (if UI login: browser opens — log in manually once)
+
+      4. Then re-run /opsx:e2e to execute tests
+      ```
+
+   **Graceful Degradation**:
+   - If credentials not set → prompt user with instructions above, pause until configured
+   - If auth.setup.ts already exists → verify it matches expected format, update if needed
+   - If API login fails → fall back to UI login template
+
 4. **Run Planner Agent**
 
    Generate `openspec/changes/<name>/specs/playwright/test-plan.md` by:
@@ -91,6 +208,7 @@ Run Playwright E2E verification for an OpenSpec change. This skill reads the spe
    - Including expected behaviors, user interactions, and error conditions
    - Specifying which page/route each test targets
    - Following the format of any existing test plans in `specs/playwright/`
+   - Mark tests that require specific roles (e.g., admin-only tests)
 
 5. **Run Generator Agent**
 
@@ -99,6 +217,7 @@ Run Playwright E2E verification for an OpenSpec change. This skill reads the spe
    - Generating Playwright tests covering all items in the test plan
    - Using page object patterns and descriptive test names
    - Ensuring selectors and assertions are specific and robust
+   - **For role-specific tests**: use the appropriate project by adding `@project(admin)` or `@project(user)` tag
 
 6. **Run Healer Agent (Auto-Heal Loop)**
 
@@ -106,6 +225,7 @@ Run Playwright E2E verification for an OpenSpec change. This skill reads the spe
    ```bash
    npx playwright test tests/playwright/<name>.spec.ts --reporter=list
    ```
+   (Add `--project=<role>` if testing a specific authenticated role)
 
    **If tests pass**:
    - Record success, proceed to report
@@ -156,11 +276,12 @@ Run Playwright E2E verification for an OpenSpec change. This skill reads the spe
 - **Auto-heal decisions**: If a selector is broken, find the equivalent element in current UI before patching
 - **False positives**: If a test fails due to a test bug (not app bug), fix the test
 - **Actionability**: Every failed test needs a specific recommendation
+- **Authentication**: If specs mention login/auth → always use `storageState` from `auth.setup.ts`; prefer API login over UI login
 
 **Guardrails**
 
 - Always read specs from `openspec/changes/<name>/specs/` as the source of truth
 - Do not generate tests that contradict the specs
-- Do not overwrite files outside `specs/playwright/`, `tests/playwright/`, `openspec/reports/`, or `playwright.config.ts`
+- Do not overwrite files outside `specs/playwright/`, `tests/playwright/`, `openspec/reports/`, `playwright.config.ts`, `tests/auth.setup.ts`, or `tests/playwright/credentials.yaml`
 - Cap auto-heal attempts at 3 to prevent infinite loops
 - If no change is specified, always ask the user to select rather than guessing

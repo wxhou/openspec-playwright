@@ -69,7 +69,28 @@ openspec-pw doctor        # Check prerequisites
 2. Runs `npx playwright init-agents --loop=claude`
 3. Configures Playwright MCP in `.claude/settings.local.json`
 4. Installs `/opsx:e2e` command and `/openspec-e2e` skill
-5. Generates `tests/playwright/seed.spec.ts` template
+5. Generates `tests/playwright/seed.spec.ts`, `auth.setup.ts`, `credentials.yaml`
+
+## Authentication
+
+If your app requires login, set up credentials once, then all tests run authenticated automatically.
+
+```bash
+# 1. Edit credentials
+vim tests/playwright/credentials.yaml
+
+# 2. Set environment variables
+export E2E_USERNAME=your-email@example.com
+export E2E_PASSWORD=your-password
+
+# 3. Record login (one-time — opens browser, log in manually)
+npx playwright test --project=setup
+
+# 4. All subsequent tests use the saved session
+/opsx:e2e my-feature
+```
+
+Supports **API login** (preferred) and **UI login** (fallback). For multi-user tests (admin vs user), add multiple users in `credentials.yaml` and run `/opsx:e2e` — it auto-detects roles from specs.
 
 ## Customization
 
@@ -79,6 +100,13 @@ Edit `tests/playwright/seed.spec.ts` to match your app's:
 - Base URL
 - Common selectors
 - Page object methods
+
+### Authentication credentials
+
+Edit `tests/playwright/credentials.yaml`:
+- Set login API endpoint (or leave empty for UI login)
+- Configure test user credentials
+- Add multiple users for role-based tests
 
 ### MCP server
 

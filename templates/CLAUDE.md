@@ -7,6 +7,8 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #5514 | 11:22 AM | 🟣 | Created credentials.yaml template for E2E test authentication | ~227 |
+| #5513 | " | 🟣 | Created auth.setup.ts template for Playwright Test Agents | ~276 |
 | #5390 | 9:48 AM | 🔄 | Refactored openspec-playwright from CLI to setup tool + Claude Code skill | ~209 |
 | #5375 | 9:44 AM | 🟣 | Created Playwright seed test template | ~224 |
 </claude-mem-context>

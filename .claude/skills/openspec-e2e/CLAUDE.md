@@ -7,11 +7,7 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
-| #5471 | 10:43 AM | 🟣 | Created openspec-e2e Claude Code skill for E2E verification | ~340 |
-| #5430 | 10:11 AM | 🔵 | Read openspec-e2e skill implementation for review | ~222 |
+| #5511 | 11:22 AM | ✅ | Extended guardrails to protect auth files from overwriting | ~181 |
+| #5510 | 11:21 AM | 🟣 | Enhanced SKILL.md with Playwright auth project configuration | ~228 |
 | #5427 | 10:05 AM | ✅ | Committed style fixes aligning SKILL.md with OpenSpec template standard | ~281 |
-| #5418 | 10:01 AM | 🟣 | Created openspec-e2e Claude Code skill for E2E verification | ~167 |
-| #5409 | 9:55 AM | ✅ | Aligned openspec-e2e skill format with OpenSpec standard | ~216 |
-| #5407 | " | 🟣 | Implemented openspec-e2e Claude Code skill with 7-step workflow | ~321 |
-| #5390 | 9:48 AM | 🔄 | Refactored openspec-playwright from CLI to setup tool + Claude Code skill | ~209 |
 </claude-mem-context>

@@ -81,9 +81,11 @@ export async function init(options) {
     console.log(chalk.blue('\n─── Summary ───'));
     console.log(chalk.green('  ✓ Setup complete!\n'));
     console.log(chalk.bold('Next steps:'));
-    console.log(chalk.gray('  1. Start your dev server: npm run dev'));
-    console.log(chalk.gray('  2. In Claude Code, run: /opsx:e2e <change-name>'));
-    console.log(chalk.gray('  3. Or: openspec-pw doctor to verify setup\n'));
+    console.log(chalk.gray('  1. Customize tests/playwright/credentials.yaml with your test user'));
+    console.log(chalk.gray('  2. Set credentials: export E2E_USERNAME=xxx E2E_PASSWORD=yyy'));
+    console.log(chalk.gray('  3. Run auth setup: npx playwright test --project=setup'));
+    console.log(chalk.gray('  4. In Claude Code, run: /opsx:e2e <change-name>'));
+    console.log(chalk.gray('  5. Or: openspec-pw doctor to verify setup\n'));
     console.log(chalk.bold('How it works:'));
     console.log(chalk.gray('  /opsx:e2e reads your OpenSpec specs and runs Playwright'));
     console.log(chalk.gray('  E2E tests through a three-agent pipeline:'));
@@ -144,12 +146,33 @@ async function generateSeedTest(projectRoot) {
     const seedPath = join(testsDir, 'seed.spec.ts');
     if (existsSync(seedPath)) {
         console.log(chalk.gray('  - seed.spec.ts already exists, skipping'));
-        return;
     }
-    const seedContent = await readFile(TEMPLATE_DIR + '/seed.spec.ts', 'utf-8');
-    writeFileSync(seedPath, seedContent);
-    console.log(chalk.green('  ✓ Generated: tests/playwright/seed.spec.ts'));
-    console.log(chalk.gray('  (Customize BASE_URL and selectors for your app)'));
+    else {
+        const seedContent = await readFile(TEMPLATE_DIR + '/seed.spec.ts', 'utf-8');
+        writeFileSync(seedPath, seedContent);
+        console.log(chalk.green('  ✓ Generated: tests/playwright/seed.spec.ts'));
+    }
+    // Generate auth.setup.ts
+    const authSetupPath = join(testsDir, 'auth.setup.ts');
+    if (existsSync(authSetupPath)) {
+        console.log(chalk.gray('  - auth.setup.ts already exists, skipping'));
+    }
+    else {
+        const authContent = await readFile(TEMPLATE_DIR + '/auth.setup.ts', 'utf-8');
+        writeFileSync(authSetupPath, authContent);
+        console.log(chalk.green('  ✓ Generated: tests/playwright/auth.setup.ts'));
+    }
+    // Generate credentials.yaml
+    const credsPath = join(testsDir, 'credentials.yaml');
+    if (existsSync(credsPath)) {
+        console.log(chalk.gray('  - credentials.yaml already exists, skipping'));
+    }
+    else {
+        const credsContent = await readFile(TEMPLATE_DIR + '/credentials.yaml', 'utf-8');
+        writeFileSync(credsPath, credsContent);
+        console.log(chalk.green('  ✓ Generated: tests/playwright/credentials.yaml'));
+    }
+    console.log(chalk.gray('  (Customize BASE_URL and credentials for your app)'));
 }
 function execCmd(cmd, name, silent = false) {
     try {

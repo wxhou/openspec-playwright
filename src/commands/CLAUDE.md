@@ -7,5 +7,6 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #5477 | 10:46 AM | 🟣 | Added Playwright browser installation step to openspec-pw init | ~219 |
 | #5386 | 9:47 AM | 🔄 | Cleaned up unused imports in init.ts | ~100 |
 </claude-mem-context>

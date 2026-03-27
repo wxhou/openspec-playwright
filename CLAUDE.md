@@ -9,6 +9,8 @@ Setup tool for OpenSpec + Playwright E2E integration.
 - `.claude/skills/openspec-e2e/SKILL.md` — Claude Code skill for `/opsx:e2e`
 - `.claude/commands/opsx/e2e.md` — Claude Code command
 - `templates/seed.spec.ts` — Playwright seed test template
+- `templates/auth.setup.ts` — Authentication setup (API + UI login)
+- `templates/credentials.yaml` — Test credentials configuration
 
 ## Key Files
 
