@@ -7,5 +7,7 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #5409 | 9:55 AM | ✅ | Aligned openspec-e2e skill format with OpenSpec standard | ~216 |
+| #5408 | " | ✅ | Simplified /opsx-e2e command file format | ~196 |
 | #5390 | 9:48 AM | 🔄 | Refactored openspec-playwright from CLI to setup tool + Claude Code skill | ~209 |
 </claude-mem-context>

@@ -7,6 +7,7 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
-| #5407 | 9:55 AM | 🟣 | Implemented openspec-e2e Claude Code skill with 7-step workflow | ~321 |
+| #5409 | 9:55 AM | ✅ | Aligned openspec-e2e skill format with OpenSpec standard | ~216 |
+| #5407 | " | 🟣 | Implemented openspec-e2e Claude Code skill with 7-step workflow | ~321 |
 | #5390 | 9:48 AM | 🔄 | Refactored openspec-playwright from CLI to setup tool + Claude Code skill | ~209 |
 </claude-mem-context>

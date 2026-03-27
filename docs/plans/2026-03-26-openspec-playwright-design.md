@@ -1,141 +1,180 @@
-# OpenSpec + Playwright Test Agents Integration Design
+# OpenSpec + Playwright E2E Integration Design
 
 **Date:** 2026-03-26
-**Status:** Draft
+**Updated:** 2026-03-27
+**Status:** Implemented (MVP)
 
 ## Overview
 
 Integrate OpenSpec's spec-driven development workflow with Playwright Test Agents' three-agent harness (Planner / Generator / Healer) for automated E2E verification.
 
-**Goal:** When `/opsx:verify` runs, automatically trigger Playwright E2E validation using OpenSpec's `specs/` as input.
+**Design decision:** Add a new independent command `/opsx:e2e` rather than hooking into `/opsx:verify`. This keeps concerns separated and allows each verification to be run independently.
 
 ## Architecture
 
 ```
-/opsx:verify
+openspec-pw (CLI - setup only)
+  openspec-pw init    → installs Playwright + configures MCP + installs skill
+  openspec-pw doctor  → checks prerequisites
+
+/opsx:e2e (Claude Code skill - runs in Claude)
   │
-  ├── OpenSpec Native Verify (static)
-  │     Check: implementation matches artifacts?
-  │
-  └── Playwright E2E Verify (dynamic)
-        │
-        ├── Agent 1: Planner → test-plan.md (from specs/)
-        ├── Agent 2: Generator → *.spec.ts
-        └── Agent 3: Healer → run tests + auto-heal
+  ├── 1. Read OpenSpec specs from openspec/changes/<name>/specs/
+  ├── 2. Planner Agent → specs/playwright/test-plan.md
+  ├── 3. Generator Agent → tests/playwright/<name>.spec.ts
+  └── 4. Healer Agent → run tests + auto-heal
+          │
+          └── Report: openspec/reports/playwright-e2e-<name>-<ts>.md
 ```
 
-### Data Flow
+### Two Verification Layers
 
-1. OpenSpec `specs/*.md` (from `/opsx:propose`) → Playwright Planner → `specs/playwright/test-plan.md`
-2. `specs/playwright/test-plan.md` → Playwright Generator → `tests/*.spec.ts`
-3. `tests/*.spec.ts` → Playwright Healer → verification results
+| Layer | Command | Runs in | What it checks |
+|-------|---------|---------|----------------|
+| Static | `/opsx:verify` | Claude Code (OpenSpec skill) | Implementation matches artifacts |
+| E2E | `/opsx:e2e` | Claude Code (this skill) | App works when running |
 
 ## Key Design Decisions
 
-- **No re-exploration**: Planner uses OpenSpec specs directly as PRD, no app exploration needed
-- **Two-layer verification**: OpenSpec native (static) + Playwright E2E (dynamic) run independently
-- **Max result on artifact status**: Final artifact state = worse of two layers
-- **Playwright as-is**: Use `npx playwright init-agents --loop=claude` instead of wrapping agents
+- **Separate command, not hook**: `/opsx:e2e` is independent from `/opsx:verify`. Users run them separately or together.
+- **CLI as setup only**: The CLI does not run agents. It only installs/configures. Agents run in Claude Code.
+- **Playwright MCP**: Playwright agents use the MCP protocol, configured in `.claude/settings.local.json`.
+- **Seed test**: A `tests/playwright/seed.spec.ts` template guides the Generator agent.
+- **No re-exploration**: Planner uses OpenSpec specs directly as the source of truth, no app exploration needed.
 
 ## CLI Commands
 
 ```bash
-# Install
-npm install -g openspec-playwright
+npm install -g wxhou/openspec-playwright
 
-# Init project (install Playwright + inject config context)
-openspec-pw init
-
-# Full verify (both layers)
-openspec-pw verify --change <name>
-
-# Individual steps
-openspec-pw plan --change <name>   # Planner only
-openspec-pw heal --change <name>    # Healer only (tests exist)
+openspec-pw init          # Setup: Playwright + MCP + skill + seed
+openspec-pw doctor        # Check prerequisites
 ```
 
-## OpenSpec Integration
+## What `openspec-pw init` Does
 
-Inject Playwright instructions via `openspec/config.yaml` context:
+1. `npx playwright init-agents --loop=claude` — installs Playwright agents
+2. Configure Playwright MCP in `.claude/settings.local.json`
+3. Install skill: `.claude/skills/openspec-e2e/SKILL.md`
+4. Install command: `.claude/commands/opsx-e2e.md`
+5. Generate `tests/playwright/seed.spec.ts` template
 
-```yaml
-context: |
-  Tech stack: ...
+## SKILL.md Format
 
-  # Playwright Verify Integration
-  When /opsx:verify runs, automatically trigger Playwright E2E validation:
-  1. Read openspec/changes/<name>/specs/*.md as PRD
-  2. Planner → specs/playwright/test-plan.md
-  3. Generator → tests/playwright/*.spec.ts
-  4. Healer → run tests + auto-heal
-  5. Report to reports/playwright-verify.md
-```
+Follows the OpenSpec standard format:
+- YAML frontmatter: `name`, `description`, `license`, `compatibility`, `metadata`
+- Bold step names: `**Step 1: Name**`
+- Output fenced code blocks: `**Output During Implementation**`, `**Output On Completion**`
+- Guardrails section
+- Fluid Workflow Integration section
 
 ## Directory Structure
 
 ```
-.
+project/
+├── .claude/
+│   ├── skills/
+│   │   └── openspec-e2e/
+│   │       └── SKILL.md           # The /openspec-e2e skill
+│   ├── commands/
+│   │   └── opsx-e2e.md           # The /opsx:e2e command
+│   └── settings.local.json        # Playwright MCP config
+├── .github/                       # Playwright agent definitions
+│   └── ...
 ├── openspec/
 │   ├── changes/<name>/
 │   │   ├── specs/
-│   │   │   └── *.md                  # OpenSpec propose output
-│   │   └── specs/playwright/         # Planner output
-│   │       └── test-plan.md
+│   │   │   ├── *.md              # OpenSpec propose output
+│   │   │   └── playwright/
+│   │   │       └── test-plan.md  # Planner output
+│   │   ├── design.md
+│   │   └── tasks.md
 │   └── reports/
-│       └── playwright-verify.md      # Healer verification report
+│       └── playwright-e2e-<name>-<ts>.md  # Healer report
 └── tests/playwright/
-    └── *.spec.ts                     # Generator output
+    ├── seed.spec.ts               # Seed test template
+    └── <name>.spec.ts             # Generated tests
 ```
 
-## Implementation Phases
+## SKILL.md Sections (OpenSpec Standard)
 
-### Phase 1: MVP
-- `openspec-pw init` command
-- Manual Playwright trigger via CLI
-- Report generation
+```yaml
+---
+name: openspec-e2e
+description: Run Playwright E2E verification for an OpenSpec change...
+license: MIT
+compatibility: Requires openspec CLI and Playwright Test Agents...
+metadata:
+  author: openspec-playwright
+  version: "0.1.0"
+  generatedBy: "openspec-playwright"
+---
 
-### Phase 2: Automation
-- `/opsx:verify` auto-triggers Playwright via config context
-- Healer incremental verification
-- Artifact state sync
+Run Playwright E2E verification for an OpenSpec change...
 
-### Phase 3: Enhancement
-- Auto dev server startup
-- Guardrail configuration
-- CI/CD integration (JUnit XML output)
+## Step 1: Identify the Change
+...
+
+## Step 2: Verify Prerequisites
+...
+
+**Output During Implementation**
+```markdown
+## E2E Verification: <name>
+Status: 🔄 In Progress
+```
+```
+
+**Output On Completion**
+```markdown
+## E2E Verify Report: <name>
+| Check | Status |
+|-------|--------|
+...
+```
+```
+
+**Guardrails**
+- Always read specs from `openspec/changes/<name>/specs/` as source of truth
+- Do not generate tests that contradict the specs
+- Cap auto-heal attempts at 3
+...
+
+**Fluid Workflow Integration**
+- Before: /opsx:propose → /opsx:apply
+- This skill: /openspec-e2e
+- After: /opsx:archive
+```
 
 ## Error Handling
 
 | Scenario | Action |
 |----------|--------|
-| No specs found | Stop, prompt to run `/opsx:propose` first |
+| No specs found | Prompt to run `/opsx:propose` first |
+| Prerequisites missing | Prompt to run `openspec-pw init` |
+| Dev server not running | Prompt to start before proceeding |
 | Planner fails | Log error, mark FAILED |
 | Generator fails | Log error, mark FAILED |
 | Healer guardrails trigger | Report failures, mark PARTIAL |
-| Playwright unavailable | Fallback to `npx playwright` |
-| App not running | Prompt to start dev server |
 
 ## Project Structure
 
 ```
 openspec-playwright/
 ├── src/
-│   ├── commands/
-│   │   ├── init.ts
-│   │   ├── verify.ts
-│   │   ├── plan.ts
-│   │   └── heal.ts
-│   ├── lib/
-│   │   ├── playwright-agent.ts
-│   │   ├── openspec.ts
-│   │   ├── verify.ts
-│   │   └── report.ts
-│   └── index.ts
-├── schema/
-│   └── playwright-verify/
-│       ├── schema.yaml
-│       └── templates/
-│           └── verify-context.md
+│   ├── index.ts           # CLI entry
+│   └── commands/
+│       ├── init.ts        # openspec-pw init
+│       └── doctor.ts      # openspec-pw doctor
+├── .claude/
+│   ├── skills/
+│   │   └── openspec-e2e/
+│   │       └── SKILL.md  # The Claude Code skill
+│   └── commands/
+│       └── opsx-e2e.md    # The command file
+├── templates/
+│   └── seed.spec.ts       # Playwright seed test template
 ├── README.md
-└── package.json
+├── package.json
+└── tsconfig.json
 ```
