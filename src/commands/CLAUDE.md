@@ -9,4 +9,11 @@
 |----|------|---|-------|------|
 | #5343 | 6:14 PM | 🔄 | Added TypeScript types for verify command result objects | ~222 |
 | #5328 | 6:11 PM | 🟣 | OpenSpec verify command with dual-layer verification | ~257 |
+| #5326 | " | 🟣 | Created heal command for openspec-pw CLI | ~263 |
+
+### Mar 27, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #5386 | 9:47 AM | 🔄 | Cleaned up unused imports in init.ts | ~100 |
 </claude-mem-context>

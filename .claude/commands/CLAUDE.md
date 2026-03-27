@@ -8,5 +8,4 @@
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
 | #5390 | 9:48 AM | 🔄 | Refactored openspec-playwright from CLI to setup tool + Claude Code skill | ~209 |
-| #5375 | 9:44 AM | 🟣 | Created Playwright seed test template | ~224 |
 </claude-mem-context>
