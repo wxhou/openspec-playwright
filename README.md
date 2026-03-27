@@ -31,7 +31,8 @@ openspec-pw init          # Install Playwright E2E integration
 
 ```bash
 openspec-pw init          # Initialize integration (one-time setup)
-openspec-pw doctor        # Check prerequisites
+openspec-pw update       # Update CLI and skill to latest version
+openspec-pw doctor       # Check prerequisites
 ```
 
 ## How It Works

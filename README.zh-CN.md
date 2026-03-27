@@ -31,6 +31,7 @@ openspec-pw init          # 安装 Playwright E2E 集成
 
 ```bash
 openspec-pw init          # 初始化集成（一次性设置）
+openspec-pw update        # 更新 CLI 和 skill 到最新版本
 openspec-pw doctor        # 检查前置条件
 ```
 
