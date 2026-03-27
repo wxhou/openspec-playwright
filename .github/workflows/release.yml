@@ -27,11 +27,39 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Generate release notes
+        id: release-notes
+        run: |
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          # Get all tags sorted by version, find previous tag
+          PREV_TAG=$(git tag --sort=-v:refname | sed -n '2p')
+          if [ -n "$PREV_TAG" ]; then
+            CHANGES=$(git log "$PREV_TAG..HEAD" --oneline --format="- %s")
+          else
+            CHANGES=$(git log --oneline --format="- %s" -10)
+          fi
+          COMPARE_URL="https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${TAG_NAME}"
+          if [ -z "$PREV_TAG" ]; then
+            COMPARE_URL="https://github.com/${{ github.repository }}/releases/tag/${TAG_NAME}"
+          fi
+          cat << NOTES > release-notes.md
+          ## What's Changed
+
+          ${CHANGES}
+
+          **Full Changelog**: ${COMPARE_URL}
+          NOTES
+          echo "body_path=release-notes.md" >> "$GITHUB_OUTPUT"
+
+      - name: Package for release
+        run: |
+          npm pack --pack-destination .
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
-          files: dist/**/*
+          body_path: ${{ steps.release-notes.outputs.body_path }}
+          files: "*.tgz"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
