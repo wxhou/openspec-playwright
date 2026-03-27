@@ -8,11 +8,10 @@ import {
 import { join } from 'path';
 import chalk from 'chalk';
 import { readFile } from 'fs/promises';
-import { glob } from 'fs';
 
 const TEMPLATE_DIR = new URL('../templates', import.meta.url).pathname;
 const SKILL_SRC = new URL('../.claude/skills/openspec-e2e', import.meta.url).pathname;
-const CMD_SRC = new URL('../.claude/commands/opsx-e2e.md', import.meta.url).pathname;
+const CMD_SRC = new URL('../.claude/commands/opsx/e2e.md', import.meta.url).pathname;
 
 export interface InitOptions {
   change?: string;
@@ -158,7 +157,7 @@ async function installSkill(projectRoot: string) {
   // Copy command
   mkdirSync(cmdDir, { recursive: true });
   const cmdContent = await readFile(CMD_SRC, 'utf-8');
-  writeFileSync(join(cmdDir, 'opsx-e2e.md'), cmdContent);
+  writeFileSync(join(cmdDir, 'e2e.md'), cmdContent);
   console.log(chalk.green(`  ✓ Command installed: /opsx:e2e`));
 }
 

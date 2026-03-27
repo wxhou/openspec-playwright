@@ -7,5 +7,5 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
-| #5427 | 10:05 AM | ✅ | Committed style fixes aligning SKILL.md with OpenSpec template standard | ~281 |
+| #5434 | 10:15 AM | 🔄 | Organized OpenSpec command files under opsx namespace | ~145 |
 </claude-mem-context>

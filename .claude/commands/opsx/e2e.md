@@ -1,12 +1,6 @@
 ---
-name: opsx-e2e
+name: OPSX: E2E
 description: Run Playwright E2E verification for an OpenSpec change
-category: Workflow
-tags:
-  - workflow
-  - e2e
-  - playwright
-  - experimental
 ---
 
 Run Playwright E2E verification for an OpenSpec change.

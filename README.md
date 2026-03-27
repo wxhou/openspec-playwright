@@ -30,8 +30,8 @@ openspec-pw init          # Install Playwright E2E integration
 ### In Claude Code
 
 ```bash
-/openspec-e2e my-feature    # Run E2E verification for a specific change
-/openspec-e2e           # Alternative command
+/opsx:e2e my-feature    # Primary command (OpenSpec convention)
+/openspec-e2e           # Alternative from skill
 ```
 
 ### CLI Commands
@@ -44,7 +44,7 @@ openspec-pw doctor        # Check prerequisites
 ## How It Works
 
 ```
-/opsx:e2e <change-name>
+/openspec-e2e <change-name>
   │
   ├── 1. Read OpenSpec specs from openspec/changes/<name>/specs/
   │
@@ -62,7 +62,7 @@ openspec-pw doctor        # Check prerequisites
 | Layer | Command | What it checks |
 |-------|---------|----------------|
 | Static | `/opsx:verify` | Implementation matches artifacts |
-| E2E | `/openspec-e2e` | App works when running |
+| E2E | `/opsx:e2e` | App works when running |
 
 ## Prerequisites
 
@@ -75,7 +75,7 @@ openspec-pw doctor        # Check prerequisites
 
 1. Runs `npx playwright init-agents --loop=claude`
 2. Configures Playwright MCP in `.claude/settings.local.json`
-3. Installs `/openspec-e2e` command and `/openspec-e2e` skill
+3. Installs `/opsx:e2e` command and `/openspec-e2e` skill
 4. Generates `tests/playwright/seed.spec.ts` template
 
 ## Customization
@@ -98,7 +98,7 @@ openspec-pw (CLI - setup only)
   ├── Installs Playwright agents (.github/)
   ├── Configures Playwright MCP
   ├── Installs Claude Code skill (/openspec-e2e)
-  └── Generates seed test template
+  └── Installs command (/opsx:e2e)
 
 /openspec-e2e (Claude Code skill - runs in Claude)
   ├── Reads OpenSpec specs
