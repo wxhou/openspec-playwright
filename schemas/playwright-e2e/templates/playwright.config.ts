@@ -1,8 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, readdirSync } from 'fs';
 import { join } from 'path';
 
-// ─── Detect project root (find package.json walking up) ───
+// ─── Detect project root (where openspec/ lives) ───
 function findProjectRoot(start: string): string {
   let dir = start;
   for (let i = 0; i < 10; i++) {
@@ -14,7 +14,35 @@ function findProjectRoot(start: string): string {
   return start;
 }
 
+// ─── Find the npm project root (where package.json with scripts lives) ───
+// Checks project root first, then immediate subdirectories
+function findNpmRoot(projectRoot: string): string {
+  const pkgAtRoot = join(projectRoot, 'package.json');
+  if (existsSync(pkgAtRoot)) {
+    const pkg = JSON.parse(readFileSync(pkgAtRoot, 'utf-8'));
+    if (pkg.scripts?.dev || pkg.scripts?.start || pkg.scripts?.serve || pkg.scripts?.preview) {
+      return projectRoot;
+    }
+  }
+  // Check immediate subdirectories (e.g., openspec/ and imap/ are siblings)
+  try {
+    const entries = readdirSync(projectRoot, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory() || entry.name.startsWith('.') || entry.name === 'node_modules') continue;
+      const subPkg = join(projectRoot, entry.name, 'package.json');
+      if (existsSync(subPkg)) {
+        const sub = JSON.parse(readFileSync(subPkg, 'utf-8'));
+        if (sub.scripts?.dev || sub.scripts?.start) {
+          return join(projectRoot, entry.name);
+        }
+      }
+    }
+  } catch {}
+  return projectRoot;
+}
+
 const projectRoot = findProjectRoot(__dirname);
+const npmRoot = findNpmRoot(projectRoot);
 
 // ─── BASE_URL: prefer env, then seed.spec.ts, then default ───
 const seedSpec = join(projectRoot, 'tests', 'playwright', 'seed.spec.ts');
@@ -25,13 +53,17 @@ if (existsSync(seedSpec)) {
   if (m) baseUrl = m[1];
 }
 
-// ─── Dev command: detect from package.json scripts ───
-const pkgPath = join(projectRoot, 'package.json');
+// ─── Dev command: detect from the npm project ───
 let devCmd = 'npm run dev';
-if (existsSync(pkgPath)) {
-  const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+const npmPkg = join(npmRoot, 'package.json');
+if (existsSync(npmPkg)) {
+  const pkg = JSON.parse(readFileSync(npmPkg, 'utf-8'));
   const scripts = pkg.scripts ?? {};
   devCmd = scripts.dev ?? scripts.start ?? scripts.serve ?? scripts.preview ?? devCmd;
+  // Prefix with cd if npmRoot differs from projectRoot
+  if (npmRoot !== projectRoot) {
+    devCmd = `cd ${npmRoot} && ${devCmd}`;
+  }
 }
 
 export default defineConfig({
