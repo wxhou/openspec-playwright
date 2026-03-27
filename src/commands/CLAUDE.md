@@ -23,4 +23,5 @@
 | #5386 | 9:47 AM | 🔄 | Cleaned up unused imports in init.ts | ~100 |
 | #5384 | " | 🔴 | Fixed missing readFileSync import in doctor.ts | ~159 |
 | #5382 | 9:46 AM | 🔄 | Doctor command checks seed test file existence | ~156 |
+| #5378 | " | 🟣 | init command implemented for openspec-playwright setup | ~304 |
 </claude-mem-context>
