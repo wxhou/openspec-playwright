@@ -3,6 +3,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { Command } from 'commander';
 import { init } from './commands/init.js';
+import { update } from './commands/update.js';
 import { doctor } from './commands/doctor.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -27,5 +28,12 @@ program
   .command('doctor')
   .description('Check if all prerequisites are installed')
   .action(doctor);
+
+program
+  .command('update')
+  .description('Update the CLI tool and skill to the latest version')
+  .option('--no-cli', 'skip CLI update')
+  .option('--no-skill', 'skip skill/command update')
+  .action(update);
 
 program.parse();

@@ -17,6 +17,7 @@
 |----|------|---|-------|------|
 | #5557 | 1:44 PM | 🔄 | Replaced manual MCP configuration with claude CLI command | ~198 |
 | #5556 | 1:43 PM | 🔄 | Updated Playwright MCP installation to use claude CLI | ~179 |
+| #5531 | 11:57 AM | 🔴 | Fixed path resolution in init.ts for dist/ compilation | ~197 |
 | #5477 | 10:46 AM | 🟣 | Added Playwright browser installation step to openspec-pw init | ~219 |
 | #5386 | 9:47 AM | 🔄 | Cleaned up unused imports in init.ts | ~100 |
 </claude-mem-context>
