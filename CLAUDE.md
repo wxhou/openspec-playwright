@@ -7,7 +7,7 @@ Setup tool for OpenSpec + Playwright E2E integration.
 - `src/commands/init.ts` — `openspec-pw init` setup logic
 - `src/commands/doctor.ts` — `openspec-pw doctor` prerequisites checker
 - `.claude/skills/openspec-e2e/SKILL.md` — Claude Code skill for `/opsx:e2e`
-- `.claude/commands/opsx-e2e.md` — Claude Code command
+- `.claude/commands/opsx/e2e.md` — Claude Code command
 - `templates/seed.spec.ts` — Playwright seed test template
 
 ## Key Files

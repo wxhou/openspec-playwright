@@ -7,13 +7,7 @@
 ## 安装
 
 ```bash
-npm install -g wxhou/openspec-playwright
-```
-
-或使用完整 URL：
-
-```bash
-npm install -g git+https://github.com/wxhou/openspec-playwright.git
+npm install -g https://github.com/wxhou/openspec-playwright/archive/refs/heads/main.tar.gz
 ```
 
 ## 初始化
