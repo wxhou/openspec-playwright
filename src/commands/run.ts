@@ -1,6 +1,6 @@
 import { execSync } from 'child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from 'fs';
-import { join, dirname } from 'path';
+import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { join } from 'path';
 import chalk from 'chalk';
 
 export interface RunOptions {
