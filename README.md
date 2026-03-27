@@ -1,5 +1,7 @@
 # OpenSpec + Playwright E2E Verification
 
+[中文说明](./README.zh-CN.md)
+
 A setup tool that integrates OpenSpec's spec-driven development with Playwright's three-agent test pipeline for automated E2E verification.
 
 ## Install
