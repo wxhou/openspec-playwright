@@ -2,8 +2,22 @@ import { defineConfig, devices } from '@playwright/test';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
+// ─── Detect project root (find package.json walking up) ───
+function findProjectRoot(start: string): string {
+  let dir = start;
+  for (let i = 0; i < 10; i++) {
+    if (existsSync(join(dir, 'package.json'))) return dir;
+    const parent = join(dir, '..');
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return start;
+}
+
+const projectRoot = findProjectRoot(__dirname);
+
 // ─── BASE_URL: prefer env, then seed.spec.ts, then default ───
-const seedSpec = join(__dirname, '../tests/playwright/seed.spec.ts');
+const seedSpec = join(projectRoot, 'tests', 'playwright', 'seed.spec.ts');
 let baseUrl = process.env.BASE_URL || 'http://localhost:3000';
 if (existsSync(seedSpec)) {
   const content = readFileSync(seedSpec, 'utf-8');
@@ -12,19 +26,17 @@ if (existsSync(seedSpec)) {
 }
 
 // ─── Dev command: detect from package.json scripts ───
-const pkgPath = join(__dirname, '../package.json');
+const pkgPath = join(projectRoot, 'package.json');
 let devCmd = 'npm run dev';
 if (existsSync(pkgPath)) {
   const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
   const scripts = pkg.scripts ?? {};
-  // Prefer in order: dev, start, serve, preview
   devCmd = scripts.dev ?? scripts.start ?? scripts.serve ?? scripts.preview ?? devCmd;
 }
 
 export default defineConfig({
-  testDir: '../tests/playwright',
-  // Keep test artifacts inside tests/playwright/ instead of project root
-  outputDir: '../tests/playwright/test-results',
+  testDir: join(projectRoot, 'tests', 'playwright'),
+  outputDir: join(projectRoot, 'tests', 'playwright', 'test-results'),
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
