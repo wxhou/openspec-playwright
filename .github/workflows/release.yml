@@ -27,6 +27,18 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Set version from tag
+        run: |
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          node -e "
+            import {readFileSync, writeFileSync} from 'fs';
+            const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+            pkg.version = '$VERSION';
+            writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+
       - name: Generate release notes
         id: release-notes
         run: |
