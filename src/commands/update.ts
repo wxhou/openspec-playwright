@@ -43,13 +43,7 @@ export async function update(options: UpdateOptions) {
   if (options.skill !== false) {
     console.log(chalk.blue('\n─── Updating Skill & Command ───'));
     try {
-      // Download and extract latest SKILL.md from git
-      const skillTarball = execSync(
-        'curl -sL https://github.com/wxhou/openspec-playwright/archive/refs/heads/main.tar.gz',
-        { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 }
-      );
-
-      // Write tarball to temp file and extract skill/command from it
+      // Download tarball to temp file and extract
       const tmpSkill = '/tmp/openspec-e2e-skill.tar.gz';
       const tmpDir = '/tmp/openspec-e2e-update';
 
