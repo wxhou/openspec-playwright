@@ -65,11 +65,11 @@ openspec-pw doctor        # 检查前置条件
 
 ## `openspec-pw init` 做了什么
 
-1. 运行 `npx playwright install --with-deps`
-2. 运行 `npx playwright init-agents --loop=claude`
-3. 通过 `claude mcp add` 全局安装 Playwright MCP
-4. 安装 `/opsx:e2e` 命令和 `/openspec-e2e` skill
-5. 生成 `tests/playwright/seed.spec.ts`、`auth.setup.ts`、`credentials.yaml`
+1. 通过 `claude mcp add` 全局安装 Playwright MCP
+2. 安装 `/opsx:e2e` 命令和 `/openspec-e2e` skill
+3. 生成 `tests/playwright/seed.spec.ts`、`auth.setup.ts`、`credentials.yaml`
+
+> **注意**：运行 `openspec-pw init` 后，手动安装 Playwright 浏览器：`npx playwright install --with-deps`
 
 ## 认证
 

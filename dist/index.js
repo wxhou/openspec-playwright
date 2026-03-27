@@ -15,7 +15,6 @@ program
     .command('init')
     .description('Initialize OpenSpec + Playwright E2E integration in the current project')
     .option('-c, --change <name>', 'default change name', 'default')
-    .option('--no-playwright-init', 'skip playwright init-agents')
     .option('--no-mcp', 'skip Playwright MCP configuration')
     .option('--no-seed', 'skip seed test generation')
     .action(init);

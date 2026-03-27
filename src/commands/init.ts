@@ -15,7 +15,6 @@ const CMD_SRC = new URL('../../.claude/commands/opsx/e2e.md', import.meta.url).p
 
 export interface InitOptions {
   change?: string;
-  playwrightInit?: boolean;
   mcp?: boolean;
   seed?: boolean;
 }
@@ -50,41 +49,7 @@ export async function init(options: InitOptions) {
   }
   console.log(chalk.green('  ✓ OpenSpec initialized'));
 
-  // 3. Install Playwright
-  console.log(chalk.blue('\n─── Installing Playwright ───'));
-  try {
-    execSync('npx playwright install --with-deps', {
-      cwd: projectRoot,
-      stdio: 'inherit',
-    });
-    console.log(chalk.green('  ✓ Playwright installed'));
-  } catch {
-    console.log(chalk.yellow('  ⚠ Failed to install Playwright'));
-    console.log(chalk.gray('  Try manually: npx playwright install --with-deps'));
-  }
-
-  // 4. Install Playwright agents
-  if (options.playwrightInit !== false) {
-    console.log(chalk.blue('\n─── Installing Playwright Test Agents ───'));
-
-    // Check if already installed
-    if (existsSync(join(projectRoot, '.github'))) {
-      console.log(chalk.green('  ✓ Playwright agents already installed'));
-    } else {
-      try {
-        execSync('npx playwright init-agents --loop=claude', {
-          cwd: projectRoot,
-          stdio: 'inherit',
-        });
-        console.log(chalk.green('  ✓ Playwright Test Agents initialized'));
-      } catch {
-        console.log(chalk.yellow('  ⚠ Failed to run playwright init-agents'));
-        console.log(chalk.gray('  Try manually: npx playwright init-agents --loop=claude'));
-      }
-    }
-  }
-
-  // 5. Install Playwright MCP (global)
+  // 3. Install Playwright MCP (global)
   if (options.mcp !== false) {
     console.log(chalk.blue('\n─── Installing Playwright MCP ───'));
     try {
@@ -101,11 +66,11 @@ export async function init(options: InitOptions) {
     }
   }
 
-  // 6. Copy skill files
+  // 4. Copy skill files
   console.log(chalk.blue('\n─── Installing Claude Code Skill ───'));
   await installSkill(projectRoot);
 
-  // 7. Generate seed test
+  // 5. Generate seed test
   if (options.seed !== false) {
     console.log(chalk.blue('\n─── Generating Seed Test ───'));
     await generateSeedTest(projectRoot);
@@ -116,11 +81,12 @@ export async function init(options: InitOptions) {
   console.log(chalk.green('  ✓ Setup complete!\n'));
 
   console.log(chalk.bold('Next steps:'));
-  console.log(chalk.gray('  1. Customize tests/playwright/credentials.yaml with your test user'));
-  console.log(chalk.gray('  2. Set credentials: export E2E_USERNAME=xxx E2E_PASSWORD=yyy'));
-  console.log(chalk.gray('  3. Run auth setup: npx playwright test --project=setup'));
-  console.log(chalk.gray('  4. In Claude Code, run: /opsx:e2e <change-name>'));
-  console.log(chalk.gray('  5. Or: openspec-pw doctor to verify setup\n'));
+  console.log(chalk.gray('  1. Install Playwright browsers: npx playwright install --with-deps'));
+  console.log(chalk.gray('  2. Customize tests/playwright/credentials.yaml with your test user'));
+  console.log(chalk.gray('  3. Set credentials: export E2E_USERNAME=xxx E2E_PASSWORD=yyy'));
+  console.log(chalk.gray('  4. Run auth setup: npx playwright test --project=setup'));
+  console.log(chalk.gray('  5. In Claude Code, run: /opsx:e2e <change-name>'));
+  console.log(chalk.gray('  6. Or: openspec-pw doctor to verify setup\n'));
 
   console.log(chalk.bold('How it works:'));
   console.log(chalk.gray('  /opsx:e2e reads your OpenSpec specs and runs Playwright'));

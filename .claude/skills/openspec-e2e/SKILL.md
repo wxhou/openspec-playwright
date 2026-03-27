@@ -2,7 +2,7 @@
 name: openspec-e2e
 description: Run Playwright E2E verification for an OpenSpec change. Use when the user wants to validate that the implementation works end-to-end by running Playwright tests generated from the specs.
 license: MIT
-compatibility: Requires openspec CLI and Playwright Test Agents (npx playwright init-agents --loop=claude).
+compatibility: Requires openspec CLI, Playwright (with browsers installed), and @playwright/mcp (globally installed via claude mcp add).
 metadata:
   author: openspec-playwright
   version: "1.0"
@@ -26,13 +26,13 @@ Run Playwright E2E verification for an OpenSpec change. This skill reads the spe
 2. **Verify prerequisites and configure dev server**
 
    Check that:
-   - `.github/` directory exists (Playwright agents installed)
-   - Playwright MCP is configured in `.claude/settings.local.json`
+   - `@playwright/mcp` is installed globally (check via `claude mcp list`)
+   - Playwright browsers are installed (check via `npx playwright --version`)
    - `tests/playwright/seed.spec.ts` exists (optional but recommended)
 
-   If Playwright agents are missing, guide the user to run:
+   If Playwright browsers are missing, guide the user to run:
    ```bash
-   npx playwright init-agents --loop=claude
+   npx playwright install --with-deps
    ```
 
    If MCP is not configured, guide the user to run:

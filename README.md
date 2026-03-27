@@ -65,11 +65,11 @@ openspec-pw doctor        # Check prerequisites
 
 ## What `openspec-pw init` Does
 
-1. Runs `npx playwright install --with-deps`
-2. Runs `npx playwright init-agents --loop=claude`
-3. Installs Playwright MCP globally via `claude mcp add`
-4. Installs `/opsx:e2e` command and `/openspec-e2e` skill
-5. Generates `tests/playwright/seed.spec.ts`, `auth.setup.ts`, `credentials.yaml`
+1. Installs Playwright MCP globally via `claude mcp add`
+2. Installs `/opsx:e2e` command and `/openspec-e2e` skill
+3. Generates `tests/playwright/seed.spec.ts`, `auth.setup.ts`, `credentials.yaml`
+
+> **Note**: After running `openspec-pw init`, manually install Playwright browsers: `npx playwright install --with-deps`
 
 ## Authentication
 

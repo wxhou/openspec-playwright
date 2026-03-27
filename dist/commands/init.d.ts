@@ -1,6 +1,5 @@
 export interface InitOptions {
     change?: string;
-    playwrightInit?: boolean;
     mcp?: boolean;
     seed?: boolean;
 }
