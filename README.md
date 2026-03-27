@@ -20,10 +20,7 @@ npm install -g git+https://github.com/wxhou/openspec-playwright.git
 
 ```bash
 # In your project directory
-openspec init              # Initialize OpenSpec (if not done)
-openspec config profile core
-openspec update
-
+openspec init              # Initialize OpenSpec
 openspec-pw init          # Install Playwright E2E integration
 ```
 

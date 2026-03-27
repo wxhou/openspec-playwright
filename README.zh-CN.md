@@ -20,10 +20,7 @@ npm install -g git+https://github.com/wxhou/openspec-playwright.git
 
 ```bash
 # 在项目目录下
-openspec init              # 初始化 OpenSpec（如尚未完成）
-openspec config profile core
-openspec update
-
+openspec init              # 初始化 OpenSpec
 openspec-pw init          # 安装 Playwright E2E 集成
 ```
 
