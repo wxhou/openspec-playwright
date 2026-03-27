@@ -8,6 +8,7 @@ dist/
 test-results/
 playwright-report/
 playwright/.cache/
+.github/                   # Playwright agent definitions (regenerated)
 
 # OS
 .DS_Store

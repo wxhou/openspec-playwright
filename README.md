@@ -1,31 +1,8 @@
-# OpenSpec + Playwright Test Agents
+# OpenSpec + Playwright E2E Verification
 
-OpenSpec + Playwright Test Agents integration for automated E2E verification.
-
-## Overview
-
-This CLI tool integrates OpenSpec's spec-driven development workflow with Playwright's three-agent harness (Planner / Generator / Healer) for automated E2E verification.
-
-When `/opsx:verify` runs, OpenSpec artifacts (`specs/`) are automatically fed into the Playwright Test Agents pipeline for end-to-end validation.
-
-## Architecture
-
-```
-/opsx:verify
-  │
-  ├── OpenSpec Native Verify (static)
-  │     Check: implementation matches artifacts?
-  │
-  └── Playwright E2E Verify (dynamic)
-        │
-        ├── Agent 1: Planner → test-plan.md (from specs/)
-        ├── Agent 2: Generator → *.spec.ts
-        └── Agent 3: Healer → run tests + auto-heal
-```
+A setup tool that integrates OpenSpec's spec-driven development with Playwright's three-agent test pipeline for automated E2E verification.
 
 ## Install
-
-Install directly from GitHub (no npm publish needed):
 
 ```bash
 npm install -g wxhou/openspec-playwright
@@ -37,52 +14,97 @@ Or with full URL:
 npm install -g git+https://github.com/wxhou/openspec-playwright.git
 ```
 
-Or use with npx (no installation):
-
-```bash
-npx openspec-playwright verify --change my-feature
-```
-
 ## Setup
 
 ```bash
 # In your project directory
-openspec init        # Initialize OpenSpec (if not done)
-openspec-pw init     # Initialize Playwright + inject config context
+openspec init              # Initialize OpenSpec (if not done)
+openspec config profile core
+openspec update
+
+openspec-pw init          # Install Playwright E2E integration
 ```
 
 ## Usage
 
-### Full Verify
+### In Claude Code
 
 ```bash
-openspec-pw verify --change <name>
+/opsx:e2e my-feature    # Run E2E verification for a specific change
+/openspec-e2e           # Alternative command
 ```
 
-Runs both OpenSpec native verify and Playwright E2E verify.
-
-### Individual Commands
+### CLI Commands
 
 ```bash
-openspec-pw plan --change <name>   # Planner only
-openspec-pw heal --change <name>   # Healer only
+openspec-pw init          # Initialize integration (one-time setup)
+openspec-pw doctor        # Check prerequisites
 ```
-
-### Options
-
-- `--change <name>` - Change name to verify (default: "default")
-- `--skip-native` - Skip OpenSpec native verify
-- `--skip-playwright` - Skip Playwright E2E verify
 
 ## How It Works
 
-1. **Planner**: Reads OpenSpec `specs/*.md` files as PRD, generates `specs/playwright/test-plan.md`
-2. **Generator**: Converts test plan to `tests/playwright/*.spec.ts`
-3. **Healer**: Executes tests, auto-heals failures, reports results
+```
+/opsx:e2e <change-name>
+  │
+  ├── 1. Read OpenSpec specs from openspec/changes/<name>/specs/
+  │
+  ├── 2. Planner Agent → generates test-plan.md
+  │
+  ├── 3. Generator Agent → creates tests/playwright/<name>.spec.ts
+  │
+  └── 4. Healer Agent → runs tests + auto-heals failures
+          │
+          └── Report: openspec/reports/playwright-e2e-<name>.md
+```
 
-## Claude Code Integration
+### Two Verification Layers
 
-After running `openspec-pw init`, the Playwright instructions are injected into `openspec/config.yaml`. When `/opsx:verify` runs in Claude Code, the config context guides the Playwright verification automatically.
+| Layer | Command | What it checks |
+|-------|---------|----------------|
+| Static | `/opsx:verify` | Implementation matches artifacts |
+| E2E | `/opsx:e2e` | App works when running |
+
+## Prerequisites
+
+1. **Node.js >= 20**
+2. **OpenSpec** initialized: `npm install -g @fission-ai/openspec && openspec init`
+3. **Playwright** installed: `npx playwright install`
+4. **Claude Code** with Playwright MCP configured
+
+## What `openspec-pw init` Does
+
+1. Runs `npx playwright init-agents --loop=claude`
+2. Configures Playwright MCP in `.claude/settings.local.json`
+3. Installs `/opsx:e2e` command and `/openspec-e2e` skill
+4. Generates `tests/playwright/seed.spec.ts` template
+
+## Customization
+
+### Customize seed test
+
+Edit `tests/playwright/seed.spec.ts` to match your app's:
+- Base URL
+- Common selectors
+- Page object methods
+
+### MCP server
+
+The Playwright MCP is configured in `.claude/settings.local.json`. Restart Claude Code after setup to activate.
+
+## Architecture
+
+```
+openspec-pw (CLI - setup only)
+  ├── Installs Playwright agents (.github/)
+  ├── Configures Playwright MCP
+  ├── Installs Claude Code skill (/openspec-e2e)
+  └── Generates seed test template
+
+/opsx:e2e (Claude Code skill - runs in Claude)
+  ├── Reads OpenSpec specs
+  ├── Triggers Playwright agents via MCP
+  └── Generates E2E verification report
+```
 
 ## License
 

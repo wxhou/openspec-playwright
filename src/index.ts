@@ -1,41 +1,26 @@
-#!/usr/bin/env node
 import { Command } from 'commander';
 import { init } from './commands/init.js';
-import { verify } from './commands/verify.js';
-import { plan } from './commands/plan.js';
-import { heal } from './commands/heal.js';
+import { doctor } from './commands/doctor.js';
 
 const program = new Command();
 
 program
   .name('openspec-pw')
-  .description('OpenSpec + Playwright Test Agents integration')
+  .description('OpenSpec + Playwright E2E verification setup tool')
   .version('0.1.0');
 
 program
   .command('init')
-  .description('Initialize project with OpenSpec + Playwright integration')
-  .option('-c, --change <name>', 'change name to initialize', 'default')
+  .description('Initialize OpenSpec + Playwright E2E integration in the current project')
+  .option('-c, --change <name>', 'default change name', 'default')
+  .option('--no-playwright-init', 'skip playwright init-agents')
+  .option('--no-mcp', 'skip Playwright MCP configuration')
+  .option('--no-seed', 'skip seed test generation')
   .action(init);
 
 program
-  .command('verify')
-  .description('Run OpenSpec verify with Playwright E2E validation')
-  .option('-c, --change <name>', 'change name to verify', 'default')
-  .option('--skip-native', 'skip OpenSpec native verify')
-  .option('--skip-playwright', 'skip Playwright E2E verify')
-  .action(verify);
-
-program
-  .command('plan')
-  .description('Run Playwright Planner only (generate test plan from specs)')
-  .option('-c, --change <name>', 'change name', 'default')
-  .action(plan);
-
-program
-  .command('heal')
-  .description('Run Playwright Healer only (run tests with auto-heal)')
-  .option('-c, --change <name>', 'change name', 'default')
-  .action(heal);
+  .command('doctor')
+  .description('Check if all prerequisites are installed')
+  .action(doctor);
 
 program.parse();
