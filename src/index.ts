@@ -5,6 +5,7 @@ import { Command } from 'commander';
 import { init } from './commands/init.js';
 import { update } from './commands/update.js';
 import { doctor } from './commands/doctor.js';
+import { run } from './commands/run.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8'));
@@ -35,5 +36,12 @@ program
   .option('--no-cli', 'skip CLI update')
   .option('--no-skill', 'skip skill/command update')
   .action(update);
+
+program
+  .command('run <change-name>')
+  .description('Run Playwright E2E tests for an OpenSpec change')
+  .option('-p, --project <name>', 'Playwright project to run (e.g., user, admin)')
+  .option('-t, --timeout <seconds>', 'Test timeout in seconds', '300')
+  .action(run);
 
 program.parse();

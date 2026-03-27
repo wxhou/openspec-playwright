@@ -4,6 +4,7 @@ import { join } from 'path';
 import chalk from 'chalk';
 import { readFile } from 'fs/promises';
 const TEMPLATE_DIR = new URL('../../templates', import.meta.url).pathname;
+const SCHEMA_DIR = new URL('../../schemas', import.meta.url).pathname;
 const SKILL_SRC = new URL('../../.claude/skills/openspec-e2e', import.meta.url).pathname;
 const CMD_SRC = new URL('../../.claude/commands/opsx/e2e.md', import.meta.url).pathname;
 export async function init(options) {
@@ -60,12 +61,15 @@ export async function init(options) {
     // 4. Copy skill files
     console.log(chalk.blue('\n─── Installing Claude Code Skill ───'));
     await installSkill(projectRoot);
-    // 5. Generate seed test
+    // 5. Install OpenSpec schema
+    console.log(chalk.blue('\n─── Installing OpenSpec Schema ───'));
+    await installSchema(projectRoot);
+    // 6. Generate seed test
     if (options.seed !== false) {
         console.log(chalk.blue('\n─── Generating Seed Test ───'));
         await generateSeedTest(projectRoot);
     }
-    // 8. Summary
+    // 7. Summary
     console.log(chalk.blue('\n─── Summary ───'));
     console.log(chalk.green('  ✓ Setup complete!\n'));
     console.log(chalk.bold('Next steps:'));
@@ -128,6 +132,31 @@ async function generateSeedTest(projectRoot) {
         console.log(chalk.green('  ✓ Generated: tests/playwright/credentials.yaml'));
     }
     console.log(chalk.gray('  (Customize BASE_URL and credentials for your app)'));
+}
+async function installSchema(projectRoot) {
+    const schemaSrc = SCHEMA_DIR + '/playwright-e2e';
+    const schemaDest = join(projectRoot, 'openspec', 'schemas', 'playwright-e2e');
+    const schemaFiles = ['schema.yaml'];
+    for (const file of schemaFiles) {
+        const src = join(schemaSrc, file);
+        const dest = join(schemaDest, file);
+        if (existsSync(src)) {
+            writeFileSync(dest, readFileSync(src));
+        }
+    }
+    // Copy templates
+    const templatesSrc = join(schemaSrc, 'templates');
+    const templatesDest = join(schemaDest, 'templates');
+    mkdirSync(templatesDest, { recursive: true });
+    const templateFiles = ['test-plan.md', 'report.md', 'e2e-test.ts', 'playwright.config.ts'];
+    for (const file of templateFiles) {
+        const src = join(templatesSrc, file);
+        const dest = join(templatesDest, file);
+        if (existsSync(src)) {
+            writeFileSync(dest, readFileSync(src));
+        }
+    }
+    console.log(chalk.green('  ✓ Schema installed: openspec/schemas/playwright-e2e/'));
 }
 function execCmd(cmd, name, silent = false) {
     try {
