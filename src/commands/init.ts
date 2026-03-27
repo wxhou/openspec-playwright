@@ -50,7 +50,20 @@ export async function init(options: InitOptions) {
   }
   console.log(chalk.green('  ✓ OpenSpec initialized'));
 
-  // 3. Install Playwright agents
+  // 3. Install Playwright
+  console.log(chalk.blue('\n─── Installing Playwright ───'));
+  try {
+    execSync('npx playwright install --with-deps', {
+      cwd: projectRoot,
+      stdio: 'inherit',
+    });
+    console.log(chalk.green('  ✓ Playwright installed'));
+  } catch {
+    console.log(chalk.yellow('  ⚠ Failed to install Playwright'));
+    console.log(chalk.gray('  Try manually: npx playwright install --with-deps'));
+  }
+
+  // 4. Install Playwright agents
   if (options.playwrightInit !== false) {
     console.log(chalk.blue('\n─── Installing Playwright Test Agents ───'));
 
@@ -71,23 +84,23 @@ export async function init(options: InitOptions) {
     }
   }
 
-  // 4. Configure Playwright MCP
+  // 5. Configure Playwright MCP
   if (options.mcp !== false) {
     console.log(chalk.blue('\n─── Configuring Playwright MCP ───'));
     await configurePlaywrightMCP(projectRoot);
   }
 
-  // 5. Copy skill files
+  // 6. Copy skill files
   console.log(chalk.blue('\n─── Installing Claude Code Skill ───'));
   await installSkill(projectRoot);
 
-  // 6. Generate seed test
+  // 7. Generate seed test
   if (options.seed !== false) {
     console.log(chalk.blue('\n─── Generating Seed Test ───'));
     await generateSeedTest(projectRoot);
   }
 
-  // 7. Summary
+  // 8. Summary
   console.log(chalk.blue('\n─── Summary ───'));
   console.log(chalk.green('  ✓ Setup complete!\n'));
 
