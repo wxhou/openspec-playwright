@@ -8,11 +8,13 @@
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
 | #5343 | 6:14 PM | 🔄 | Added TypeScript types for verify command result objects | ~222 |
+| #5328 | 6:11 PM | 🟣 | OpenSpec verify command with dual-layer verification | ~257 |
 
 ### Mar 27, 2026
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #5557 | 1:44 PM | 🔄 | Replaced manual MCP configuration with claude CLI command | ~198 |
 | #5556 | 1:43 PM | 🔄 | Updated Playwright MCP installation to use claude CLI | ~179 |
 | #5477 | 10:46 AM | 🟣 | Added Playwright browser installation step to openspec-pw init | ~219 |
 | #5386 | 9:47 AM | 🔄 | Cleaned up unused imports in init.ts | ~100 |
