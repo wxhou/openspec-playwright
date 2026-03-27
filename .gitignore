@@ -4,11 +4,9 @@ node_modules/
 # Build output
 # dist/ is committed for npm install-from-git compatibility
 
-# Playwright
-test-results/
-playwright-report/
-playwright/.cache/
-.github/                   # Playwright agent definitions (regenerated)
+# GitHub (workflows tracked, rest ignored)
+.github/
+!.github/workflows/
 
 # OS
 .DS_Store
