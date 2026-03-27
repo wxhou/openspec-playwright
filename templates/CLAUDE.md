@@ -7,6 +7,7 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #5522 | 11:25 AM | 🔵 | Playwright auth setup template supports API and UI login | ~261 |
 | #5514 | 11:22 AM | 🟣 | Created credentials.yaml template for E2E test authentication | ~227 |
 | #5513 | " | 🟣 | Created auth.setup.ts template for Playwright Test Agents | ~276 |
 | #5390 | 9:48 AM | 🔄 | Refactored openspec-playwright from CLI to setup tool + Claude Code skill | ~209 |
