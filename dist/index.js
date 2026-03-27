@@ -1,6 +1,11 @@
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { Command } from 'commander';
 import { init } from './commands/init.js';
 import { doctor } from './commands/doctor.js';
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8'));
 const program = new Command();
 program
     .name('openspec-pw')

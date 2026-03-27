@@ -13,5 +13,6 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #5537 | 12:02 PM | ✅ | Updated CLI entry point for dynamic version from package.json | ~143 |
 | #5376 | 9:46 AM | 🟣 | Created openspec-pw CLI entry point with commander.js | ~227 |
 </claude-mem-context>
