@@ -3,42 +3,45 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, } from 'fs';
 import { join } from 'path';
 import chalk from 'chalk';
 const SKILL_SRC = new URL('../../.claude/skills/openspec-e2e', import.meta.url).pathname;
-const CMD_SRC = new URL('../../.claude/commands/opsx/e2e.md', import.meta.url).pathname;
+const CMD_SRC = new URL('../../.claude/commands/opsx', import.meta.url).pathname;
 const SCHEMA_DIR = new URL('../../schemas', import.meta.url).pathname;
 export async function update(options) {
     console.log(chalk.blue('\n🔄 Updating OpenSpec + Playwright E2E\n'));
     const projectRoot = process.cwd();
-    // 1. Update CLI tool (from git latest, not npm)
+    // 1. Update CLI tool from npm
     if (options.cli !== false) {
         console.log(chalk.blue('─── Updating CLI ───'));
         try {
-            execSync('npm install -g https://github.com/wxhou/openspec-playwright/archive/refs/heads/main.tar.gz', { stdio: 'inherit' });
-            console.log(chalk.green('  ✓ CLI updated to latest commit'));
+            execSync('npm install -g openspec-playwright', { stdio: 'inherit', cwd: projectRoot });
+            console.log(chalk.green('  ✓ CLI updated via npm'));
         }
         catch {
-            console.log(chalk.yellow('  ⚠ Failed to update CLI'));
-            console.log(chalk.gray('  Run manually: npm install -g https://github.com/wxhou/openspec-playwright/archive/refs/heads/main.tar.gz'));
+            console.log(chalk.yellow('  ⚠ Failed to update CLI via npm'));
+            console.log(chalk.gray('  Run manually: npm install -g openspec-playwright'));
         }
     }
-    // 2. Update skill and command from git tarball (latest commit, not npm package)
+    // 2. Update skill and command from npm tarball
     if (options.skill !== false) {
         console.log(chalk.blue('\n─── Updating Skill & Command ───'));
         try {
-            // Download tarball to temp file and extract
-            const tmpSkill = '/tmp/openspec-e2e-skill.tar.gz';
+            // Download npm tarball and extract
             const tmpDir = '/tmp/openspec-e2e-update';
-            execSync(`curl -sL https://github.com/wxhou/openspec-playwright/archive/refs/heads/main.tar.gz -o ${tmpSkill}`, { stdio: 'pipe' });
-            // Clean and re-extract to avoid stale files from previous runs
-            execSync(`rm -rf ${tmpDir} && mkdir -p ${tmpDir} && tar -xzf ${tmpSkill} -C ${tmpDir} --strip-components=1`, { stdio: 'pipe' });
-            const skillSrc = `${tmpDir}/.claude/skills/openspec-e2e/SKILL.md`;
-            const cmdSrc = `${tmpDir}/.claude/commands/opsx/e2e.md`;
-            const schemaSrc = `${tmpDir}/schemas/playwright-e2e`;
+            execSync(`rm -rf ${tmpDir} && mkdir -p ${tmpDir}`, { stdio: 'pipe', cwd: projectRoot });
+            execSync(`npm pack openspec-playwright --pack-destination ${tmpDir}`, { stdio: 'pipe', cwd: projectRoot });
+            const tarball = execSync(`ls -t ${tmpDir}/openspec-playwright-*.tgz | head -1`, { encoding: 'utf-8', cwd: projectRoot }).trim();
+            // Move tarball out before extracting to avoid "overwrite archive" error
+            const tmpTarball = `${tmpDir}/package.tgz`;
+            execSync(`mv "${tarball}" "${tmpTarball}"`, { stdio: 'pipe', cwd: projectRoot });
+            execSync(`tar -xzf "${tmpTarball}" -C ${tmpDir} --strip-components=1`, { stdio: 'pipe', cwd: projectRoot });
+            const skillSrc = join(tmpDir, '.claude', 'skills', 'openspec-e2e', 'SKILL.md');
+            const cmdSrc = join(tmpDir, '.claude', 'commands', 'opsx', 'e2e.md');
+            const schemaSrc = join(tmpDir, 'schemas', 'playwright-e2e');
             installSkillFrom(skillSrc, cmdSrc, schemaSrc, projectRoot);
             console.log(chalk.green('  ✓ Skill & command updated to latest'));
         }
         catch {
-            console.log(chalk.yellow('  ⚠ Failed to update skill/command from git'));
-            console.log(chalk.gray('  Running from npm package instead...'));
+            console.log(chalk.yellow('  ⚠ Failed to update skill/command from npm'));
+            console.log(chalk.gray('  Falling back to local files...'));
             installSkill(projectRoot);
         }
     }
@@ -49,7 +52,7 @@ export async function update(options) {
     console.log(chalk.gray('  Then run /opsx:e2e <change-name> to verify.\n'));
 }
 function installSkill(projectRoot) {
-    installSkillFrom(SKILL_SRC, CMD_SRC, SCHEMA_DIR + '/playwright-e2e', projectRoot);
+    installSkillFrom(join(SKILL_SRC, 'SKILL.md'), join(CMD_SRC, 'e2e.md'), join(SCHEMA_DIR, 'playwright-e2e'), projectRoot);
 }
 function installSkillFrom(skillSrc, cmdSrc, schemaSrc, projectRoot) {
     const skillDir = join(projectRoot, '.claude', 'skills', 'openspec-e2e');
