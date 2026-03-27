@@ -28,3 +28,6 @@ npm-debug.log*
 .env
 .env.local
 .env.*.local
+
+# Claude Code (auto-generated)
+**/CLAUDE.md
