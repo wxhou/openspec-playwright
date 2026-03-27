@@ -28,10 +28,12 @@ export async function update(options) {
             const tmpSkill = '/tmp/openspec-e2e-skill.tar.gz';
             const tmpDir = '/tmp/openspec-e2e-update';
             execSync(`curl -sL https://github.com/wxhou/openspec-playwright/archive/refs/heads/main.tar.gz -o ${tmpSkill}`, { stdio: 'pipe' });
-            execSync(`mkdir -p ${tmpDir} && tar -xzf ${tmpSkill} -C ${tmpDir}`, { stdio: 'pipe' });
-            const skillSrc = `${tmpDir}/openspec-playwright-main/.claude/skills/openspec-e2e/SKILL.md`;
-            const cmdSrc = `${tmpDir}/openspec-playwright-main/.claude/commands/opsx/e2e.md`;
-            installSkillFrom(`${tmpDir}/openspec-playwright-main/.claude/skills/openspec-e2e/SKILL.md`, `${tmpDir}/openspec-playwright-main/.claude/commands/opsx/e2e.md`, `${tmpDir}/openspec-playwright-main/schemas/playwright-e2e`, projectRoot);
+            // Clean and re-extract to avoid stale files from previous runs
+            execSync(`rm -rf ${tmpDir} && mkdir -p ${tmpDir} && tar -xzf ${tmpSkill} -C ${tmpDir} --strip-components=1`, { stdio: 'pipe' });
+            const skillSrc = `${tmpDir}/.claude/skills/openspec-e2e/SKILL.md`;
+            const cmdSrc = `${tmpDir}/.claude/commands/opsx/e2e.md`;
+            const schemaSrc = `${tmpDir}/schemas/playwright-e2e`;
+            installSkillFrom(skillSrc, cmdSrc, schemaSrc, projectRoot);
             console.log(chalk.green('  ✓ Skill & command updated to latest'));
         }
         catch {

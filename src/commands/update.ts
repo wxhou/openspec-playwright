@@ -51,12 +51,14 @@ export async function update(options: UpdateOptions) {
         `curl -sL https://github.com/wxhou/openspec-playwright/archive/refs/heads/main.tar.gz -o ${tmpSkill}`,
         { stdio: 'pipe' }
       );
-      execSync(`mkdir -p ${tmpDir} && tar -xzf ${tmpSkill} -C ${tmpDir}`, { stdio: 'pipe' });
+      // Clean and re-extract to avoid stale files from previous runs
+      execSync(`rm -rf ${tmpDir} && mkdir -p ${tmpDir} && tar -xzf ${tmpSkill} -C ${tmpDir} --strip-components=1`, { stdio: 'pipe' });
 
-      const skillSrc = `${tmpDir}/openspec-playwright-main/.claude/skills/openspec-e2e/SKILL.md`;
-      const cmdSrc = `${tmpDir}/openspec-playwright-main/.claude/commands/opsx/e2e.md`;
+      const skillSrc = `${tmpDir}/.claude/skills/openspec-e2e/SKILL.md`;
+      const cmdSrc = `${tmpDir}/.claude/commands/opsx/e2e.md`;
+      const schemaSrc = `${tmpDir}/schemas/playwright-e2e`;
 
-      installSkillFrom(`${tmpDir}/openspec-playwright-main/.claude/skills/openspec-e2e/SKILL.md`, `${tmpDir}/openspec-playwright-main/.claude/commands/opsx/e2e.md`, `${tmpDir}/openspec-playwright-main/schemas/playwright-e2e`, projectRoot);
+      installSkillFrom(skillSrc, cmdSrc, schemaSrc, projectRoot);
       console.log(chalk.green('  ✓ Skill & command updated to latest'));
     } catch {
       console.log(chalk.yellow('  ⚠ Failed to update skill/command from git'));
