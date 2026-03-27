@@ -23,7 +23,7 @@ Run Playwright E2E verification for an OpenSpec change. This skill reads the spe
 
    **IMPORTANT**: Do NOT guess or auto-select a change. Always let the user choose.
 
-2. **Verify prerequisites**
+2. **Verify prerequisites and configure dev server**
 
    Check that:
    - `.github/` directory exists (Playwright agents installed)
@@ -39,6 +39,40 @@ Run Playwright E2E verification for an OpenSpec change. This skill reads the spe
    ```bash
    openspec-pw init
    ```
+
+   Then configure the dev server via Playwright's `webServer`:
+
+   a. **Extract BASE_URL**: Read `tests/playwright/seed.spec.ts` → extract `BASE_URL` (e.g., `http://localhost:5173`). Extract port from the URL.
+
+   b. **Find dev script**: Read `package.json` → look for scripts in order: `dev` → `start` → `serve` → `preview`. Use the first found.
+
+   c. **Check existing playwright.config.ts**:
+      - If `playwright.config.ts` exists with a `webServer` config → verify the URL matches `BASE_URL`. If mismatched, update it.
+      - If no `webServer` config → add one.
+
+   d. **Generate or update `playwright.config.ts`**:
+      ```typescript
+      import { defineConfig } from '@playwright/test';
+
+      export default defineConfig({
+        webServer: {
+          command: 'npm run dev',        // or the script found in package.json
+          url: 'http://localhost:5173',  // BASE_URL from seed.spec.ts
+          timeout: 120000,
+          reuseExistingServer: true,     // skip start if already running
+        },
+        use: {
+          baseURL: 'http://localhost:5173',
+        },
+      });
+      ```
+
+   e. Playwright handles the full lifecycle: start → wait for URL → test → stop. If server is already running, `reuseExistingServer: true` skips the start.
+
+   **Graceful Degradation**:
+   - If no dev script found in `package.json` → prompt user to add one, or start manually and re-run
+   - If `seed.spec.ts` doesn't exist → proceed without BASE_URL extraction, use `reuseExistingServer: false` and prompt user to start server
+   - If `playwright.config.ts` can't be written → log warning and fall back to existing config
 
 3. **Read OpenSpec specs**
 
@@ -85,7 +119,6 @@ Run Playwright E2E verification for an OpenSpec change. This skill reads the spe
 
    **Graceful Degradation**:
    - If no seed.spec.ts: generate tests using standard Playwright patterns
-   - If dev server is not running: prompt the user to start it before proceeding
    - If test plan already exists: use existing plan, regenerate tests if needed
 
 7. **Generate Report**
@@ -128,7 +161,6 @@ Run Playwright E2E verification for an OpenSpec change. This skill reads the spe
 
 - Always read specs from `openspec/changes/<name>/specs/` as the source of truth
 - Do not generate tests that contradict the specs
-- Do not overwrite files outside `specs/playwright/`, `tests/playwright/`, or `openspec/reports/`
+- Do not overwrite files outside `specs/playwright/`, `tests/playwright/`, `openspec/reports/`, or `playwright.config.ts`
 - Cap auto-heal attempts at 3 to prevent infinite loops
-- If dev server is not running, prompt the user to start it before proceeding
 - If no change is specified, always ask the user to select rather than guessing
