@@ -8,7 +8,7 @@
 
 Integrate OpenSpec's spec-driven development workflow with Playwright Test Agents' three-agent harness (Planner / Generator / Healer) for automated E2E verification.
 
-**Design decision:** Add a new independent command `/opsx:e2e` rather than hooking into `/opsx:verify`. This keeps concerns separated and allows each verification to be run independently.
+**Design decision:** Add a new independent command `/openspec-e2e` rather than hooking into `/opsx:verify`. This keeps concerns separated and allows each verification to be run independently.
 
 ## Architecture
 
@@ -17,7 +17,7 @@ openspec-pw (CLI - setup only)
   openspec-pw init    → installs Playwright + configures MCP + installs skill
   openspec-pw doctor  → checks prerequisites
 
-/opsx:e2e (Claude Code skill - runs in Claude)
+/openspec-e2e (Claude Code skill - runs in Claude)
   │
   ├── 1. Read OpenSpec specs from openspec/changes/<name>/specs/
   ├── 2. Planner Agent → specs/playwright/test-plan.md
@@ -32,11 +32,11 @@ openspec-pw (CLI - setup only)
 | Layer | Command | Runs in | What it checks |
 |-------|---------|---------|----------------|
 | Static | `/opsx:verify` | Claude Code (OpenSpec skill) | Implementation matches artifacts |
-| E2E | `/opsx:e2e` | Claude Code (this skill) | App works when running |
+| E2E | `/openspec-e2e` | Claude Code (this skill) | App works when running |
 
 ## Key Design Decisions
 
-- **Separate command, not hook**: `/opsx:e2e` is independent from `/opsx:verify`. Users run them separately or together.
+- **Separate command, not hook**: `/openspec-e2e` is independent from `/opsx:verify`. Users run them separately or together.
 - **CLI as setup only**: The CLI does not run agents. It only installs/configures. Agents run in Claude Code.
 - **Playwright MCP**: Playwright agents use the MCP protocol, configured in `.claude/settings.local.json`.
 - **Seed test**: A `tests/playwright/seed.spec.ts` template guides the Generator agent.
@@ -77,7 +77,7 @@ project/
 │   │   └── openspec-e2e/
 │   │       └── SKILL.md           # The /openspec-e2e skill
 │   ├── commands/
-│   │   └── opsx-e2e.md           # The /opsx:e2e command
+│   │   └── opsx-e2e.md           # The /openspec-e2e command
 │   └── settings.local.json        # Playwright MCP config
 ├── .github/                       # Playwright agent definitions
 │   └── ...

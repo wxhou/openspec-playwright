@@ -13,5 +13,6 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #5412 | 9:56 AM | ⚖️ | Revised openspec-playwright architecture: CLI as setup only, separate /opsx:e2e command | ~413 |
 | #5411 | 9:55 AM | 🔵 | Read OpenSpec + Playwright integration design document | ~272 |
 </claude-mem-context>

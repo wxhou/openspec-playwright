@@ -1,6 +1,14 @@
 ---
 name: opsx-e2e
 description: Run Playwright E2E verification for an OpenSpec change
+category: Workflow
+tags:
+  - workflow
+  - e2e
+  - playwright
+  - experimental
 ---
 
-Invoke the `/openspec-e2e` skill to run Playwright E2E verification for the current OpenSpec change.
+Run Playwright E2E verification for an OpenSpec change.
+
+Invoke the `/openspec-e2e` skill to run Playwright E2E verification.
