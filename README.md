@@ -61,15 +61,15 @@ openspec-pw doctor        # Check prerequisites
 
 1. **Node.js >= 20**
 2. **OpenSpec** initialized: `npm install -g @fission-ai/openspec && openspec init`
-3. **Playwright** installed: `npx playwright install`
-4. **Claude Code** with Playwright MCP configured
+3. **Claude Code** with Playwright MCP configured
 
 ## What `openspec-pw init` Does
 
-1. Runs `npx playwright init-agents --loop=claude`
-2. Configures Playwright MCP in `.claude/settings.local.json`
-3. Installs `/opsx:e2e` command and `/openspec-e2e` skill
-4. Generates `tests/playwright/seed.spec.ts` template
+1. Runs `npx playwright install --with-deps`
+2. Runs `npx playwright init-agents --loop=claude`
+3. Configures Playwright MCP in `.claude/settings.local.json`
+4. Installs `/opsx:e2e` command and `/openspec-e2e` skill
+5. Generates `tests/playwright/seed.spec.ts` template
 
 ## Customization
 

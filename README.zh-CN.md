@@ -61,15 +61,15 @@ openspec-pw doctor        # 检查前置条件
 
 1. **Node.js >= 20**
 2. **OpenSpec** 已初始化: `npm install -g @fission-ai/openspec && openspec init`
-3. **Playwright** 已安装: `npx playwright install`
-4. **Claude Code** 已配置 Playwright MCP
+3. **Claude Code** 已配置 Playwright MCP
 
 ## `openspec-pw init` 做了什么
 
-1. 运行 `npx playwright init-agents --loop=claude`
-2. 在 `.claude/settings.local.json` 中配置 Playwright MCP
-3. 安装 `/opsx:e2e` 命令和 `/openspec-e2e` skill
-4. 生成 `tests/playwright/seed.spec.ts` 模板
+1. 运行 `npx playwright install --with-deps`
+2. 运行 `npx playwright init-agents --loop=claude`
+3. 在 `.claude/settings.local.json` 中配置 Playwright MCP
+4. 安装 `/opsx:e2e` 命令和 `/openspec-e2e` skill
+5. 生成 `tests/playwright/seed.spec.ts` 模板
 
 ## 自定义
 
