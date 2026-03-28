@@ -7,12 +7,27 @@ compatibility: Requires openspec CLI, Playwright (with browsers installed), and 
 **Architecture**: Uses CLI + SKILLs (not `init-agents`). This follows Playwright's recommended approach for coding agents — CLI is more token-efficient than loading MCP tool schemas into context. MCP is used only for Healer (UI inspection on failure).
 metadata:
   author: openspec-playwright
-  version: "2.2"
+  version: "2.3"
 ---
 
-Run Playwright E2E verification for an OpenSpec change. This skill reads specs from `openspec/changes/<name>/specs/`, generates test files, detects auth requirements, and delegates test execution to the `openspec-pw run` CLI.
+## Input
 
-**Architecture**: Schema owns templates. CLI handles execution. Skill handles cognitive work.
+- **Change name**: `/opsx:e2e <name>` or auto-detected from context
+- **Specs**: `openspec/changes/<name>/specs/*.md`
+- **Credentials**: `E2E_USERNAME` + `E2E_PASSWORD` env vars
+
+## Output
+
+- **Test file**: `tests/playwright/<name>.spec.ts`
+- **Auth setup**: `tests/playwright/auth.setup.ts` (if auth required)
+- **Report**: `openspec/reports/playwright-e2e-<name>-<timestamp>.md`
+- **Test plan**: `openspec/changes/<name>/specs/playwright/test-plan.md`
+
+## Architecture
+
+Uses CLI + SKILLs (not `init-agents`). This follows Playwright's recommended approach for coding agents — CLI is more token-efficient than loading MCP tool schemas into context. MCP is used only for Healer (UI inspection on failure).
+
+**Schema owns templates. CLI handles execution. Skill handles cognitive work.**
 
 ## Steps
 
@@ -181,9 +196,54 @@ Read the report at `openspec/reports/playwright-e2e-<name>-<timestamp>.md`.
 - Append a verification note: e.g. `✅ Verified via Playwright E2E (<timestamp>)`
 - Write the updated content back using the Edit tool
 
-**If tests fail**: Suggest which spec items remain unverified and what needs fixing.
+## Output Format
 
----
+### Report Structure (`openspec/reports/playwright-e2e-<name>-<timestamp>.md`)
+
+```
+# Playwright E2E Report — <name>
+
+## Summary
+| Tests | Passed | Failed | Duration | Status |
+|-------|--------|--------|----------|--------|
+| N     | N      | N      | Xm Xs    | ✅/❌   |
+
+## Results
+
+### Passed
+| Test | Duration | Notes |
+|------|----------|-------|
+| ...  | ...      | ...   |
+
+### Failed
+| Test | Error | Recommendation |
+|------|-------|----------------|
+| ...  | ...   | file:line — fix |
+
+## Auto-Heal Log
+- Attempt N: selector fix → result
+
+## Coverage
+- [x] Requirement 1
+- [ ] Requirement 2 (unverified)
+```
+
+### Updated tasks.md
+```
+- [x] Implement feature X ✅ Verified via Playwright E2E (2026-03-28)
+```
+
+## Graceful Degradation
+
+| Scenario | Behavior |
+|----------|----------|
+| No specs found | Stop with info message — E2E requires specs |
+| No auth required | Skip auth setup entirely |
+| test-plan.md exists | Read and use it — never regenerate |
+| auth.setup.ts exists | Verify format — update only if stale |
+| playwright.config.ts exists | Read and preserve all fields — add only missing |
+| Test fails (selector) | Healer: snapshot → fix → re-run, cap at 3 attempts |
+| Test fails (app bug) | Report as failed with recommendation |
 
 ## Verification Heuristics
 
