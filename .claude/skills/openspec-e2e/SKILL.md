@@ -27,6 +27,7 @@ metadata:
 
 This skill implements the Playwright Test Agents pipeline:
 
+- **🎭 Planner** (Step 3): Consumes OpenSpec specs (`specs/*.md`) and produces `test-plan.md` — combines OpenSpec's structured requirements with LLM编排.
 - **🎭 Generator** (Step 4): Transforms the Markdown test-plan into real Playwright `.spec.ts` files using LLM code generation.
 - **🎭 Healer** (Step 7): Executes the test suite and automatically repairs failing selectors via Playwright MCP tools.
 
