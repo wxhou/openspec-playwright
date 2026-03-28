@@ -25,6 +25,11 @@ metadata:
 
 ## Architecture
 
+This skill implements the Playwright Test Agents pipeline:
+
+- **🎭 Generator** (Step 4): Transforms the Markdown test-plan into real Playwright `.spec.ts` files using LLM code generation.
+- **🎭 Healer** (Step 7): Executes the test suite and automatically repairs failing selectors via Playwright MCP tools.
+
 Uses CLI + SKILLs (not `init-agents`). This follows Playwright's recommended approach for coding agents — CLI is more token-efficient than loading MCP tool schemas into context. MCP is used only for Healer (UI inspection on failure).
 
 **Schema owns templates. CLI handles execution. Skill handles cognitive work.**
