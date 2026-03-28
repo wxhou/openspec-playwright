@@ -2,10 +2,12 @@
 name: openspec-e2e
 description: Run Playwright E2E verification for an OpenSpec change. Use when the user wants to validate that the implementation works end-to-end by running Playwright tests generated from the specs.
 license: MIT
-compatibility: Requires openspec CLI, Playwright (with browsers installed), and @playwright/mcp (globally installed via claude mcp add).
+compatibility: Requires openspec CLI, Playwright (with browsers installed), and @playwright/mcp (globally installed via `claude mcp add playwright npx @playwright/mcp@latest`).
+
+**Architecture**: Uses CLI + SKILLs (not `init-agents`). This follows Playwright's recommended approach for coding agents — CLI is more token-efficient than loading MCP tool schemas into context. MCP is used only for Healer (UI inspection on failure).
 metadata:
   author: openspec-playwright
-  version: "2.1"
+  version: "2.2"
 ---
 
 Run Playwright E2E verification for an OpenSpec change. This skill reads specs from `openspec/changes/<name>/specs/`, generates test files, detects auth requirements, and delegates test execution to the `openspec-pw run` CLI.
@@ -140,7 +142,27 @@ The CLI handles:
 - Port mismatch detection
 - Report generation at `openspec/reports/playwright-e2e-<name>-<timestamp>.md`
 
-If tests fail → analyze failures, use Playwright MCP tools to inspect UI state, fix selectors in the test file, and re-run.
+If tests fail → analyze failures, use **Playwright MCP tools** to inspect UI state, fix selectors in the test file, and re-run.
+
+**Healer MCP tools** (in order of use):
+
+| Tool | Purpose |
+|------|---------|
+| `Navigate to a URL` | Go to the failing test's page |
+| `Page snapshot` | Get page structure to find equivalent selectors |
+| `Get console messages` | Diagnose JS errors that may cause failures |
+| `Take a screenshot` | Visually compare before/after fixes |
+| `Run Playwright code` | Execute custom fix logic (optional) |
+
+**Healer workflow**:
+1. Read the failing test file — identify the broken selector or assertion
+2. Navigate to the target page with `Navigate to a URL`
+3. Take a `Page snapshot` — find an equivalent stable selector
+4. Fix the selector in the test file using the Edit tool
+5. Re-run: `openspec-pw run <name>`
+6. Repeat until pass or 3 attempts reached
+
+**Note**: For selector fixes, prefer `getByRole`, `getByLabel`, `getByText` over CSS paths. For structural issues (wrong page content), update the assertion in the test file.
 
 **Cap auto-heal attempts at 3** to prevent infinite loops.
 
