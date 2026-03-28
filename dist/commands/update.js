@@ -2,6 +2,7 @@ import { execSync } from 'child_process';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, } from 'fs';
 import { join } from 'path';
 import chalk from 'chalk';
+import { syncMcpTools } from './mcpSync.js';
 const SKILL_SRC = new URL('../../.claude/skills/openspec-e2e', import.meta.url).pathname;
 const CMD_SRC = new URL('../../.claude/commands/opsx', import.meta.url).pathname;
 const SCHEMA_DIR = new URL('../../schemas', import.meta.url).pathname;
@@ -24,12 +25,10 @@ export async function update(options) {
     if (options.skill !== false) {
         console.log(chalk.blue('\n─── Updating Skill & Command ───'));
         try {
-            // Download npm tarball and extract
             const tmpDir = '/tmp/openspec-e2e-update';
             execSync(`rm -rf ${tmpDir} && mkdir -p ${tmpDir}`, { stdio: 'pipe', cwd: projectRoot });
             execSync(`npm pack openspec-playwright --pack-destination ${tmpDir}`, { stdio: 'pipe', cwd: projectRoot });
             const tarball = execSync(`ls -t ${tmpDir}/openspec-playwright-*.tgz | head -1`, { encoding: 'utf-8', cwd: projectRoot }).trim();
-            // Move tarball out before extracting to avoid "overwrite archive" error
             const tmpTarball = `${tmpDir}/package.tgz`;
             execSync(`mv "${tarball}" "${tmpTarball}"`, { stdio: 'pipe', cwd: projectRoot });
             execSync(`tar -xzf "${tmpTarball}" -C ${tmpDir} --strip-components=1`, { stdio: 'pipe', cwd: projectRoot });
@@ -45,6 +44,10 @@ export async function update(options) {
             installSkill(projectRoot);
         }
     }
+    // 3. Sync Healer tools with latest @playwright/mcp
+    console.log(chalk.blue('\n─── Syncing Healer Tools ───'));
+    const skillDest = join(projectRoot, '.claude', 'skills', 'openspec-e2e', 'SKILL.md');
+    await syncMcpTools(skillDest, true);
     // Summary
     console.log(chalk.blue('\n─── Summary ───'));
     console.log(chalk.green('  ✓ Update complete!\n'));
@@ -70,12 +73,10 @@ function installSkillFrom(skillSrc, cmdSrc, schemaSrc, projectRoot) {
 function installSchemaFrom(schemaSrc, projectRoot) {
     const schemaDest = join(projectRoot, 'openspec', 'schemas', 'playwright-e2e');
     mkdirSync(schemaDest, { recursive: true });
-    // Copy schema.yaml
     const schemaYamlSrc = join(schemaSrc, 'schema.yaml');
     if (existsSync(schemaYamlSrc)) {
         writeFileSync(join(schemaDest, 'schema.yaml'), readFileSync(schemaYamlSrc));
     }
-    // Copy templates
     const templatesSrc = join(schemaSrc, 'templates');
     const templatesDest = join(schemaDest, 'templates');
     if (existsSync(templatesSrc)) {

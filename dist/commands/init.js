@@ -3,6 +3,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, } from 'fs';
 import { join } from 'path';
 import chalk from 'chalk';
 import { readFile } from 'fs/promises';
+import { syncMcpTools } from './mcpSync.js';
 const TEMPLATE_DIR = new URL('../../templates', import.meta.url).pathname;
 const SCHEMA_DIR = new URL('../../schemas', import.meta.url).pathname;
 const SKILL_SRC = new URL('../../.claude/skills/openspec-e2e', import.meta.url).pathname;
@@ -61,15 +62,19 @@ export async function init(options) {
     // 4. Copy skill files
     console.log(chalk.blue('\n─── Installing Claude Code Skill ───'));
     await installSkill(projectRoot);
-    // 5. Install OpenSpec schema
+    // 5. Sync Healer tools with latest @playwright/mcp
+    console.log(chalk.blue('\n─── Syncing Healer Tools ───'));
+    const skillDest = join(projectRoot, '.claude', 'skills', 'openspec-e2e', 'SKILL.md');
+    await syncMcpTools(skillDest, true);
+    // 6. Install OpenSpec schema
     console.log(chalk.blue('\n─── Installing OpenSpec Schema ───'));
     await installSchema(projectRoot);
-    // 6. Generate seed test
+    // 7. Generate seed test
     if (options.seed !== false) {
         console.log(chalk.blue('\n─── Generating Seed Test ───'));
         await generateSeedTest(projectRoot);
     }
-    // 7. Summary
+    // 8. Summary
     console.log(chalk.blue('\n─── Summary ───'));
     console.log(chalk.green('  ✓ Setup complete!\n'));
     console.log(chalk.bold('Next steps:'));

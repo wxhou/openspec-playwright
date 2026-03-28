@@ -7,7 +7,7 @@ compatibility: Requires openspec CLI, Playwright (with browsers installed), and 
 **Architecture**: Uses CLI + SKILLs (not `init-agents`). This follows Playwright's recommended approach for coding agents — CLI is more token-efficient than loading MCP tool schemas into context. MCP is used only for Healer (UI inspection on failure).
 metadata:
   author: openspec-playwright
-  version: "2.3"
+  version: "2.4"
 ---
 
 ## Input
@@ -27,9 +27,9 @@ metadata:
 
 This skill implements the Playwright Test Agents pipeline:
 
-- **🎭 Planner** (Step 3): Consumes OpenSpec specs (`specs/*.md`) and produces `test-plan.md` — combines OpenSpec's structured requirements with LLM编排.
-- **🎭 Generator** (Step 4): Transforms the Markdown test-plan into real Playwright `.spec.ts` files using LLM code generation.
-- **🎭 Healer** (Step 7): Executes the test suite and automatically repairs failing selectors via Playwright MCP tools.
+- **🎭 Planner** (Step 4): Consumes OpenSpec specs (`specs/*.md`) and produces `test-plan.md` — combines OpenSpec's structured requirements with LLM编排.
+- **🎭 Generator** (Step 5): Transforms the Markdown test-plan into real Playwright `.spec.ts` files using LLM code generation.
+- **🎭 Healer** (Step 8): Executes the test suite and automatically repairs failing selectors via Playwright MCP tools.
 
 Uses CLI + SKILLs (not `init-agents`). This follows Playwright's recommended approach for coding agents — CLI is more token-efficient than loading MCP tool schemas into context. MCP is used only for Healer (UI inspection on failure).
 
@@ -69,7 +69,24 @@ Detect if auth is required. Mark as **auth required** only when BOTH conditions 
 - Medium (proceed with note): Single explicit marker, context unclear
 - Low (skip auth): No explicit markers found
 
-### 3. Generate test plan
+### 3. Validate environment
+
+Before generating tests, verify the environment is ready by running the seed test:
+
+```bash
+npx playwright test tests/playwright/seed.spec.ts --project=chromium
+```
+
+**What this validates**:
+- App server is reachable (BASE_URL accessible)
+- Auth fixtures (`storageState`) are initialized if auth is required
+- Playwright browser and config are working
+
+**If seed test fails**: Stop and report the failure. User must fix the environment before proceeding.
+
+**If seed test passes or no auth required**: Proceed to Step 4.
+
+### 4. Generate test plan
 
 Create `openspec/changes/<name>/specs/playwright/test-plan.md` by:
 - Listing each functional requirement as a test case
@@ -79,7 +96,7 @@ Create `openspec/changes/<name>/specs/playwright/test-plan.md` by:
 
 **Idempotency**: If test-plan.md already exists → read it, use it, do NOT regenerate unless user explicitly asks.
 
-### 4. Generate test file (LLM-driven)
+### 5. Generate test file (LLM-driven)
 
 Use your file writing capability to create `tests/playwright/<name>.spec.ts`.
 
@@ -121,7 +138,7 @@ test.describe('Feature Name', () => {
 
 **Selector guidance**: If no `data-testid` exists in the app, prefer `getByRole`, `getByLabel`, `getByText` over fragile selectors like CSS paths.
 
-### 5. Configure auth (if required)
+### 6. Configure auth (if required)
 
 If auth is required:
 
@@ -143,7 +160,7 @@ Auth required. To set up credentials:
 
 **Idempotency**: If `auth.setup.ts` already exists → verify format, update only if stale.
 
-### 6. Configure playwright.config.ts (non-destructive)
+### 7. Configure playwright.config.ts (non-destructive)
 
 If `playwright.config.ts` does not exist → generate it from the schema template at `openspec/schemas/playwright-e2e/templates/playwright.config.ts`. The template auto-detects:
 - **BASE_URL**: from `process.env.BASE_URL`, falling back to `tests/playwright/seed.spec.ts` → `BASE_URL` value, then `http://localhost:3000`
@@ -151,7 +168,7 @@ If `playwright.config.ts` does not exist → generate it from the schema templat
 
 If `playwright.config.ts` exists → READ it first. Extract existing `webServer`, `use.baseURL`, and `projects`. Preserve ALL existing fields. Add `webServer` block if missing. Do NOT replace existing config values.
 
-### 7. Execute tests via CLI
+### 8. Execute tests via CLI
 
 ```bash
 openspec-pw run <name> --project=<role>
@@ -166,6 +183,7 @@ The CLI handles:
 If tests fail → analyze failures, use **Playwright MCP tools** to inspect UI state, fix selectors in the test file, and re-run.
 
 **Healer MCP tools** (in order of use):
+<!-- MCP_VERSION: 0.0.68 -->
 
 | Tool | Purpose |
 |------|---------|
@@ -187,7 +205,7 @@ If tests fail → analyze failures, use **Playwright MCP tools** to inspect UI s
 
 **Cap auto-heal attempts at 3** to prevent infinite loops.
 
-### 8. Report results
+### 9. Report results
 
 Read the report at `openspec/reports/playwright-e2e-<name>-<timestamp>.md`.
 
@@ -244,6 +262,7 @@ Read the report at `openspec/reports/playwright-e2e-<name>-<timestamp>.md`.
 | Scenario | Behavior |
 |----------|----------|
 | No specs found | Stop with info message — E2E requires specs |
+| Seed test fails | Stop with failure — fix environment before proceeding |
 | No auth required | Skip auth setup entirely |
 | test-plan.md exists | Read and use it — never regenerate |
 | auth.setup.ts exists | Verify format — update only if stale |
