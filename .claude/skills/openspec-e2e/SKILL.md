@@ -163,16 +163,16 @@ If tests fail → analyze failures, use **Playwright MCP tools** to inspect UI s
 
 | Tool | Purpose |
 |------|---------|
-| `Navigate to a URL` | Go to the failing test's page |
-| `Page snapshot` | Get page structure to find equivalent selectors |
-| `Get console messages` | Diagnose JS errors that may cause failures |
-| `Take a screenshot` | Visually compare before/after fixes |
-| `Run Playwright code` | Execute custom fix logic (optional) |
+| `browser_navigate` | Go to the failing test's page |
+| `browser_snapshot` | Get page structure to find equivalent selectors |
+| `browser_console_messages` | Diagnose JS errors that may cause failures |
+| `browser_take_screenshot` | Visually compare before/after fixes |
+| `browser_run_code` | Execute custom fix logic (optional) |
 
 **Healer workflow**:
 1. Read the failing test file — identify the broken selector or assertion
-2. Navigate to the target page with `Navigate to a URL`
-3. Take a `Page snapshot` — find an equivalent stable selector
+2. Navigate to the target page with `browser_navigate`
+3. Take a `browser_snapshot` — find an equivalent stable selector
 4. Fix the selector in the test file using the Edit tool
 5. Re-run: `openspec-pw run <name>`
 6. Repeat until pass or 3 attempts reached
