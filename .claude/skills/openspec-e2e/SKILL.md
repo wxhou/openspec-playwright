@@ -7,7 +7,7 @@ compatibility: Requires openspec CLI, Playwright (with browsers installed), and 
 **Architecture**: Uses CLI + SKILLs (not `init-agents`). This follows Playwright's recommended approach for coding agents — CLI is more token-efficient than loading MCP tool schemas into context. MCP is used only for Healer (UI inspection on failure).
 metadata:
   author: openspec-playwright
-  version: "2.5"
+  version: "2.6"
 ---
 
 ## Input
@@ -207,10 +207,18 @@ If tests fail → analyze failures, use **Playwright MCP tools** to inspect UI s
 3. **Attempt heal** (up to 3 times):
    - Apply fix using `browser_snapshot` (prefer `getByRole`, `getByLabel`, `getByText`)
    - Re-run: `openspec-pw run <name> --project=<role>`
-4. **After 3 failed attempts**:
-   - Use `browser_console_messages` + `browser_snapshot` to confirm root cause
-   - If app is clearly broken (e.g., API returns 500, element missing from flow) → add `test.skip()` + report "app bug — needs fix"
-   - If unclear → report with recommendation ("likely selector change, verify manually")
+4. **After 3 failed attempts**, collect evidence:
+
+   **Evidence checklist** (in order, stop at first match):
+   | Check | Signal | Decision |
+   |-------|--------|----------|
+   | `browser_console_messages` | ERROR-level messages present | App bug → `test.skip()` + report "console error" |
+   | `browser_snapshot` | Target element missing from DOM | App bug → `test.skip()` + report "element missing" |
+   | `browser_snapshot` | Element exists, no errors | Test bug → report recommendation |
+
+   - **App bug**: `test.skip('app bug — reason: <signal>')` + detailed report entry
+   - **Test bug**: report with "likely selector change, verify manually at file:line"
+   - Do NOT retry after evidence checklist — evidence is conclusive
 
 ### 9. Report results
 
