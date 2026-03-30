@@ -62,8 +62,15 @@ export async function update(options) {
         }
         catch {
             console.log(chalk.yellow('  ⚠ Failed to update skill/command from npm'));
-            console.log(chalk.gray('  Falling back to local files...'));
-            installSkill(projectRoot);
+            console.log(chalk.gray('  Trying npm install to pull latest version...'));
+            try {
+                execSync('npm install -g openspec-playwright', { stdio: 'inherit', cwd: projectRoot });
+                console.log(chalk.green('  ✓ Updated via npm install'));
+            }
+            catch {
+                console.log(chalk.red('  ✗ Failed to update. Run manually:'));
+                console.log(chalk.gray('    npm install -g openspec-playwright'));
+            }
         }
     }
     // 3. Sync Healer tools with latest @playwright/mcp
