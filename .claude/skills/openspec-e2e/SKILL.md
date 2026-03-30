@@ -221,7 +221,12 @@ If `playwright.config.ts` exists → READ it first. Extract existing `webServer`
 ```bash
 openspec-pw run <name> --project=<role>
 ```
-(Add `--project=user` or `--project=admin` for role-specific tests.)
+
+**For role-based tests using `@tag`** (recommended over `--project` filtering):
+```bash
+npx playwright test tests/playwright/<name>.spec.ts --grep "@<role>"
+```
+The `--project` approach runs ALL tests under each project's credentials — use `@tag` with `--grep` for precise filtering.
 
 The CLI handles:
 - Server lifecycle (start → wait for HTTP → test → stop)
@@ -255,6 +260,7 @@ If tests fail → analyze failures, use **Playwright MCP tools** to inspect UI s
 3. **Attempt heal** (up to 3 times):
    - Apply fix using `browser_snapshot` (prefer `getByRole`, `getByLabel`, `getByText`)
    - Re-run: `openspec-pw run <name> --project=<role>`
+
 4. **After 3 failed attempts**, collect evidence:
 
    **Evidence checklist** (in order, stop at first match):
@@ -268,31 +274,31 @@ If tests fail → analyze failures, use **Playwright MCP tools** to inspect UI s
    - **Test bug**: report with "likely selector change, verify manually at file:line"
    - Do NOT retry after evidence checklist — evidence is conclusive
 
-4b. **False Pass Detection (after test run — before reporting success)**
+### 9. False Pass Detection
 
-   Even passing tests can give false confidence. Scan test output for silent skips:
+Run **after** the test suite completes (even if all tests pass). Scan for silent skips that give false confidence:
 
-   **Indicator A — Conditional test logic:**
-   Look for patterns in the test file:
-   ```typescript
-   if (await locator.isVisible().catch(() => false)) { ... }
-   ```
-   → If test passes, the locator might not exist → check with `browser_snapshot`
-   → Report: "Test passed but may have skipped — conditional visibility check detected"
+**Indicator A — Conditional test logic:**
+Look for patterns in the test file:
+```typescript
+if (await locator.isVisible().catch(() => false)) { ... }
+```
+→ If test passes, the locator might not exist → check with `browser_snapshot`
+→ Report: "Test passed but may have skipped — conditional visibility check detected"
 
-   **Indicator B — Test ran too fast:**
-   A test covering a complex flow that completes in < 200ms is suspicious.
-   → Inspect with `browser_snapshot` to confirm page state
-   → Report: "Test duration suspiciously short — verify test logic was executed"
+**Indicator B — Test ran too fast:**
+A test covering a complex flow that completes in < 200ms is suspicious.
+→ Inspect with `browser_snapshot` to confirm page state
+→ Report: "Test duration suspiciously short — verify test logic was executed"
 
-   **Indicator C — Auth guard not tested:**
-   If specs mention "protected route" or "redirect to login" but no test uses a fresh browser context:
-   → Report: "Auth guard not verified — test uses authenticated context (cookies/storage inherited)"
-   → Recommendation: Add a test with `browser.newContext()` (no storageState) to verify the guard
+**Indicator C — Auth guard not tested:**
+If specs mention "protected route" or "redirect to login" but no test uses a fresh browser context:
+→ Report: "Auth guard not verified — test uses authenticated context (cookies/storage inherited)"
+→ Recommendation: Add a test with `browser.newContext()` (no storageState) to verify the guard
 
-   If any false-pass indicator is found → add a **⚠️ Coverage Gap** section to the report.
+If any false-pass indicator is found → add a **⚠️ Coverage Gap** section to the report.
 
-### 9. Report results
+### 10. Report results
 
 Read the report at `openspec/reports/playwright-e2e-<name>-<timestamp>.md`.
 

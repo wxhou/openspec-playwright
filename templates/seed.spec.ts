@@ -120,11 +120,13 @@ test.describe('Application smoke tests', () => {
 // ──────────────────────────────────────────────
 
 // 🚫 WRONG — False Pass: test silently passes if button doesn't exist
-// if (await page.getByRole('button', { name: '取消' }).isVisible().catch(() => false)) {
-//   await page.getByRole('button', { name: '取消' }).click();
+// const cancelBtn = page.getByRole('button', { name: '取消订阅' });
+// if (await cancelBtn.isVisible().catch(() => false)) {
+//   await cancelBtn.click();
+//   await expect(page.getByText('成功')).toBeVisible();
 // }
 
 // ✅ CORRECT — Use assertion: test fails if element is missing
-// await expect(page.getByRole('button', { name: '取消' })).toBeVisible();
-// await page.getByRole('button', { name: '取消' }).click();
+// await expect(page.getByRole('button', { name: '取消订阅' })).toBeVisible();
+// await page.getByRole('button', { name: '取消订阅' }).click();
 // await expect(page.getByText('操作成功')).toBeVisible();
