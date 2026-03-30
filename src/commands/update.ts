@@ -1,17 +1,24 @@
 import { execSync } from 'child_process';
-import {
-  existsSync,
+import { existsSync,
   readFileSync,
   writeFileSync,
   mkdirSync,
+  rmSync,
+  readdirSync,
+  statSync,
 } from 'fs';
 import { join } from 'path';
+import { tmpdir } from 'os';
+import { promisify } from 'util';
+import { fileURLToPath } from 'url';
+import { exec } from 'child_process';
 import chalk from 'chalk';
+import * as tar from 'tar';
 import { syncMcpTools } from './mcpSync.js';
 
-const SKILL_SRC = new URL('../../.claude/skills/openspec-e2e', import.meta.url).pathname;
-const CMD_SRC = new URL('../../.claude/commands/opsx', import.meta.url).pathname;
-const SCHEMA_DIR = new URL('../../schemas', import.meta.url).pathname;
+const SKILL_SRC = fileURLToPath(new URL('../../.claude/skills/openspec-e2e', import.meta.url));
+const CMD_SRC = fileURLToPath(new URL('../../.claude/commands/opsx', import.meta.url));
+const SCHEMA_DIR = fileURLToPath(new URL('../../schemas', import.meta.url));
 
 export interface UpdateOptions {
   cli?: boolean;
@@ -22,6 +29,15 @@ export async function update(options: UpdateOptions) {
   console.log(chalk.blue('\n🔄 Updating OpenSpec + Playwright E2E\n'));
 
   const projectRoot = process.cwd();
+
+  // Check if init has been run
+  const hasSkill = existsSync(join(projectRoot, '.claude', 'skills', 'openspec-e2e', 'SKILL.md'));
+  const hasOpenSpec = existsSync(join(projectRoot, 'openspec'));
+  if (!hasSkill && !hasOpenSpec) {
+    console.log(chalk.yellow('  ⚠ OpenSpec + Playwright E2E not initialized.'));
+    console.log(chalk.gray('  Run "openspec-pw init" first to set up the integration.\n'));
+    return;
+  }
 
   // 1. Update CLI tool from npm
   if (options.cli !== false) {
@@ -44,25 +60,33 @@ export async function update(options: UpdateOptions) {
   if (options.skill !== false) {
     console.log(chalk.blue('\n─── Updating Skill & Command ───'));
     try {
-      const tmpDir = '/tmp/openspec-e2e-update';
-      execSync(`rm -rf ${tmpDir} && mkdir -p ${tmpDir}`, { stdio: 'pipe', cwd: projectRoot });
-      execSync(
+      const tmpDir = join(tmpdir(), 'openspec-e2e-update');
+      rmSync(tmpDir, { recursive: true, force: true });
+      mkdirSync(tmpDir, { recursive: true });
+
+      const execAsync = promisify(exec);
+      await execAsync(
         `npm pack openspec-playwright --pack-destination ${tmpDir}`,
-        { stdio: 'pipe', cwd: projectRoot }
+        { timeout: 30000 }
       );
-      const tarball = execSync(
-        `ls -t ${tmpDir}/openspec-playwright-*.tgz | head -1`,
-        { encoding: 'utf-8', cwd: projectRoot }
-      ).trim();
-      const tmpTarball = `${tmpDir}/package.tgz`;
-      execSync(`mv "${tarball}" "${tmpTarball}"`, { stdio: 'pipe', cwd: projectRoot });
-      execSync(`tar -xzf "${tmpTarball}" -C ${tmpDir} --strip-components=1`, { stdio: 'pipe', cwd: projectRoot });
+
+      // Find the latest tarball by mtime
+      const tgzFiles = readdirSync(tmpDir)
+        .filter(f => f.startsWith('openspec-playwright-') && f.endsWith('.tgz'))
+        .map(f => ({ name: f, mtime: statSync(join(tmpDir, f)).mtimeMs }))
+        .sort((a, b) => b.mtime - a.mtime);
+      if (tgzFiles.length === 0) throw new Error('No tarball found');
+      const tarballPath = join(tmpDir, tgzFiles[0].name);
+
+      // Extract tarball
+      await tar.extract({ file: tarballPath, cwd: tmpDir, strip: 1 });
 
       const skillSrc = join(tmpDir, '.claude', 'skills', 'openspec-e2e', 'SKILL.md');
       const cmdSrc = join(tmpDir, '.claude', 'commands', 'opsx', 'e2e.md');
       const schemaSrc = join(tmpDir, 'schemas', 'playwright-e2e');
 
       installSkillFrom(skillSrc, cmdSrc, schemaSrc, projectRoot);
+      rmSync(tmpDir, { recursive: true, force: true });
       console.log(chalk.green('  ✓ Skill & command updated to latest'));
     } catch {
       console.log(chalk.yellow('  ⚠ Failed to update skill/command from npm'));

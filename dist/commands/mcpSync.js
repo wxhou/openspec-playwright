@@ -1,6 +1,10 @@
 import { exec } from 'child_process';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
+import { promisify } from 'util';
 import chalk from 'chalk';
+import * as tar from 'tar';
 export const MCP_VERSION_MARKER = '<!-- MCP_VERSION:';
 export const DEFAULT_HEALER_TOOLS = [
     { name: 'browser_navigate', purpose: "Go to the failing test's page" },
@@ -51,6 +55,13 @@ export function getLatestMcpVersion() {
         });
     });
 }
+const execAsync = promisify(exec);
+/** Extract a .tgz tarball to a destination directory (cross-platform) */
+async function extractTarball(tarballPath, destDir) {
+    rmSync(destDir, { recursive: true, force: true });
+    mkdirSync(destDir, { recursive: true });
+    await tar.extract({ file: tarballPath, cwd: destDir, strip: 1 });
+}
 /** Parse README markdown to extract browser_* tool entries */
 function parseMcpReadme(content) {
     const tools = [];
@@ -69,18 +80,24 @@ function parseMcpReadme(content) {
  * Fetch @playwright/mcp tools from npm package.
  * Downloads the tarball, extracts README, parses tool names.
  */
-export function fetchMcpTools(version) {
-    return new Promise((resolve) => {
-        const tmpDir = `/tmp/openspec-pw-mcp-${version}`;
-        exec(`rm -rf ${tmpDir} && mkdir -p ${tmpDir} && npm pack @playwright/mcp@${version} --pack-destination ${tmpDir} 2>/dev/null && tar -xzf ${tmpDir}/playwright-mcp-${version}.tgz -C ${tmpDir} --strip-components=1 && cat ${tmpDir}/package/README.md`, { timeout: 30000 }, (err, stdout) => {
-            if (err) {
-                resolve([]);
-                return;
-            }
-            const tools = parseMcpReadme(stdout);
-            resolve(tools);
-        });
-    });
+export async function fetchMcpTools(version) {
+    const tmpDir = join(tmpdir(), `openspec-pw-mcp-${version}`);
+    try {
+        await execAsync(`npm pack @playwright/mcp@${version} --pack-destination ${tmpDir}`, { timeout: 30000 });
+        const tgzFiles = readdirSync(tmpDir).filter(f => f.startsWith('playwright-mcp-') && f.endsWith('.tgz'));
+        if (tgzFiles.length === 0)
+            return [];
+        const tarballPath = join(tmpDir, tgzFiles[0]);
+        const extractDir = join(tmpDir, 'pkg');
+        await extractTarball(tarballPath, extractDir);
+        const readmePath = join(extractDir, 'README.md');
+        const content = existsSync(readmePath) ? readFileSync(readmePath, 'utf-8') : '';
+        rmSync(tmpDir, { recursive: true, force: true });
+        return parseMcpReadme(content);
+    }
+    catch {
+        return [];
+    }
 }
 /**
  * Sync Healer tools table in SKILL.md with latest @playwright/mcp.

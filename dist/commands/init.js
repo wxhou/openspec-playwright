@@ -1,13 +1,15 @@
 import { execSync } from 'child_process';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, } from 'fs';
 import { join } from 'path';
+import { homedir } from 'os';
+import { fileURLToPath } from 'url';
 import chalk from 'chalk';
 import { readFile } from 'fs/promises';
 import { syncMcpTools } from './mcpSync.js';
-const TEMPLATE_DIR = new URL('../../templates', import.meta.url).pathname;
-const SCHEMA_DIR = new URL('../../schemas', import.meta.url).pathname;
-const SKILL_SRC = new URL('../../.claude/skills/openspec-e2e', import.meta.url).pathname;
-const CMD_SRC = new URL('../../.claude/commands/opsx/e2e.md', import.meta.url).pathname;
+const TEMPLATE_DIR = fileURLToPath(new URL('../../templates', import.meta.url));
+const SCHEMA_DIR = fileURLToPath(new URL('../../schemas', import.meta.url));
+const SKILL_SRC = fileURLToPath(new URL('../../.claude/skills/openspec-e2e', import.meta.url));
+const CMD_SRC = fileURLToPath(new URL('../../.claude/commands/opsx/e2e.md', import.meta.url));
 export async function init(options) {
     console.log(chalk.blue('\n🔧 OpenSpec + Playwright E2E Setup\n'));
     const projectRoot = process.cwd();
@@ -36,7 +38,7 @@ export async function init(options) {
     if (options.mcp !== false) {
         console.log(chalk.blue('\n─── Installing Playwright MCP ───'));
         // Check if playwright MCP already exists in global config
-        const claudeJsonPath = join(process.env.HOME ?? '', '.claude.json');
+        const claudeJsonPath = join(homedir(), '.claude.json');
         const claudeJson = existsSync(claudeJsonPath) ? JSON.parse(readFileSync(claudeJsonPath, 'utf-8')) : {};
         const globalMcp = claudeJson?.mcpServers ?? {};
         const localMcp = claudeJson?.projects?.[projectRoot]?.mcpServers ?? {};

@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
+import { homedir } from 'os';
 import { execSync } from 'child_process';
 import chalk from 'chalk';
 
@@ -53,7 +54,7 @@ export async function doctor() {
 
   // Playwright MCP (global)
   console.log(chalk.blue('\n─── Playwright MCP ───'));
-  const homeDir = process.env.HOME ?? '';
+  const homeDir = homedir();
   const claudeJsonPath = join(homeDir, '.claude.json');
   let mcpInstalled = false;
   if (existsSync(claudeJsonPath)) {
