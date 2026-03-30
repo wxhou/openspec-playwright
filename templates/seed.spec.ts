@@ -54,6 +54,7 @@ test.describe('Application smoke tests', () => {
       }
     });
     await page.reload();
+    await page.waitForLoadState('networkidle');
     // Filter out known non-critical errors
     const criticalErrors = errors.filter(
       (e) => !e.includes('favicon') && !e.includes('404')
