@@ -7,7 +7,7 @@ compatibility: Requires openspec CLI, Playwright (with browsers installed), and 
 **Architecture**: Uses CLI + SKILLs (not `init-agents`). This follows Playwright's recommended approach for coding agents — CLI is more token-efficient than loading MCP tool schemas into context. MCP is used only for Healer (UI inspection on failure).
 metadata:
   author: openspec-playwright
-  version: "2.4"
+  version: "2.5"
 ---
 
 ## Input
@@ -194,16 +194,23 @@ If tests fail → analyze failures, use **Playwright MCP tools** to inspect UI s
 | `browser_run_code` | Execute custom fix logic (optional) |
 
 **Healer workflow**:
-1. Read the failing test file — identify the broken selector or assertion
-2. Navigate to the target page with `browser_navigate`
-3. Take a `browser_snapshot` — find an equivalent stable selector
-4. Fix the selector in the test file using the Edit tool
-5. Re-run: `openspec-pw run <name>`
-6. Repeat until pass or 3 attempts reached
+1. Read the failing test → identify failure type by checking error message and console output
+2. Classify the failure:
 
-**Note**: For selector fixes, prefer `getByRole`, `getByLabel`, `getByText` over CSS paths. For structural issues (wrong page content), update the assertion in the test file.
+| Failure type | Signal | Action |
+|-------------|--------|--------|
+| **Network/backend** | `fetch failed`, `net::ERR`, 5xx, timeout | `browser_console_messages` → add `test.skip()` + report "backend error" |
+| **Selector changed** | Element not found, page loaded | `browser_snapshot` → fix selector → re-run |
+| **Assertion mismatch** | Element exists, wrong content/value | `browser_snapshot` → compare → fix assertion → re-run |
+| **Timing issue** | `waitFor` timeout, race condition | Adjust wait strategy → re-run |
 
-**Cap auto-heal attempts at 3** to prevent infinite loops.
+3. **Attempt heal** (up to 3 times):
+   - Apply fix using `browser_snapshot` (prefer `getByRole`, `getByLabel`, `getByText`)
+   - Re-run: `openspec-pw run <name> --project=<role>`
+4. **After 3 failed attempts**:
+   - Use `browser_console_messages` + `browser_snapshot` to confirm root cause
+   - If app is clearly broken (e.g., API returns 500, element missing from flow) → add `test.skip()` + report "app bug — needs fix"
+   - If unclear → report with recommendation ("likely selector change, verify manually")
 
 ### 9. Report results
 
@@ -267,8 +274,10 @@ Read the report at `openspec/reports/playwright-e2e-<name>-<timestamp>.md`.
 | test-plan.md exists | Read and use it — never regenerate |
 | auth.setup.ts exists | Verify format — update only if stale |
 | playwright.config.ts exists | Read and preserve all fields — add only missing |
-| Test fails (selector) | Healer: snapshot → fix → re-run, cap at 3 attempts |
-| Test fails (app bug) | Report as failed with recommendation |
+| Test fails (network/backend) | Skip with `test.skip()` — backend/app error, not test fragility |
+| Test fails (selector) | Healer: snapshot → fix selector → re-run (≤3 attempts) |
+| Test fails (assertion) | Healer: snapshot → fix assertion → re-run (≤3 attempts) |
+| 3 heal attempts failed | Confirm root cause → if app bug: `test.skip()` + report; if unclear: report with recommendation |
 
 ## Verification Heuristics
 
