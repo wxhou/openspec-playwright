@@ -1,4 +1,4 @@
-import { execSync } from 'child_process';
+import { execSync, exec } from 'child_process';
 import { existsSync,
   readFileSync,
   writeFileSync,
@@ -11,7 +11,6 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { promisify } from 'util';
 import { fileURLToPath } from 'url';
-import { exec } from 'child_process';
 import chalk from 'chalk';
 import * as tar from 'tar';
 import { syncMcpTools } from './mcpSync.js';
