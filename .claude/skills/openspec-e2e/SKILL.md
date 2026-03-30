@@ -7,7 +7,7 @@ compatibility: Requires openspec CLI, Playwright (with browsers installed), and 
 **Architecture**: Uses CLI + SKILLs (not `init-agents`). This follows Playwright's recommended approach for coding agents — CLI is more token-efficient than loading MCP tool schemas into context. MCP is used only for Healer (UI inspection on failure).
 metadata:
   author: openspec-playwright
-  version: "2.6"
+  version: "2.7"
 ---
 
 ## Input
@@ -111,6 +111,54 @@ Use your file writing capability to create `tests/playwright/<name>.spec.ts`.
 - Use `test.describe(...)` for grouping related tests
 - Each test: `test('描述性名称', async ({ page }) => { ... })`
 - Add `@project(user)` / `@project(admin)` on role-specific tests
+
+### Anti-Pattern Warnings (Generator)
+
+**🚫 NEVER do this — False Pass pattern:**
+```typescript
+// WRONG: If button doesn't exist, test silently passes and tests nothing
+const btn = page.getByRole('button', { name: '取消' }).first();
+if (await btn.isVisible().catch(() => false)) {
+  await btn.click();
+  await expect(page.getByText('成功')).toBeVisible();
+}
+// ✅ CORRECT: Use assertion — test fails if element is missing
+await expect(page.getByRole('button', { name: '取消' })).toBeVisible();
+await page.getByRole('button', { name: '取消' }).click();
+await expect(page.getByText('成功')).toBeVisible();
+```
+
+**Why it matters**: A test that passes but skipped its logic gives **false confidence**. It reports green but tests nothing. Worse — if the test modifies data, a skipped run can corrupt state for the next test.
+
+**🚫 NEVER rely on Playwright projects for permission filtering:**
+```typescript
+// WRONG: All tests run under both admin AND user projects — false "16 tests" impression
+projects: [{ name: 'admin' }, { name: 'user' }]
+
+// ✅ CORRECT: Use @tag for permission-based test filtering
+test('admin only - activate subscription', { tag: '@admin' }, async ({ page }) => { ... });
+test('user only - view subscription', { tag: '@user' }, async ({ page }) => { ... });
+// Run with: npx playwright test --grep "@admin"
+```
+
+**🚫 NEVER skip auth guard tests:**
+The auth guard is a **critical security feature**. Skipping it leaves a gap in coverage.
+```typescript
+// ✅ CORRECT: Test auth guard with a FRESH browser context (no cookies, no storage)
+test('redirects unauthenticated user to login', async ({ browser }) => {
+  const freshContext = await browser.newContext(); // No session cookies
+  const freshPage = await freshContext.newPage();
+  await freshPage.goto(`${BASE_URL}/dashboard`);
+  await expect(freshPage).toHaveURL(/login|auth/);
+  await freshContext.close();
+});
+```
+
+**Always include error path tests** (not just happy paths):
+- API returns 500 → UI error message displayed?
+- API returns 404 → graceful "not found" handling?
+- Network timeout → retry or error UX?
+- Invalid input → validation message shown?
 
 **Example pattern** (from seed.spec.ts):
 ```typescript
@@ -220,6 +268,30 @@ If tests fail → analyze failures, use **Playwright MCP tools** to inspect UI s
    - **Test bug**: report with "likely selector change, verify manually at file:line"
    - Do NOT retry after evidence checklist — evidence is conclusive
 
+4b. **False Pass Detection (after test run — before reporting success)**
+
+   Even passing tests can give false confidence. Scan test output for silent skips:
+
+   **Indicator A — Conditional test logic:**
+   Look for patterns in the test file:
+   ```typescript
+   if (await locator.isVisible().catch(() => false)) { ... }
+   ```
+   → If test passes, the locator might not exist → check with `browser_snapshot`
+   → Report: "Test passed but may have skipped — conditional visibility check detected"
+
+   **Indicator B — Test ran too fast:**
+   A test covering a complex flow that completes in < 200ms is suspicious.
+   → Inspect with `browser_snapshot` to confirm page state
+   → Report: "Test duration suspiciously short — verify test logic was executed"
+
+   **Indicator C — Auth guard not tested:**
+   If specs mention "protected route" or "redirect to login" but no test uses a fresh browser context:
+   → Report: "Auth guard not verified — test uses authenticated context (cookies/storage inherited)"
+   → Recommendation: Add a test with `browser.newContext()` (no storageState) to verify the guard
+
+   If any false-pass indicator is found → add a **⚠️ Coverage Gap** section to the report.
+
 ### 9. Report results
 
 Read the report at `openspec/reports/playwright-e2e-<name>-<timestamp>.md`.
@@ -265,7 +337,15 @@ Read the report at `openspec/reports/playwright-e2e-<name>-<timestamp>.md`.
 ## Coverage
 - [x] Requirement 1
 - [ ] Requirement 2 (unverified)
-```
+
+## ⚠️ Coverage Gaps
+> Tests passed but coverage gaps were detected. Review carefully.
+
+| Test | Gap | Recommendation |
+|------|-----|----------------|
+| ... | Conditional visibility check — test may have skipped | file:line — use `expect().toBeVisible()` |
+| ... | Auth guard uses inherited session | Add fresh context test: `browser.newContext()` |
+| ... | Suspiciously fast execution (<200ms) | Verify test logic was actually executed |
 
 ### Updated tasks.md
 ```
@@ -286,6 +366,7 @@ Read the report at `openspec/reports/playwright-e2e-<name>-<timestamp>.md`.
 | Test fails (selector) | Healer: snapshot → fix selector → re-run (≤3 attempts) |
 | Test fails (assertion) | Healer: snapshot → fix assertion → re-run (≤3 attempts) |
 | 3 heal attempts failed | Confirm root cause → if app bug: `test.skip()` + report; if unclear: report with recommendation |
+| False pass detected | Report coverage gap → add to "⚠️ Coverage Gap" section in report |
 
 ## Verification Heuristics
 
@@ -293,6 +374,8 @@ Read the report at `openspec/reports/playwright-e2e-<name>-<timestamp>.md`.
 - **Selector robustness**: Prefer `data-testid`, fallback to semantic selectors
 - **False positives**: If test fails due to test bug (not app bug) → fix the test
 - **Actionability**: Every failed test needs a specific recommendation
+- **No false passes**: Every passing test must actually execute its test logic — verify absence of `if (isVisible())` conditional patterns
+- **Auth guard verified**: Protected routes must have a test using a fresh browser context (no inherited cookies)
 
 ## Guardrails
 

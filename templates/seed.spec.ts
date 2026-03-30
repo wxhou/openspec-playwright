@@ -61,3 +61,70 @@ test.describe('Application smoke tests', () => {
     expect(criticalErrors).toHaveLength(0);
   });
 });
+
+// ──────────────────────────────────────────────
+// Example: Role-based tests with @tag
+// Use tags (@admin, @user) for permission filtering instead of
+// multiple Playwright projects — prevents false "N tests" impressions
+// ──────────────────────────────────────────────
+
+// test.describe('Subscription management', () => {
+//   test('activate subscription', { tag: '@admin' }, async ({ page }) => {
+//     // Admin-only test
+//     await page.goto(`${BASE_URL}/admin/subscriptions`);
+//     await expect(page.getByRole('button', { name: '激活订阅' })).toBeVisible();
+//   });
+//
+//   test('view subscription', { tag: '@user' }, async ({ page }) => {
+//     // User-only test
+//     await page.goto(`${BASE_URL}/subscription`);
+//     await expect(page.getByText('当前订阅')).toBeVisible();
+//   });
+// });
+
+// Run with: npx playwright test --grep "@admin"
+// Run with: npx playwright test --grep "@user"
+
+// ──────────────────────────────────────────────
+// Example: Auth guard test with FRESH browser context
+// 🚫 NEVER test auth guard with the same authenticated context!
+// Use browser.newContext() to create a context with NO cookies/storage
+// ──────────────────────────────────────────────
+
+// test.describe('Auth guard', () => {
+//   test('redirects unauthenticated user to login', async ({ browser }) => {
+//     const freshContext = await browser.newContext(); // No session cookies
+//     const freshPage = await freshContext.newPage();
+//     await freshPage.goto(`${BASE_URL}/dashboard`);
+//     await expect(freshPage).toHaveURL(/login|auth|signin/);
+//     await freshContext.close();
+//   });
+// });
+
+// ──────────────────────────────────────────────
+// Example: Error path test
+// Always include error scenarios, not just happy paths
+// ──────────────────────────────────────────────
+
+// test.describe('Error handling', () => {
+//   test('shows error message on invalid input', async ({ page }) => {
+//     await page.goto(`${BASE_URL}/submit`);
+//     await page.getByTestId('input').fill('');
+//     await page.getByTestId('submit').click();
+//     await expect(page.getByTestId('error')).toContainText('不能为空');
+//   });
+// });
+
+// ──────────────────────────────────────────────
+// Anti-pattern warnings
+// ──────────────────────────────────────────────
+
+// 🚫 WRONG — False Pass: test silently passes if button doesn't exist
+// if (await page.getByRole('button', { name: '取消' }).isVisible().catch(() => false)) {
+//   await page.getByRole('button', { name: '取消' }).click();
+// }
+
+// ✅ CORRECT — Use assertion: test fails if element is missing
+// await expect(page.getByRole('button', { name: '取消' })).toBeVisible();
+// await page.getByRole('button', { name: '取消' }).click();
+// await expect(page.getByText('操作成功')).toBeVisible();
