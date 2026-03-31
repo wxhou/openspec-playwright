@@ -20,15 +20,22 @@ openspec-pw init          # 安装 Playwright E2E 集成
 
 ## 支持的 AI 编码助手
 
-自动检测并安装以下编辑器的命令文件：
+自动检测并安装 OpenSpec 支持的全部 24 个编辑器的命令文件：
 
-| 编辑器 | 命令 | 格式 |
-|--------|------|------|
-| Claude Code | `/opsx:e2e` | Skill + 命令 + MCP |
-| Cursor | `/opsx-e2e` | 命令 |
-| Windsurf | `/opsx-e2e` | 工作流 |
-| Cline | `/opsx-e2e` | 工作流 |
-| Continue | `/opsx-e2e` | Prompt |
+| 编辑器 | 路径 | 编辑器 | 路径 |
+|--------|------|--------|------|
+| Claude Code | `.claude/` | Gemini CLI | `.gemini/` |
+| Cursor | `.cursor/` | GitHub Copilot | `.github/` |
+| Windsurf | `.windsurf/` | Kiro | `.kiro/` |
+| Cline | `.clinerules/` | Kilo Code | `.kilocode/` |
+| Continue | `.continue/` | iFlow | `.iflow/` |
+| Amazon Q | `.amazonq/` | CoStrict | `.cospec/` |
+| Antigravity | `.agent/` | OpenCode | `.opencode/` |
+| Auggie | `.augment/` | Factory | `.factory/` |
+| CodeBuddy | `.codebuddy/` | Pi | `.pi/` |
+| Codex | `~/.codex/` (全局) | Qoder | `.qoder/` |
+| Qwen Code | `.qwen/` | RooCode | `.roo/` |
+| Crush | `.crush/` | | |
 
 `openspec-pw init` 会检测项目中安装了哪些编辑器并安装对应文件。Claude Code 获得完整体验（skill + 命令 + Playwright MCP）。其他编辑器获得包含完整 E2E 工作流的命令/工作流文件。
 

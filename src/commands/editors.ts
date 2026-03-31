@@ -151,7 +151,7 @@ const amazonqAdapter: EditorAdapter = {
   getCommandPath(id) { return join('.amazonq', 'prompts', `opsx-${id}.md`); },
   formatCommand(meta) {
     return `---
-description: ${escapeYamlValue(meta.description)}
+description: ${meta.description}
 ---
 
 ${meta.body}
@@ -168,7 +168,7 @@ const antigravityAdapter: EditorAdapter = {
   getCommandPath(id) { return join('.agent', 'workflows', `opsx-${id}.md`); },
   formatCommand(meta) {
     return `---
-description: ${escapeYamlValue(meta.description)}
+description: ${meta.description}
 ---
 
 ${meta.body}
@@ -185,7 +185,7 @@ const auggieAdapter: EditorAdapter = {
   getCommandPath(id) { return join('.augment', 'commands', `opsx-${id}.md`); },
   formatCommand(meta) {
     return `---
-description: ${escapeYamlValue(meta.description)}
+description: ${meta.description}
 argument-hint: command arguments
 ---
 
@@ -203,7 +203,7 @@ const codebuddyAdapter: EditorAdapter = {
   getCommandPath(id) { return join('.codebuddy', 'commands', 'opsx', `${id}.md`); },
   formatCommand(meta) {
     return `---
-name: ${escapeYamlValue(meta.name)}
+name: ${meta.name}
 description: "${meta.description}"
 argument-hint: "[command arguments]"
 ---
@@ -225,7 +225,7 @@ const codexAdapter: EditorAdapter = {
   },
   formatCommand(meta) {
     return `---
-description: ${escapeYamlValue(meta.description)}
+description: ${meta.description}
 argument-hint: command arguments
 ---
 
@@ -254,16 +254,16 @@ ${meta.body}
 
 // ─── crush ────────────────────────────────────────────────────────────────
 
-/** Crush: .crush/commands/opsx/<id>.md — tags plain join */
+/** Crush: .crush/commands/opsx/<id>.md — raw values, no escaping */
 const crushAdapter: EditorAdapter = {
   toolId: 'crush',
   hasSkill: false,
   getCommandPath(id) { return join('.crush', 'commands', 'opsx', `${id}.md`); },
   formatCommand(meta) {
     return `---
-name: ${escapeYamlValue(meta.name)}
-description: ${escapeYamlValue(meta.description)}
-category: ${escapeYamlValue(meta.category)}
+name: ${meta.name}
+description: ${meta.description}
+category: ${meta.category}
 tags: ${formatTagsPlain(meta.tags)}
 ---
 
@@ -281,7 +281,7 @@ const factoryAdapter: EditorAdapter = {
   getCommandPath(id) { return join('.factory', 'commands', `opsx-${id}.md`); },
   formatCommand(meta) {
     return `---
-description: ${escapeYamlValue(meta.description)}
+description: ${meta.description}
 argument-hint: command arguments
 ---
 
@@ -316,7 +316,7 @@ const githubcopilotAdapter: EditorAdapter = {
   getCommandPath(id) { return join('.github', 'prompts', `opsx-${id}.prompt.md`); },
   formatCommand(meta) {
     return `---
-description: ${escapeYamlValue(meta.description)}
+description: ${meta.description}
 ---
 
 ${meta.body}
@@ -335,8 +335,8 @@ const iflowAdapter: EditorAdapter = {
     return `---
 name: /opsx-${meta.id}
 id: opsx-${meta.id}
-category: ${escapeYamlValue(meta.category)}
-description: ${escapeYamlValue(meta.description)}
+category: ${meta.category}
+description: ${meta.description}
 ---
 
 ${meta.body}
@@ -366,7 +366,7 @@ const kiroAdapter: EditorAdapter = {
   getCommandPath(id) { return join('.kiro', 'prompts', `opsx-${id}.prompt.md`); },
   formatCommand(meta) {
     return `---
-description: ${escapeYamlValue(meta.description)}
+description: ${meta.description}
 ---
 
 ${meta.body}
@@ -384,7 +384,7 @@ const opencodeAdapter: EditorAdapter = {
   formatCommand(meta) {
     const transformed = transformToHyphenCommands(meta.body);
     return `---
-description: ${escapeYamlValue(meta.description)}
+description: ${meta.description}
 ---
 
 ${transformed}
@@ -411,16 +411,16 @@ ${meta.body}
 
 // ─── qoder ────────────────────────────────────────────────────────────────
 
-/** Qoder: .qoder/commands/opsx/<id>.md — tags plain join */
+/** Qoder: .qoder/commands/opsx/<id>.md — raw values, no escaping */
 const qoderAdapter: EditorAdapter = {
   toolId: 'qoder',
   hasSkill: false,
   getCommandPath(id) { return join('.qoder', 'commands', 'opsx', `${id}.md`); },
   formatCommand(meta) {
     return `---
-name: ${escapeYamlValue(meta.name)}
-description: ${escapeYamlValue(meta.description)}
-category: ${escapeYamlValue(meta.category)}
+name: ${meta.name}
+description: ${meta.description}
+category: ${meta.category}
 tags: ${formatTagsPlain(meta.tags)}
 ---
 
