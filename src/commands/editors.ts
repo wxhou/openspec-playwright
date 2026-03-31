@@ -570,4 +570,4 @@ export function installSkill(projectRoot: string, skillContent: string): void {
   console.log(chalk.green(`  ✓ claude: .claude/skills/openspec-e2e/SKILL.md`));
 }
 
-export { claudeAdapter };
+export { claudeAdapter, ALL_ADAPTERS };

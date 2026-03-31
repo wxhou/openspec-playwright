@@ -8,6 +8,8 @@
   },
   "scripts": {
     "build": "tsc",
+    "test": "vitest",
+    "test:run": "vitest run",
     "prepublishOnly": "npm run build",
     "release": "npm version patch && npm run build && git push && git push --tags && npm publish"
   },
@@ -18,7 +20,8 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "vitest": "^4.1.2"
   },
   "engines": {
     "node": ">=20"

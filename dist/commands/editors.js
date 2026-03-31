@@ -486,5 +486,5 @@ export function installSkill(projectRoot, skillContent) {
     writeFileSync(join(skillDir, 'SKILL.md'), skillContent);
     console.log(chalk.green(`  ✓ claude: .claude/skills/openspec-e2e/SKILL.md`));
 }
-export { claudeAdapter };
+export { claudeAdapter, ALL_ADAPTERS };
 //# sourceMappingURL=editors.js.map

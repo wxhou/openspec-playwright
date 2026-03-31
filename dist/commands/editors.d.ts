@@ -20,6 +20,7 @@ export interface EditorAdapter {
 }
 /** Claude Code: .claude/commands/opsx/<id>.md + SKILL.md */
 declare const claudeAdapter: EditorAdapter;
+declare const ALL_ADAPTERS: EditorAdapter[];
 /** Detect which editors are installed by checking their config directories */
 export declare function detectEditors(projectRoot: string): EditorAdapter[];
 /** Detect Codex by checking if CODEX_HOME or ~/.codex exists */
@@ -30,4 +31,4 @@ export declare function buildCommandMeta(body: string): CommandMeta;
 export declare function installForAllEditors(body: string, adapters: EditorAdapter[], projectRoot: string): void;
 /** Install SKILL.md only for Claude Code */
 export declare function installSkill(projectRoot: string, skillContent: string): void;
-export { claudeAdapter };
+export { claudeAdapter, ALL_ADAPTERS };

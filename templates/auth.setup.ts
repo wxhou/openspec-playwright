@@ -13,6 +13,7 @@
 // For multi-user testing, add more setup blocks with different storageState paths.
 
 import { test as setup, expect } from '@playwright/test';
+import { existsSync } from 'fs';
 
 // ─── API Login (preferred) ───────────────────────────────────────────────────
 // If your app has a login API, configure it in tests/playwright/credentials.yaml:
@@ -25,8 +26,10 @@ setup('authenticate via API', async ({ page }) => {
   const password = process.env.E2E_PASSWORD;
 
   if (!username || !password) {
-    console.warn('⚠ E2E_USERNAME or E2E_PASSWORD not set — skipping API auth');
-    return;
+    throw new Error(
+      'E2E_USERNAME and E2E_PASSWORD environment variables are required.\n' +
+      'Set them with: export E2E_USERNAME=xxx E2E_PASSWORD=yyy'
+    );
   }
 
   const res = await page.request.post(`${baseUrl}/api/auth/login`, {
@@ -38,6 +41,10 @@ setup('authenticate via API', async ({ page }) => {
   }
 
   await page.context().storageState({ path: './playwright/.auth/user.json' });
+
+  if (!existsSync('./playwright/.auth/user.json')) {
+    throw new Error('Auth setup failed: storageState file was not created');
+  }
 });
 
 // ─── UI Login (fallback) ─────────────────────────────────────────────────────
@@ -49,8 +56,10 @@ setup('authenticate via UI', async ({ page }) => {
   const password = process.env.E2E_PASSWORD;
 
   if (!username || !password) {
-    console.warn('⚠ E2E_USERNAME or E2E_PASSWORD not set — skipping UI auth');
-    return;
+    throw new Error(
+      'E2E_USERNAME and E2E_PASSWORD environment variables are required.\n' +
+      'Set them with: export E2E_USERNAME=xxx E2E_PASSWORD=yyy'
+    );
   }
 
   // TODO: Update these selectors to match your login page
@@ -74,4 +83,8 @@ setup('authenticate via UI', async ({ page }) => {
   await expect(page).not.toHaveURL(/.*login.*|.*signin.*/);
 
   await page.context().storageState({ path: './playwright/.auth/user.json' });
+
+  if (!existsSync('./playwright/.auth/user.json')) {
+    throw new Error('Auth setup failed: storageState file was not created');
+  }
 });
