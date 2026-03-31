@@ -14,9 +14,9 @@ import { fileURLToPath } from 'url';
 import chalk from 'chalk';
 import * as tar from 'tar';
 import { syncMcpTools } from './mcpSync.js';
+import { detectEditors, installForAllEditors, installSkill } from './editors.js';
 
-const SKILL_SRC = fileURLToPath(new URL('../../.claude/skills/openspec-e2e', import.meta.url));
-const CMD_SRC = fileURLToPath(new URL('../../.claude/commands/opsx', import.meta.url));
+const CMD_BODY_SRC = fileURLToPath(new URL('../../.claude/commands/opsx/e2e-body.md', import.meta.url));
 const SCHEMA_DIR = fileURLToPath(new URL('../../schemas', import.meta.url));
 
 export interface UpdateOptions {
@@ -55,9 +55,9 @@ export async function update(options: UpdateOptions) {
     }
   }
 
-  // 2. Update skill and command from npm tarball
+  // 2. Update commands for all detected editors + schema
   if (options.skill !== false) {
-    console.log(chalk.blue('\n─── Updating Skill & Command ───'));
+    console.log(chalk.blue('\n─── Updating Commands & Schema ───'));
     try {
       const tmpDir = join(tmpdir(), 'openspec-e2e-update');
       rmSync(tmpDir, { recursive: true, force: true });
@@ -80,15 +80,30 @@ export async function update(options: UpdateOptions) {
       // Extract tarball
       await tar.extract({ file: tarballPath, cwd: tmpDir, strip: 1 });
 
-      const skillSrc = join(tmpDir, '.claude', 'skills', 'openspec-e2e', 'SKILL.md');
-      const cmdSrc = join(tmpDir, '.claude', 'commands', 'opsx', 'e2e.md');
+      const bodySrc = join(tmpDir, '.claude', 'commands', 'opsx', 'e2e-body.md');
       const schemaSrc = join(tmpDir, 'schemas', 'playwright-e2e');
 
-      installSkillFrom(skillSrc, cmdSrc, schemaSrc, projectRoot);
+      // Install commands for all detected editors
+      const adapters = detectEditors(projectRoot);
+      if (adapters.length > 0 && existsSync(bodySrc)) {
+        const body = readFileSync(bodySrc, 'utf-8');
+        installForAllEditors(body, adapters, projectRoot);
+      }
+
+      // Install SKILL.md for Claude Code
+      const skillSrc = join(tmpDir, '.claude', 'skills', 'openspec-e2e', 'SKILL.md');
+      if (existsSync(join(projectRoot, '.claude')) && existsSync(skillSrc)) {
+        const skillContent = readFileSync(skillSrc, 'utf-8');
+        installSkill(projectRoot, skillContent);
+      }
+
+      // Install schema
+      installSchemaFrom(schemaSrc, projectRoot);
+
       rmSync(tmpDir, { recursive: true, force: true });
-      console.log(chalk.green('  ✓ Skill & command updated to latest'));
+      console.log(chalk.green('  ✓ Commands & schema updated to latest'));
     } catch {
-      console.log(chalk.yellow('  ⚠ Failed to update skill/command from npm'));
+      console.log(chalk.yellow('  ⚠ Failed to update from npm'));
       console.log(chalk.gray('  Trying npm install to pull latest version...'));
       try {
         execSync('npm install -g openspec-playwright', { stdio: 'inherit', cwd: projectRoot });
@@ -100,43 +115,24 @@ export async function update(options: UpdateOptions) {
     }
   }
 
-  // 3. Sync Healer tools with latest @playwright/mcp
-  console.log(chalk.blue('\n─── Syncing Healer Tools ───'));
-  const skillDest = join(projectRoot, '.claude', 'skills', 'openspec-e2e', 'SKILL.md');
-  await syncMcpTools(skillDest, true);
+  // 3. Sync Healer tools (Claude Code only)
+  if (existsSync(join(projectRoot, '.claude', 'skills', 'openspec-e2e', 'SKILL.md'))) {
+    console.log(chalk.blue('\n─── Syncing Healer Tools ───'));
+    const skillDest = join(projectRoot, '.claude', 'skills', 'openspec-e2e', 'SKILL.md');
+    await syncMcpTools(skillDest, true);
+  }
 
   // Summary
   console.log(chalk.blue('\n─── Summary ───'));
   console.log(chalk.green('  ✓ Update complete!\n'));
 
-  console.log(chalk.bold('Restart Claude Code to use the updated skill.'));
-  console.log(chalk.gray('  Then run /opsx:e2e <change-name> to verify.\n'));
-}
-
-function installSkill(projectRoot: string) {
-  installSkillFrom(
-    join(SKILL_SRC, 'SKILL.md'),
-    join(CMD_SRC, 'e2e.md'),
-    join(SCHEMA_DIR, 'playwright-e2e'),
-    projectRoot
-  );
-}
-
-function installSkillFrom(skillSrc: string, cmdSrc: string, schemaSrc: string, projectRoot: string) {
-  const skillDir = join(projectRoot, '.claude', 'skills', 'openspec-e2e');
-  const cmdDir = join(projectRoot, '.claude', 'commands');
-
-  mkdirSync(skillDir, { recursive: true });
-  const skillContent = readFileSync(skillSrc, 'utf-8');
-  writeFileSync(join(skillDir, 'SKILL.md'), skillContent);
-  console.log(chalk.green(`  ✓ Skill updated: /openspec-e2e`));
-
-  mkdirSync(join(cmdDir, 'opsx'), { recursive: true });
-  const cmdContent = readFileSync(cmdSrc, 'utf-8');
-  writeFileSync(join(cmdDir, 'opsx', 'e2e.md'), cmdContent);
-  console.log(chalk.green(`  ✓ Command updated: /opsx:e2e`));
-
-  installSchemaFrom(schemaSrc, projectRoot);
+  if (existsSync(join(projectRoot, '.claude'))) {
+    console.log(chalk.bold('Restart Claude Code to use the updated skill.'));
+    console.log(chalk.gray('  Then run /opsx:e2e <change-name> to verify.\n'));
+  } else {
+    console.log(chalk.bold('Restart your AI coding assistant to use the updated commands.'));
+    console.log(chalk.gray('  Then run openspec-pw run <change-name> to verify.\n'));
+  }
 }
 
 function installSchemaFrom(schemaSrc: string, projectRoot: string) {

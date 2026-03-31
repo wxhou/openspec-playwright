@@ -6,10 +6,11 @@ import { fileURLToPath } from 'url';
 import chalk from 'chalk';
 import { readFile } from 'fs/promises';
 import { syncMcpTools } from './mcpSync.js';
+import { detectEditors, installForAllEditors, installSkill, claudeAdapter } from './editors.js';
 const TEMPLATE_DIR = fileURLToPath(new URL('../../templates', import.meta.url));
 const SCHEMA_DIR = fileURLToPath(new URL('../../schemas', import.meta.url));
-const SKILL_SRC = fileURLToPath(new URL('../../.claude/skills/openspec-e2e', import.meta.url));
-const CMD_SRC = fileURLToPath(new URL('../../.claude/commands/opsx/e2e.md', import.meta.url));
+const SKILL_SRC = fileURLToPath(new URL('../../.claude/skills/openspec-e2e/SKILL.md', import.meta.url));
+const CMD_BODY_SRC = fileURLToPath(new URL('../../.claude/commands/opsx/e2e-body.md', import.meta.url));
 export async function init(options) {
     console.log(chalk.blue('\n🔧 OpenSpec + Playwright E2E Setup\n'));
     const projectRoot = process.cwd();
@@ -61,13 +62,32 @@ export async function init(options) {
             }
         }
     }
-    // 4. Copy skill files
-    console.log(chalk.blue('\n─── Installing Claude Code Skill ───'));
-    await installSkill(projectRoot);
-    // 5. Sync Healer tools with latest @playwright/mcp
-    console.log(chalk.blue('\n─── Syncing Healer Tools ───'));
-    const skillDest = join(projectRoot, '.claude', 'skills', 'openspec-e2e', 'SKILL.md');
-    await syncMcpTools(skillDest, true);
+    // 4. Install E2E commands for detected editors
+    console.log(chalk.blue('\n─── Installing E2E Commands ───'));
+    const detected = detectEditors(projectRoot);
+    if (detected.length > 0) {
+        const body = await readFile(CMD_BODY_SRC, 'utf-8');
+        installForAllEditors(body, detected, projectRoot);
+    }
+    else {
+        const body = await readFile(CMD_BODY_SRC, 'utf-8');
+        installForAllEditors(body, [claudeAdapter], projectRoot);
+    }
+    // Claude Code also gets the SKILL.md
+    if (existsSync(join(projectRoot, '.claude'))) {
+        const skillContent = await readFile(SKILL_SRC, 'utf-8');
+        installSkill(projectRoot, skillContent);
+    }
+    // 5. Sync Healer tools with latest @playwright/mcp (Claude Code only)
+    if (existsSync(join(projectRoot, '.claude'))) {
+        console.log(chalk.blue('\n─── Syncing Healer Tools ───'));
+        const skillDest = join(projectRoot, '.claude', 'skills', 'openspec-e2e', 'SKILL.md');
+        await syncMcpTools(skillDest, true);
+    }
+    else {
+        console.log(chalk.blue('\n─── Syncing Healer Tools ───'));
+        console.log(chalk.gray('  - Claude Code not detected, skipping MCP sync'));
+    }
     // 6. Install OpenSpec schema
     console.log(chalk.blue('\n─── Installing OpenSpec Schema ───'));
     await installSchema(projectRoot);
@@ -84,27 +104,16 @@ export async function init(options) {
     console.log(chalk.gray('  2. Customize tests/playwright/credentials.yaml with your test user'));
     console.log(chalk.gray('  3. Set credentials: export E2E_USERNAME=xxx E2E_PASSWORD=yyy'));
     console.log(chalk.gray('  4. Run auth setup: npx playwright test --project=setup'));
-    console.log(chalk.gray('  5. In Claude Code, run: /opsx:e2e <change-name>'));
-    console.log(chalk.gray('  6. Or: openspec-pw doctor to verify setup\n'));
+    const hasClaude = existsSync(join(projectRoot, '.claude'));
+    if (hasClaude) {
+        console.log(chalk.gray('  5. In Claude Code, run: /opsx:e2e <change-name>'));
+    }
+    console.log(chalk.gray(`  ${hasClaude ? '6.' : '5.'} Or: openspec-pw run <change-name>`));
+    console.log(chalk.gray(`  ${hasClaude ? '7.' : '6.'} Or: openspec-pw doctor to verify setup\n`));
     console.log(chalk.bold('How it works:'));
     console.log(chalk.gray('  /opsx:e2e reads your OpenSpec specs and runs Playwright'));
     console.log(chalk.gray('  E2E tests through a three-agent pipeline:'));
     console.log(chalk.gray('  Planner → Generator → Healer\n'));
-}
-async function installSkill(projectRoot) {
-    const skillsDir = join(projectRoot, '.claude', 'skills');
-    const skillDir = join(skillsDir, 'openspec-e2e');
-    const cmdDir = join(projectRoot, '.claude', 'commands');
-    // Copy skill
-    mkdirSync(skillDir, { recursive: true });
-    const skillContent = await readFile(SKILL_SRC + '/SKILL.md', 'utf-8');
-    writeFileSync(join(skillDir, 'SKILL.md'), skillContent);
-    console.log(chalk.green(`  ✓ Skill installed: /openspec-e2e`));
-    // Copy command
-    mkdirSync(join(cmdDir, 'opsx'), { recursive: true });
-    const cmdContent = await readFile(CMD_SRC, 'utf-8');
-    writeFileSync(join(cmdDir, 'opsx', 'e2e.md'), cmdContent);
-    console.log(chalk.green(`  ✓ Command installed: /opsx:e2e`));
 }
 async function generateSeedTest(projectRoot) {
     const testsDir = join(projectRoot, 'tests', 'playwright');
