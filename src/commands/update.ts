@@ -14,7 +14,7 @@ import { fileURLToPath } from 'url';
 import chalk from 'chalk';
 import * as tar from 'tar';
 import { syncMcpTools } from './mcpSync.js';
-import { detectEditors, installForAllEditors, installSkill } from './editors.js';
+import { detectEditors, detectCodex, installForAllEditors, installSkill } from './editors.js';
 
 const CMD_BODY_SRC = fileURLToPath(new URL('../../.claude/commands/opsx/e2e-body.md', import.meta.url));
 const SCHEMA_DIR = fileURLToPath(new URL('../../schemas', import.meta.url));
@@ -84,7 +84,9 @@ export async function update(options: UpdateOptions) {
       const schemaSrc = join(tmpDir, 'schemas', 'playwright-e2e');
 
       // Install commands for all detected editors
-      const adapters = detectEditors(projectRoot);
+      const detected = detectEditors(projectRoot);
+      const codex = detectCodex();
+      const adapters = codex ? [...detected, codex] : detected;
       if (adapters.length > 0 && existsSync(bodySrc)) {
         const body = readFileSync(bodySrc, 'utf-8');
         installForAllEditors(body, adapters, projectRoot);

@@ -11,7 +11,7 @@ import { fileURLToPath } from 'url';
 import chalk from 'chalk';
 import { readFile } from 'fs/promises';
 import { syncMcpTools } from './mcpSync.js';
-import { detectEditors, installForAllEditors, installSkill, claudeAdapter } from './editors.js';
+import { detectEditors, detectCodex, installForAllEditors, installSkill, claudeAdapter } from './editors.js';
 
 const TEMPLATE_DIR = fileURLToPath(new URL('../../templates', import.meta.url));
 const SCHEMA_DIR = fileURLToPath(new URL('../../schemas', import.meta.url));
@@ -85,9 +85,11 @@ export async function init(options: InitOptions) {
   // 4. Install E2E commands for detected editors
   console.log(chalk.blue('\n─── Installing E2E Commands ───'));
   const detected = detectEditors(projectRoot);
-  if (detected.length > 0) {
+  const codex = detectCodex();
+  const adapters = codex ? [...detected, codex] : detected;
+  if (adapters.length > 0) {
     const body = await readFile(CMD_BODY_SRC, 'utf-8');
-    installForAllEditors(body, detected, projectRoot);
+    installForAllEditors(body, adapters, projectRoot);
   } else {
     const body = await readFile(CMD_BODY_SRC, 'utf-8');
     installForAllEditors(body, [claudeAdapter], projectRoot);
