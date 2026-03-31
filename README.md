@@ -18,21 +18,35 @@ openspec init              # Initialize OpenSpec
 openspec-pw init          # Install Playwright E2E integration
 ```
 
+## Supported AI Coding Assistants
+
+Auto-detects and installs commands for these editors:
+
+| Editor | Command | Format |
+|--------|---------|--------|
+| Claude Code | `/opsx:e2e` | Skill + command + MCP |
+| Cursor | `/opsx-e2e` | Command |
+| Windsurf | `/opsx-e2e` | Workflow |
+| Cline | `/opsx-e2e` | Workflow |
+| Continue | `/opsx-e2e` | Prompt |
+
+`openspec-pw init` detects which editors you have in your project and installs the appropriate files. Claude Code gets the full experience (skill + command + Playwright MCP). Other editors get command/workflow files with the complete E2E workflow.
+
 ## Usage
 
-### In Claude Code
+### In Your AI Coding Assistant
 
 ```bash
-/opsx:e2e my-feature    # Primary command (OpenSpec convention)
-/openspec-e2e           # Alternative from skill
+/opsx:e2e my-feature    # Claude Code
+/opsx-e2e my-feature   # Cursor, Windsurf, Cline, Continue
 ```
 
 ### CLI Commands
 
 ```bash
 openspec-pw init          # Initialize integration (one-time setup)
-openspec-pw update       # Update CLI and skill to latest version
-openspec-pw doctor       # Check prerequisites
+openspec-pw update        # Update CLI and commands to latest version
+openspec-pw doctor        # Check prerequisites
 ```
 
 ## How It Works
@@ -62,13 +76,16 @@ openspec-pw doctor       # Check prerequisites
 
 1. **Node.js >= 20**
 2. **OpenSpec** initialized: `npm install -g @fission-ai/openspec && openspec init`
-3. **Claude Code** with Playwright MCP configured
+3. **One of**: Claude Code, Cursor, Windsurf, Cline, or Continue (auto-detected)
+4. **Claude Code only**: Playwright MCP — `claude mcp add playwright npx @playwright/mcp@latest`
 
 ## What `openspec-pw init` Does
 
-1. Installs Playwright MCP globally via `claude mcp add`
-2. Installs `/opsx:e2e` command and `/openspec-e2e` skill
-3. Generates `tests/playwright/seed.spec.ts`, `auth.setup.ts`, `credentials.yaml`
+1. Detects installed AI coding assistants (Claude Code, Cursor, Windsurf, Cline, Continue)
+2. Installs E2E command/workflow files for each detected editor
+3. Installs `/openspec-e2e` skill for Claude Code
+4. Installs Playwright MCP globally for Claude Code (via `claude mcp add`)
+5. Generates `tests/playwright/seed.spec.ts`, `auth.setup.ts`, `credentials.yaml`
 
 > **Note**: After running `openspec-pw init`, manually install Playwright browsers: `npx playwright install --with-deps`
 
@@ -109,23 +126,30 @@ Edit `tests/playwright/credentials.yaml`:
 - Configure test user credentials
 - Add multiple users for role-based tests
 
-### MCP server
+### MCP server (Claude Code only)
 
-Playwright MCP is installed globally via `claude mcp add`. Restart Claude Code after setup to activate.
+Playwright MCP is installed globally via `claude mcp add` and enables the Healer Agent (auto-heals test failures via UI inspection). Restart Claude Code after setup to activate.
 
 ## Architecture
 
 ```
-openspec-pw (CLI - setup only)
-  ├── Installs Playwright agents (.github/)
-  ├── Installs Playwright MCP globally via claude mcp add
-  ├── Installs Claude Code skill (/openspec-e2e)
-  └── Installs command (/opsx:e2e)
+Schema (openspec/schemas/playwright-e2e/)
+  └── Templates: test-plan.md, report.md, playwright.config.ts
 
-/openspec-e2e (Claude Code skill - runs in Claude)
-  ├── Reads OpenSpec specs
-  ├── Triggers Playwright agents via MCP
-  └── Generates E2E verification report
+CLI (openspec-pw)
+  ├── init       → Installs commands for detected editors
+  ├── update     → Syncs commands + schema from npm
+  └── doctor     → Checks prerequisites
+
+Skill/Commands (per editor)
+  ├── Claude Code → /openspec-e2e (skill) + /opsx:e2e (command) + MCP
+  ├── Cursor      → /opsx-e2e (command)
+  ├── Windsurf    → /opsx-e2e (workflow)
+  ├── Cline       → /opsx-e2e (workflow)
+  └── Continue    → /opsx-e2e (prompt)
+
+Healer Agent (Claude Code + MCP only)
+  └── browser_snapshot, browser_navigate, browser_run_code, etc.
 ```
 
 ## License

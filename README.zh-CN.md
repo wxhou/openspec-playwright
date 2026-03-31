@@ -18,27 +18,41 @@ openspec init              # 初始化 OpenSpec
 openspec-pw init          # 安装 Playwright E2E 集成
 ```
 
+## 支持的 AI 编码助手
+
+自动检测并安装以下编辑器的命令文件：
+
+| 编辑器 | 命令 | 格式 |
+|--------|------|------|
+| Claude Code | `/opsx:e2e` | Skill + 命令 + MCP |
+| Cursor | `/opsx-e2e` | 命令 |
+| Windsurf | `/opsx-e2e` | 工作流 |
+| Cline | `/opsx-e2e` | 工作流 |
+| Continue | `/opsx-e2e` | Prompt |
+
+`openspec-pw init` 会检测项目中安装了哪些编辑器并安装对应文件。Claude Code 获得完整体验（skill + 命令 + Playwright MCP）。其他编辑器获得包含完整 E2E 工作流的命令/工作流文件。
+
 ## 使用
 
-### 在 Claude Code 中
+### 在 AI 编码助手中
 
 ```bash
-/opsx:e2e my-feature    # 主命令（遵循 OpenSpec 规范）
-/openspec-e2e            # 来自 skill 的别名
+/opsx:e2e my-feature    # Claude Code
+/opsx-e2e my-feature   # Cursor, Windsurf, Cline, Continue
 ```
 
 ### CLI 命令
 
 ```bash
 openspec-pw init          # 初始化集成（一次性设置）
-openspec-pw update        # 更新 CLI 和 skill 到最新版本
+openspec-pw update        # 更新 CLI 和命令到最新版本
 openspec-pw doctor        # 检查前置条件
 ```
 
 ## 工作原理
 
 ```
-/openspec-e2e <change-name>
+/opsx:e2e <change-name>
   │
   ├── 1. 从 openspec/changes/<name>/specs/ 读取 OpenSpec specs
   │
@@ -46,7 +60,7 @@ openspec-pw doctor        # 检查前置条件
   │
   ├── 3. Generator Agent → 创建 tests/playwright/<name>.spec.ts
   │
-  └── 4. Healer Agent → 运行测试 + 自动修复失败
+  └── 4. Healer Agent → 运行测试 + 自动修复失败（Claude Code + MCP）
           │
           └── 报告: openspec/reports/playwright-e2e-<name>.md
 ```
@@ -62,13 +76,16 @@ openspec-pw doctor        # 检查前置条件
 
 1. **Node.js >= 20**
 2. **OpenSpec** 已初始化: `npm install -g @fission-ai/openspec && openspec init`
-3. **Claude Code** 已配置 Playwright MCP
+3. **任一**: Claude Code、Cursor、Windsurf、Cline 或 Continue（自动检测）
+4. **仅 Claude Code**: Playwright MCP — `claude mcp add playwright npx @playwright/mcp@latest`
 
 ## `openspec-pw init` 做了什么
 
-1. 通过 `claude mcp add` 全局安装 Playwright MCP
-2. 安装 `/opsx:e2e` 命令和 `/openspec-e2e` skill
-3. 生成 `tests/playwright/seed.spec.ts`、`auth.setup.ts`、`credentials.yaml`
+1. 检测已安装的 AI 编码助手（Claude Code、Cursor、Windsurf、Cline、Continue）
+2. 为每个检测到的编辑器安装 E2E 命令/工作流文件
+3. 为 Claude Code 安装 `/openspec-e2e` skill
+4. 为 Claude Code 全局安装 Playwright MCP（通过 `claude mcp add`）
+5. 生成 `tests/playwright/seed.spec.ts`、`auth.setup.ts`、`credentials.yaml`
 
 > **注意**：运行 `openspec-pw init` 后，手动安装 Playwright 浏览器：`npx playwright install --with-deps`
 
@@ -109,9 +126,9 @@ npx playwright test --project=setup
 - 配置测试用户凭证
 - 为角色测试添加多用户
 
-### MCP 服务器
+### MCP 服务器（仅 Claude Code）
 
-Playwright MCP 通过 `claude mcp add` 全局安装。设置后需重启 Claude Code 生效。
+Playwright MCP 通过 `claude mcp add` 全局安装，启用 Healer Agent（通过 UI 检查自动修复测试失败）。设置后需重启 Claude Code 生效。
 
 ## 许可
 
