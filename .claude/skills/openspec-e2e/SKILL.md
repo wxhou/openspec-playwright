@@ -257,6 +257,8 @@ Template: `openspec/schemas/playwright-e2e/templates/test-plan.md`
 4. Write test code with verified selectors
 5. If selector unverifiable → note for Healer (Step 9)
 
+**Test coverage — empty states**: For list/detail pages, explore the empty state. If the app shows a "no data" UI when the list is empty, generate a test to verify it. Empty states are often missing from specs but are real user paths.
+
 **Output format**:
 - Follow `seed.spec.ts` structure
 - Use `test.describe(...)` for grouping
