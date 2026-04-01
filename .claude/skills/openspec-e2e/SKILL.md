@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires openspec CLI, Playwright (with browsers installed), and @playwright/mcp (globally installed via `claude mcp add playwright npx @playwright/mcp@latest`).
 metadata:
   author: openspec-playwright
-  version: "2.10"
+  version: "2.11"
 ---
 
 ## Input
@@ -31,6 +31,14 @@ Two modes, same pipeline:
 | All | `/opsx:e2e all` | sitemap + homepage crawl | `app-all.spec.ts` |
 
 Both modes update `app-knowledge.md` and `app-exploration.md`. All `.spec.ts` files run together as regression suite.
+
+**Role mapping** (Playwright Test Agents terminology):
+
+| Role | This SKILL | What it does |
+|------|-----------|--------------|
+| Planner | Step 4–5 | Explores app via Playwright MCP → produces test-plan.md |
+| Generator | Step 6 | Transforms test-plan.md → `.spec.ts` with verified selectors |
+| Healer | Step 9 | Executes tests, repairs failures via Playwright MCP |
 
 ## Testing principles
 
@@ -98,7 +106,7 @@ Run the seed test before generating tests:
 npx playwright test tests/playwright/seed.spec.ts --project=chromium
 ```
 
-This validates: app server reachable, auth fixtures initialized, Playwright working.
+Seed test initializes the `page` context — it runs all fixtures, hooks, and globalSetup. Not just a smoke check: it also validates that auth setup, BASE_URL, and Playwright are fully functional.
 
 **If seed test fails**: Stop and report. Fix the environment before proceeding.
 
