@@ -475,7 +475,7 @@ export function installForAllEditors(body, adapters, projectRoot) {
     const meta = buildCommandMeta(body);
     for (const adapter of adapters) {
         const relPath = adapter.getCommandPath(meta.id);
-        const absPath = join(projectRoot, relPath);
+        const absPath = pathResolve(projectRoot, relPath);
         mkdirSync(dirname(absPath), { recursive: true });
         writeFileSync(absPath, adapter.formatCommand(meta));
         console.log(chalk.green(`  ✓ ${adapter.toolId}: ${relPath}`));
