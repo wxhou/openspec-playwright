@@ -8,7 +8,7 @@ import { existsSync,
   statSync,
 } from 'fs';
 import { join } from 'path';
-import { tmpdir } from 'os';
+import { tmpdir, homedir } from 'os';
 import { promisify } from 'util';
 import { fileURLToPath } from 'url';
 import chalk from 'chalk';
@@ -22,6 +22,7 @@ const SCHEMA_DIR = fileURLToPath(new URL('../../schemas', import.meta.url));
 export interface UpdateOptions {
   cli?: boolean;
   skill?: boolean;
+  mcp?: boolean;
 }
 
 export async function update(options: UpdateOptions) {
@@ -114,6 +115,32 @@ export async function update(options: UpdateOptions) {
       } catch {
         console.log(chalk.red('  ✗ Failed to update. Run manually:'));
         console.log(chalk.gray('    npm install -g openspec-playwright'));
+      }
+    }
+  }
+
+  // 2b. Install Playwright MCP if not present (Claude Code only)
+  if (options.mcp !== false && existsSync(join(projectRoot, '.claude'))) {
+    console.log(chalk.blue('\n─── Installing Playwright MCP ───'));
+    const claudeJsonPath = join(homedir(), '.claude.json');
+    const claudeJson = existsSync(claudeJsonPath) ? JSON.parse(readFileSync(claudeJsonPath, 'utf-8')) : {};
+    const globalMcp = claudeJson?.mcpServers ?? {};
+    const localMcp = claudeJson?.projects?.[projectRoot]?.mcpServers ?? {};
+
+    if (globalMcp['playwright'] || localMcp['playwright']) {
+      console.log(chalk.green('  ✓ Playwright MCP already installed'));
+    } else {
+      try {
+        execSync('claude mcp add playwright npx @playwright/mcp@latest', {
+          cwd: projectRoot,
+          stdio: 'inherit',
+        });
+        console.log(chalk.green('  ✓ Playwright MCP installed globally'));
+        console.log(chalk.gray('  (Restart Claude Code to activate)'));
+      } catch {
+        console.log(chalk.yellow('  ⚠ Failed to install Playwright MCP'));
+        console.log(chalk.gray('  Run manually: claude mcp add playwright npx @playwright/mcp@latest'));
+        console.log(chalk.gray('  (Restart Claude Code to activate the MCP server)'));
       }
     }
   }
