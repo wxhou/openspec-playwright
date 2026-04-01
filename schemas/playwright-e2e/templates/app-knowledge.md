@@ -40,6 +40,14 @@ Priority: `[data-testid]` > `getByRole` > `getByLabel` > `getByText` > CSS
 | success msg | `[data-testid="success-msg"]` | |
 | loading spinner | `[data-testid="loading"]` | |
 
+## Architecture
+
+| Aspect | Value | Notes |
+|--------|-------|-------|
+| Architecture | monolith / separated | Frontend + backend in one repo or separate? |
+| Backend server | `<port>` or `embedded` | e.g. `3001` or `embedded in frontend` |
+| How to restart backend | `<command>` | e.g. `cd backend && npm run dev` |
+
 ## SPA Routing
 
 - Framework: <e.g. React Router / Vue Router / Next.js>

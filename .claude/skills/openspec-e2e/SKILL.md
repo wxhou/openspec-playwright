@@ -98,7 +98,7 @@ browser_navigate → browser_console_messages → browser_snapshot → browser_t
 
 | Signal | Meaning | Action |
 |--------|---------|--------|
-| HTTP 5xx or unreachable | Server error | **STOP** — tell user: "App has a bug (HTTP <code>). Fix it, then re-run /opsx:e2e." |
+| HTTP 5xx or unreachable | Backend/server error | **STOP** — tell user: "App has a backend error (HTTP <code>). Fix it, then re-run /opsx:e2e." |
 | JS error in console | App runtime error | **STOP** — tell user: "Page has JS errors. Fix them, then re-run /opsx:e2e." |
 | HTTP 404 | Route not in app (metadata issue) | Continue — mark `⚠️ route not found` in app-exploration.md |
 | Auth required, no credentials | Missing auth setup | Continue — skip protected routes, explore login page |
@@ -170,6 +170,7 @@ After writing `app-exploration.md`, extract **project-level shared knowledge** a
 
 | Section | What to extract |
 |---------|----------------|
+| Architecture | Monolith or separated? Backend port? Restart command? |
 | Credential Format | Login endpoint, username format (email vs username) |
 | Common Selector Patterns | New patterns discovered that apply across routes |
 | SPA Routing | SPA framework, routing behavior |
@@ -428,7 +429,7 @@ Reference: `openspec/schemas/playwright-e2e/templates/report.md`
 |----------|----------|
 | No specs | Stop — E2E requires specs |
 | Seed test fails | Stop — fix environment |
-| App has JS errors or HTTP 5xx during exploration | **STOP** — tell user to fix the app first |
+| App has JS errors or HTTP 5xx during exploration | **STOP** — see app-knowledge.md → Architecture section for restart instructions |
 | No auth required | Skip auth setup |
 | app-exploration.md exists | Read and use (never regenerate) |
 | app-knowledge.md exists | Read and use (append new patterns only) |
