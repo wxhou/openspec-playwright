@@ -78,11 +78,19 @@ This validates: app server reachable, auth fixtures initialized, Playwright work
 
 **Before writing test plan, explore the app to collect real DOM data.** This is the most critical step — it eliminates blind selector guessing.
 
-**Prerequisites**: seed test pass. If auth is required, ensure `auth.setup.ts` has been run (Step 7).
+**Prerequisites**: seed test pass. If auth is required, ensure `auth.setup.ts` has been run (Step 7). BASE_URL must be verified reachable (see 4.1).
 
-#### 4.1. Read app-knowledge.md + Extract routes from specs
+#### 4.1. Verify BASE_URL + Read app-knowledge.md + Extract routes from specs
 
-**First**, read `tests/playwright/app-knowledge.md` to understand:
+**First, verify BASE_URL is reachable**:
+```javascript
+await browser_navigate(`${BASE_URL}/`)
+// Confirm page loaded → proceed
+// If error → check BASE_URL in seed.spec.ts or vite.config.ts
+```
+A correct BASE_URL prevents wasted exploration time on unreachable routes.
+
+**Then**, read `tests/playwright/app-knowledge.md` to understand:
 - **Known risks**: SPA behavior, dynamic content patterns, auth method
 - **Project conventions**: preferred selector strategy, credential format, BASE_URL
 
