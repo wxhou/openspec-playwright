@@ -227,6 +227,8 @@ Read `tests/playwright/app-knowledge.md` as context for cross-change patterns.
 
 > **"all" mode: skip this step — go directly to Step 6.**
 
+**Change mode — prerequisite**: If `openspec/changes/<name>/specs/playwright/app-exploration.md` does not exist → **STOP**. Run Step 4 (explore application) before generating tests. Without real DOM data from exploration, selectors are guesses and tests will be fragile.
+
 **Change mode**: Create `openspec/changes/<name>/specs/playwright/test-plan.md`.
 
 **Read inputs**: specs, app-exploration.md, app-knowledge.md
@@ -423,7 +425,8 @@ Reference: `openspec/schemas/playwright-e2e/templates/report.md`
 | Sitemap discovery fails ("all" mode) | Continue — use homepage links + common paths fallback |
 | App has JS errors or HTTP 5xx during exploration | **STOP** — see app-knowledge.md → Architecture for restart instructions |
 | app-all.spec.ts exists | Read and use (never regenerate — regression baseline) |
-| app-exploration.md exists | Read and use (never regenerate) |
+| app-exploration.md missing (change mode) | **STOP** — Step 4 exploration is mandatory. Explore before generating tests. |
+| app-exploration.md exists | Read and use (verify routes still match specs — re-explore if page structure changed) |
 | app-knowledge.md exists | Read and use (append new patterns only) |
 | test-plan.md exists (change mode) | Read and use (never regenerate) |
 | auth.setup.ts exists | Verify format (update only if stale) |
