@@ -311,6 +311,21 @@ test('unauthenticated user redirected to login', async ({ browser }) => {
   await freshPage.goto(`${BASE_URL}/dashboard`);
   await expect(freshPage).toHaveURL(/login|auth/);
 });
+// ✅ Session — logout clears protected state
+await page.getByRole('button', { name: '退出登录' }).click();
+await expect(page).toHaveURL(/login|auth/);
+const freshPage2 = await browser.newContext().newPage();
+await freshPage2.goto(`${BASE_URL}/dashboard`);
+await expect(freshPage2).toHaveURL(/login|auth/); // session revoked
+
+// ✅ Browser history — SPA back/forward navigation
+await page.goto(`${BASE_URL}/list`);
+await page.getByRole('link', { name: '详情' }).first().click();
+await expect(page).toHaveURL(/detail/);
+await page.goBack();
+await expect(page).toHaveURL(/list/);
+await page.goForward();
+await expect(page).toHaveURL(/detail/);
 
 // ✅ File uploads — UI 操作
 await page.locator('input[type="file"]').setInputFiles('/path/to/file.pdf');
