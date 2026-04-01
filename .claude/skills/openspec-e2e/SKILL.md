@@ -32,6 +32,28 @@ Two modes, same pipeline:
 
 Both modes update `app-knowledge.md` and `app-exploration.md`. All `.spec.ts` files run together as regression suite.
 
+## Testing principles
+
+**UI first** — Test every user flow through the browser UI. E2E validates that users can accomplish tasks in the real interface, not just that the backend responds correctly.
+
+```
+用户操作 → 浏览器 UI → 后端 → 数据库 → UI 反馈
+```
+
+**API only as fallback** — Use `page.request` only when UI genuinely cannot cover the scenario:
+- Triggering HTTP 5xx/4xx error responses (hard to reach via UI)
+- Edge cases requiring pre-condition data that UI cannot set up
+- Cases where Step 4 exploration confirmed no UI element exists
+
+**Decision rule**:
+```
+Can this be tested through the UI?
+  → Yes → page.getByRole/ByLabel/ByText + click/fill/type + assert UI
+  → No  → record reason → use page.request
+```
+
+**Never use API calls to replace routine UI flows.** If a test completes in < 200ms, it is almost certainly using `page.request` instead of real UI interactions.
+
 ## Steps
 
 ### 1. Select the change or mode
@@ -230,44 +252,58 @@ Template: `openspec/schemas/playwright-e2e/templates/test-plan.md`
 - Each test: `test('描述性名称', async ({ page }) => { ... })`
 - Prefer `data-testid` selectors (see 4.3 table)
 
-**Code examples — same for both modes:**
+**Code examples — UI first:**
 
 ```typescript
-// 🚫 False Pass — never silently skip when element is missing
+// ✅ UI 测试 — 用户在界面上的真实操作
+await page.goto(`${BASE_URL}/orders`);
+await page.getByRole('button', { name: '新建订单' }).click();
+await page.getByLabel('订单名称').fill('Test Order');
+await page.getByRole('button', { name: '提交' }).click();
+await expect(page.getByText('订单创建成功')).toBeVisible();
+
+// ✅ Error path — 通过 UI 触发错误
+await page.goto(`${BASE_URL}/orders`);
+await page.getByRole('button', { name: '新建订单' }).click();
+await page.getByRole('button', { name: '提交' }).click();
+await expect(page.getByRole('alert')).toContainText('名称不能为空');
+
+// ✅ API fallback — 仅在 UI 无法触发时使用
+const res = await page.request.get(`${BASE_URL}/api/orders/99999`);
+expect(res.status()).toBe(404);
+```
+
+```typescript
+// 🚫 False Pass — 元素不存在时静默跳过
 if (await btn.isVisible().catch(() => false)) { ... }
+
 // ✅ CORRECT
 await expect(page.getByRole('button', { name: '取消' })).toBeVisible();
 
-// 🚫 Auth guard — test with FRESH browser context
-test('redirects unauthenticated user to login', async ({ browser }) => {
+// 🚫 用 API 替代 UI — 失去了端到端的意义
+const res = await page.request.post(`${BASE_URL}/api/login`, { data: credentials });
+
+// ✅ CORRECT — 通过 UI 登录
+await page.goto(`${BASE_URL}/login`);
+await page.getByLabel('邮箱').fill(process.env.E2E_USERNAME);
+await page.getByLabel('密码').fill(process.env.E2E_PASSWORD);
+await page.getByRole('button', { name: '登录' }).click();
+await expect(page).toHaveURL(/dashboard/);
+```
+
+```typescript
+// ✅ Fresh browser context for auth guard
+test('unauthenticated user redirected to login', async ({ browser }) => {
   const freshPage = await browser.newContext().newPage();
   await freshPage.goto(`${BASE_URL}/dashboard`);
   await expect(freshPage).toHaveURL(/login|auth/);
 });
 
-// ✅ API calls — use page.request directly
-const res = await page.request.get(`${BASE_URL}/api/data`);
-expect(res.status()).toBe(200);
-```
-
-```typescript
-// ✅ BrowserContext — close when done
-const context = await browser.newContext();
-await context.close();
-
-// ✅ APIRequestContext — page.request is already one, no cleanup needed
-const res = await page.request.get(`${BASE_URL}/api/data`);
-```
-
-```typescript
-// ✅ File uploads — use setInputFiles()
+// ✅ File uploads — UI 操作
 await page.locator('input[type="file"]').setInputFiles('/path/to/file.pdf');
-
-// ✅ Form submissions — prefer Playwright locators
-await page.getByRole('button', { name: 'Submit' }).click();
 ```
 
-Always include error path tests: API 500, 404, network timeout, invalid input.
+Always include error path tests: UI validation messages, network failure, invalid input. Use `page.request` only for scenarios confirmed unreachable via UI.
 
 If the file exists → diff against test-plan, add only missing test cases.
 
