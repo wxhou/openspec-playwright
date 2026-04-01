@@ -31,4 +31,8 @@ export declare function buildCommandMeta(body: string): CommandMeta;
 export declare function installForAllEditors(body: string, adapters: EditorAdapter[], projectRoot: string): void;
 /** Install SKILL.md only for Claude Code */
 export declare function installSkill(projectRoot: string, skillContent: string): void;
+/** Install project-level CLAUDE.md with employee-grade standards + OpenSpec context */
+export declare function installProjectClaudeMd(projectRoot: string, standardsContent: string): void;
+/** Read the employee-grade standards from a source file */
+export declare function readEmployeeStandards(srcPath: string): string;
 export { claudeAdapter, ALL_ADAPTERS };

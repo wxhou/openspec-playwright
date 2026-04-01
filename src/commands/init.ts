@@ -122,14 +122,18 @@ export async function init(options: InitOptions) {
     await generateSeedTest(projectRoot);
   }
 
-  // 8. Install employee-grade CLAUDE.md
+  // 8. Generate app-knowledge.md
+  console.log(chalk.blue('\n─── Generating App Knowledge ───'));
+  await generateAppKnowledge(projectRoot);
+
+  // 9. Install employee-grade CLAUDE.md
   console.log(chalk.blue('\n─── Installing Employee Standards ───'));
   const standards = readEmployeeStandards(EMPLOYEE_STANDARDS_SRC);
   if (standards) {
     installProjectClaudeMd(projectRoot, standards);
   }
 
-  // 9. Summary
+  // 10. Summary
   console.log(chalk.blue('\n─── Summary ───'));
   console.log(chalk.green('  ✓ Setup complete!\n'));
 
@@ -187,6 +191,21 @@ async function generateSeedTest(projectRoot: string) {
   console.log(chalk.gray('  (Customize BASE_URL and credentials for your app)'));
 }
 
+async function generateAppKnowledge(projectRoot: string) {
+  const src = join(SCHEMA_DIR, 'playwright-e2e', 'templates', 'app-knowledge.md');
+  const dest = join(projectRoot, 'tests', 'playwright', 'app-knowledge.md');
+
+  if (existsSync(dest)) {
+    console.log(chalk.gray('  - app-knowledge.md already exists, skipping'));
+    return;
+  }
+
+  if (existsSync(src)) {
+    writeFileSync(dest, readFileSync(src));
+    console.log(chalk.green('  ✓ Generated: tests/playwright/app-knowledge.md'));
+  }
+}
+
 async function installSchema(projectRoot: string) {
   const schemaSrc = SCHEMA_DIR + '/playwright-e2e';
   const schemaDest = join(projectRoot, 'openspec', 'schemas', 'playwright-e2e');
@@ -205,7 +224,7 @@ async function installSchema(projectRoot: string) {
   const templatesSrc = join(schemaSrc, 'templates');
   const templatesDest = join(schemaDest, 'templates');
   mkdirSync(templatesDest, { recursive: true });
-  const templateFiles = ['test-plan.md', 'report.md', 'e2e-test.ts', 'playwright.config.ts'];
+  const templateFiles = ['test-plan.md', 'report.md', 'e2e-test.ts', 'playwright.config.ts', 'app-knowledge.md'];
   for (const file of templateFiles) {
     const src = join(templatesSrc, file);
     const dest = join(templatesDest, file);

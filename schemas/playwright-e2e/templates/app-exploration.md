@@ -48,3 +48,4 @@ BASE_URL: <from env or seed.spec.ts>
 ## Next Steps
 
 After exploration, pass this file to Step 5 (Planner) and Step 6 (Generator).
+Also extract project-level patterns → append to `tests/playwright/app-knowledge.md`.

@@ -196,11 +196,26 @@ BASE_URL: <from env or seed.spec.ts>
 
 **Idempotency**: If `app-exploration.md` already exists → read it, verify routes still match specs, update only new routes or changed pages.
 
-#### 4.6. After exploration
+#### 4.6. Update app-knowledge.md
+
+After writing `app-exploration.md`, extract **project-level shared knowledge** and append to `tests/playwright/app-knowledge.md`:
+
+| Section | What to extract |
+|---------|----------------|
+| Credential Format | Login endpoint, username format (email vs username) |
+| Common Selector Patterns | New patterns discovered that apply across routes |
+| SPA Routing | SPA framework, routing behavior |
+| Project Conventions | BASE_URL, auth method, multi-user roles |
+
+Append only new/changed items — preserve existing content.
+
+#### 4.7. After exploration
 
 Pass `app-exploration.md` to:
 - **Step 5 (Planner)**: reference real routes, auth states, and elements in test-plan.md
 - **Step 6 (Generator)**: use verified selectors instead of inferring
+
+Read `tests/playwright/app-knowledge.md` as context for cross-change patterns.
 
 ### 5. Generate test plan
 
@@ -209,6 +224,7 @@ Create `openspec/changes/<name>/specs/playwright/test-plan.md`:
 **Read inputs first**:
 - `openspec/changes/<name>/specs/*.md` — functional requirements
 - `openspec/changes/<name>/specs/playwright/app-exploration.md` — **real routes and verified selectors**
+- `tests/playwright/app-knowledge.md` — project-level shared knowledge
 
 Create test cases:
 - List each functional requirement as a test case
@@ -236,6 +252,7 @@ Create `tests/playwright/<name>.spec.ts`:
 **Read inputs first**:
 - `openspec/changes/<name>/specs/playwright/test-plan.md` — test cases
 - `openspec/changes/<name>/specs/playwright/app-exploration.md` — **verified routes and selectors**
+- `tests/playwright/app-knowledge.md` — project-level patterns and conventions
 - `tests/playwright/seed.spec.ts` — code pattern and page object structure
 
 #### Verify selectors before writing
@@ -494,6 +511,7 @@ Read report at `openspec/reports/playwright-e2e-<name>-<timestamp>.md`. Present:
 | Seed test fails | Stop — fix environment |
 | No auth required | Skip auth setup |
 | app-exploration.md exists | Read and use (never regenerate) |
+| app-knowledge.md exists | Read and use (append new patterns only) |
 | test-plan.md exists | Read and use (never regenerate) |
 | auth.setup.ts exists | Verify format (update only if stale) |
 | playwright.config.ts exists | Preserve all fields (add only missing) |
@@ -507,7 +525,7 @@ Read report at `openspec/reports/playwright-e2e-<name>-<timestamp>.md`. Present:
 - Read specs from `openspec/changes/<name>/specs/` as source of truth
 - Do NOT generate tests that contradict the specs
 - **DO generate real, runnable Playwright test code** — not placeholders or TODOs
-- Do NOT overwrite files outside: `specs/playwright/`, `tests/playwright/`, `openspec/reports/`, `playwright.config.ts`, `auth.setup.ts`, `app-exploration.md`
+- Do NOT overwrite files outside: `specs/playwright/`, `tests/playwright/`, `openspec/reports/`, `playwright.config.ts`, `auth.setup.ts`, `app-exploration.md`, `app-knowledge.md`
 - **Always explore before generating** — Step 4 is mandatory for accurate selectors
 - Cap auto-heal at 3 attempts
 - If no change specified → always ask user to select
