@@ -10,58 +10,64 @@ metadata:
 
 ## Input
 
-- **Change name**: `/opsx:e2e <name>` or auto-detected from context
-- **Specs**: `openspec/changes/<name>/specs/*.md`
+- **Change name**: `/opsx:e2e <name>` or `/opsx:e2e all` (full app exploration, no OpenSpec needed)
+- **Specs**: `openspec/changes/<name>/specs/*.md` (if change mode)
 - **Credentials**: `E2E_USERNAME` + `E2E_PASSWORD` env vars
 
 ## Output
 
-- **Test file**: `tests/playwright/<name>.spec.ts`
+- **Test file**: `tests/playwright/<name>.spec.ts` (e.g. `app-all.spec.ts` for "all")
 - **Auth setup**: `tests/playwright/auth.setup.ts` (if auth required)
 - **Report**: `openspec/reports/playwright-e2e-<name>-<timestamp>.md`
-- **Test plan**: `openspec/changes/<name>/specs/playwright/test-plan.md`
+- **Test plan**: `openspec/changes/<name>/specs/playwright/test-plan.md` (change mode only)
 
 ## Architecture
 
-Pipeline: **Planner** (Step 5) → **Generator** (Step 6) → **Healer** (Step 9).
+Two modes, same pipeline:
 
-Uses CLI + SKILLs (not `init-agents`). CLI is ~4x more token-efficient than loading MCP tool schemas. MCP is used for **Explore** (Step 4, real DOM data) and **Healer** (UI inspection on failure).
+| Mode | Command | Route source | Output |
+|------|---------|--------------|--------|
+| Change | `/opsx:e2e <name>` | OpenSpec specs | `<name>.spec.ts` |
+| All | `/opsx:e2e all` | sitemap + homepage crawl | `app-all.spec.ts` |
 
-**Schema owns templates. CLI handles execution. Skill handles cognitive work. Exploration drives generation.**
+Both modes update `app-knowledge.md` and `app-exploration.md`. All `.spec.ts` files run together as regression suite.
 
 ## Steps
 
-### 1. Select the change
+### 1. Select the change or mode
 
-If a name is provided (e.g., `/opsx:e2e add-auth`), use it. Otherwise:
-- Infer from conversation context if the user mentioned a change
-- Auto-select if only one active change exists
-- If ambiguous, run `openspec list --json` and use the **AskUserQuestion tool** to let the user select
+**Change mode** (`/opsx:e2e <name>`):
+- Use provided name, or infer from context, or auto-select if only one exists
+- If ambiguous → `openspec list --json` + AskUserQuestion
+- Verify specs exist: `openspec status --change "<name>" --json`
+- If specs empty → **STOP: E2E requires specs.** Use "all" mode instead.
 
-After selecting, announce: "Using change: `<name>`" and how to override.
+**"all" mode** (`/opsx:e2e all` — no OpenSpec needed):
+- Announce: "Mode: full app exploration"
+- Discover routes via:
+  1. Navigate to `${BASE_URL}/sitemap.xml` (if exists)
+  2. Navigate to `${BASE_URL}/` → extract all links from snapshot
+  3. Fallback common paths: `/`, `/login`, `/dashboard`, `/admin`, `/profile`, `/api/`
+- Group routes: Guest vs Protected (by attempting direct access)
 
-Verify specs exist:
-```bash
-openspec status --change "<name>" --json
-```
-If `openspec/changes/<name>/specs/` is empty, inform the user and stop. E2E requires specs.
+### 2. Detect auth
 
-### 2. Read specs and detect auth
+**Change mode**: Read specs and extract functional requirements. Detect auth from keywords.
 
-Read all files from `openspec/changes/<name>/specs/*.md`. Extract functional requirements.
+**"all" mode**: Detect auth by attempting to access known protected paths (e.g. `/dashboard`, `/profile`). If redirected to `/login` → auth required.
 
-Detect if auth is required only when BOTH conditions are met:
+**Auth detection — both modes** (BOTH conditions required):
 
 **Condition A — Explicit markers**: "login", "signin", "logout", "authenticate", "protected", "authenticated", "session", "unauthorized", "jwt", "token", "refresh", "middleware"
 
 **Condition B — Context indicators**: Protected routes ("/dashboard", "/profile", "/admin"), role mentions ("admin", "user"), redirect flows
 
-**Exclude false positives** — HTTP header examples (`Authorization: Bearer ...`) and code snippets do not count.
+**Exclude false positives**: HTTP header examples (`Authorization: Bearer ...`) and code snippets do not count.
 
-**Confidence levels**:
-- High (auto-proceed): Multiple explicit markers AND context indicators
-- Medium (proceed with note): Single explicit marker, context unclear
-- Low (skip auth): No explicit markers found
+**Confidence**:
+- High (auto-proceed): Multiple markers AND context indicators
+- Medium (proceed with note): Single marker, context unclear
+- Low (skip auth): No markers found
 
 ### 3. Validate environment
 
@@ -80,11 +86,11 @@ Explore to collect real DOM data before writing test plan. This eliminates blind
 
 **Prerequisites**: seed test pass. If auth is required, ensure `auth.setup.ts` has been run (Step 7). BASE_URL must be verified reachable (see 4.1).
 
-#### 4.1. Verify BASE_URL + Read app-knowledge.md + Extract routes
+#### 4.1. Verify BASE_URL + Read app-knowledge.md
 
-1. **Verify BASE_URL**: `browser_navigate(BASE_URL)` → check HTTP status. If unreachable or HTTP 5xx → **STOP: app has a bug. Tell user to fix the server first.**
-2. **Read app-knowledge.md**: understand known risks (SPA, dynamic content) and project conventions
-3. **Read specs**: extract all URLs/paths, group by Guest vs Protected
+1. **Verify BASE_URL**: `browser_navigate(BASE_URL)` → if HTTP 5xx → **STOP: backend error. Fix app first.**
+2. **Read app-knowledge.md**: known risks, project conventions
+3. **Routes** (from Step 1): use already-discovered routes — no need to re-extract
 
 #### 4.2. Explore each route via Playwright MCP
 
@@ -188,139 +194,80 @@ Read `tests/playwright/app-knowledge.md` as context for cross-change patterns.
 
 ### 5. Generate test plan
 
-Create `openspec/changes/<name>/specs/playwright/test-plan.md`:
+> **"all" mode: skip this step — go directly to Step 6.**
 
-**Read inputs first**:
-- `openspec/changes/<name>/specs/*.md` — functional requirements
-- `openspec/changes/<name>/specs/playwright/app-exploration.md` — **real routes and verified selectors**
-- `tests/playwright/app-knowledge.md` — project-level shared knowledge
+**Change mode**: Create `openspec/changes/<name>/specs/playwright/test-plan.md`.
 
-Create test cases:
-- List each functional requirement as a test case
-- Mark with `@role(user|admin|guest|none)` and `@auth(required|none)`
-- Include happy path AND error paths
-- Reference the **real route URL** and **verified selectors** from app-exploration.md
+**Read inputs**: specs, app-exploration.md, app-knowledge.md
 
-Example: see `openspec/schemas/playwright-e2e/templates/test-plan.md`
+**Create test cases**: functional requirement → test case, with `@role` and `@auth` tags. Reference verified selectors from app-exploration.md.
 
-**Idempotency**: If test-plan.md already exists → read it, use it, do NOT regenerate.
+Template: `openspec/schemas/playwright-e2e/templates/test-plan.md`
+
+**Idempotency**: If test-plan.md exists → read and use, do NOT regenerate.
 
 ### 6. Generate test file
 
-Create `tests/playwright/<name>.spec.ts`:
+**"all" mode** → `tests/playwright/app-all.spec.ts` (smoke regression):
+- For each discovered route: navigate → assert HTTP 200 → assert ready signal visible
+- No detailed assertions — just "this page loads without crashing"
+- This is a regression baseline — catches when existing pages break
 
-**Read inputs first**:
-- `openspec/changes/<name>/specs/playwright/test-plan.md` — test cases
-- `openspec/changes/<name>/specs/playwright/app-exploration.md` — **verified routes and selectors**
-- `tests/playwright/app-knowledge.md` — project-level patterns and conventions
-- `tests/playwright/seed.spec.ts` — code pattern and page object structure
+**Change mode** → `tests/playwright/<name>.spec.ts` (functional):
+- Read: test-plan.md, app-exploration.md, app-knowledge.md, seed.spec.ts
+- For each test case: verify selectors in real browser, then write Playwright code
 
-#### Verify selectors before writing
+**Selector verification (change mode)**:
+1. Navigate to route with correct auth state
+2. browser_snapshot to confirm page loaded
+3. For each selector: verify from current snapshot (see 4.3 table for priority)
+4. Write test code with verified selectors
+5. If selector unverifiable → note for Healer (Step 9)
 
-**For each test case, verify selectors in a real browser BEFORE writing test code.**
-
-```
-For each test case in test-plan.md:
-
-  1. Determine target route (from app-exploration.md)
-  2. Determine auth state (load storageState if @auth(required))
-  3. Navigate: browser_navigate to the route
-  4. Wait for page ready: browser_wait_for with a key element
-  5. Verify: browser_snapshot to confirm page loaded
-  6. For each selector in the test case:
-     a. Check if selector exists in app-exploration.md
-     b. If yes → verify it's still valid via browser_snapshot
-     c. If no → find equivalent from current snapshot
-     d. Selector priority: see 4.3 table
-  7. Write test code with verified selectors
-  8. If selector cannot be verified → note it for Healer (Step 9)
-```
-
-This ensures every selector in the generated test code has been validated against the live DOM.
-
-**Generate** Playwright code for each verified test case:
+**Output format**:
 - Follow `seed.spec.ts` structure
-- Prefer `data-testid` selectors (see 4.3 table for priority)
-- Include happy path AND error/edge cases
 - Use `test.describe(...)` for grouping
 - Each test: `test('描述性名称', async ({ page }) => { ... })`
+- Prefer `data-testid` selectors (see 4.3 table)
 
-#### Anti-Pattern Warnings
+**Code examples — same for both modes:**
 
-**🚫 False Pass** — never silently skip when element is missing:
 ```typescript
-// WRONG
+// 🚫 False Pass — never silently skip when element is missing
 if (await btn.isVisible().catch(() => false)) { ... }
 // ✅ CORRECT
 await expect(page.getByRole('button', { name: '取消' })).toBeVisible();
-```
 
-**🚫 Permission filtering** — use `@tag` with `--grep`, not projects:
-```typescript
-test('admin only', { tag: '@admin' }, async ({ page }) => { ... });
-// Run with: npx playwright test --grep "@admin"
-```
-
-**🚫 Auth guard** — test with FRESH browser context (no inherited cookies):
-```typescript
+// 🚫 Auth guard — test with FRESH browser context
 test('redirects unauthenticated user to login', async ({ browser }) => {
   const freshPage = await browser.newContext().newPage();
   await freshPage.goto(`${BASE_URL}/dashboard`);
   await expect(freshPage).toHaveURL(/login|auth/);
 });
-```
 
-#### Playwright API Guardrails
-
-These are the most common mistakes that cause test failures. **Always follow these rules:**
-
-**API calls — use `page.request` directly:**
-```typescript
-// ❌ WRONG — page.evaluate with fetch has timeout, CORS, and context issues
-const result = await page.evaluate(async () => {
-  const res = await fetch('/api/data');
-  return res.json();
-});
-
-// ✅ CORRECT — page.request is already an APIRequestContext, use directly
+// ✅ API calls — use page.request directly
 const res = await page.request.get(`${BASE_URL}/api/data`);
 expect(res.status()).toBe(200);
-const data = await res.json();
 ```
 
-**Browser context — use `close()` for BrowserContext, no cleanup for APIRequestContext:**
 ```typescript
-// ✅ BrowserContext — close it when done
+// ✅ BrowserContext — close when done
 const context = await browser.newContext();
-await context.close(); // ← correct
+await context.close();
 
 // ✅ APIRequestContext — page.request is already one, no cleanup needed
 const res = await page.request.get(`${BASE_URL}/api/data`);
-// No dispose() or close() needed
 ```
 
-**File uploads — use `setInputFiles()`, NOT `page.evaluate()` + fetch:**
 ```typescript
-// ❌ WRONG
-await page.evaluate(() => {
-  const input = document.querySelector('input[type=file]');
-  // ...
-});
-
-// ✅ CORRECT
+// ✅ File uploads — use setInputFiles()
 await page.locator('input[type="file"]').setInputFiles('/path/to/file.pdf');
-```
 
-**Form submissions — prefer Playwright locators, not JS clicks:**
-```typescript
-// ❌ WRONG — bypasses Playwright's actionability checks
-await page.evaluate(() => document.querySelector('button[type=submit]').click());
-
-// ✅ CORRECT — respects visibility, enabled, stable
+// ✅ Form submissions — prefer Playwright locators
 await page.getByRole('button', { name: 'Submit' }).click();
 ```
 
-**Always include error path tests** — API 500, 404, network timeout, invalid input.
+Always include error path tests: API 500, 404, network timeout, invalid input.
 
 If the file exists → diff against test-plan, add only missing test cases.
 
@@ -429,13 +376,13 @@ Reference: `openspec/schemas/playwright-e2e/templates/report.md`
 
 | Scenario | Behavior |
 |----------|----------|
-| No specs | Stop — E2E requires specs |
-| Seed test fails | Stop — fix environment |
-| App has JS errors or HTTP 5xx during exploration | **STOP** — see app-knowledge.md → Architecture section for restart instructions |
-| No auth required | Skip auth setup |
+| No specs (change mode) | Stop — E2E requires specs. Use "all" mode instead. |
+| Sitemap discovery fails ("all" mode) | Continue — use homepage links + common paths fallback |
+| App has JS errors or HTTP 5xx during exploration | **STOP** — see app-knowledge.md → Architecture for restart instructions |
+| app-all.spec.ts exists | Read and use (never regenerate — regression baseline) |
 | app-exploration.md exists | Read and use (never regenerate) |
 | app-knowledge.md exists | Read and use (append new patterns only) |
-| test-plan.md exists | Read and use (never regenerate) |
+| test-plan.md exists (change mode) | Read and use (never regenerate) |
 | auth.setup.ts exists | Verify format (update only if stale) |
 | playwright.config.ts exists | Preserve all fields (add only missing) |
 | Test fails (backend) | `test.skip()` + report |
