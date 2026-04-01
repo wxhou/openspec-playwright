@@ -124,6 +124,61 @@ test('redirects unauthenticated user to login', async ({ browser }) => {
 });
 ```
 
+#### Playwright API Guardrails
+
+These are the most common mistakes that cause test failures. **Always follow these rules:**
+
+**API calls — use `request` API, NOT `page.evaluate()`:**
+```typescript
+// ❌ WRONG — page.evaluate timeout, wrong context, CORS issues
+const result = await page.evaluate(async () => {
+  const res = await fetch('/api/data');
+  return res.json();
+});
+
+// ✅ CORRECT — direct HTTP, no browser context, fast
+const res = await page.request.get(`${BASE_URL}/api/data`);
+expect(res.status()).toBe(200);
+const data = await res.json();
+```
+
+**Browser context cleanup — `dispose()` NOT `close()`:**
+```typescript
+// ❌ WRONG — close() is not a function on APIRequestContext
+const ctx = await page.request.newContext();
+await ctx.dispose(); // actually correct, but this is CommonContext
+const context = await browser.newContext();
+await context.close(); // ← WRONG
+
+// ✅ CORRECT
+const context = await browser.newContext();
+await context.close(); // close() is correct for BrowserContext
+
+// For APIRequestContext (from page.request):
+// No cleanup needed — it's managed by Playwright automatically
+```
+
+**File uploads — use `setInputFiles()`, NOT `page.evaluate()` + fetch:**
+```typescript
+// ❌ WRONG
+await page.evaluate(() => {
+  const input = document.querySelector('input[type=file]');
+  // ...
+});
+
+// ✅ CORRECT
+await page.locator('input[type="file"]').setInputFiles('/path/to/file.pdf');
+```
+
+**Form submissions — prefer Playwright locators, not JS clicks:**
+```typescript
+// ❌ WRONG — bypasses Playwright's actionability checks
+await page.evaluate(() => document.querySelector('button[type=submit]').click());
+
+// ✅ CORRECT — respects visibility, enabled, stable
+await page.getByRole('button', { name: 'Submit' }).click();
+```
+
 **Always include error path tests** — API 500, 404, network timeout, invalid input.
 
 If the file exists → diff against test-plan, add only missing test cases.
@@ -133,6 +188,12 @@ If the file exists → diff against test-plan, add only missing test cases.
 - **API login**: Generate `auth.setup.ts` using `E2E_USERNAME`/`E2E_PASSWORD` + POST to login endpoint
 - **UI login**: Generate `auth.setup.ts` using browser form fill. Update selectors to match your login page
 - **Multi-user**: Separate `storageState` paths per role
+
+**Credential format guidance**:
+- If the app uses **email** for login → use `CHANGE_ME@example.com`
+- If the app uses **username** (alphanumeric + underscore) → use `test_user_001` (more universal)
+- Check existing test files or login page to determine the format
+- Always set credentials via environment variables — never hardcode
 
 **Prompt user**:
 ```
@@ -147,9 +208,19 @@ Auth required. To set up:
 
 ### 7. Configure playwright.config.ts
 
-If missing → generate from `openspec/schemas/playwright-e2e/templates/playwright.config.ts`. Auto-detects BASE_URL and dev command from `package.json`.
+If missing → generate from `openspec/schemas/playwright-e2e/templates/playwright.config.ts`.
 
-If exists → READ first, preserve ALL existing fields, add only missing `webServer` block.
+**Auto-detect BASE_URL** (in priority order):
+1. `process.env.BASE_URL` if already set
+2. `tests/playwright/seed.spec.ts` → extract `BASE_URL` value
+3. Read `vite.config.ts` (or `vite.config.js`) → extract `server.port` + infer protocol (`https` if `server.https`, else `http`)
+4. Read `package.json` → `scripts.dev` or `scripts.start` → extract port from `--port` flag
+5. Fallback: `http://localhost:3000`
+
+**Auto-detect dev command**:
+1. `package.json` → scripts in order: `dev` → `start` → `serve` → `preview` → `npm run dev`
+
+If playwright.config.ts exists → READ first, preserve ALL existing fields, add only missing `webServer` block.
 
 ### 8. Execute tests
 
@@ -180,8 +251,11 @@ If tests fail → use Playwright MCP tools to inspect UI, fix selectors, re-run.
 |-------------|--------|--------|
 | **Network/backend** | `fetch failed`, `net::ERR`, 5xx | `browser_console_messages` → `test.skip()` |
 | **Selector changed** | Element not found | `browser_snapshot` → fix selector → re-run |
-| **Assertion mismatch** | Wrong content/value | `browser_snapshot` → fix assertion → re-run |
-| **Timing issue** | `waitFor` timeout | Adjust wait strategy → re-run |
+| **Assertion mismatch** | Wrong content/value | `browser_snapshot` → compare → fix assertion → re-run |
+| **Timing issue** | `waitFor`/`page.evaluate` timeout | Switch to `request` API or add `waitFor` → re-run |
+| **Wrong API usage** | `ctx.close is not a function` | Fix: `browser.newContext()` → `close()`; `request.newContext()` → no cleanup needed |
+| **Auth expired** | 401 Unauthorized | Token may have expired — if long suite, recommend splitting or re-auth |
+| **page.evaluate failure** | `fetch` in browser context, CORS errors | Switch to `page.request` API → re-run |
 
 3. **Attempt heal** (≤3 times): snapshot → fix → re-run
 4. **After 3 failures**: collect evidence checklist → `test.skip()` if app bug, report recommendation if test bug
