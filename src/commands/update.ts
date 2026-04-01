@@ -104,8 +104,9 @@ export async function update(options: UpdateOptions) {
 
       rmSync(tmpDir, { recursive: true, force: true });
       console.log(chalk.green('  ✓ Commands & schema updated to latest'));
-    } catch {
-      console.log(chalk.yellow('  ⚠ Failed to update from npm'));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.log(chalk.yellow(`  ⚠ Failed to update from npm: ${msg}`));
       console.log(chalk.gray('  Trying npm install to pull latest version...'));
       try {
         execSync('npm install -g openspec-playwright', { stdio: 'inherit', cwd: projectRoot });
@@ -150,7 +151,7 @@ function installSchemaFrom(schemaSrc: string, projectRoot: string) {
   const templatesDest = join(schemaDest, 'templates');
   if (existsSync(templatesSrc)) {
     mkdirSync(templatesDest, { recursive: true });
-    const templateFiles = ['test-plan.md', 'report.md', 'e2e-test.ts', 'playwright.config.ts'];
+    const templateFiles = ['test-plan.md', 'report.md', 'e2e-test.ts', 'playwright.config.ts', 'app-knowledge.md'];
     for (const file of templateFiles) {
       const src = join(templatesSrc, file);
       const dest = join(templatesDest, file);
