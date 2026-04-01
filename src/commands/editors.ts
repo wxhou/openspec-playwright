@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
 import { homedir } from 'os';
 import { join, dirname } from 'path';
 import chalk from 'chalk';
@@ -568,6 +568,37 @@ export function installSkill(projectRoot: string, skillContent: string): void {
   mkdirSync(skillDir, { recursive: true });
   writeFileSync(join(skillDir, 'SKILL.md'), skillContent);
   console.log(chalk.green(`  ✓ claude: .claude/skills/openspec-e2e/SKILL.md`));
+}
+
+/** Install project-level CLAUDE.md with employee-grade standards + OpenSpec context */
+export function installProjectClaudeMd(projectRoot: string, standardsContent: string): void {
+  const dest = join(projectRoot, 'CLAUDE.md');
+  const exists = existsSync(dest);
+  if (exists) {
+    // Append standards inside OPENSPEC:START/END markers
+    const existing = readFileSync(dest, 'utf-8');
+    const markerStart = '<!-- OPENSPEC:START -->';
+    const markerEnd = '<!-- OPENSPEC:END -->';
+
+    if (existing.includes(markerStart) && existing.includes(markerEnd)) {
+      // Already has markers, skip
+      console.log(chalk.gray('  - CLAUDE.md already has standards markers, skipping'));
+    } else {
+      const updated = existing.trim() + '\n\n' + markerStart + '\n\n' + standardsContent + '\n\n' + markerEnd + '\n';
+      writeFileSync(dest, updated);
+      console.log(chalk.green('  ✓ CLAUDE.md: appended employee-grade standards'));
+    }
+  } else {
+    // No existing CLAUDE.md, create from template
+    const content = `# ${projectRoot.split('/').pop()}\n\n` + standardsContent;
+    writeFileSync(dest, content);
+    console.log(chalk.green('  ✓ CLAUDE.md: created with employee-grade standards'));
+  }
+}
+
+/** Read the employee-grade standards from a source file */
+export function readEmployeeStandards(srcPath: string): string {
+  return existsSync(srcPath) ? readFileSync(srcPath, 'utf-8') : '';
 }
 
 export { claudeAdapter, ALL_ADAPTERS };

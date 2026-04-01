@@ -11,12 +11,13 @@ import { fileURLToPath } from 'url';
 import chalk from 'chalk';
 import { readFile } from 'fs/promises';
 import { syncMcpTools } from './mcpSync.js';
-import { detectEditors, detectCodex, installForAllEditors, installSkill, claudeAdapter } from './editors.js';
+import { detectEditors, detectCodex, installForAllEditors, installSkill, installProjectClaudeMd, readEmployeeStandards, claudeAdapter } from './editors.js';
 
 const TEMPLATE_DIR = fileURLToPath(new URL('../../templates', import.meta.url));
 const SCHEMA_DIR = fileURLToPath(new URL('../../schemas', import.meta.url));
 const SKILL_SRC = fileURLToPath(new URL('../../.claude/skills/openspec-e2e/SKILL.md', import.meta.url));
 const CMD_BODY_SRC = fileURLToPath(new URL('../../.claude/commands/opsx/e2e-body.md', import.meta.url));
+const EMPLOYEE_STANDARDS_SRC = fileURLToPath(new URL('../../employee-standards.md', import.meta.url));
 
 export interface InitOptions {
   change?: string;
@@ -121,7 +122,14 @@ export async function init(options: InitOptions) {
     await generateSeedTest(projectRoot);
   }
 
-  // 8. Summary
+  // 8. Install employee-grade CLAUDE.md
+  console.log(chalk.blue('\n─── Installing Employee Standards ───'));
+  const standards = readEmployeeStandards(EMPLOYEE_STANDARDS_SRC);
+  if (standards) {
+    installProjectClaudeMd(projectRoot, standards);
+  }
+
+  // 9. Summary
   console.log(chalk.blue('\n─── Summary ───'));
   console.log(chalk.green('  ✓ Setup complete!\n'));
 
