@@ -80,6 +80,14 @@ This validates: app server reachable, auth fixtures initialized, Playwright work
 
 **Prerequisites**: seed test pass. If auth is required, ensure `auth.setup.ts` has been run (Step 7).
 
+#### 4.0. Read app-knowledge.md
+
+Before exploring, read `tests/playwright/app-knowledge.md` to understand:
+- **Known risks**: SPA behavior, dynamic content patterns, auth method
+- **Project conventions**: preferred selector strategy, credential format, BASE_URL
+
+This is context, not constraint — explore with open eyes even if patterns differ from history.
+
 #### 4.1. Extract routes from specs
 
 Read all files in `openspec/changes/<name>/specs/*.md`. Extract every URL, route, or path mentioned:
