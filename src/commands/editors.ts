@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
 import { homedir } from 'os';
-import { join, dirname } from 'path';
+import { join, dirname, resolve as pathResolve } from 'path';
 import chalk from 'chalk';
 
 /** Shared YAML escape — matches OpenSpec's escape logic */
@@ -221,7 +221,9 @@ const codexAdapter: EditorAdapter = {
   hasSkill: false,
   getCommandPath(id) {
     const codexHome = process.env.CODEX_HOME?.trim() || join(homedir(), '.codex');
-    return join(codexHome, 'prompts', `opsx-${id}.md`);
+    // pathResolve: if codexHome is absolute (C:\...), it returns codexHome directly
+    // if relative, it resolves against projectRoot
+    return pathResolve(codexHome, 'prompts', `opsx-${id}.md`);
   },
   formatCommand(meta) {
     return `---

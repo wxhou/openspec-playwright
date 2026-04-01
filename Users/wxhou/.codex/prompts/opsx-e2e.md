@@ -1,8 +1,6 @@
 ---
-name: "OPSX: E2E"
 description: Run Playwright E2E verification for an OpenSpec change
-category: OpenSpec
-tags: [openspec, playwright, e2e, testing]
+argument-hint: command arguments
 ---
 
 Run Playwright E2E verification for an OpenSpec change.

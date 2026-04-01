@@ -376,6 +376,8 @@ If tests fail → use Playwright MCP tools to inspect UI, fix selectors, re-run.
 **Healer MCP tools** (in order of use):
 <!-- MCP_VERSION: 0.0.68 -->
 
+<!-- MCP_VERSION: 0.0.70 -->
+
 | Tool | Purpose |
 |------|---------|
 | `browser_navigate` | Go to the failing test's page |

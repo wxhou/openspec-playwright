@@ -1,0 +1,56 @@
+name: playwright-e2e
+version: 1
+description: Playwright E2E verification for an OpenSpec change
+
+artifacts:
+  - id: test-plan
+    generates: specs/playwright/test-plan.md
+    description: Test plan derived from change specs
+    template: test-plan.md
+    instruction: |
+      Generate a test plan from the change specs. Each functional requirement becomes
+      one or more test cases.
+
+      For each test case, specify:
+      - **Test name** (kebab-case): what it verifies
+      - **Route/Page**: which URL or UI component it targets
+      - **Prerequisites**: auth role needed (user/admin/guest/none)
+      - **Happy path**: main user flow to verify
+      - **Error paths**: key error conditions to verify
+
+      Mark tests with role tags: `@role(user)`, `@role(admin)`, `@role(guest)`, `@role(none)`.
+      Mark auth requirement: `@auth(required)` or `@auth(none)`.
+
+  - id: e2e-test
+    generates: tests/playwright/<change>.spec.ts
+    description: Playwright E2E test suite
+    template: e2e-test.ts
+    instruction: |
+      Generate Playwright tests from the test-plan.
+
+      Rules:
+      - Follow the page object pattern from seed.spec.ts
+      - Prefer `data-testid` selectors, fall back to semantic selectors
+      - Each test maps to one test case from the test-plan
+      - Use `@project(user)` / `@project(admin)` for role-specific tests
+      - Cover happy path AND key error paths
+      - Name tests descriptively: `test('shows error on invalid input')`
+
+  - id: playwright-config
+    generates: playwright.config.ts
+    description: Playwright config with webServer and auth projects
+    template: playwright.config.ts
+    instruction: |
+      Configure Playwright for E2E testing.
+
+      - Set webServer command and url from BASE_URL
+      - Set baseURL for all tests
+      - Add auth setup project if credentials are configured
+      - Preserve any existing config fields (browsers, retries, etc.)
+      - Do NOT overwrite existing projects unless they conflict
+
+apply:
+  requires: [test-plan, e2e-test]
+  instruction: |
+    Run tests via: openspec-pw run <change-name>
+    Analyze results and generate report at openspec/reports/playwright-e2e-<change>-<timestamp>.md
