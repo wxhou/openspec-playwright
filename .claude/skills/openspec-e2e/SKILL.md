@@ -119,6 +119,18 @@ await browser_navigate(`${BASE_URL}/<route>`)
 // Option C: use browser_run_code to set auth cookies directly
 ```
 
+**If credentials are not yet available**:
+1. **Skip protected routes** — mark them as "⚠️ auth needed — explore after auth.setup.ts"
+2. **Explore the login page itself** (it's a guest route) — extract form selectors for later auth.setup.ts
+3. Document login page structure: input names, button text, form action, error patterns
+
+**Auth setup flow**:
+1. Run exploration → discover login page selectors (Step 4)
+2. Customize auth.setup.ts with discovered selectors
+3. Set E2E_USERNAME/E2E_PASSWORD
+4. Run `npx playwright test --project=setup`
+5. Re-run exploration for protected routes
+
 Wait for page stability after navigation:
 - Prefer waiting for a specific element: `browser_wait_for` with text or selector
 - Avoid `networkidle` / `load` — they are too slow or unreliable
@@ -195,7 +207,7 @@ BASE_URL: <from env or seed.spec.ts>
 |-----------|-----------|
 | Route 404 | Mark as "⚠️ route not found — verify URL in specs" |
 | Network error | Mark as "⚠️ unreachable — check if server is running" |
-| Auth required, no storageState | Skip protected routes → note which routes need auth |
+| Auth required, no credentials | Skip routes + explore login page → document selectors → set up auth first | See 4.2 "If credentials are not yet available" |
 | SPA routing (URL changes but page doesn't reload) | Explore via navigation clicks from known routes, not direct URLs |
 | Page loads but no interactive elements | Try waiting longer for SPA hydration |
 | Dynamic content (user-specific) | Record structure, not content — use `toContainText`, not `toHaveText` |
