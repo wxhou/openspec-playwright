@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires openspec CLI, Playwright (with browsers installed), and @playwright/mcp (globally installed via `claude mcp add playwright npx @playwright/mcp@latest`).
 metadata:
   author: openspec-playwright
-  version: "2.8"
+  version: "2.9"
 ---
 
 ## Input
@@ -23,11 +23,11 @@ metadata:
 
 ## Architecture
 
-Pipeline: **Planner** (Step 4) → **Generator** (Step 5) → **Healer** (Step 8).
+Pipeline: **Planner** (Step 5) → **Generator** (Step 6) → **Healer** (Step 9).
 
-Uses CLI + SKILLs (not `init-agents`). CLI is ~4x more token-efficient than loading MCP tool schemas. MCP is used only for Healer (UI inspection on failure).
+Uses CLI + SKILLs (not `init-agents`). CLI is ~4x more token-efficient than loading MCP tool schemas. MCP is used for **Explore** (Step 4, real DOM data) and **Healer** (UI inspection on failure).
 
-**Schema owns templates. CLI handles execution. Skill handles cognitive work.**
+**Schema owns templates. CLI handles execution. Skill handles cognitive work. Exploration drives generation.**
 
 ## Steps
 
@@ -74,25 +74,194 @@ This validates: app server reachable, auth fixtures initialized, Playwright work
 
 **If seed test fails**: Stop and report. Fix the environment before proceeding.
 
-### 4. Generate test plan
+### 4. Explore application
+
+**Before writing test plan, explore the app to collect real DOM data.** This is the most critical step — it eliminates blind selector guessing.
+
+**Prerequisites**: seed test pass. If auth is required, ensure `auth.setup.ts` has been run (Step 7).
+
+#### 4.1. Extract routes from specs
+
+Read all files in `openspec/changes/<name>/specs/*.md`. Extract every URL, route, or path mentioned:
+
+- Full URLs: `http://localhost:3000/dashboard`, `BASE_URL + /admin`
+- Relative paths: `/dashboard`, `/api/auth/login`, `/admin/settings`
+- Infer routes from text: "navigate to the dashboard" → check if `/dashboard` exists
+
+Group routes by role:
+- **Guest routes**: `/`, `/login`, `/about` (no auth needed)
+- **Protected routes**: `/dashboard`, `/profile`, `/admin` (auth required)
+
+#### 4.2. Explore each route via Playwright MCP
+
+For each route, use these tools in order:
+
+```
+browser_navigate → browser_snapshot → browser_take_screenshot
+```
+
+**For guest routes** (no auth):
+```javascript
+// Navigate directly
+await browser_navigate(`${BASE_URL}/<route>`)
+```
+
+**For protected routes** (auth required):
+```javascript
+// Option A: use existing storageState (recommended if auth.setup.ts already ran)
+// Option B: navigate to /login first, fill form, then navigate to target
+// Option C: use browser_run_code to set auth cookies directly
+```
+
+Wait for page stability after navigation:
+- Prefer waiting for a specific element: `browser_wait_for` with text or selector
+- Avoid `networkidle` / `load` — they are too slow or unreliable
+- Use a "page ready" signal: look for a heading, a loading spinner disappearing, or a URL change
+
+#### 4.3. Parse the snapshot
+
+From `browser_snapshot` output, extract **interactive elements** for each route:
+
+| Element type | What to capture | Priority |
+|---|---|---|
+| **Buttons** | text, selector (`getByRole`, `getByLabel`, `data-testid`) | data-testid > role > label > text |
+| **Form fields** | name, type, label, selector | data-testid > name > label |
+| **Navigation links** | text, href, selector | text > href |
+| **Headings** | text content, selector | for assertions |
+| **Error messages** | text patterns, selector | for error path testing |
+| **Dynamic content** | structure (not content) — row counts, card layouts | for data-driven tests |
+
+**Selector strategy** (in priority order):
+1. `[data-testid="..."]` — most stable, prefer these
+2. `getByRole('button', { name: '...' })` — semantic, stable
+3. `getByLabel('...')` — for form fields
+4. `getByText('...')` — fallback, fragile
+5. CSS selectors — last resort
+
+#### 4.4. Write app-exploration.md
+
+Output: `openspec/changes/<name>/specs/playwright/app-exploration.md`
+
+```markdown
+# App Exploration — <name>
+Generated: <timestamp>
+BASE_URL: <from env or seed.spec.ts>
+
+## Route: /
+- **Auth**: none
+- **URL**: ${BASE_URL}/
+- **Ready signal**: page has heading
+- **Elements**:
+  - login link: `a:text("登录")`
+  - signup link: `[data-testid="signup-link"]`
+- **Screenshot**: `__screenshots__/index.png`
+
+## Route: /dashboard (user)
+- **Auth**: required (storageState: playwright/.auth/user.json)
+- **URL**: ${BASE_URL}/dashboard
+- **Ready signal**: [data-testid="dashboard-heading"] visible
+- **Elements**:
+  - heading: `[data-testid="page-title"]`
+  - logout btn: `[data-testid="logout-btn"]`
+  - profile form: `form >> input[name="displayName"]`
+  - settings link: `nav >> text=Settings`
+- **Screenshot**: `__screenshots__/dashboard-user.png`
+
+## Route: /admin (admin)
+- **Auth**: required (storageState: playwright/.auth/admin.json)
+- **URL**: ${BASE_URL}/admin
+- **Ready signal**: [data-testid="admin-panel"] visible
+- **Elements**:
+  - admin panel: `[data-testid="admin-panel"]`
+  - user table: `table#user-table tbody tr`
+  - add user btn: `[data-testid="add-user-btn"]`
+  - delete btn: `button:has-text("Delete")`
+- **Screenshot**: `__screenshots__/admin-panel.png`
+
+## Exploration Notes
+- Route /admin → user gets redirected to /login (no admin role)
+- /dashboard loads user-specific data (test assertions should use toContainText, not toHaveText)
+```
+
+#### 4.5. Edge cases
+
+| Situation | What to do |
+|-----------|-----------|
+| Route 404 | Mark as "⚠️ route not found — verify URL in specs" |
+| Network error | Mark as "⚠️ unreachable — check if server is running" |
+| Auth required, no storageState | Skip protected routes → note which routes need auth |
+| SPA routing (URL changes but page doesn't reload) | Explore via navigation clicks from known routes, not direct URLs |
+| Page loads but no interactive elements | Try waiting longer for SPA hydration |
+| Dynamic content (user-specific) | Record structure, not content — use `toContainText`, not `toHaveText` |
+
+**Idempotency**: If `app-exploration.md` already exists → read it, verify routes still match specs, update only new routes or changed pages.
+
+#### 4.6. After exploration
+
+Pass `app-exploration.md` to:
+- **Step 5 (Planner)**: reference real routes, auth states, and elements in test-plan.md
+- **Step 6 (Generator)**: use verified selectors instead of inferring
+
+### 5. Generate test plan
 
 Create `openspec/changes/<name>/specs/playwright/test-plan.md`:
+
+**Read inputs first**:
+- `openspec/changes/<name>/specs/*.md` — functional requirements
+- `openspec/changes/<name>/specs/playwright/app-exploration.md` — **real routes and verified selectors**
+
+Create test cases:
 - List each functional requirement as a test case
 - Mark with `@role(user|admin|guest|none)` and `@auth(required|none)`
 - Include happy path AND error paths
-- Reference the route/page each test targets
+- Reference the **real route URL** from app-exploration.md for each test
+- Reference **verified selectors** from app-exploration.md instead of inferring
+
+```markdown
+### User can view dashboard
+- **Route**: /dashboard (from app-exploration.md)
+- **Auth**: required (user storageState)
+- **Test steps**:
+  1. Go to `/dashboard`
+  2. Assert page heading: `[data-testid="page-title"]` contains "Dashboard"
+  3. Assert logout button visible: `[data-testid="logout-btn"]`
+```
 
 **Idempotency**: If test-plan.md already exists → read it, use it, do NOT regenerate.
 
-### 5. Generate test file
+### 6. Generate test file
 
 Create `tests/playwright/<name>.spec.ts`:
 
 **Read inputs first**:
-- `openspec/changes/<name>/specs/playwright/test-plan.md`
-- `tests/playwright/seed.spec.ts`
+- `openspec/changes/<name>/specs/playwright/test-plan.md` — test cases
+- `openspec/changes/<name>/specs/playwright/app-exploration.md` — **verified routes and selectors**
+- `tests/playwright/seed.spec.ts` — code pattern and page object structure
 
-**Generate** Playwright code for each test case:
+#### Verify selectors before writing
+
+**For each test case, verify selectors in a real browser BEFORE writing the test code.** This is the most important step — do not skip it.
+
+```
+For each test case in test-plan.md:
+
+  1. Determine target route (from app-exploration.md)
+  2. Determine auth state (load storageState if @auth(required))
+  3. Navigate: browser_navigate to the route
+  4. Wait for page ready: browser_wait_for with a key element
+  5. Verify: browser_snapshot to confirm page loaded
+  6. For each selector in the test case:
+     a. Check if selector exists in app-exploration.md
+     b. If yes → verify it's still valid via browser_snapshot
+     c. If no → find equivalent from current snapshot
+     d. Selector priority: data-testid > getByRole > getByLabel > getByText
+  7. Write test code with verified selectors
+  8. If selector cannot be verified → note it for Healer (Step 9)
+```
+
+This ensures every selector in the generated test code has been validated against the live DOM.
+
+**Generate** Playwright code for each verified test case:
 - Follow `seed.spec.ts` structure
 - Prefer `data-testid`; fallback to `getByRole`, `getByLabel`, `getByText`
 - Include happy path AND error/edge cases
@@ -183,7 +352,7 @@ await page.getByRole('button', { name: 'Submit' }).click();
 
 If the file exists → diff against test-plan, add only missing test cases.
 
-### 6. Configure auth (if required)
+### 7. Configure auth (if required)
 
 - **API login**: Generate `auth.setup.ts` using `E2E_USERNAME`/`E2E_PASSWORD` + POST to login endpoint
 - **UI login**: Generate `auth.setup.ts` using browser form fill. Update selectors to match your login page
@@ -206,7 +375,7 @@ Auth required. To set up:
 
 **Idempotency**: If `auth.setup.ts` already exists → verify format, update only if stale.
 
-### 7. Configure playwright.config.ts
+### 8. Configure playwright.config.ts
 
 If missing → generate from `openspec/schemas/playwright-e2e/templates/playwright.config.ts`.
 
@@ -222,7 +391,7 @@ If missing → generate from `openspec/schemas/playwright-e2e/templates/playwrig
 
 If playwright.config.ts exists → READ first, preserve ALL existing fields, add only missing `webServer` block.
 
-### 8. Execute tests
+### 9. Execute tests
 
 ```bash
 openspec-pw run <name> --project=<role>
@@ -260,7 +429,7 @@ If tests fail → use Playwright MCP tools to inspect UI, fix selectors, re-run.
 3. **Attempt heal** (≤3 times): snapshot → fix → re-run
 4. **After 3 failures**: collect evidence checklist → `test.skip()` if app bug, report recommendation if test bug
 
-### 9. False Pass Detection
+### 10. False Pass Detection
 
 Run after test suite completes (even if all pass):
 
@@ -270,7 +439,7 @@ Run after test suite completes (even if all pass):
 
 Report any gaps in a **⚠️ Coverage Gap** section.
 
-### 10. Report results
+### 11. Report results
 
 Read report at `openspec/reports/playwright-e2e-<name>-<timestamp>.md`. Present:
 - Summary table (tests, passed, failed, duration, status)
@@ -324,6 +493,7 @@ Read report at `openspec/reports/playwright-e2e-<name>-<timestamp>.md`. Present:
 | No specs | Stop — E2E requires specs |
 | Seed test fails | Stop — fix environment |
 | No auth required | Skip auth setup |
+| app-exploration.md exists | Read and use (never regenerate) |
 | test-plan.md exists | Read and use (never regenerate) |
 | auth.setup.ts exists | Verify format (update only if stale) |
 | playwright.config.ts exists | Preserve all fields (add only missing) |
@@ -337,6 +507,7 @@ Read report at `openspec/reports/playwright-e2e-<name>-<timestamp>.md`. Present:
 - Read specs from `openspec/changes/<name>/specs/` as source of truth
 - Do NOT generate tests that contradict the specs
 - **DO generate real, runnable Playwright test code** — not placeholders or TODOs
-- Do NOT overwrite files outside: `specs/playwright/`, `tests/playwright/`, `openspec/reports/`, `playwright.config.ts`
+- Do NOT overwrite files outside: `specs/playwright/`, `tests/playwright/`, `openspec/reports/`, `playwright.config.ts`, `auth.setup.ts`, `app-exploration.md`
+- **Always explore before generating** — Step 4 is mandatory for accurate selectors
 - Cap auto-heal at 3 attempts
 - If no change specified → always ask user to select
