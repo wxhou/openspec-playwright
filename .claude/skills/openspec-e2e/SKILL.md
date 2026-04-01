@@ -52,7 +52,7 @@ Read all files from `openspec/changes/<name>/specs/*.md`. Extract functional req
 
 Detect if auth is required only when BOTH conditions are met:
 
-**Condition A — Explicit markers**: "login", "signin", "logout", "authenticate", "protected", "authenticated", "session", "unauthorized"
+**Condition A — Explicit markers**: "login", "signin", "logout", "authenticate", "protected", "authenticated", "session", "unauthorized", "jwt", "token", "refresh", "middleware"
 
 **Condition B — Context indicators**: Protected routes ("/dashboard", "/profile", "/admin"), role mentions ("admin", "user"), redirect flows
 
@@ -80,31 +80,11 @@ This validates: app server reachable, auth fixtures initialized, Playwright work
 
 **Prerequisites**: seed test pass. If auth is required, ensure `auth.setup.ts` has been run (Step 7). BASE_URL must be verified reachable (see 4.1).
 
-#### 4.1. Verify BASE_URL + Read app-knowledge.md + Extract routes from specs
+#### 4.1. Verify BASE_URL + Read app-knowledge.md + Extract routes
 
-**First, verify BASE_URL is reachable**:
-```javascript
-await browser_navigate(`${BASE_URL}/`)
-// Confirm page loaded → proceed
-// If error → check BASE_URL in seed.spec.ts or vite.config.ts
-```
-A correct BASE_URL prevents wasted exploration time on unreachable routes.
-
-**Then**, read `tests/playwright/app-knowledge.md` to understand:
-- **Known risks**: SPA behavior, dynamic content patterns, auth method
-- **Project conventions**: preferred selector strategy, credential format, BASE_URL
-
-This is context, not constraint — explore with open eyes even if patterns differ from history.
-
-**Then**, read all files in `openspec/changes/<name>/specs/*.md`. Extract every URL, route, or path mentioned:
-
-- Full URLs: `http://localhost:3000/dashboard`, `BASE_URL + /admin`
-- Relative paths: `/dashboard`, `/api/auth/login`, `/admin/settings`
-- Infer routes from text: "navigate to the dashboard" → check if `/dashboard` exists
-
-Group routes by role:
-- **Guest routes**: `/`, `/login`, `/about` (no auth needed)
-- **Protected routes**: `/dashboard`, `/profile`, `/admin` (auth required)
+1. **Verify BASE_URL reachable**: `browser_navigate(BASE_URL)` → if error, check seed.spec.ts or vite.config.ts
+2. **Read app-knowledge.md**: understand known risks (SPA, dynamic content) and project conventions
+3. **Read specs**: extract all URLs/paths, group by Guest vs Protected
 
 #### 4.2. Explore each route via Playwright MCP
 
@@ -148,66 +128,29 @@ Wait for page stability after navigation:
 
 From `browser_snapshot` output, extract **interactive elements** for each route:
 
-| Element type | What to capture | Priority |
+| Element type | What to capture | Selector priority |
 |---|---|---|
-| **Buttons** | text, selector (`getByRole`, `getByLabel`, `data-testid`) | data-testid > role > label > text |
-| **Form fields** | name, type, label, selector | data-testid > name > label |
-| **Navigation links** | text, href, selector | text > href |
+| **Buttons** | text, selector | `[data-testid]` > `getByRole` > `getByLabel` > `getByText` |
+| **Form fields** | name, type, label, selector | `[data-testid]` > `name` > `label` |
+| **Navigation links** | text, href, selector | `text` > `href` |
 | **Headings** | text content, selector | for assertions |
 | **Error messages** | text patterns, selector | for error path testing |
-| **Dynamic content** | structure (not content) — row counts, card layouts | for data-driven tests |
-
-**Selector strategy** (in priority order):
-1. `[data-testid="..."]` — most stable, prefer these
-2. `getByRole('button', { name: '...' })` — semantic, stable
-3. `getByLabel('...')` — for form fields
-4. `getByText('...')` — fallback, fragile
-5. CSS selectors — last resort
+| **Dynamic content** | structure — row counts, card layouts | for data-driven tests |
 
 #### 4.4. Write app-exploration.md
 
 Output: `openspec/changes/<name>/specs/playwright/app-exploration.md`
 
-```markdown
-# App Exploration — <name>
-Generated: <timestamp>
-BASE_URL: <from env or seed.spec.ts>
+Use template: `openspec/schemas/playwright-e2e/templates/app-exploration.md`
 
-## Route: /
-- **Auth**: none
-- **URL**: ${BASE_URL}/
-- **Ready signal**: page has heading
-- **Elements**:
-  - login link: `a:text("登录")`
-  - signup link: `[data-testid="signup-link"]`
-- **Screenshot**: `__screenshots__/index.png`
+Key fields per route:
+- **URL**: `${BASE_URL}<path>`
+- **Auth**: none / required (storageState: `<path>`)
+- **Ready signal**: how to know the page is loaded
+- **Elements**: interactive elements with verified selectors (see 4.3 table)
+- **Screenshot**: `__screenshots__/<slug>.png`
 
-## Route: /dashboard (user)
-- **Auth**: required (storageState: playwright/.auth/user.json)
-- **URL**: ${BASE_URL}/dashboard
-- **Ready signal**: [data-testid="dashboard-heading"] visible
-- **Elements**:
-  - heading: `[data-testid="page-title"]`
-  - logout btn: `[data-testid="logout-btn"]`
-  - profile form: `form >> input[name="displayName"]`
-  - settings link: `nav >> text=Settings`
-- **Screenshot**: `__screenshots__/dashboard-user.png`
-
-## Route: /admin (admin)
-- **Auth**: required (storageState: playwright/.auth/admin.json)
-- **URL**: ${BASE_URL}/admin
-- **Ready signal**: [data-testid="admin-panel"] visible
-- **Elements**:
-  - admin panel: `[data-testid="admin-panel"]`
-  - user table: `table#user-table tbody tr`
-  - add user btn: `[data-testid="add-user-btn"]`
-  - delete btn: `button:has-text("Delete")`
-- **Screenshot**: `__screenshots__/admin-panel.png`
-
-## Exploration Notes
-- Route /admin → user gets redirected to /login (no admin role)
-- /dashboard loads user-specific data (test assertions should use toContainText, not toHaveText)
-```
+After exploration, add route-level notes (redirects, dynamic content → see 4.5).
 
 #### 4.5. Edge cases
 
@@ -256,18 +199,9 @@ Create test cases:
 - List each functional requirement as a test case
 - Mark with `@role(user|admin|guest|none)` and `@auth(required|none)`
 - Include happy path AND error paths
-- Reference the **real route URL** from app-exploration.md for each test
-- Reference **verified selectors** from app-exploration.md instead of inferring
+- Reference the **real route URL** and **verified selectors** from app-exploration.md
 
-```markdown
-### User can view dashboard
-- **Route**: /dashboard (from app-exploration.md)
-- **Auth**: required (user storageState)
-- **Test steps**:
-  1. Go to `/dashboard`
-  2. Assert page heading: `[data-testid="page-title"]` contains "Dashboard"
-  3. Assert logout button visible: `[data-testid="logout-btn"]`
-```
+Example: see `openspec/schemas/playwright-e2e/templates/test-plan.md`
 
 **Idempotency**: If test-plan.md already exists → read it, use it, do NOT regenerate.
 
@@ -283,7 +217,7 @@ Create `tests/playwright/<name>.spec.ts`:
 
 #### Verify selectors before writing
 
-**For each test case, verify selectors in a real browser BEFORE writing the test code.** This is the most important step — do not skip it.
+**For each test case, verify selectors in a real browser BEFORE writing test code.**
 
 ```
 For each test case in test-plan.md:
@@ -297,7 +231,7 @@ For each test case in test-plan.md:
      a. Check if selector exists in app-exploration.md
      b. If yes → verify it's still valid via browser_snapshot
      c. If no → find equivalent from current snapshot
-     d. Selector priority: data-testid > getByRole > getByLabel > getByText
+     d. Selector priority: see 4.3 table
   7. Write test code with verified selectors
   8. If selector cannot be verified → note it for Healer (Step 9)
 ```
@@ -306,7 +240,7 @@ This ensures every selector in the generated test code has been validated agains
 
 **Generate** Playwright code for each verified test case:
 - Follow `seed.spec.ts` structure
-- Prefer `data-testid`; fallback to `getByRole`, `getByLabel`, `getByText`
+- Prefer `data-testid` selectors (see 4.3 table for priority)
 - Include happy path AND error/edge cases
 - Use `test.describe(...)` for grouping
 - Each test: `test('描述性名称', async ({ page }) => { ... })`
@@ -340,34 +274,29 @@ test('redirects unauthenticated user to login', async ({ browser }) => {
 
 These are the most common mistakes that cause test failures. **Always follow these rules:**
 
-**API calls — use `request` API, NOT `page.evaluate()`:**
+**API calls — use `page.request` directly:**
 ```typescript
-// ❌ WRONG — page.evaluate timeout, wrong context, CORS issues
+// ❌ WRONG — page.evaluate with fetch has timeout, CORS, and context issues
 const result = await page.evaluate(async () => {
   const res = await fetch('/api/data');
   return res.json();
 });
 
-// ✅ CORRECT — direct HTTP, no browser context, fast
+// ✅ CORRECT — page.request is already an APIRequestContext, use directly
 const res = await page.request.get(`${BASE_URL}/api/data`);
 expect(res.status()).toBe(200);
 const data = await res.json();
 ```
 
-**Browser context cleanup — `dispose()` NOT `close()`:**
+**Browser context — use `close()` for BrowserContext, no cleanup for APIRequestContext:**
 ```typescript
-// ❌ WRONG — close() is not a function on APIRequestContext
-const ctx = await page.request.newContext();
-await ctx.dispose(); // actually correct, but this is CommonContext
+// ✅ BrowserContext — close it when done
 const context = await browser.newContext();
-await context.close(); // ← WRONG
+await context.close(); // ← correct
 
-// ✅ CORRECT
-const context = await browser.newContext();
-await context.close(); // close() is correct for BrowserContext
-
-// For APIRequestContext (from page.request):
-// No cleanup needed — it's managed by Playwright automatically
+// ✅ APIRequestContext — page.request is already one, no cleanup needed
+const res = await page.request.get(`${BASE_URL}/api/data`);
+// No dispose() or close() needed
 ```
 
 **File uploads — use `setInputFiles()`, NOT `page.evaluate()` + fetch:**
@@ -465,18 +394,15 @@ If tests fail → use Playwright MCP tools to inspect UI, fix selectors, re-run.
 | **Selector changed** | Element not found | `browser_snapshot` → fix selector → re-run |
 | **Assertion mismatch** | Wrong content/value | `browser_snapshot` → compare → fix assertion → re-run |
 | **Timing issue** | `waitFor`/`page.evaluate` timeout | Switch to `request` API or add `waitFor` → re-run |
-| **Wrong API usage** | `ctx.close is not a function` | Fix: `browser.newContext()` → `close()`; `request.newContext()` → no cleanup needed |
-| **Auth expired** | 401 Unauthorized | Token may have expired — if long suite, recommend splitting or re-auth |
-| **page.evaluate failure** | `fetch` in browser context, CORS errors | Switch to `page.request` API → re-run |
+| **page.evaluate with fetch** | `fetch` in browser context, CORS errors | Switch to `page.request` API → re-run |
 
-3. **Attempt heal** (≤3 times): snapshot → fix → re-run
+3. **Heal** (≤3 attempts): snapshot → fix → re-run
 4. **After 3 failures**: collect evidence checklist → `test.skip()` if app bug, report recommendation if test bug
 
 ### 10. False Pass Detection
 
-Run after test suite completes (even if all pass):
-
-- **Conditional logic**: Look for `if (locator.isVisible().catch(() => false))` — if test passes, locator may not exist
+Run after test suite completes (even if all pass). Common patterns (see Step 6 Anti-Pattern Warnings for fixes):
+- **Conditional visibility**: `if (locator.isVisible().catch(() => false))` — if test passes, locator may not exist
 - **Too fast**: < 200ms for a complex flow is suspicious
 - **No fresh auth context**: Protected routes without `browser.newContext()`
 
@@ -489,45 +415,13 @@ Read report at `openspec/reports/playwright-e2e-<name>-<timestamp>.md`. Present:
 - Auto-heal notes
 - Recommendations with `file:line` references
 
+Report template: `openspec/schemas/playwright-e2e/templates/report.md`
+
 **Update tasks.md** if all tests pass: find E2E-related items, append `✅ Verified via Playwright E2E (<timestamp>)`.
 
 ## Report Structure
 
-```markdown
-# Playwright E2E Report — <name>
-
-## Summary
-| Tests | Passed | Failed | Duration | Status |
-|-------|--------|--------|----------|--------|
-| N     | N      | N      | Xm Xs    | ✅/❌   |
-
-## Results
-### Passed
-| Test | Duration | Notes |
-|------|----------|-------|
-| ...  | ...      | ...   |
-
-### Failed
-| Test | Error | Recommendation |
-|------|-------|----------------|
-| ...  | ...   | file:line — fix |
-
-## Auto-Heal Log
-- Attempt N: selector fix → result
-
-## Coverage
-- [x] Requirement 1
-- [ ] Requirement 2 (unverified)
-
-## ⚠️ Coverage Gaps
-> Tests passed but coverage gaps detected.
-
-| Test | Gap | Recommendation |
-|------|-----|----------------|
-| ... | Conditional visibility check | file:line — use `expect().toBeVisible()` |
-| ... | Auth guard uses inherited session | Add fresh context test |
-| ... | Suspiciously fast execution (<200ms) | Verify test logic executed |
-```
+Reference: `openspec/schemas/playwright-e2e/templates/report.md`
 
 ## Graceful Degradation
 
@@ -551,7 +445,7 @@ Read report at `openspec/reports/playwright-e2e-<name>-<timestamp>.md`. Present:
 - Read specs from `openspec/changes/<name>/specs/` as source of truth
 - Do NOT generate tests that contradict the specs
 - **DO generate real, runnable Playwright test code** — not placeholders or TODOs
-- Do NOT overwrite files outside: `specs/playwright/`, `tests/playwright/`, `openspec/reports/`, `playwright.config.ts`, `auth.setup.ts`, `app-exploration.md`, `app-knowledge.md`
+- Do NOT overwrite files outside: `specs/playwright/`, `tests/playwright/`, `openspec/reports/`, `playwright.config.ts`, `auth.setup.ts`
 - **Always explore before generating** — Step 4 is mandatory for accurate selectors
 - Cap auto-heal at 3 attempts
 - If no change specified → always ask user to select
