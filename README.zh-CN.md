@@ -61,15 +61,33 @@ openspec-pw doctor        # 检查前置条件
 ```
 /opsx:e2e <change-name>
   │
-  ├── 1. 从 openspec/changes/<name>/specs/ 读取 OpenSpec specs
+  ├── 1. 选择 change → 读取 openspec/changes/<name>/specs/
   │
-  ├── 2. Planner Agent → 生成 test-plan.md
+  ├── 2. 检测 auth → 从 specs 识别登录/认证标记
   │
-  ├── 3. Generator Agent → 创建 tests/playwright/<name>.spec.ts
+  ├── 3. 验证环境 → 运行 seed.spec.ts
   │
-  └── 4. Healer Agent → 运行测试 + 自动修复失败（Claude Code + MCP）
-          │
-          └── 报告: openspec/reports/playwright-e2e-<name>.md
+  ├── 4. 探索应用 → Playwright MCP 探索真实 DOM
+  │       ├─ 读取 app-knowledge.md（项目级知识）
+  │       ├─ 从 specs 提取路由
+  │       ├─ 遍历每个路由 → snapshot → screenshot
+  │       └─ 写入 app-exploration.md（change 级发现）
+  │           └─ 提取模式 → 更新 app-knowledge.md
+  │
+  ├── 5. Planner → 生成 test-plan.md
+  │
+  ├── 6. Generator → 创建 tests/playwright/<name>.spec.ts
+  │       └─ 写测试前先在真实浏览器验证选择器
+  │
+  ├── 7. 配置 auth → auth.setup.ts（如需要）
+  │
+  ├── 8. 配置 playwright → playwright.config.ts
+  │
+  ├── 9. 执行测试 → openspec-pw run <name>
+  │
+  ├── 10. Healer（如需要）→ 通过 MCP 自动修复失败
+  │
+  └── 11. 报告 → openspec/reports/playwright-e2e-<name>.md
 ```
 
 ### 两层验证
@@ -83,16 +101,16 @@ openspec-pw doctor        # 检查前置条件
 
 1. **Node.js >= 20**
 2. **OpenSpec** 已初始化: `npm install -g @fission-ai/openspec && openspec init`
-3. **任一**: Claude Code、Cursor、Windsurf、Cline 或 Continue（自动检测）
+3. **任一 24 编辑器**: Claude Code、Cursor、Windsurf、Cline、Continue 等（自动检测）
 4. **仅 Claude Code**: Playwright MCP — `claude mcp add playwright npx @playwright/mcp@latest`
 
 ## `openspec-pw init` 做了什么
 
-1. 检测已安装的 AI 编码助手（Claude Code、Cursor、Windsurf、Cline、Continue）
+1. 检测已安装的 AI 编码助手（支持全部 24 个编辑器）
 2. 为每个检测到的编辑器安装 E2E 命令/工作流文件
 3. 为 Claude Code 安装 `/openspec-e2e` skill
 4. 为 Claude Code 全局安装 Playwright MCP（通过 `claude mcp add`）
-5. 生成 `tests/playwright/seed.spec.ts`、`auth.setup.ts`、`credentials.yaml`
+5. 生成 `tests/playwright/seed.spec.ts`、`auth.setup.ts`、`credentials.yaml`、`app-knowledge.md`
 
 > **注意**：运行 `openspec-pw init` 后，手动安装 Playwright 浏览器：`npx playwright install --with-deps`
 
@@ -136,6 +154,40 @@ npx playwright test --project=setup
 ### MCP 服务器（仅 Claude Code）
 
 Playwright MCP 通过 `claude mcp add` 全局安装，启用 Healer Agent（通过 UI 检查自动修复测试失败）。设置后需重启 Claude Code 生效。
+
+## 架构
+
+```
+Schema (openspec/schemas/playwright-e2e/)
+  └── 模板: test-plan.md, report.md, playwright.config.ts, app-knowledge.md
+
+CLI (openspec-pw)
+  ├── init       → 为检测到的编辑器安装命令
+  ├── update     → 从 npm 同步命令和 schema
+  ├── run        → 执行 E2E 测试并管理服务器生命周期
+  ├── verify     → 检查实现是否符合 artifacts
+  └── doctor     → 检查前置条件
+
+Skill/命令（按编辑器）
+  ├── Claude Code → /opsx:e2e (skill) + /opsx:e2e (command) + MCP
+  ├── Cursor      → /opsx-e2e (command)
+  ├── Windsurf    → /opsx-e2e (workflow)
+  ├── Cline       → /opsx-e2e (workflow)
+  └── Continue    → /opsx-e2e (prompt)
+
+测试资产 (tests/playwright/)
+  ├── seed.spec.ts       → 环境验证
+  ├── auth.setup.ts      → 会话录制
+  ├── credentials.yaml   → 测试用户
+  └── app-knowledge.md   → 项目级选择器模式（跨 change 复用）
+
+探索结果 (openspec/changes/<name>/specs/playwright/)
+  ├── app-exploration.md → 本次 change 的路由 + 已验证选择器
+  └── test-plan.md       → 本次 change 的测试用例
+
+Healer Agent（仅 Claude Code + MCP）
+  └── browser_snapshot, browser_navigate, browser_run_code 等
+```
 
 ## 许可
 

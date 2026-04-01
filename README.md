@@ -59,18 +59,35 @@ openspec-pw doctor        # Check prerequisites
 ## How It Works
 
 ```
-/openspec-e2e <change-name>
+/opsx:e2e <change-name>
   │
-  ├── 1. Read OpenSpec specs from openspec/changes/<name>/specs/
+  ├── 1. Select change → read openspec/changes/<name>/specs/
   │
-  ├── 2. Planner Agent → generates test-plan.md
+  ├── 2. Detect auth → check specs for login/auth markers
   │
-  ├── 3. Generator Agent → creates tests/playwright/<name>.spec.ts
+  ├── 3. Validate env → run seed.spec.ts
   │
-  └── 4. Healer Agent → runs tests + auto-heals failures
-          │
-          └── Report: openspec/reports/playwright-e2e-<name>.md
-```
+  ├── 4. Explore app → Playwright MCP explores real DOM
+  │       ├─ Read app-knowledge.md (project-level knowledge)
+  │       ├─ Extract routes from specs
+  │       ├─ Navigate each route → snapshot → screenshot
+  │       └─ Write app-exploration.md (change-level findings)
+  │           └─ Extract patterns → update app-knowledge.md
+  │
+  ├── 5. Planner → generates test-plan.md
+  │
+  ├── 6. Generator → creates tests/playwright/<name>.spec.ts
+  │       └─ Verifies selectors in real browser before writing
+  │
+  ├── 7. Configure auth → auth.setup.ts (if required)
+  │
+  ├── 8. Configure playwright → playwright.config.ts
+  │
+  ├── 9. Execute tests → openspec-pw run <name>
+  │
+  ├── 10. Healer (if needed) → auto-heals failures via MCP
+  │
+  └── 11. Report → openspec/reports/playwright-e2e-<name>.md
 
 ### Two Verification Layers
 
@@ -92,7 +109,7 @@ openspec-pw doctor        # Check prerequisites
 2. Installs E2E command/workflow files for each detected editor
 3. Installs `/openspec-e2e` skill for Claude Code
 4. Installs Playwright MCP globally for Claude Code (via `claude mcp add`)
-5. Generates `tests/playwright/seed.spec.ts`, `auth.setup.ts`, `credentials.yaml`
+5. Generates `tests/playwright/seed.spec.ts`, `auth.setup.ts`, `credentials.yaml`, `app-knowledge.md`
 
 > **Note**: After running `openspec-pw init`, manually install Playwright browsers: `npx playwright install --with-deps`
 
@@ -141,19 +158,31 @@ Playwright MCP is installed globally via `claude mcp add` and enables the Healer
 
 ```
 Schema (openspec/schemas/playwright-e2e/)
-  └── Templates: test-plan.md, report.md, playwright.config.ts
+  └── Templates: test-plan.md, report.md, playwright.config.ts, app-knowledge.md
 
 CLI (openspec-pw)
   ├── init       → Installs commands for detected editors
   ├── update     → Syncs commands + schema from npm
+  ├── run        → Executes E2E tests with server lifecycle
+  ├── verify     → Checks implementation against artifacts
   └── doctor     → Checks prerequisites
 
 Skill/Commands (per editor)
-  ├── Claude Code → /openspec-e2e (skill) + /opsx:e2e (command) + MCP
+  ├── Claude Code → /opsx:e2e (skill) + /opsx:e2e (command) + MCP
   ├── Cursor      → /opsx-e2e (command)
   ├── Windsurf    → /opsx-e2e (workflow)
   ├── Cline       → /opsx-e2e (workflow)
   └── Continue    → /opsx-e2e (prompt)
+
+Test Assets (tests/playwright/)
+  ├── seed.spec.ts       → Env validation
+  ├── auth.setup.ts      → Session recording
+  ├── credentials.yaml   → Test users
+  └── app-knowledge.md   → Project-level selector patterns (cross-change)
+
+Exploration (openspec/changes/<name>/specs/playwright/)
+  ├── app-exploration.md → This change's routes + verified selectors
+  └── test-plan.md       → This change's test cases
 
 Healer Agent (Claude Code + MCP only)
   └── browser_snapshot, browser_navigate, browser_run_code, etc.
