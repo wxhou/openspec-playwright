@@ -21,6 +21,13 @@ export function getStoredMcpVersion(skillContent) {
     const end = skillContent.indexOf(' -->', idx);
     return skillContent.slice(idx + MCP_VERSION_MARKER.length, end).trim();
 }
+/** Remove all existing MCP_VERSION comment lines from content */
+function removeMcpVersionMarkers(content) {
+    return content
+        .split('\n')
+        .filter(line => !line.trim().startsWith(MCP_VERSION_MARKER))
+        .join('\n');
+}
 /** Build the Healer tools table markdown */
 function buildHealerTable(version, tools) {
     const rows = tools.map(t => `| \`${t.name}\` | ${t.purpose} |`).join('\n');
@@ -28,14 +35,15 @@ function buildHealerTable(version, tools) {
 }
 /** Replace the Healer tools table in SKILL.md */
 export function updateHealerTable(skillContent, version, tools) {
-    const start = skillContent.indexOf('| Tool | Purpose |');
+    const noMarkers = removeMcpVersionMarkers(skillContent);
+    const start = noMarkers.indexOf('| Tool | Purpose |');
     if (start === -1)
         return skillContent;
-    let end = skillContent.indexOf('\n\n', start);
+    let end = noMarkers.indexOf('\n\n', start);
     if (end === -1)
-        end = skillContent.length;
-    const before = skillContent.slice(0, start);
-    const after = skillContent.slice(end);
+        end = noMarkers.length;
+    const before = noMarkers.slice(0, start);
+    const after = noMarkers.slice(end);
     return before + buildHealerTable(version, tools) + after;
 }
 /** Fetch latest @playwright/mcp version from npm registry */

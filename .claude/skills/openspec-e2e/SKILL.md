@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires openspec CLI, Playwright (with browsers installed), and @playwright/mcp (globally installed via `claude mcp add playwright npx @playwright/mcp@latest`).
 metadata:
   author: openspec-playwright
-  version: "2.9"
+  version: "2.10"
 ---
 
 ## Input
@@ -203,6 +203,7 @@ After writing `app-exploration.md`, extract **project-level shared knowledge** a
 | Common Selector Patterns | New patterns discovered that apply across routes |
 | SPA Routing | SPA framework, routing behavior |
 | Project Conventions | BASE_URL, auth method, multi-user roles |
+| Selector Fixes | Healed selectors (see Step 9) — route, old selector, new selector, reason |
 
 Append only new/changed items — preserve existing content.
 
@@ -357,8 +358,6 @@ The CLI handles: server lifecycle, port mismatch, report generation.
 If tests fail → use Playwright MCP tools to inspect UI, fix selectors, re-run.
 
 **Healer MCP tools** (in order of use):
-<!-- MCP_VERSION: 0.0.68 -->
-
 <!-- MCP_VERSION: 0.0.70 -->
 
 | Tool | Purpose |
@@ -381,7 +380,7 @@ If tests fail → use Playwright MCP tools to inspect UI, fix selectors, re-run.
 | **Timing issue** | `waitFor`/`page.evaluate` timeout | Switch to `request` API or add `waitFor` → re-run |
 | **page.evaluate with fetch** | `fetch` in browser context, CORS errors | Switch to `page.request` API → re-run |
 
-3. **Heal** (≤3 attempts): snapshot → fix → re-run
+3. **Heal** (≤3 attempts): snapshot → fix → re-run. If healed successfully → append to `app-knowledge.md` → **Selector Fixes** table: route, old selector → new selector, reason.
 4. **After 3 failures**: collect evidence checklist → `test.skip()` if app bug, report recommendation if test bug
 
 ### 10. False Pass Detection

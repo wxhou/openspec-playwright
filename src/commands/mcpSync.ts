@@ -24,6 +24,14 @@ export function getStoredMcpVersion(skillContent: string): string | null {
   return skillContent.slice(idx + MCP_VERSION_MARKER.length, end).trim();
 }
 
+/** Remove all existing MCP_VERSION comment lines from content */
+function removeMcpVersionMarkers(content: string): string {
+  return content
+    .split('\n')
+    .filter(line => !line.trim().startsWith(MCP_VERSION_MARKER))
+    .join('\n');
+}
+
 /** Build the Healer tools table markdown */
 function buildHealerTable(version: string, tools: Array<{ name: string; purpose: string }>): string {
   const rows = tools.map(t => `| \`${t.name}\` | ${t.purpose} |`).join('\n');
@@ -36,13 +44,14 @@ export function updateHealerTable(
   version: string,
   tools: Array<{ name: string; purpose: string }>
 ): string {
-  const start = skillContent.indexOf('| Tool | Purpose |');
+  const noMarkers = removeMcpVersionMarkers(skillContent);
+  const start = noMarkers.indexOf('| Tool | Purpose |');
   if (start === -1) return skillContent;
-  let end = skillContent.indexOf('\n\n', start);
-  if (end === -1) end = skillContent.length;
+  let end = noMarkers.indexOf('\n\n', start);
+  if (end === -1) end = noMarkers.length;
 
-  const before = skillContent.slice(0, start);
-  const after = skillContent.slice(end);
+  const before = noMarkers.slice(0, start);
+  const after = noMarkers.slice(end);
   return before + buildHealerTable(version, tools) + after;
 }
 

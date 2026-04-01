@@ -3,6 +3,7 @@
 // Customize the page object and base URL for your application
 
 import { test, expect, Page } from '@playwright/test';
+import { existsSync } from 'fs';
 
 // Customize these for your application
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
@@ -60,6 +61,27 @@ test.describe('Application smoke tests', () => {
       (e) => !e.includes('favicon') && !e.includes('404')
     );
     expect(criticalErrors).toHaveLength(0);
+  });
+});
+
+// ──────────────────────────────────────────────
+// Environment validation (runs in Step 3)
+// ──────────────────────────────────────────────
+
+test.describe('Environment validation', () => {
+  test('BASE_URL responds 200', async ({ page }) => {
+    const res = await page.request.get(`${BASE_URL}/`);
+    expect(res.status(), `BASE_URL ${BASE_URL} returned ${res.status()}`).toBeLessThan(500);
+  });
+
+  test('auth storageState exists if credentials provided', async () => {
+    if (!process.env.E2E_USERNAME) return; // skip if no credentials configured
+    const authPath = 'playwright/.auth/user.json';
+    if (!existsSync(authPath)) {
+      throw new Error(
+        `Auth not configured. Run:\n  npx playwright test --project=setup\nThen re-run /opsx:e2e.`
+      );
+    }
   });
 });
 

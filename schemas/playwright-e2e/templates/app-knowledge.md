@@ -70,6 +70,16 @@ Priority: `[data-testid]` > `getByRole` > `getByLabel` > `getByText` > CSS
 | auth method | API / UI | See auth.setup.ts |
 | multi-user roles | `<roles>` | e.g. admin, user, guest |
 
+## Selector Fixes (Healer memory)
+
+Persists selector repairs across sessions. Prevents the same selector from being healed repeatedly.
+
+| Date | Route | Old Selector | New Selector | Reason |
+|------|-------|-------------|-------------|--------|
+| | | | | |
+
+---
+
 ## Changelog
 
 | Date | Change | By |
@@ -78,4 +88,4 @@ Priority: `[data-testid]` > `getByRole` > `getByLabel` > `getByText` > CSS
 
 ---
 
-> **Updating this file**: After each E2E exploration (Step 4), extract new shared patterns and update this file. Generator (Step 6) reads this before writing tests.
+> **Updating this file**: After each E2E exploration (Step 4), extract new shared patterns and update this file. Generator (Step 6) reads this before writing tests. After Healer repairs (Step 9), append the fix here.
