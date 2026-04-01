@@ -76,23 +76,32 @@ This validates: app server reachable, auth fixtures initialized, Playwright work
 
 ### 4. Explore application
 
-**Before writing test plan, explore the app to collect real DOM data.** This is the most critical step — it eliminates blind selector guessing.
+Explore to collect real DOM data before writing test plan. This eliminates blind selector guessing.
 
 **Prerequisites**: seed test pass. If auth is required, ensure `auth.setup.ts` has been run (Step 7). BASE_URL must be verified reachable (see 4.1).
 
 #### 4.1. Verify BASE_URL + Read app-knowledge.md + Extract routes
 
-1. **Verify BASE_URL reachable**: `browser_navigate(BASE_URL)` → if error, check seed.spec.ts or vite.config.ts
+1. **Verify BASE_URL**: `browser_navigate(BASE_URL)` → check HTTP status. If unreachable or HTTP 5xx → **STOP: app has a bug. Tell user to fix the server first.**
 2. **Read app-knowledge.md**: understand known risks (SPA, dynamic content) and project conventions
 3. **Read specs**: extract all URLs/paths, group by Guest vs Protected
 
 #### 4.2. Explore each route via Playwright MCP
 
-For each route, use these tools in order:
+For each route:
 
 ```
-browser_navigate → browser_snapshot → browser_take_screenshot
+browser_navigate → browser_console_messages → browser_snapshot → browser_take_screenshot
 ```
+
+**After navigating, check for app-level errors**:
+
+| Signal | Meaning | Action |
+|--------|---------|--------|
+| HTTP 5xx or unreachable | Server error | **STOP** — tell user: "App has a bug (HTTP <code>). Fix it, then re-run /opsx:e2e." |
+| JS error in console | App runtime error | **STOP** — tell user: "Page has JS errors. Fix them, then re-run /opsx:e2e." |
+| HTTP 404 | Route not in app (metadata issue) | Continue — mark `⚠️ route not found` in app-exploration.md |
+| Auth required, no credentials | Missing auth setup | Continue — skip protected routes, explore login page |
 
 **For guest routes** (no auth):
 ```javascript
@@ -102,27 +111,20 @@ await browser_navigate(`${BASE_URL}/<route>`)
 
 **For protected routes** (auth required):
 ```javascript
-// Option A: use existing storageState (recommended if auth.setup.ts already ran)
+// Option A: use existing storageState (recommended)
 // Option B: navigate to /login first, fill form, then navigate to target
 // Option C: use browser_run_code to set auth cookies directly
 ```
 
 **If credentials are not yet available**:
-1. **Skip protected routes** — mark them as "⚠️ auth needed — explore after auth.setup.ts"
-2. **Explore the login page itself** (it's a guest route) — extract form selectors for later auth.setup.ts
-3. Document login page structure: input names, button text, form action, error patterns
+1. Skip protected routes — mark `⚠️ auth needed — explore after auth.setup.ts`
+2. Explore the login page itself (guest route) — extract form selectors
+3. After auth.setup.ts runs, re-run exploration for protected routes
 
-**Auth setup flow**:
-1. Run exploration → discover login page selectors (Step 4)
-2. Customize auth.setup.ts with discovered selectors
-3. Set E2E_USERNAME/E2E_PASSWORD
-4. Run `npx playwright test --project=setup`
-5. Re-run exploration for protected routes
-
-Wait for page stability after navigation:
-- Prefer waiting for a specific element: `browser_wait_for` with text or selector
-- Avoid `networkidle` / `load` — they are too slow or unreliable
-- Use a "page ready" signal: look for a heading, a loading spinner disappearing, or a URL change
+Wait for page stability:
+- Prefer `browser_wait_for` with text or selector
+- Avoid `networkidle` / `load` — too slow or unreliable
+- Ready signal: heading, spinner disappears, or URL change
 
 #### 4.3. Parse the snapshot
 
@@ -152,16 +154,13 @@ Key fields per route:
 
 After exploration, add route-level notes (redirects, dynamic content → see 4.5).
 
-#### 4.5. Edge cases
+#### 4.5. Exploration behavior notes
 
-| Situation | What to do |
-|-----------|-----------|
-| Route 404 | Mark as "⚠️ route not found — verify URL in specs" |
-| Network error | Mark as "⚠️ unreachable — check if server is running" |
-| Auth required, no credentials | Skip routes + explore login page → document selectors → set up auth first | See 4.2 "If credentials are not yet available" |
+| Situation | Action |
+|-----------|--------|
 | SPA routing (URL changes but page doesn't reload) | Explore via navigation clicks from known routes, not direct URLs |
-| Page loads but no interactive elements | Try waiting longer for SPA hydration |
-| Dynamic content (user-specific) | Record structure, not content — use `toContainText`, not `toHaveText` |
+| Page loads but no interactive elements | Wait longer for SPA hydration |
+| Dynamic content (user-specific) | Record structure — use `toContainText`, not `toHaveText` |
 
 **Idempotency**: If `app-exploration.md` already exists → read it, verify routes still match specs, update only new routes or changed pages.
 
@@ -429,6 +428,7 @@ Reference: `openspec/schemas/playwright-e2e/templates/report.md`
 |----------|----------|
 | No specs | Stop — E2E requires specs |
 | Seed test fails | Stop — fix environment |
+| App has JS errors or HTTP 5xx during exploration | **STOP** — tell user to fix the app first |
 | No auth required | Skip auth setup |
 | app-exploration.md exists | Read and use (never regenerate) |
 | app-knowledge.md exists | Read and use (append new patterns only) |
