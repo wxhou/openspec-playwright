@@ -26,7 +26,7 @@ Auto-detects and installs commands for all 5 editors OpenSpec supports:
 |--------|------|--------|------|
 | Claude Code | `.claude/` | Gemini CLI | `.gemini/` |
 | Cursor | `.cursor/` | GitHub Copilot | `.github/` |
-| Windsurf | `.windsurf/` | | |
+| Cline | `.clinerules/` | | |
 
 `openspec-pw init` auto-detects editors in your project and installs the right command files. Claude Code gets the full experience (skill + command + Playwright MCP). Other editors get command/workflow files with the complete E2E workflow.
 
@@ -36,7 +36,7 @@ Auto-detects and installs commands for all 5 editors OpenSpec supports:
 
 ```bash
 /opsx:e2e my-feature    # Claude Code
-/opsx-e2e my-feature   # Cursor, Windsurf, Cline, Continue
+/opsx-e2e my-feature   # Cursor, Cline, Gemini CLI, GitHub Copilot
 ```
 
 ### CLI Commands
@@ -92,7 +92,7 @@ openspec-pw uninstall     # Remove integration from the project
 
 1. **Node.js >= 20**
 2. **OpenSpec** initialized: `npm install -g @fission-ai/openspec && openspec init`
-3. **One of 5 editors**: Claude Code, Cursor, Windsurf, Gemini CLI, GitHub Copilot (auto-detected)
+3. **One of 5 editors**: Claude Code, Cursor, Cline, Gemini CLI, GitHub Copilot (auto-detected)
 4. **Claude Code only**: Playwright MCP — `claude mcp add playwright npx @playwright/mcp@latest`
 
 ## What `openspec-pw init` Does
@@ -162,9 +162,9 @@ CLI (openspec-pw)
 Skill/Commands (per editor)
   ├── Claude Code → /opsx:e2e (skill) + /opsx:e2e (command) + MCP
   ├── Cursor      → /opsx-e2e (command)
-  ├── Windsurf    → /opsx-e2e (workflow)
-  ├── Cline       → /opsx-e2e (workflow)
-  └── Continue    → /opsx-e2e (prompt)
+  ├── Cline      → /opsx-e2e (workflow)
+  ├── Gemini CLI → /opsx-e2e (command)
+  └── GitHub Copilot → /opsx-e2e (command)
 
 Test Assets (tests/playwright/)
   ├── seed.spec.ts       → Env validation

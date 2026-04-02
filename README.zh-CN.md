@@ -26,7 +26,7 @@ openspec-pw init          # 安装 Playwright E2E 集成
 |--------|------|--------|------|
 | Claude Code | `.claude/` | Gemini CLI | `.gemini/` |
 | Cursor | `.cursor/` | GitHub Copilot | `.github/` |
-| Windsurf | `.windsurf/` | | |
+| Cline | `.clinerules/` | | |
 
 `openspec-pw init` 会检测项目中安装了哪些编辑器并安装对应文件。Claude Code 获得完整体验（skill + 命令 + Playwright MCP）。其他编辑器获得包含完整 E2E 工作流的命令/工作流文件。
 
@@ -36,7 +36,7 @@ openspec-pw init          # 安装 Playwright E2E 集成
 
 ```bash
 /opsx:e2e my-feature    # Claude Code
-/opsx-e2e my-feature   # Cursor, Windsurf, Cline, Continue
+/opsx-e2e my-feature   # Cursor, Cline, Gemini CLI, GitHub Copilot
 ```
 
 ### CLI 命令
@@ -93,7 +93,7 @@ openspec-pw uninstall     # 移除项目中的集成
 
 1. **Node.js >= 20**
 2. **OpenSpec** 已初始化: `npm install -g @fission-ai/openspec && openspec init`
-3. **任一 5 编辑器**: Claude Code、Cursor、Windsurf、Gemini CLI、GitHub Copilot（自动检测）
+3. **任一 5 编辑器**: Claude Code、Cursor、Cline、Gemini CLI、GitHub Copilot（自动检测）
 4. **仅 Claude Code**: Playwright MCP — `claude mcp add playwright npx @playwright/mcp@latest`
 
 ## `openspec-pw init` 做了什么
@@ -163,9 +163,9 @@ CLI (openspec-pw)
 Skill/命令（按编辑器）
   ├── Claude Code → /opsx:e2e (skill) + /opsx:e2e (command) + MCP
   ├── Cursor      → /opsx-e2e (command)
-  ├── Windsurf    → /opsx-e2e (workflow)
-  ├── Cline       → /opsx-e2e (workflow)
-  └── Continue    → /opsx-e2e (prompt)
+  ├── Cline      → /opsx-e2e (workflow)
+  ├── Gemini CLI → /opsx-e2e (command)
+  └── GitHub Copilot → /opsx-e2e (command)
 
 测试资产 (tests/playwright/)
   ├── seed.spec.ts       → 环境验证

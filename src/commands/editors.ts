@@ -82,22 +82,19 @@ ${meta.body}
   },
 };
 
-// ─── Windsurf ────────────────────────────────────────────────────────────────
+// ─── Cline ───────────────────────────────────────────────────────────────────
 
-/** Windsurf: .windsurf/workflows/opsx-<id>.md */
-const windsurfAdapter: EditorAdapter = {
-  toolId: "windsurf",
+/** Cline: .clinerules/workflows/opsx-<id>.md */
+const clineAdapter: EditorAdapter = {
+  toolId: "cline",
   hasSkill: false,
   getCommandPath(id) {
-    return join(".windsurf", "workflows", `opsx-${id}.md`);
+    return join(".clinerules", "workflows", `opsx-${id}.md`);
   },
   formatCommand(meta) {
-    return `---
-name: ${escapeYamlValue(meta.name)}
-description: ${escapeYamlValue(meta.description)}
-category: ${escapeYamlValue(meta.category)}
-tags: ${formatTagsArray(meta.tags)}
----
+    return `# ${meta.name}
+
+${meta.description}
 
 ${meta.body}
 `;
@@ -147,7 +144,7 @@ ${meta.body}
 const ALL_ADAPTERS: EditorAdapter[] = [
   claudeAdapter,
   cursorAdapter,
-  windsurfAdapter,
+  clineAdapter,
   geminiAdapter,
   githubcopilotAdapter,
 ];
@@ -157,7 +154,7 @@ export function detectEditors(projectRoot: string): EditorAdapter[] {
   const checks: Array<[string, EditorAdapter]> = [
     [".claude", claudeAdapter],
     [".cursor", cursorAdapter],
-    [".windsurf", windsurfAdapter],
+    [".clinerules", clineAdapter],
     [".gemini", geminiAdapter],
     [".github", githubcopilotAdapter],
   ];
