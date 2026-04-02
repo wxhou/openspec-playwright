@@ -7,7 +7,7 @@
 
 ## 一、代码质量
 
-**lint + typecheck 后才能算成功**。动手前，先探索项目用什么工具：查看 `package.json` scripts、`Makefile`、`pyproject.toml`、`justfile` 等，找到该语言的 lint + type check 命令并执行。工具不存在时，明确告知用户，不得假装成功。
+**lint + typecheck 后才能算成功**。动手前，先探索项目用什么工具：查看 `package.json` scripts、`Makefile`、`pyproject.toml`、`justfile` 等，找到该语言的 lint + typecheck 命令并执行。工具不存在时，明确告知用户，不得假装成功。
 
 **拒绝'够用就行'**。架构缺陷、状态重复、模式不一致——说出来并修复。
 
