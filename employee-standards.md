@@ -7,21 +7,11 @@
 
 ## 一、代码质量
 
-**验证后才能报告成功**。Type check + lint 因语言而异：
+**验证后才算成功**。动手前，先探索项目用什么工具：查看 `package.json` scripts、`Makefile`、`pyproject.toml`、`justfile` 等，找到该语言的 lint + type check 命令并执行。工具不存在时，明确告知用户，不得假装成功。
 
-- **TypeScript/JS**：运行项目 scripts 中的 `typecheck` + `lint`（如 `npm run typecheck && npm run lint`）
-- **Python**：`ruff check .` + `mypy .` / `pyright`（或项目配置的 lint/typecheck）
-- **Go**：`go vet ./...` + `golangci-lint run`（`go build` 失败即类型错误，无需单独 typecheck）
-- **Rust**：`cargo check` + `cargo clippy`
-- **通用**：优先使用项目的 Makefile/justfile 或 scripts 中的 lint/typecheck 命令。不存在时，明确告知用户，不得假装成功。
+**拒绝'够用就行'**。架构缺陷、状态重复、模式不一致——说出来并修复。
 
-**拒绝'够用就行'**。架构缺陷、状态重复、模式不一致——说出来并修复。高级工程师在 code review 中会拒绝什么？全部修掉。
-
-**安全防护因语言而异**：
-- Web 项目（TS/JS、PHP、Ruby on Rails）：防范 XSS、SQL 注入、命令注入（OWASP Top 10）
-- 系统语言（Rust、Go、C/C++）：内存安全（use-after-free、buffer overflow）、并发 race condition
-- 脚本语言（Python、Ruby）：反序列化注入、`eval`/`pickle` 注入
-- 所有语言：依赖混淆攻击（npm/pypi/goproxy 的 typosquatting）
+**安全防护因语言而异**。写 Go 代码时想内存安全，写 Python 时想反序列化，写 Web 时想注入。先了解所用语言的风险模型。
 
 ---
 
