@@ -57,21 +57,18 @@ ${meta.body}
 `;
     },
 };
-// ─── Windsurf ────────────────────────────────────────────────────────────────
-/** Windsurf: .windsurf/workflows/opsx-<id>.md */
-const windsurfAdapter = {
-    toolId: "windsurf",
+// ─── Cline ───────────────────────────────────────────────────────────────────
+/** Cline: .clinerules/workflows/opsx-<id>.md */
+const clineAdapter = {
+    toolId: "cline",
     hasSkill: false,
     getCommandPath(id) {
-        return join(".windsurf", "workflows", `opsx-${id}.md`);
+        return join(".clinerules", "workflows", `opsx-${id}.md`);
     },
     formatCommand(meta) {
-        return `---
-name: ${escapeYamlValue(meta.name)}
-description: ${escapeYamlValue(meta.description)}
-category: ${escapeYamlValue(meta.category)}
-tags: ${formatTagsArray(meta.tags)}
----
+        return `# ${meta.name}
+
+${meta.description}
 
 ${meta.body}
 `;
@@ -115,7 +112,7 @@ ${meta.body}
 const ALL_ADAPTERS = [
     claudeAdapter,
     cursorAdapter,
-    windsurfAdapter,
+    clineAdapter,
     geminiAdapter,
     githubcopilotAdapter,
 ];
@@ -124,7 +121,7 @@ export function detectEditors(projectRoot) {
     const checks = [
         [".claude", claudeAdapter],
         [".cursor", cursorAdapter],
-        [".windsurf", windsurfAdapter],
+        [".clinerules", clineAdapter],
         [".gemini", geminiAdapter],
         [".github", githubcopilotAdapter],
     ];
