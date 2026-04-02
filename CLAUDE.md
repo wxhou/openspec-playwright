@@ -22,3 +22,19 @@ Setup tool for OpenSpec + Playwright E2E integration.
 ```bash
 npm run build
 ```
+
+## Release Checklist
+
+Before each `git tag vX.Y.Z && git push --tags`:
+
+- [ ] `npm ci --dry-run` succeeds (verifies lockfile sync)
+- [ ] `npm run typecheck` passes
+- [ ] `npm run test:run` passes
+- [ ] `package.json` version already updated to `X.Y.Z`
+- [ ] `git log --oneline` shows expected changes
+- [ ] If re-tagging: delete old tag first — `git tag -d vX.Y.Z && git push origin :refs/tags/vX.Y.Z`
+
+**Key rules:**
+- CI workflow must NEVER modify git history (no amend, no force-push)
+- Tests must not use hardcoded absolute paths — use `process.cwd()` or env vars
+- Periodically regenerate lockfile: `rm -rf node_modules package-lock.json && npm install`

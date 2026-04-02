@@ -27,6 +27,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify lockfile
+        run: npm ci --dry-run
+
       - name: Type check
         run: npm run typecheck
 
