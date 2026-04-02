@@ -5,23 +5,24 @@
 
 ### Mar 26, 2026
 
-| ID | Time | T | Title | Read |
-|----|------|---|-------|------|
-| #5343 | 6:14 PM | 🔄 | Added TypeScript types for verify command result objects | ~222 |
-| #5328 | 6:11 PM | 🟣 | OpenSpec verify command with dual-layer verification | ~257 |
-| #5326 | " | 🟣 | Created heal command for openspec-pw CLI | ~263 |
+| ID    | Time    | T   | Title                                                    | Read |
+| ----- | ------- | --- | -------------------------------------------------------- | ---- |
+| #5343 | 6:14 PM | 🔄  | Added TypeScript types for verify command result objects | ~222 |
+| #5328 | 6:11 PM | 🟣  | OpenSpec verify command with dual-layer verification     | ~257 |
+| #5326 | "       | 🟣  | Created heal command for openspec-pw CLI                 | ~263 |
 
 ### Mar 27, 2026
 
-| ID | Time | T | Title | Read |
-|----|------|---|-------|------|
-| #5557 | 1:44 PM | 🔄 | Replaced manual MCP configuration with claude CLI command | ~198 |
-| #5556 | 1:43 PM | 🔄 | Updated Playwright MCP installation to use claude CLI | ~179 |
-| #5547 | 12:12 PM | 🔴 | Fixed command installation path to match OpenSpec naming convention | ~182 |
-| #5531 | 11:57 AM | 🔴 | Fixed path resolution in init.ts for dist/ compilation | ~197 |
-| #5477 | 10:46 AM | 🟣 | Added Playwright browser installation step to openspec-pw init | ~219 |
-| #5386 | 9:47 AM | 🔄 | Cleaned up unused imports in init.ts | ~100 |
-| #5384 | " | 🔴 | Fixed missing readFileSync import in doctor.ts | ~159 |
-| #5382 | 9:46 AM | 🔄 | Doctor command checks seed test file existence | ~156 |
-| #5378 | " | 🟣 | init command implemented for openspec-playwright setup | ~304 |
+| ID    | Time     | T   | Title                                                               | Read |
+| ----- | -------- | --- | ------------------------------------------------------------------- | ---- |
+| #5557 | 1:44 PM  | 🔄  | Replaced manual MCP configuration with claude CLI command           | ~198 |
+| #5556 | 1:43 PM  | 🔄  | Updated Playwright MCP installation to use claude CLI               | ~179 |
+| #5547 | 12:12 PM | 🔴  | Fixed command installation path to match OpenSpec naming convention | ~182 |
+| #5531 | 11:57 AM | 🔴  | Fixed path resolution in init.ts for dist/ compilation              | ~197 |
+| #5477 | 10:46 AM | 🟣  | Added Playwright browser installation step to openspec-pw init      | ~219 |
+| #5386 | 9:47 AM  | 🔄  | Cleaned up unused imports in init.ts                                | ~100 |
+| #5384 | "        | 🔴  | Fixed missing readFileSync import in doctor.ts                      | ~159 |
+| #5382 | 9:46 AM  | 🔄  | Doctor command checks seed test file existence                      | ~156 |
+| #5378 | "        | 🟣  | init command implemented for openspec-playwright setup              | ~304 |
+
 </claude-mem-context>

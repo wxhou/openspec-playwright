@@ -15,30 +15,30 @@ function findProjectRoot(start: string): string {
 }
 
 // ─── Find the npm project root (where package.json with scripts lives) ───
-// Checks project root first, then immediate subdirectories
-function findNpmRoot(projectRoot: string): string {
-  const pkgAtRoot = join(projectRoot, 'package.json');
-  if (existsSync(pkgAtRoot)) {
-    const pkg = JSON.parse(readFileSync(pkgAtRoot, 'utf-8'));
-    if (pkg.scripts?.dev || pkg.scripts?.start || pkg.scripts?.serve || pkg.scripts?.preview) {
-      return projectRoot;
-    }
-  }
-  // Check immediate subdirectories (e.g., openspec/ and imap/ are siblings)
-  try {
-    const entries = readdirSync(projectRoot, { withFileTypes: true });
-    for (const entry of entries) {
-      if (!entry.isDirectory() || entry.name.startsWith('.') || entry.name === 'node_modules') continue;
-      const subPkg = join(projectRoot, entry.name, 'package.json');
-      if (existsSync(subPkg)) {
-        const sub = JSON.parse(readFileSync(subPkg, 'utf-8'));
-        if (sub.scripts?.dev || sub.scripts?.start) {
-          return join(projectRoot, entry.name);
+// Searches recursively up to maxDepth levels to support nested monorepos
+function findNpmRoot(projectRoot: string, maxDepth = 5): string {
+  function search(dir: string, depth: number): string | null {
+    if (depth > maxDepth) return null;
+    const pkgPath = join(dir, 'package.json');
+    if (existsSync(pkgPath)) {
+      try {
+        const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+        if (pkg.scripts?.dev || pkg.scripts?.start || pkg.scripts?.serve || pkg.scripts?.preview) {
+          return dir;
         }
-      }
+      } catch {}
     }
-  } catch {}
-  return projectRoot;
+    try {
+      const entries = readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory() || entry.name.startsWith('.') || entry.name === 'node_modules') continue;
+        const found = search(join(dir, entry.name), depth + 1);
+        if (found) return found;
+      }
+    } catch {}
+    return null;
+  }
+  return search(projectRoot, 0) ?? projectRoot;
 }
 
 const projectRoot = findProjectRoot(__dirname);
