@@ -1,6 +1,6 @@
 /** Shared YAML escape — matches OpenSpec's escape logic */
 export declare function escapeYamlValue(value: string): string;
-/** Format tags as YAML inline array (escaped) */
+/** Format tags as YAML inline array */
 export declare function formatTagsArray(tags: string[]): string;
 /** Command metadata shared across editors */
 export interface CommandMeta {
@@ -23,8 +23,6 @@ declare const claudeAdapter: EditorAdapter;
 declare const ALL_ADAPTERS: EditorAdapter[];
 /** Detect which editors are installed by checking their config directories */
 export declare function detectEditors(projectRoot: string): EditorAdapter[];
-/** Detect Codex by checking if CODEX_HOME or ~/.codex exists */
-export declare function detectCodex(): EditorAdapter | null;
 /** Build the shared command metadata */
 export declare function buildCommandMeta(body: string): CommandMeta;
 /** Install command files for all detected editors */

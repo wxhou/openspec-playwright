@@ -20,22 +20,13 @@ openspec-pw init          # 安装 Playwright E2E 集成
 
 ## 支持的 AI 编码助手
 
-自动检测并安装 OpenSpec 支持的全部 23 个编辑器的命令文件：
+自动检测并安装 OpenSpec 支持的全部 5 个编辑器的命令文件：
 
 | 编辑器 | 路径 | 编辑器 | 路径 |
 |--------|------|--------|------|
 | Claude Code | `.claude/` | Gemini CLI | `.gemini/` |
 | Cursor | `.cursor/` | GitHub Copilot | `.github/` |
-| Windsurf | `.windsurf/` | Kiro | `.kiro/` |
-| Cline | `.clinerules/` | Kilo Code | `.kilocode/` |
-| Continue | `.continue/` | iFlow | `.iflow/` |
-| Amazon Q | `.amazonq/` | CoStrict | `.cospec/` |
-| Antigravity | `.agent/` | OpenCode | `.opencode/` |
-| Auggie | `.augment/` | Factory | `.factory/` |
-| CodeBuddy | `.codebuddy/` | Pi | `.pi/` |
-| Codex | `~/.codex/` (全局) | Qoder | `.qoder/` |
-| Qwen Code | `.qwen/` | RooCode | `.roo/` |
-| Crush | `.crush/` | | |
+| Windsurf | `.windsurf/` | | |
 
 `openspec-pw init` 会检测项目中安装了哪些编辑器并安装对应文件。Claude Code 获得完整体验（skill + 命令 + Playwright MCP）。其他编辑器获得包含完整 E2E 工作流的命令/工作流文件。
 
@@ -102,12 +93,12 @@ openspec-pw uninstall     # 移除项目中的集成
 
 1. **Node.js >= 20**
 2. **OpenSpec** 已初始化: `npm install -g @fission-ai/openspec && openspec init`
-3. **任一 23 编辑器**: Claude Code、Cursor、Windsurf、Cline、Continue 等（自动检测）
+3. **任一 5 编辑器**: Claude Code、Cursor、Windsurf、Gemini CLI、GitHub Copilot（自动检测）
 4. **仅 Claude Code**: Playwright MCP — `claude mcp add playwright npx @playwright/mcp@latest`
 
 ## `openspec-pw init` 做了什么
 
-1. 检测已安装的 AI 编码助手（支持全部 23 个编辑器）
+1. 检测已安装的 AI 编码助手（支持全部 5 个编辑器）
 2. 为每个检测到的编辑器安装 E2E 命令/工作流文件
 3. 为 Claude Code 安装 `/openspec-e2e` skill
 4. 为 Claude Code 全局安装 Playwright MCP（通过 `claude mcp add`）

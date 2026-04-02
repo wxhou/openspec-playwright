@@ -20,22 +20,13 @@ openspec-pw init          # Install Playwright E2E integration
 
 ## Supported AI Coding Assistants
 
-Auto-detects and installs commands for all 23 editors OpenSpec supports:
+Auto-detects and installs commands for all 5 editors OpenSpec supports:
 
 | Editor | Path | Editor | Path |
 |--------|------|--------|------|
 | Claude Code | `.claude/` | Gemini CLI | `.gemini/` |
 | Cursor | `.cursor/` | GitHub Copilot | `.github/` |
-| Windsurf | `.windsurf/` | Kiro | `.kiro/` |
-| Cline | `.clinerules/` | Kilo Code | `.kilocode/` |
-| Continue | `.continue/` | iFlow | `.iflow/` |
-| Amazon Q | `.amazonq/` | CoStrict | `.cospec/` |
-| Antigravity | `.agent/` | OpenCode | `.opencode/` |
-| Auggie | `.augment/` | Factory | `.factory/` |
-| CodeBuddy | `.codebuddy/` | Pi | `.pi/` |
-| Codex | `~/.codex/` (global) | Qoder | `.qoder/` |
-| Qwen Code | `.qwen/` | RooCode | `.roo/` |
-| Crush | `.crush/` | | |
+| Windsurf | `.windsurf/` | | |
 
 `openspec-pw init` auto-detects editors in your project and installs the right command files. Claude Code gets the full experience (skill + command + Playwright MCP). Other editors get command/workflow files with the complete E2E workflow.
 
@@ -101,12 +92,12 @@ openspec-pw uninstall     # Remove integration from the project
 
 1. **Node.js >= 20**
 2. **OpenSpec** initialized: `npm install -g @fission-ai/openspec && openspec init`
-3. **One of 23 editors**: Claude Code, Cursor, Windsurf, Cline, Continue, Amazon Q, Gemini CLI, GitHub Copilot, Kiro, Kilo Code, iFlow, CoStrict, OpenCode, Auggie, Factory, CodeBuddy, Codex, Pi, Qoder, Qwen Code, RooCode, Crush, Antigravity (auto-detected)
+3. **One of 5 editors**: Claude Code, Cursor, Windsurf, Gemini CLI, GitHub Copilot (auto-detected)
 4. **Claude Code only**: Playwright MCP — `claude mcp add playwright npx @playwright/mcp@latest`
 
 ## What `openspec-pw init` Does
 
-1. Detects installed AI coding assistants (all 23 supported editors)
+1. Detects installed AI coding assistants (all 5 supported editors)
 2. Installs E2E command/workflow files for each detected editor
 3. Installs `/openspec-e2e` skill for Claude Code
 4. Installs Playwright MCP globally for Claude Code (via `claude mcp add`)

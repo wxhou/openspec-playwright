@@ -9,7 +9,7 @@ import {
 import { join, dirname } from "path";
 import { homedir } from "os";
 import chalk from "chalk";
-import { detectEditors, detectCodex } from "./editors.js";
+import { detectEditors } from "./editors.js";
 
 export async function uninstall() {
   console.log(chalk.blue("\n🗑️  Uninstalling OpenSpec + Playwright E2E\n"));
@@ -22,9 +22,7 @@ export async function uninstall() {
 
   // 2. Remove E2E commands for detected editors
   console.log(chalk.blue("\n─── Removing E2E Commands ───"));
-  const detected = detectEditors(projectRoot);
-  const codex = detectCodex();
-  const adapters = codex ? [...detected, codex] : detected;
+  const adapters = detectEditors(projectRoot);
   if (adapters.length > 0) {
     for (const adapter of adapters) {
       const relPath = adapter.getCommandPath("e2e");

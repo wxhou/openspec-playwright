@@ -1,5 +1,4 @@
 import { existsSync, mkdirSync, writeFileSync, readFileSync } from "fs";
-import { homedir } from "os";
 import { join, dirname, resolve as pathResolve } from "path";
 import chalk from "chalk";
 
@@ -16,19 +15,9 @@ export function escapeYamlValue(value: string): string {
   return value;
 }
 
-/** Format tags as YAML inline array (escaped) */
+/** Format tags as YAML inline array */
 export function formatTagsArray(tags: string[]): string {
   return `[${tags.map((t) => escapeYamlValue(t)).join(", ")}]`;
-}
-
-/** Format tags as YAML inline array (plain, no escaping) */
-function formatTagsPlain(tags: string[]): string {
-  return `[${tags.join(", ")}]`;
-}
-
-/** Transform /opsx: to /opsx- for OpenCode */
-function transformToHyphenCommands(text: string): string {
-  return text.replace(/\/opsx:/g, "/opsx-");
 }
 
 /** Command metadata shared across editors */
@@ -115,212 +104,7 @@ ${meta.body}
   },
 };
 
-// ─── Cline ──────────────────────────────────────────────────────────────────
-
-/** Cline: .clinerules/workflows/opsx-<id>.md — markdown header only */
-const clineAdapter: EditorAdapter = {
-  toolId: "cline",
-  hasSkill: false,
-  getCommandPath(id) {
-    return join(".clinerules", "workflows", `opsx-${id}.md`);
-  },
-  formatCommand(meta) {
-    return `# ${meta.name}
-
-${meta.description}
-
-${meta.body}
-`;
-  },
-};
-
-// ─── Continue ────────────────────────────────────────────────────────────────
-
-/** Continue: .continue/prompts/opsx-<id>.prompt */
-const continueAdapter: EditorAdapter = {
-  toolId: "continue",
-  hasSkill: false,
-  getCommandPath(id) {
-    return join(".continue", "prompts", `opsx-${id}.prompt`);
-  },
-  formatCommand(meta) {
-    return `---
-name: opsx-${meta.id}
-description: ${meta.description}
-invokable: true
----
-
-${meta.body}
-`;
-  },
-};
-
-// ─── amazon-q ─────────────────────────────────────────────────────────────
-
-/** Amazon Q: .amazonq/prompts/opsx-<id>.md */
-const amazonqAdapter: EditorAdapter = {
-  toolId: "amazon-q",
-  hasSkill: false,
-  getCommandPath(id) {
-    return join(".amazonq", "prompts", `opsx-${id}.md`);
-  },
-  formatCommand(meta) {
-    return `---
-description: ${meta.description}
----
-
-${meta.body}
-`;
-  },
-};
-
-// ─── antigravity ──────────────────────────────────────────────────────────
-
-/** Antigravity: .agent/workflows/opsx-<id>.md */
-const antigravityAdapter: EditorAdapter = {
-  toolId: "antigravity",
-  hasSkill: false,
-  getCommandPath(id) {
-    return join(".agent", "workflows", `opsx-${id}.md`);
-  },
-  formatCommand(meta) {
-    return `---
-description: ${meta.description}
----
-
-${meta.body}
-`;
-  },
-};
-
-// ─── auggie ────────────────────────────────────────────────────────────────
-
-/** Auggie: .augment/commands/opsx-<id>.md */
-const auggieAdapter: EditorAdapter = {
-  toolId: "auggie",
-  hasSkill: false,
-  getCommandPath(id) {
-    return join(".augment", "commands", `opsx-${id}.md`);
-  },
-  formatCommand(meta) {
-    return `---
-description: ${meta.description}
-argument-hint: command arguments
----
-
-${meta.body}
-`;
-  },
-};
-
-// ─── codebuddy ─────────────────────────────────────────────────────────────
-
-/** CodeBuddy: .codebuddy/commands/opsx/<id>.md */
-const codebuddyAdapter: EditorAdapter = {
-  toolId: "codebuddy",
-  hasSkill: false,
-  getCommandPath(id) {
-    return join(".codebuddy", "commands", "opsx", `${id}.md`);
-  },
-  formatCommand(meta) {
-    return `---
-name: ${meta.name}
-description: "${meta.description}"
-argument-hint: "[command arguments]"
----
-
-${meta.body}
-`;
-  },
-};
-
-// ─── codex ────────────────────────────────────────────────────────────────
-
-/** Codex: <CODEX_HOME>/prompts/opsx-<id>.md — global scope */
-const codexAdapter: EditorAdapter = {
-  toolId: "codex",
-  hasSkill: false,
-  getCommandPath(id) {
-    const codexHome =
-      process.env.CODEX_HOME?.trim() || join(homedir(), ".codex");
-    // pathResolve: if codexHome is absolute (C:\...), it returns codexHome directly
-    // if relative, it resolves against projectRoot
-    return pathResolve(codexHome, "prompts", `opsx-${id}.md`);
-  },
-  formatCommand(meta) {
-    return `---
-description: ${meta.description}
-argument-hint: command arguments
----
-
-${meta.body}
-`;
-  },
-};
-
-// ─── costrict ─────────────────────────────────────────────────────────────
-
-/** CoStrict: .cospec/openspec/commands/opsx-<id>.md */
-const costrictAdapter: EditorAdapter = {
-  toolId: "costrict",
-  hasSkill: false,
-  getCommandPath(id) {
-    return join(".cospec", "openspec", "commands", `opsx-${id}.md`);
-  },
-  formatCommand(meta) {
-    return `---
-description: "${meta.description}"
-argument-hint: command arguments
----
-
-${meta.body}
-`;
-  },
-};
-
-// ─── crush ────────────────────────────────────────────────────────────────
-
-/** Crush: .crush/commands/opsx/<id>.md — raw values, no escaping */
-const crushAdapter: EditorAdapter = {
-  toolId: "crush",
-  hasSkill: false,
-  getCommandPath(id) {
-    return join(".crush", "commands", "opsx", `${id}.md`);
-  },
-  formatCommand(meta) {
-    return `---
-name: ${meta.name}
-description: ${meta.description}
-category: ${meta.category}
-tags: ${formatTagsPlain(meta.tags)}
----
-
-${meta.body}
-`;
-  },
-};
-
-// ─── factory ───────────────────────────────────────────────────────────────
-
-/** Factory Droid: .factory/commands/opsx-<id>.md */
-const factoryAdapter: EditorAdapter = {
-  toolId: "factory",
-  hasSkill: false,
-  getCommandPath(id) {
-    return join(".factory", "commands", `opsx-${id}.md`);
-  },
-  formatCommand(meta) {
-    return `---
-description: ${meta.description}
-argument-hint: command arguments
----
-
-${meta.body}
-`;
-  },
-};
-
-// ─── gemini ────────────────────────────────────────────────────────────────
+// ─── Gemini CLI ──────────────────────────────────────────────────────────────
 
 /** Gemini CLI: .gemini/commands/opsx/<id>.toml */
 const geminiAdapter: EditorAdapter = {
@@ -339,7 +123,7 @@ ${meta.body}
   },
 };
 
-// ─── github-copilot ────────────────────────────────────────────────────────
+// ─── GitHub Copilot ────────────────────────────────────────────────────────
 
 /** GitHub Copilot: .github/prompts/opsx-<id>.prompt.md */
 const githubcopilotAdapter: EditorAdapter = {
@@ -358,187 +142,14 @@ ${meta.body}
   },
 };
 
-// ─── iflow ────────────────────────────────────────────────────────────────
-
-/** iFlow: .iflow/commands/opsx-<id>.md */
-const iflowAdapter: EditorAdapter = {
-  toolId: "iflow",
-  hasSkill: false,
-  getCommandPath(id) {
-    return join(".iflow", "commands", `opsx-${id}.md`);
-  },
-  formatCommand(meta) {
-    return `---
-name: /opsx-${meta.id}
-id: opsx-${meta.id}
-category: ${meta.category}
-description: ${meta.description}
----
-
-${meta.body}
-`;
-  },
-};
-
-// ─── kilocode ────────────────────────────────────────────────────────────
-
-/** Kilo Code: .kilocode/workflows/opsx-<id>.md — body only */
-const kilocodeAdapter: EditorAdapter = {
-  toolId: "kilocode",
-  hasSkill: false,
-  getCommandPath(id) {
-    return join(".kilocode", "workflows", `opsx-${id}.md`);
-  },
-  formatCommand(meta) {
-    return `${meta.body}
-`;
-  },
-};
-
-// ─── kiro ─────────────────────────────────────────────────────────────────
-
-/** Kiro: .kiro/prompts/opsx-<id>.prompt.md */
-const kiroAdapter: EditorAdapter = {
-  toolId: "kiro",
-  hasSkill: false,
-  getCommandPath(id) {
-    return join(".kiro", "prompts", `opsx-${id}.prompt.md`);
-  },
-  formatCommand(meta) {
-    return `---
-description: ${meta.description}
----
-
-${meta.body}
-`;
-  },
-};
-
-// ─── opencode ─────────────────────────────────────────────────────────────
-
-/** OpenCode: .opencode/commands/opsx-<id>.md — transforms /opsx: to /opsx- */
-const opencodeAdapter: EditorAdapter = {
-  toolId: "opencode",
-  hasSkill: false,
-  getCommandPath(id) {
-    return join(".opencode", "commands", `opsx-${id}.md`);
-  },
-  formatCommand(meta) {
-    const transformed = transformToHyphenCommands(meta.body);
-    return `---
-description: ${meta.description}
----
-
-${transformed}
-`;
-  },
-};
-
-// ─── pi ──────────────────────────────────────────────────────────────────
-
-/** Pi: .pi/prompts/opsx-<id>.md */
-const piAdapter: EditorAdapter = {
-  toolId: "pi",
-  hasSkill: false,
-  getCommandPath(id) {
-    return join(".pi", "prompts", `opsx-${id}.md`);
-  },
-  formatCommand(meta) {
-    return `---
-description: ${escapeYamlValue(meta.description)}
----
-
-${meta.body}
-`;
-  },
-};
-
-// ─── qoder ────────────────────────────────────────────────────────────────
-
-/** Qoder: .qoder/commands/opsx/<id>.md — raw values, no escaping */
-const qoderAdapter: EditorAdapter = {
-  toolId: "qoder",
-  hasSkill: false,
-  getCommandPath(id) {
-    return join(".qoder", "commands", "opsx", `${id}.md`);
-  },
-  formatCommand(meta) {
-    return `---
-name: ${meta.name}
-description: ${meta.description}
-category: ${meta.category}
-tags: ${formatTagsPlain(meta.tags)}
----
-
-${meta.body}
-`;
-  },
-};
-
-// ─── qwen ────────────────────────────────────────────────────────────────
-
-/** Qwen Code: .qwen/commands/opsx-<id>.toml */
-const qwenAdapter: EditorAdapter = {
-  toolId: "qwen",
-  hasSkill: false,
-  getCommandPath(id) {
-    return join(".qwen", "commands", `opsx-${id}.toml`);
-  },
-  formatCommand(meta) {
-    return `description = "${meta.description}"
-
-prompt = """
-${meta.body}
-"""
-`;
-  },
-};
-
-// ─── roocode ─────────────────────────────────────────────────────────────
-
-/** RooCode: .roo/commands/opsx-<id>.md — markdown header */
-const roocodeAdapter: EditorAdapter = {
-  toolId: "roocode",
-  hasSkill: false,
-  getCommandPath(id) {
-    return join(".roo", "commands", `opsx-${id}.md`);
-  },
-  formatCommand(meta) {
-    return `# ${meta.name}
-
-${meta.description}
-
-${meta.body}
-`;
-  },
-};
-
 // ─── Detection map ───────────────────────────────────────────────────────
 
 const ALL_ADAPTERS: EditorAdapter[] = [
   claudeAdapter,
   cursorAdapter,
   windsurfAdapter,
-  clineAdapter,
-  continueAdapter,
-  amazonqAdapter,
-  antigravityAdapter,
-  auggieAdapter,
-  codebuddyAdapter,
-  codexAdapter,
-  costrictAdapter,
-  crushAdapter,
-  factoryAdapter,
   geminiAdapter,
   githubcopilotAdapter,
-  iflowAdapter,
-  kilocodeAdapter,
-  kiroAdapter,
-  opencodeAdapter,
-  piAdapter,
-  qoderAdapter,
-  qwenAdapter,
-  roocodeAdapter,
 ];
 
 /** Detect which editors are installed by checking their config directories */
@@ -547,38 +158,13 @@ export function detectEditors(projectRoot: string): EditorAdapter[] {
     [".claude", claudeAdapter],
     [".cursor", cursorAdapter],
     [".windsurf", windsurfAdapter],
-    [".clinerules", clineAdapter],
-    [".continue", continueAdapter],
-    [".amazonq", amazonqAdapter],
-    [".agent", antigravityAdapter],
-    [".augment", auggieAdapter],
-    [".codebuddy", codebuddyAdapter],
-    [".cospec", costrictAdapter],
-    [".crush", crushAdapter],
-    [".factory", factoryAdapter],
     [".gemini", geminiAdapter],
     [".github", githubcopilotAdapter],
-    [".iflow", iflowAdapter],
-    [".kilocode", kilocodeAdapter],
-    [".kiro", kiroAdapter],
-    [".opencode", opencodeAdapter],
-    [".pi", piAdapter],
-    [".qoder", qoderAdapter],
-    [".qwen", qwenAdapter],
-    [".roo", roocodeAdapter],
   ];
 
   return checks
     .filter(([dir]) => existsSync(join(projectRoot, dir)))
     .map(([, adapter]) => adapter);
-}
-
-// ─── Codex is global — detect separately ─────────────────────────────────
-
-/** Detect Codex by checking if CODEX_HOME or ~/.codex exists */
-export function detectCodex(): EditorAdapter | null {
-  const codexHome = process.env.CODEX_HOME?.trim() || join(homedir(), ".codex");
-  return existsSync(codexHome) ? codexAdapter : null;
 }
 
 // ─── Install helpers ───────────────────────────────────────────────────────
@@ -655,7 +241,8 @@ export function installProjectClaudeMd(
     }
   } else {
     // No existing CLAUDE.md, create from template
-    const content = `# ${projectRoot.split("/").pop()}\n\n` + standardsContent;
+    const projName = projectRoot.split("/").pop() ?? "Project";
+    const content = `# ${projName}\n\n${standardsContent}\n`;
     writeFileSync(dest, content);
     console.log(
       chalk.green("  ✓ CLAUDE.md: created with employee-grade standards"),

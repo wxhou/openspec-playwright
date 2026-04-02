@@ -16,7 +16,6 @@ import * as tar from "tar";
 import { syncMcpTools } from "./mcpSync.js";
 import {
   detectEditors,
-  detectCodex,
   installForAllEditors,
   installSkill,
 } from "./editors.js";
@@ -99,9 +98,7 @@ export async function update(options: UpdateOptions) {
       const schemaSrc = join(tmpDir, "schemas", "playwright-e2e");
 
       // Install commands for all detected editors
-      const detected = detectEditors(projectRoot);
-      const codex = detectCodex();
-      const adapters = codex ? [...detected, codex] : detected;
+      const adapters = detectEditors(projectRoot);
       if (adapters.length > 0 && existsSync(bodySrc)) {
         const body = readFileSync(bodySrc, "utf-8");
         installForAllEditors(body, adapters, projectRoot);

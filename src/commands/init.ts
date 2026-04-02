@@ -8,7 +8,6 @@ import { readFile } from "fs/promises";
 import { syncMcpTools } from "./mcpSync.js";
 import {
   detectEditors,
-  detectCodex,
   installForAllEditors,
   installSkill,
   installProjectClaudeMd,
@@ -111,11 +110,9 @@ export async function init(options: InitOptions) {
   // 4. Install E2E commands for detected editors
   console.log(chalk.blue("\n─── Installing E2E Commands ───"));
   const detected = detectEditors(projectRoot);
-  const codex = detectCodex();
-  const adapters = codex ? [...detected, codex] : detected;
-  if (adapters.length > 0) {
+  if (detected.length > 0) {
     const body = await readFile(CMD_BODY_SRC, "utf-8");
-    installForAllEditors(body, adapters, projectRoot);
+    installForAllEditors(body, detected, projectRoot);
   } else {
     const body = await readFile(CMD_BODY_SRC, "utf-8");
     installForAllEditors(body, [claudeAdapter], projectRoot);

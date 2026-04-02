@@ -60,7 +60,6 @@ const distExists = existsSync(distDir);
     const { syncMcpTools } = await import("../dist/commands/mcpSync.js");
     const {
       detectEditors,
-      detectCodex,
       buildCommandMeta,
       escapeYamlValue,
       ALL_ADAPTERS,
@@ -73,15 +72,14 @@ const distExists = existsSync(distDir);
     expect(typeof update).toBe("function");
     expect(typeof syncMcpTools).toBe("function");
     expect(typeof detectEditors).toBe("function");
-    expect(typeof detectCodex).toBe("function");
     expect(typeof buildCommandMeta).toBe("function");
     expect(typeof escapeYamlValue).toBe("function");
     expect(ALL_ADAPTERS.length).toBeGreaterThan(0);
   });
 
-  it("ALL_ADAPTERS has 23 adapters", async () => {
+  it("ALL_ADAPTERS has 5 adapters", async () => {
     const { ALL_ADAPTERS } = await import("../dist/commands/editors.js");
-    expect(ALL_ADAPTERS.length).toBe(23);
+    expect(ALL_ADAPTERS.length).toBe(5);
   });
 });
 

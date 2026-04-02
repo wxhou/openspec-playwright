@@ -4,7 +4,6 @@ import {
   formatTagsArray,
   buildCommandMeta,
   detectEditors,
-  detectCodex,
   ALL_ADAPTERS,
 } from "../src/commands/editors.js";
 
@@ -105,22 +104,6 @@ describe("detectEditors", () => {
   });
 });
 
-// ─── detectCodex ─────────────────────────────────────────────────────────────
-
-describe("detectCodex", () => {
-  it("returns null when CODEX_HOME is set to non-existent path", () => {
-    const original = process.env.CODEX_HOME;
-    process.env.CODEX_HOME = "/tmp/this-codex-dir-does-not-exist-xyz";
-    const result = detectCodex();
-    expect(result).toBeNull();
-    if (original !== undefined) {
-      process.env.CODEX_HOME = original;
-    } else {
-      delete process.env.CODEX_HOME;
-    }
-  });
-});
-
 // ─── Adapter format correctness ───────────────────────────────────────────────
 
 describe("Adapter format correctness", () => {
@@ -180,8 +163,8 @@ describe("Adapter format correctness", () => {
     }
   });
 
-  it("ALL_ADAPTERS has 23 adapters", () => {
-    expect(ALL_ADAPTERS.length).toBe(23);
+  it("ALL_ADAPTERS has 5 adapters", () => {
+    expect(ALL_ADAPTERS.length).toBe(5);
   });
 
   it("every adapter produces unique path patterns", () => {
