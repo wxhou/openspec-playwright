@@ -30,6 +30,7 @@ Before each `git tag vX.Y.Z && git push --tags`:
 - [ ] `npm ci --dry-run` succeeds (verifies lockfile sync)
 - [ ] `npm run typecheck` passes
 - [ ] `npm run test:run` passes
+- [ ] `npm run build && npm pack && tar tf openspec-playwright-*.tgz | grep .claude` succeeds (verifies package contents)
 - [ ] `package.json` version already updated to `X.Y.Z`
 - [ ] `git log --oneline` shows expected changes
 - [ ] If re-tagging: delete old tag first — `git tag -d vX.Y.Z && git push origin :refs/tags/vX.Y.Z`

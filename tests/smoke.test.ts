@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { execSync } from "child_process";
-import { existsSync, readdirSync } from "fs";
+import { existsSync, readFileSync, readdirSync } from "fs";
 import { join } from "path";
 
 const ROOT = join(__dirname, "..");
@@ -144,6 +144,70 @@ const distExists = existsSync(distDir);
   it("unknown command exits non-zero", () => {
     const { status } = runCli("nonexistent-cmd-xyz");
     expect(status).not.toBe(0);
+  });
+});
+
+// ─── Packaged artifact correctness ──────────────────────────────────────────
+// Verify the published npm package contains all critical files.
+// This closes the loop: source → dist → published package.
+
+const CRITICAL_PACKAGE_FILES = [
+  "bin/openspec-pw.js",
+  "dist/index.js",
+  "dist/commands/init.js",
+  "dist/commands/run.js",
+  "dist/commands/doctor.js",
+  "dist/commands/update.js",
+  "dist/commands/mcpSync.js",
+  "dist/commands/editors.js",
+  ".claude/commands/opsx/e2e-body.md",
+  ".claude/commands/opsx/e2e.md",
+  ".claude/skills/openspec-e2e/SKILL.md",
+  "employee-standards.md",
+  "templates/seed.spec.ts",
+  "templates/auth.setup.ts",
+  "templates/credentials.yaml",
+  "schemas/playwright-e2e/schema.yaml",
+  "schemas/playwright-e2e/templates/playwright.config.ts",
+];
+
+(distExists ? describe : describe.skip)("npm package contents", () => {
+  let tarballPath: string;
+
+  it("npm pack produces a tarball", () => {
+    execSync("npm pack --pack-destination /tmp/", { cwd: ROOT });
+    const files = readdirSync("/tmp/").filter((f) =>
+      f.startsWith("openspec-playwright-") && f.endsWith(".tgz"),
+    );
+    expect(files.length).toBeGreaterThan(0);
+    tarballPath = `/tmp/${files[0]}`;
+  });
+
+  it("tarball contains all critical files", () => {
+    if (!tarballPath) {
+      execSync("npm pack --pack-destination /tmp/", { cwd: ROOT });
+      const files = readdirSync("/tmp/").filter((f) =>
+        f.startsWith("openspec-playwright-") && f.endsWith(".tgz"),
+      );
+      tarballPath = `/tmp/${files[0]}`;
+    }
+    const listOutput = execSync(`tar tf "${tarballPath}"`, {
+      encoding: "utf-8",
+    });
+    const pkgFiles = listOutput
+      .split("\n")
+      .map((f) => f.replace(/^package\//, ""))
+      .filter(Boolean);
+
+    for (const file of CRITICAL_PACKAGE_FILES) {
+      expect(pkgFiles).toContain(file);
+    }
+  });
+
+  it("bin script exists and has correct shebang", () => {
+    const binPath = join(ROOT, "bin", "openspec-pw.js");
+    const content = readFileSync(binPath, "utf-8");
+    expect(content).toMatch(/^#!\/usr\/bin\/env node/);
   });
 });
 
