@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# GitHub (issue templates have special YAML format prettier can't parse)
+.github/
+
+# Schemas and templates (generated content)
+schemas/
+templates/
+
+# Editor and OS
+.vscode/
+.DS_Store

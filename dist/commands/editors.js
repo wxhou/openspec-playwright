@@ -1,34 +1,39 @@
-import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
-import { homedir } from 'os';
-import { join, dirname, resolve as pathResolve } from 'path';
-import chalk from 'chalk';
+import { existsSync, mkdirSync, writeFileSync, readFileSync } from "fs";
+import { homedir } from "os";
+import { join, dirname, resolve as pathResolve } from "path";
+import chalk from "chalk";
 /** Shared YAML escape — matches OpenSpec's escape logic */
 export function escapeYamlValue(value) {
     const needsQuoting = /[:\n\r#{}[\],&*!|>'"%@`]|^\s|\s$/.test(value);
     if (needsQuoting) {
-        const escaped = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
+        const escaped = value
+            .replace(/\\/g, "\\\\")
+            .replace(/"/g, '\\"')
+            .replace(/\n/g, "\\n");
         return `"${escaped}"`;
     }
     return value;
 }
 /** Format tags as YAML inline array (escaped) */
 export function formatTagsArray(tags) {
-    return `[${tags.map(t => escapeYamlValue(t)).join(', ')}]`;
+    return `[${tags.map((t) => escapeYamlValue(t)).join(", ")}]`;
 }
 /** Format tags as YAML inline array (plain, no escaping) */
 function formatTagsPlain(tags) {
-    return `[${tags.join(', ')}]`;
+    return `[${tags.join(", ")}]`;
 }
 /** Transform /opsx: to /opsx- for OpenCode */
 function transformToHyphenCommands(text) {
-    return text.replace(/\/opsx:/g, '/opsx-');
+    return text.replace(/\/opsx:/g, "/opsx-");
 }
 // ─── Claude Code ──────────────────────────────────────────────────────────────
 /** Claude Code: .claude/commands/opsx/<id>.md + SKILL.md */
 const claudeAdapter = {
-    toolId: 'claude',
+    toolId: "claude",
     hasSkill: true,
-    getCommandPath(id) { return join('.claude', 'commands', 'opsx', `${id}.md`); },
+    getCommandPath(id) {
+        return join(".claude", "commands", "opsx", `${id}.md`);
+    },
     formatCommand(meta) {
         return `---
 name: ${escapeYamlValue(meta.name)}
@@ -44,9 +49,11 @@ ${meta.body}
 // ─── Cursor ─────────────────────────────────────────────────────────────────
 /** Cursor: .cursor/commands/opsx-<id>.md */
 const cursorAdapter = {
-    toolId: 'cursor',
+    toolId: "cursor",
     hasSkill: false,
-    getCommandPath(id) { return join('.cursor', 'commands', `opsx-${id}.md`); },
+    getCommandPath(id) {
+        return join(".cursor", "commands", `opsx-${id}.md`);
+    },
     formatCommand(meta) {
         return `---
 name: /opsx-${meta.id}
@@ -62,9 +69,11 @@ ${meta.body}
 // ─── Windsurf ────────────────────────────────────────────────────────────────
 /** Windsurf: .windsurf/workflows/opsx-<id>.md */
 const windsurfAdapter = {
-    toolId: 'windsurf',
+    toolId: "windsurf",
     hasSkill: false,
-    getCommandPath(id) { return join('.windsurf', 'workflows', `opsx-${id}.md`); },
+    getCommandPath(id) {
+        return join(".windsurf", "workflows", `opsx-${id}.md`);
+    },
     formatCommand(meta) {
         return `---
 name: ${escapeYamlValue(meta.name)}
@@ -80,9 +89,11 @@ ${meta.body}
 // ─── Cline ──────────────────────────────────────────────────────────────────
 /** Cline: .clinerules/workflows/opsx-<id>.md — markdown header only */
 const clineAdapter = {
-    toolId: 'cline',
+    toolId: "cline",
     hasSkill: false,
-    getCommandPath(id) { return join('.clinerules', 'workflows', `opsx-${id}.md`); },
+    getCommandPath(id) {
+        return join(".clinerules", "workflows", `opsx-${id}.md`);
+    },
     formatCommand(meta) {
         return `# ${meta.name}
 
@@ -95,9 +106,11 @@ ${meta.body}
 // ─── Continue ────────────────────────────────────────────────────────────────
 /** Continue: .continue/prompts/opsx-<id>.prompt */
 const continueAdapter = {
-    toolId: 'continue',
+    toolId: "continue",
     hasSkill: false,
-    getCommandPath(id) { return join('.continue', 'prompts', `opsx-${id}.prompt`); },
+    getCommandPath(id) {
+        return join(".continue", "prompts", `opsx-${id}.prompt`);
+    },
     formatCommand(meta) {
         return `---
 name: opsx-${meta.id}
@@ -112,9 +125,11 @@ ${meta.body}
 // ─── amazon-q ─────────────────────────────────────────────────────────────
 /** Amazon Q: .amazonq/prompts/opsx-<id>.md */
 const amazonqAdapter = {
-    toolId: 'amazon-q',
+    toolId: "amazon-q",
     hasSkill: false,
-    getCommandPath(id) { return join('.amazonq', 'prompts', `opsx-${id}.md`); },
+    getCommandPath(id) {
+        return join(".amazonq", "prompts", `opsx-${id}.md`);
+    },
     formatCommand(meta) {
         return `---
 description: ${meta.description}
@@ -127,9 +142,11 @@ ${meta.body}
 // ─── antigravity ──────────────────────────────────────────────────────────
 /** Antigravity: .agent/workflows/opsx-<id>.md */
 const antigravityAdapter = {
-    toolId: 'antigravity',
+    toolId: "antigravity",
     hasSkill: false,
-    getCommandPath(id) { return join('.agent', 'workflows', `opsx-${id}.md`); },
+    getCommandPath(id) {
+        return join(".agent", "workflows", `opsx-${id}.md`);
+    },
     formatCommand(meta) {
         return `---
 description: ${meta.description}
@@ -142,9 +159,11 @@ ${meta.body}
 // ─── auggie ────────────────────────────────────────────────────────────────
 /** Auggie: .augment/commands/opsx-<id>.md */
 const auggieAdapter = {
-    toolId: 'auggie',
+    toolId: "auggie",
     hasSkill: false,
-    getCommandPath(id) { return join('.augment', 'commands', `opsx-${id}.md`); },
+    getCommandPath(id) {
+        return join(".augment", "commands", `opsx-${id}.md`);
+    },
     formatCommand(meta) {
         return `---
 description: ${meta.description}
@@ -158,9 +177,11 @@ ${meta.body}
 // ─── codebuddy ─────────────────────────────────────────────────────────────
 /** CodeBuddy: .codebuddy/commands/opsx/<id>.md */
 const codebuddyAdapter = {
-    toolId: 'codebuddy',
+    toolId: "codebuddy",
     hasSkill: false,
-    getCommandPath(id) { return join('.codebuddy', 'commands', 'opsx', `${id}.md`); },
+    getCommandPath(id) {
+        return join(".codebuddy", "commands", "opsx", `${id}.md`);
+    },
     formatCommand(meta) {
         return `---
 name: ${meta.name}
@@ -175,13 +196,13 @@ ${meta.body}
 // ─── codex ────────────────────────────────────────────────────────────────
 /** Codex: <CODEX_HOME>/prompts/opsx-<id>.md — global scope */
 const codexAdapter = {
-    toolId: 'codex',
+    toolId: "codex",
     hasSkill: false,
     getCommandPath(id) {
-        const codexHome = process.env.CODEX_HOME?.trim() || join(homedir(), '.codex');
+        const codexHome = process.env.CODEX_HOME?.trim() || join(homedir(), ".codex");
         // pathResolve: if codexHome is absolute (C:\...), it returns codexHome directly
         // if relative, it resolves against projectRoot
-        return pathResolve(codexHome, 'prompts', `opsx-${id}.md`);
+        return pathResolve(codexHome, "prompts", `opsx-${id}.md`);
     },
     formatCommand(meta) {
         return `---
@@ -196,9 +217,11 @@ ${meta.body}
 // ─── costrict ─────────────────────────────────────────────────────────────
 /** CoStrict: .cospec/openspec/commands/opsx-<id>.md */
 const costrictAdapter = {
-    toolId: 'costrict',
+    toolId: "costrict",
     hasSkill: false,
-    getCommandPath(id) { return join('.cospec', 'openspec', 'commands', `opsx-${id}.md`); },
+    getCommandPath(id) {
+        return join(".cospec", "openspec", "commands", `opsx-${id}.md`);
+    },
     formatCommand(meta) {
         return `---
 description: "${meta.description}"
@@ -212,9 +235,11 @@ ${meta.body}
 // ─── crush ────────────────────────────────────────────────────────────────
 /** Crush: .crush/commands/opsx/<id>.md — raw values, no escaping */
 const crushAdapter = {
-    toolId: 'crush',
+    toolId: "crush",
     hasSkill: false,
-    getCommandPath(id) { return join('.crush', 'commands', 'opsx', `${id}.md`); },
+    getCommandPath(id) {
+        return join(".crush", "commands", "opsx", `${id}.md`);
+    },
     formatCommand(meta) {
         return `---
 name: ${meta.name}
@@ -230,9 +255,11 @@ ${meta.body}
 // ─── factory ───────────────────────────────────────────────────────────────
 /** Factory Droid: .factory/commands/opsx-<id>.md */
 const factoryAdapter = {
-    toolId: 'factory',
+    toolId: "factory",
     hasSkill: false,
-    getCommandPath(id) { return join('.factory', 'commands', `opsx-${id}.md`); },
+    getCommandPath(id) {
+        return join(".factory", "commands", `opsx-${id}.md`);
+    },
     formatCommand(meta) {
         return `---
 description: ${meta.description}
@@ -246,9 +273,11 @@ ${meta.body}
 // ─── gemini ────────────────────────────────────────────────────────────────
 /** Gemini CLI: .gemini/commands/opsx/<id>.toml */
 const geminiAdapter = {
-    toolId: 'gemini',
+    toolId: "gemini",
     hasSkill: false,
-    getCommandPath(id) { return join('.gemini', 'commands', 'opsx', `${id}.toml`); },
+    getCommandPath(id) {
+        return join(".gemini", "commands", "opsx", `${id}.toml`);
+    },
     formatCommand(meta) {
         return `description = "${meta.description}"
 
@@ -261,9 +290,11 @@ ${meta.body}
 // ─── github-copilot ────────────────────────────────────────────────────────
 /** GitHub Copilot: .github/prompts/opsx-<id>.prompt.md */
 const githubcopilotAdapter = {
-    toolId: 'github-copilot',
+    toolId: "github-copilot",
     hasSkill: false,
-    getCommandPath(id) { return join('.github', 'prompts', `opsx-${id}.prompt.md`); },
+    getCommandPath(id) {
+        return join(".github", "prompts", `opsx-${id}.prompt.md`);
+    },
     formatCommand(meta) {
         return `---
 description: ${meta.description}
@@ -276,9 +307,11 @@ ${meta.body}
 // ─── iflow ────────────────────────────────────────────────────────────────
 /** iFlow: .iflow/commands/opsx-<id>.md */
 const iflowAdapter = {
-    toolId: 'iflow',
+    toolId: "iflow",
     hasSkill: false,
-    getCommandPath(id) { return join('.iflow', 'commands', `opsx-${id}.md`); },
+    getCommandPath(id) {
+        return join(".iflow", "commands", `opsx-${id}.md`);
+    },
     formatCommand(meta) {
         return `---
 name: /opsx-${meta.id}
@@ -294,9 +327,11 @@ ${meta.body}
 // ─── kilocode ────────────────────────────────────────────────────────────
 /** Kilo Code: .kilocode/workflows/opsx-<id>.md — body only */
 const kilocodeAdapter = {
-    toolId: 'kilocode',
+    toolId: "kilocode",
     hasSkill: false,
-    getCommandPath(id) { return join('.kilocode', 'workflows', `opsx-${id}.md`); },
+    getCommandPath(id) {
+        return join(".kilocode", "workflows", `opsx-${id}.md`);
+    },
     formatCommand(meta) {
         return `${meta.body}
 `;
@@ -305,9 +340,11 @@ const kilocodeAdapter = {
 // ─── kiro ─────────────────────────────────────────────────────────────────
 /** Kiro: .kiro/prompts/opsx-<id>.prompt.md */
 const kiroAdapter = {
-    toolId: 'kiro',
+    toolId: "kiro",
     hasSkill: false,
-    getCommandPath(id) { return join('.kiro', 'prompts', `opsx-${id}.prompt.md`); },
+    getCommandPath(id) {
+        return join(".kiro", "prompts", `opsx-${id}.prompt.md`);
+    },
     formatCommand(meta) {
         return `---
 description: ${meta.description}
@@ -320,9 +357,11 @@ ${meta.body}
 // ─── opencode ─────────────────────────────────────────────────────────────
 /** OpenCode: .opencode/commands/opsx-<id>.md — transforms /opsx: to /opsx- */
 const opencodeAdapter = {
-    toolId: 'opencode',
+    toolId: "opencode",
     hasSkill: false,
-    getCommandPath(id) { return join('.opencode', 'commands', `opsx-${id}.md`); },
+    getCommandPath(id) {
+        return join(".opencode", "commands", `opsx-${id}.md`);
+    },
     formatCommand(meta) {
         const transformed = transformToHyphenCommands(meta.body);
         return `---
@@ -336,9 +375,11 @@ ${transformed}
 // ─── pi ──────────────────────────────────────────────────────────────────
 /** Pi: .pi/prompts/opsx-<id>.md */
 const piAdapter = {
-    toolId: 'pi',
+    toolId: "pi",
     hasSkill: false,
-    getCommandPath(id) { return join('.pi', 'prompts', `opsx-${id}.md`); },
+    getCommandPath(id) {
+        return join(".pi", "prompts", `opsx-${id}.md`);
+    },
     formatCommand(meta) {
         return `---
 description: ${escapeYamlValue(meta.description)}
@@ -351,9 +392,11 @@ ${meta.body}
 // ─── qoder ────────────────────────────────────────────────────────────────
 /** Qoder: .qoder/commands/opsx/<id>.md — raw values, no escaping */
 const qoderAdapter = {
-    toolId: 'qoder',
+    toolId: "qoder",
     hasSkill: false,
-    getCommandPath(id) { return join('.qoder', 'commands', 'opsx', `${id}.md`); },
+    getCommandPath(id) {
+        return join(".qoder", "commands", "opsx", `${id}.md`);
+    },
     formatCommand(meta) {
         return `---
 name: ${meta.name}
@@ -369,9 +412,11 @@ ${meta.body}
 // ─── qwen ────────────────────────────────────────────────────────────────
 /** Qwen Code: .qwen/commands/opsx-<id>.toml */
 const qwenAdapter = {
-    toolId: 'qwen',
+    toolId: "qwen",
     hasSkill: false,
-    getCommandPath(id) { return join('.qwen', 'commands', `opsx-${id}.toml`); },
+    getCommandPath(id) {
+        return join(".qwen", "commands", `opsx-${id}.toml`);
+    },
     formatCommand(meta) {
         return `description = "${meta.description}"
 
@@ -384,9 +429,11 @@ ${meta.body}
 // ─── roocode ─────────────────────────────────────────────────────────────
 /** RooCode: .roo/commands/opsx-<id>.md — markdown header */
 const roocodeAdapter = {
-    toolId: 'roocode',
+    toolId: "roocode",
     hasSkill: false,
-    getCommandPath(id) { return join('.roo', 'commands', `opsx-${id}.md`); },
+    getCommandPath(id) {
+        return join(".roo", "commands", `opsx-${id}.md`);
+    },
     formatCommand(meta) {
         return `# ${meta.name}
 
@@ -425,28 +472,28 @@ const ALL_ADAPTERS = [
 /** Detect which editors are installed by checking their config directories */
 export function detectEditors(projectRoot) {
     const checks = [
-        ['.claude', claudeAdapter],
-        ['.cursor', cursorAdapter],
-        ['.windsurf', windsurfAdapter],
-        ['.clinerules', clineAdapter],
-        ['.continue', continueAdapter],
-        ['.amazonq', amazonqAdapter],
-        ['.agent', antigravityAdapter],
-        ['.augment', auggieAdapter],
-        ['.codebuddy', codebuddyAdapter],
-        ['.cospec', costrictAdapter],
-        ['.crush', crushAdapter],
-        ['.factory', factoryAdapter],
-        ['.gemini', geminiAdapter],
-        ['.github', githubcopilotAdapter],
-        ['.iflow', iflowAdapter],
-        ['.kilocode', kilocodeAdapter],
-        ['.kiro', kiroAdapter],
-        ['.opencode', opencodeAdapter],
-        ['.pi', piAdapter],
-        ['.qoder', qoderAdapter],
-        ['.qwen', qwenAdapter],
-        ['.roo', roocodeAdapter],
+        [".claude", claudeAdapter],
+        [".cursor", cursorAdapter],
+        [".windsurf", windsurfAdapter],
+        [".clinerules", clineAdapter],
+        [".continue", continueAdapter],
+        [".amazonq", amazonqAdapter],
+        [".agent", antigravityAdapter],
+        [".augment", auggieAdapter],
+        [".codebuddy", codebuddyAdapter],
+        [".cospec", costrictAdapter],
+        [".crush", crushAdapter],
+        [".factory", factoryAdapter],
+        [".gemini", geminiAdapter],
+        [".github", githubcopilotAdapter],
+        [".iflow", iflowAdapter],
+        [".kilocode", kilocodeAdapter],
+        [".kiro", kiroAdapter],
+        [".opencode", opencodeAdapter],
+        [".pi", piAdapter],
+        [".qoder", qoderAdapter],
+        [".qwen", qwenAdapter],
+        [".roo", roocodeAdapter],
     ];
     return checks
         .filter(([dir]) => existsSync(join(projectRoot, dir)))
@@ -455,18 +502,18 @@ export function detectEditors(projectRoot) {
 // ─── Codex is global — detect separately ─────────────────────────────────
 /** Detect Codex by checking if CODEX_HOME or ~/.codex exists */
 export function detectCodex() {
-    const codexHome = process.env.CODEX_HOME?.trim() || join(homedir(), '.codex');
+    const codexHome = process.env.CODEX_HOME?.trim() || join(homedir(), ".codex");
     return existsSync(codexHome) ? codexAdapter : null;
 }
 // ─── Install helpers ───────────────────────────────────────────────────────
 /** Build the shared command metadata */
 export function buildCommandMeta(body) {
     return {
-        id: 'e2e',
-        name: 'OPSX: E2E',
-        description: 'Run Playwright E2E verification for an OpenSpec change',
-        category: 'OpenSpec',
-        tags: ['openspec', 'playwright', 'e2e', 'testing'],
+        id: "e2e",
+        name: "OPSX: E2E",
+        description: "Run Playwright E2E verification for an OpenSpec change",
+        category: "OpenSpec",
+        tags: ["openspec", "playwright", "e2e", "testing"],
         body,
     };
 }
@@ -483,40 +530,47 @@ export function installForAllEditors(body, adapters, projectRoot) {
 }
 /** Install SKILL.md only for Claude Code */
 export function installSkill(projectRoot, skillContent) {
-    const skillDir = join(projectRoot, '.claude', 'skills', 'openspec-e2e');
+    const skillDir = join(projectRoot, ".claude", "skills", "openspec-e2e");
     mkdirSync(skillDir, { recursive: true });
-    writeFileSync(join(skillDir, 'SKILL.md'), skillContent);
+    writeFileSync(join(skillDir, "SKILL.md"), skillContent);
     console.log(chalk.green(`  ✓ claude: .claude/skills/openspec-e2e/SKILL.md`));
 }
 /** Install project-level CLAUDE.md with employee-grade standards + OpenSpec context */
 export function installProjectClaudeMd(projectRoot, standardsContent) {
-    const dest = join(projectRoot, 'CLAUDE.md');
+    const dest = join(projectRoot, "CLAUDE.md");
     const exists = existsSync(dest);
     if (exists) {
         // Append standards inside OPENSPEC:START/END markers
-        const existing = readFileSync(dest, 'utf-8');
-        const markerStart = '<!-- OPENSPEC:START -->';
-        const markerEnd = '<!-- OPENSPEC:END -->';
+        const existing = readFileSync(dest, "utf-8");
+        const markerStart = "<!-- OPENSPEC:START -->";
+        const markerEnd = "<!-- OPENSPEC:END -->";
         if (existing.includes(markerStart) && existing.includes(markerEnd)) {
             // Already has markers, skip
-            console.log(chalk.gray('  - CLAUDE.md already has standards markers, skipping'));
+            console.log(chalk.gray("  - CLAUDE.md already has standards markers, skipping"));
         }
         else {
-            const updated = existing.trim() + '\n\n' + markerStart + '\n\n' + standardsContent + '\n\n' + markerEnd + '\n';
+            const updated = existing.trim() +
+                "\n\n" +
+                markerStart +
+                "\n\n" +
+                standardsContent +
+                "\n\n" +
+                markerEnd +
+                "\n";
             writeFileSync(dest, updated);
-            console.log(chalk.green('  ✓ CLAUDE.md: appended employee-grade standards'));
+            console.log(chalk.green("  ✓ CLAUDE.md: appended employee-grade standards"));
         }
     }
     else {
         // No existing CLAUDE.md, create from template
-        const content = `# ${projectRoot.split('/').pop()}\n\n` + standardsContent;
+        const content = `# ${projectRoot.split("/").pop()}\n\n` + standardsContent;
         writeFileSync(dest, content);
-        console.log(chalk.green('  ✓ CLAUDE.md: created with employee-grade standards'));
+        console.log(chalk.green("  ✓ CLAUDE.md: created with employee-grade standards"));
     }
 }
 /** Read the employee-grade standards from a source file */
 export function readEmployeeStandards(srcPath) {
-    return existsSync(srcPath) ? readFileSync(srcPath, 'utf-8') : '';
+    return existsSync(srcPath) ? readFileSync(srcPath, "utf-8") : "";
 }
 export { claudeAdapter, ALL_ADAPTERS };
 //# sourceMappingURL=editors.js.map

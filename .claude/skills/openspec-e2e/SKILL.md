@@ -25,20 +25,20 @@ metadata:
 
 Two modes, same pipeline:
 
-| Mode | Command | Route source | Output |
-|------|---------|--------------|--------|
-| Change | `/opsx:e2e <name>` | OpenSpec specs | `<name>.spec.ts` |
-| All | `/opsx:e2e all` | sitemap + homepage crawl | `app-all.spec.ts` |
+| Mode   | Command            | Route source             | Output            |
+| ------ | ------------------ | ------------------------ | ----------------- |
+| Change | `/opsx:e2e <name>` | OpenSpec specs           | `<name>.spec.ts`  |
+| All    | `/opsx:e2e all`    | sitemap + homepage crawl | `app-all.spec.ts` |
 
 Both modes update `app-knowledge.md` and `app-exploration.md`. All `.spec.ts` files run together as regression suite.
 
 **Role mapping** (Playwright Test Agents terminology):
 
-| Role | This SKILL | What it does |
-|------|-----------|--------------|
-| Planner | Step 4–5 | Explores app via Playwright MCP → produces test-plan.md |
-| Generator | Step 6 | Transforms test-plan.md → `.spec.ts` with verified selectors |
-| Healer | Step 9 | Executes tests, repairs failures via Playwright MCP |
+| Role      | This SKILL | What it does                                                 |
+| --------- | ---------- | ------------------------------------------------------------ |
+| Planner   | Step 4–5   | Explores app via Playwright MCP → produces test-plan.md      |
+| Generator | Step 6     | Transforms test-plan.md → `.spec.ts` with verified selectors |
+| Healer    | Step 9     | Executes tests, repairs failures via Playwright MCP          |
 
 ## Testing principles
 
@@ -49,11 +49,13 @@ Both modes update `app-knowledge.md` and `app-exploration.md`. All `.spec.ts` fi
 ```
 
 **API only as fallback** — Use `page.request` only when UI genuinely cannot cover the scenario:
+
 - Triggering HTTP 5xx/4xx error responses (hard to reach via UI)
 - Edge cases requiring pre-condition data that UI cannot set up
 - Cases where Step 4 exploration confirmed no UI element exists
 
 **Decision rule**:
+
 ```
 Can this be tested through the UI?
   → Yes → page.getByRole/ByLabel/ByText + click/fill/type + assert UI
@@ -67,12 +69,14 @@ Can this be tested through the UI?
 ### 1. Select the change or mode
 
 **Change mode** (`/opsx:e2e <name>`):
+
 - Use provided name, or infer from context, or auto-select if only one exists
 - If ambiguous → `openspec list --json` + AskUserQuestion
 - Verify specs exist: `openspec status --change "<name>" --json`
 - If specs empty → **STOP: E2E requires specs.** Use "all" mode instead.
 
 **"all" mode** (`/opsx:e2e all` — no OpenSpec needed):
+
 - Announce: "Mode: full app exploration"
 - Discover routes via:
   1. Navigate to `${BASE_URL}/sitemap.xml` (if exists)
@@ -95,6 +99,7 @@ Can this be tested through the UI?
 **Exclude false positives**: HTTP header examples (`Authorization: Bearer ...`) and code snippets do not count.
 
 **Confidence**:
+
 - High (auto-proceed): Multiple markers AND context indicators
 - Medium (proceed with note): Single marker, context unclear
 - Low (skip auth): No markers found
@@ -102,6 +107,7 @@ Can this be tested through the UI?
 ### 3. Validate environment
 
 Run the seed test before generating tests:
+
 ```bash
 npx playwright test tests/playwright/seed.spec.ts --project=chromium
 ```
@@ -132,20 +138,22 @@ browser_navigate → browser_console_messages → browser_snapshot → browser_t
 
 **After navigating, check for app-level errors**:
 
-| Signal | Meaning | Action |
-|--------|---------|--------|
-| HTTP 5xx or unreachable | Backend/server error | **STOP** — tell user: "App has a backend error (HTTP <code>). Fix it, then re-run /opsx:e2e." |
-| JS error in console | App runtime error | **STOP** — tell user: "Page has JS errors. Fix them, then re-run /opsx:e2e." |
-| HTTP 404 | Route not in app (metadata issue) | Continue — mark `⚠️ route not found` in app-exploration.md |
-| Auth required, no credentials | Missing auth setup | Continue — skip protected routes, explore login page |
+| Signal                        | Meaning                           | Action                                                                                        |
+| ----------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------- |
+| HTTP 5xx or unreachable       | Backend/server error              | **STOP** — tell user: "App has a backend error (HTTP <code>). Fix it, then re-run /opsx:e2e." |
+| JS error in console           | App runtime error                 | **STOP** — tell user: "Page has JS errors. Fix them, then re-run /opsx:e2e."                  |
+| HTTP 404                      | Route not in app (metadata issue) | Continue — mark `⚠️ route not found` in app-exploration.md                                    |
+| Auth required, no credentials | Missing auth setup                | Continue — skip protected routes, explore login page                                          |
 
 **For guest routes** (no auth):
+
 ```javascript
 // Navigate directly
-await browser_navigate(`${BASE_URL}/<route>`)
+await browser_navigate(`${BASE_URL}/<route>`);
 ```
 
 **For protected routes** (auth required):
+
 ```javascript
 // Option A: use existing storageState (recommended)
 // Option B: navigate to /login first, fill form, then navigate to target
@@ -153,11 +161,13 @@ await browser_navigate(`${BASE_URL}/<route>`)
 ```
 
 **If credentials are not yet available**:
+
 1. Skip protected routes — mark `⚠️ auth needed — explore after auth.setup.ts`
 2. Explore the login page itself (guest route) — extract form selectors
 3. After auth.setup.ts runs, re-run exploration for protected routes
 
 Wait for page stability:
+
 - Prefer `browser_wait_for` with text or selector
 - Avoid `networkidle` / `load` — too slow or unreliable
 - Ready signal: heading, spinner disappears, or URL change
@@ -166,14 +176,14 @@ Wait for page stability:
 
 From `browser_snapshot` output, extract **interactive elements** for each route:
 
-| Element type | What to capture | Selector priority |
-|---|---|---|
-| **Buttons** | text, selector | `[data-testid]` > `getByRole` > `getByLabel` > `getByText` |
-| **Form fields** | name, type, label, selector | `[data-testid]` > `name` > `label` |
-| **Navigation links** | text, href, selector | `text` > `href` |
-| **Headings** | text content, selector | for assertions |
-| **Error messages** | text patterns, selector | for error path testing |
-| **Dynamic content** | structure — row counts, card layouts | for data-driven tests |
+| Element type         | What to capture                      | Selector priority                                          |
+| -------------------- | ------------------------------------ | ---------------------------------------------------------- |
+| **Buttons**          | text, selector                       | `[data-testid]` > `getByRole` > `getByLabel` > `getByText` |
+| **Form fields**      | name, type, label, selector          | `[data-testid]` > `name` > `label`                         |
+| **Navigation links** | text, href, selector                 | `text` > `href`                                            |
+| **Headings**         | text content, selector               | for assertions                                             |
+| **Error messages**   | text patterns, selector              | for error path testing                                     |
+| **Dynamic content**  | structure — row counts, card layouts | for data-driven tests                                      |
 
 #### 4.4. Write app-exploration.md
 
@@ -182,6 +192,7 @@ Output: `openspec/changes/<name>/specs/playwright/app-exploration.md`
 Use template: `openspec/schemas/playwright-e2e/templates/app-exploration.md`
 
 Key fields per route:
+
 - **URL**: `${BASE_URL}<path>`
 - **Auth**: none / required (storageState: `<path>`)
 - **Ready signal**: how to know the page is loaded
@@ -192,11 +203,11 @@ After exploration, add route-level notes (redirects, dynamic content → see 4.5
 
 #### 4.5. Exploration behavior notes
 
-| Situation | Action |
-|-----------|--------|
+| Situation                                         | Action                                                           |
+| ------------------------------------------------- | ---------------------------------------------------------------- |
 | SPA routing (URL changes but page doesn't reload) | Explore via navigation clicks from known routes, not direct URLs |
-| Page loads but no interactive elements | Wait longer for SPA hydration |
-| Dynamic content (user-specific) | Record structure — use `toContainText`, not `toHaveText` |
+| Page loads but no interactive elements            | Wait longer for SPA hydration                                    |
+| Dynamic content (user-specific)                   | Record structure — use `toContainText`, not `toHaveText`         |
 
 **Idempotency**: If `app-exploration.md` already exists → read it, verify routes still match specs, update only new routes or changed pages.
 
@@ -204,20 +215,21 @@ After exploration, add route-level notes (redirects, dynamic content → see 4.5
 
 After writing `app-exploration.md`, extract **project-level shared knowledge** and append to `tests/playwright/app-knowledge.md`:
 
-| Section | What to extract |
-|---------|----------------|
-| Architecture | Monolith or separated? Backend port? Restart command? |
-| Credential Format | Login endpoint, username format (email vs username) |
-| Common Selector Patterns | New patterns discovered that apply across routes |
-| SPA Routing | SPA framework, routing behavior |
-| Project Conventions | BASE_URL, auth method, multi-user roles |
-| Selector Fixes | Healed selectors (see Step 9) — route, old selector, new selector, reason |
+| Section                  | What to extract                                                           |
+| ------------------------ | ------------------------------------------------------------------------- |
+| Architecture             | Monolith or separated? Backend port? Restart command?                     |
+| Credential Format        | Login endpoint, username format (email vs username)                       |
+| Common Selector Patterns | New patterns discovered that apply across routes                          |
+| SPA Routing              | SPA framework, routing behavior                                           |
+| Project Conventions      | BASE_URL, auth method, multi-user roles                                   |
+| Selector Fixes           | Healed selectors (see Step 9) — route, old selector, new selector, reason |
 
 Append only new/changed items — preserve existing content.
 
 #### 4.7. After exploration
 
 Pass `app-exploration.md` to:
+
 - **Step 5 (Planner)**: reference real routes, auth states, and elements in test-plan.md
 - **Step 6 (Generator)**: use verified selectors instead of inferring
 
@@ -242,15 +254,18 @@ Template: `openspec/schemas/playwright-e2e/templates/test-plan.md`
 ### 6. Generate test file
 
 **"all" mode** → `tests/playwright/app-all.spec.ts` (smoke regression):
+
 - For each discovered route: navigate → assert HTTP 200 → assert ready signal visible
 - No detailed assertions — just "this page loads without crashing"
 - This is a regression baseline — catches when existing pages break
 
 **Change mode** → `tests/playwright/<name>.spec.ts` (functional):
+
 - Read: test-plan.md, app-exploration.md, app-knowledge.md, seed.spec.ts
 - For each test case: verify selectors in real browser, then write Playwright code
 
 **Selector verification (change mode)**:
+
 1. Navigate to route with correct auth state
 2. browser_snapshot to confirm page loaded
 3. For each selector: verify from current snapshot (see 4.3 table for priority)
@@ -260,6 +275,7 @@ Template: `openspec/schemas/playwright-e2e/templates/test-plan.md`
 **Test coverage — empty states**: For list/detail pages, explore the empty state. If the app shows a "no data" UI when the list is empty, generate a test to verify it. Empty states are often missing from specs but are real user paths.
 
 **Output format**:
+
 - Follow `seed.spec.ts` structure
 - Use `test.describe(...)` for grouping
 - Each test: `test('描述性名称', async ({ page }) => { ... })`
@@ -270,16 +286,16 @@ Template: `openspec/schemas/playwright-e2e/templates/test-plan.md`
 ```typescript
 // ✅ UI 测试 — 用户在界面上的真实操作
 await page.goto(`${BASE_URL}/orders`);
-await page.getByRole('button', { name: '新建订单' }).click();
-await page.getByLabel('订单名称').fill('Test Order');
-await page.getByRole('button', { name: '提交' }).click();
-await expect(page.getByText('订单创建成功')).toBeVisible();
+await page.getByRole("button", { name: "新建订单" }).click();
+await page.getByLabel("订单名称").fill("Test Order");
+await page.getByRole("button", { name: "提交" }).click();
+await expect(page.getByText("订单创建成功")).toBeVisible();
 
 // ✅ Error path — 通过 UI 触发错误
 await page.goto(`${BASE_URL}/orders`);
-await page.getByRole('button', { name: '新建订单' }).click();
-await page.getByRole('button', { name: '提交' }).click();
-await expect(page.getByRole('alert')).toContainText('名称不能为空');
+await page.getByRole("button", { name: "新建订单" }).click();
+await page.getByRole("button", { name: "提交" }).click();
+await expect(page.getByRole("alert")).toContainText("名称不能为空");
 
 // ✅ API fallback — 仅在 UI 无法触发时使用
 const res = await page.request.get(`${BASE_URL}/api/orders/99999`);
@@ -306,13 +322,13 @@ await expect(page).toHaveURL(/dashboard/);
 
 ```typescript
 // ✅ Fresh browser context for auth guard
-test('unauthenticated user redirected to login', async ({ browser }) => {
+test("unauthenticated user redirected to login", async ({ browser }) => {
   const freshPage = await browser.newContext().newPage();
   await freshPage.goto(`${BASE_URL}/dashboard`);
   await expect(freshPage).toHaveURL(/login|auth/);
 });
 // ✅ Session — logout clears protected state
-await page.getByRole('button', { name: '退出登录' }).click();
+await page.getByRole("button", { name: "退出登录" }).click();
 await expect(page).toHaveURL(/login|auth/);
 const freshPage2 = await browser.newContext().newPage();
 await freshPage2.goto(`${BASE_URL}/dashboard`);
@@ -320,7 +336,7 @@ await expect(freshPage2).toHaveURL(/login|auth/); // session revoked
 
 // ✅ Browser history — SPA back/forward navigation
 await page.goto(`${BASE_URL}/list`);
-await page.getByRole('link', { name: '详情' }).first().click();
+await page.getByRole("link", { name: "详情" }).first().click();
 await expect(page).toHaveURL(/detail/);
 await page.goBack();
 await expect(page).toHaveURL(/list/);
@@ -328,7 +344,7 @@ await page.goForward();
 await expect(page).toHaveURL(/detail/);
 
 // ✅ File uploads — UI 操作
-await page.locator('input[type="file"]').setInputFiles('/path/to/file.pdf');
+await page.locator('input[type="file"]').setInputFiles("/path/to/file.pdf");
 ```
 
 Always include error path tests: UI validation messages, network failure, invalid input. Use `page.request` only for scenarios confirmed unreachable via UI.
@@ -342,12 +358,14 @@ If the file exists → diff against test-plan, add only missing test cases.
 - **Multi-user**: Separate `storageState` paths per role
 
 **Credential format guidance**:
+
 - If the app uses **email** for login → use `CHANGE_ME@example.com`
 - If the app uses **username** (alphanumeric + underscore) → use `test_user_001` (more universal)
 - Check existing test files or login page to determine the format
 - Always set credentials via environment variables — never hardcode
 
 **Prompt user**:
+
 ```
 Auth required. To set up:
 1. Customize tests/playwright/credentials.yaml
@@ -363,6 +381,7 @@ Auth required. To set up:
 If missing → generate from `openspec/schemas/playwright-e2e/templates/playwright.config.ts`.
 
 **Auto-detect BASE_URL** (in priority order):
+
 1. `process.env.BASE_URL` if already set
 2. `tests/playwright/seed.spec.ts` → extract `BASE_URL` value
 3. Read `vite.config.ts` (or `vite.config.js`) → extract `server.port` + infer protocol (`https` if `server.https`, else `http`)
@@ -370,6 +389,7 @@ If missing → generate from `openspec/schemas/playwright-e2e/templates/playwrig
 5. Fallback: `http://localhost:3000`
 
 **Auto-detect dev command**:
+
 1. `package.json` → scripts in order: `dev` → `start` → `serve` → `preview` → `npm run dev`
 
 If playwright.config.ts exists → READ first, preserve ALL existing fields, add only missing `webServer` block.
@@ -385,27 +405,29 @@ The CLI handles: server lifecycle, port mismatch, report generation.
 If tests fail → use Playwright MCP tools to inspect UI, fix selectors, re-run.
 
 **Healer MCP tools** (in order of use):
+
 <!-- MCP_VERSION: 0.0.70 -->
 
-| Tool | Purpose |
-|------|---------|
-| `browser_navigate` | Go to the failing test's page |
-| `browser_snapshot` | Get page structure to find equivalent selectors |
-| `browser_console_messages` | Diagnose JS errors that may cause failures |
-| `browser_take_screenshot` | Visually compare before/after fixes |
-| `browser_run_code` | Execute custom fix logic (optional) |
+| Tool                       | Purpose                                         |
+| -------------------------- | ----------------------------------------------- |
+| `browser_navigate`         | Go to the failing test's page                   |
+| `browser_snapshot`         | Get page structure to find equivalent selectors |
+| `browser_console_messages` | Diagnose JS errors that may cause failures      |
+| `browser_take_screenshot`  | Visually compare before/after fixes             |
+| `browser_run_code`         | Execute custom fix logic (optional)             |
 
 **Healer workflow**:
+
 1. Read the failing test → identify failure type
 2. Classify:
 
-| Failure type | Signal | Action |
-|-------------|--------|--------|
-| **Network/backend** | `fetch failed`, `net::ERR`, 5xx | `browser_console_messages` → `test.skip()` |
-| **Selector changed** | Element not found | `browser_snapshot` → fix selector → re-run |
-| **Assertion mismatch** | Wrong content/value | `browser_snapshot` → compare → fix assertion → re-run |
-| **Timing issue** | `waitFor`/`page.evaluate` timeout | Switch to `request` API or add `waitFor` → re-run |
-| **page.evaluate with fetch** | `fetch` in browser context, CORS errors | Switch to `page.request` API → re-run |
+| Failure type                 | Signal                                  | Action                                                |
+| ---------------------------- | --------------------------------------- | ----------------------------------------------------- |
+| **Network/backend**          | `fetch failed`, `net::ERR`, 5xx         | `browser_console_messages` → `test.skip()`            |
+| **Selector changed**         | Element not found                       | `browser_snapshot` → fix selector → re-run            |
+| **Assertion mismatch**       | Wrong content/value                     | `browser_snapshot` → compare → fix assertion → re-run |
+| **Timing issue**             | `waitFor`/`page.evaluate` timeout       | Switch to `request` API or add `waitFor` → re-run     |
+| **page.evaluate with fetch** | `fetch` in browser context, CORS errors | Switch to `page.request` API → re-run                 |
 
 3. **Heal** (≤3 attempts): snapshot → fix → re-run. If healed successfully → append to `app-knowledge.md` → **Selector Fixes** table: route, old selector → new selector, reason.
 4. **After 3 failures**: collect evidence checklist → `test.skip()` if app bug, report recommendation if test bug
@@ -413,6 +435,7 @@ If tests fail → use Playwright MCP tools to inspect UI, fix selectors, re-run.
 ### 10. False Pass Detection
 
 Run after test suite completes (even if all pass). Common patterns (see Step 6 Anti-Pattern Warnings for fixes):
+
 - **Conditional visibility**: `if (locator.isVisible().catch(() => false))` — if test passes, locator may not exist
 - **Too fast**: < 200ms for a complex flow is suspicious
 - **No fresh auth context**: Protected routes without `browser.newContext()`
@@ -422,6 +445,7 @@ Report any gaps in a **⚠️ Coverage Gap** section.
 ### 11. Report results
 
 Read report at `openspec/reports/playwright-e2e-<name>-<timestamp>.md`. Present:
+
 - Summary table (tests, passed, failed, duration, status)
 - Auto-heal notes
 - Recommendations with `file:line` references
@@ -436,22 +460,22 @@ Reference: `openspec/schemas/playwright-e2e/templates/report.md`
 
 ## Graceful Degradation
 
-| Scenario | Behavior |
-|----------|----------|
-| No specs (change mode) | Stop — E2E requires specs. Use "all" mode instead. |
-| Sitemap discovery fails ("all" mode) | Continue — use homepage links + common paths fallback |
-| App has JS errors or HTTP 5xx during exploration | **STOP** — see app-knowledge.md → Architecture for restart instructions |
-| app-all.spec.ts exists | Read and use (never regenerate — regression baseline) |
-| app-exploration.md missing (change mode) | **STOP** — Step 4 exploration is mandatory. Explore before generating tests. |
-| app-exploration.md exists | Read and use (verify routes still match specs — re-explore if page structure changed) |
-| app-knowledge.md exists | Read and use (append new patterns only) |
-| test-plan.md exists (change mode) | Read and use (never regenerate) |
-| auth.setup.ts exists | Verify format (update only if stale) |
-| playwright.config.ts exists | Preserve all fields (add only missing) |
-| Test fails (backend) | `test.skip()` + report |
-| Test fails (selector/assertion) | Healer: snapshot → fix → re-run (≤3) |
-| 3 heals failed | Evidence checklist → app bug: `test.skip()`; unclear: report |
-| False pass detected | Add "⚠️ Coverage Gap" to report |
+| Scenario                                         | Behavior                                                                              |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| No specs (change mode)                           | Stop — E2E requires specs. Use "all" mode instead.                                    |
+| Sitemap discovery fails ("all" mode)             | Continue — use homepage links + common paths fallback                                 |
+| App has JS errors or HTTP 5xx during exploration | **STOP** — see app-knowledge.md → Architecture for restart instructions               |
+| app-all.spec.ts exists                           | Read and use (never regenerate — regression baseline)                                 |
+| app-exploration.md missing (change mode)         | **STOP** — Step 4 exploration is mandatory. Explore before generating tests.          |
+| app-exploration.md exists                        | Read and use (verify routes still match specs — re-explore if page structure changed) |
+| app-knowledge.md exists                          | Read and use (append new patterns only)                                               |
+| test-plan.md exists (change mode)                | Read and use (never regenerate)                                                       |
+| auth.setup.ts exists                             | Verify format (update only if stale)                                                  |
+| playwright.config.ts exists                      | Preserve all fields (add only missing)                                                |
+| Test fails (backend)                             | `test.skip()` + report                                                                |
+| Test fails (selector/assertion)                  | Healer: snapshot → fix → re-run (≤3)                                                  |
+| 3 heals failed                                   | Evidence checklist → app bug: `test.skip()`; unclear: report                          |
+| False pass detected                              | Add "⚠️ Coverage Gap" to report                                                       |
 
 ## Guardrails
 

@@ -5,19 +5,20 @@
 
 ### Mar 26, 2026
 
-| ID | Time | T | Title | Read |
-|----|------|---|-------|------|
-| #5324 | 6:11 PM | 🟣 | Started building openspec-pw CLI tool | ~255 |
+| ID    | Time    | T   | Title                                 | Read |
+| ----- | ------- | --- | ------------------------------------- | ---- |
+| #5324 | 6:11 PM | 🟣  | Started building openspec-pw CLI tool | ~255 |
 
 ### Mar 27, 2026
 
-| ID | Time | T | Title | Read |
-|----|------|---|-------|------|
-| #5590 | 2:17 PM | 🔄 | Removed --no-playwright-init CLI option | ~125 |
-| #5585 | 2:13 PM | ⚖️ | Architecture simplification: remove Playwright Test Agents dependency | ~287 |
-| #5584 | " | ⚖️ | Decision: Remove init-agents from openspec-pw init as unnecessary dependency | ~230 |
-| #5543 | 12:04 PM | 🔄 | CLI version string refactored to use package.json dynamically | ~122 |
-| #5538 | 12:03 PM | 🟣 | Implemented auto-increment version with npm release script | ~191 |
-| #5537 | 12:02 PM | ✅ | Updated CLI entry point for dynamic version from package.json | ~143 |
-| #5376 | 9:46 AM | 🟣 | Created openspec-pw CLI entry point with commander.js | ~227 |
+| ID    | Time     | T   | Title                                                                        | Read |
+| ----- | -------- | --- | ---------------------------------------------------------------------------- | ---- |
+| #5590 | 2:17 PM  | 🔄  | Removed --no-playwright-init CLI option                                      | ~125 |
+| #5585 | 2:13 PM  | ⚖️  | Architecture simplification: remove Playwright Test Agents dependency        | ~287 |
+| #5584 | "        | ⚖️  | Decision: Remove init-agents from openspec-pw init as unnecessary dependency | ~230 |
+| #5543 | 12:04 PM | 🔄  | CLI version string refactored to use package.json dynamically                | ~122 |
+| #5538 | 12:03 PM | 🟣  | Implemented auto-increment version with npm release script                   | ~191 |
+| #5537 | 12:02 PM | ✅  | Updated CLI entry point for dynamic version from package.json                | ~143 |
+| #5376 | 9:46 AM  | 🟣  | Created openspec-pw CLI entry point with commander.js                        | ~227 |
+
 </claude-mem-context>

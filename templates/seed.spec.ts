@@ -2,7 +2,7 @@
 // Copy this to tests/playwright/seed.spec.ts after running openspec-pw init
 // Customize the page object and base URL for your application
 
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, Page, ConsoleMessage } from '@playwright/test';
 import { existsSync } from 'fs';
 
 // Customize these for your application
@@ -49,11 +49,13 @@ test.describe('Application smoke tests', () => {
 
   test('no console errors', async ({ page }) => {
     const errors: string[] = [];
-    page.on('console', (msg) => {
+    const handler = (msg: ConsoleMessage) => {
       if (msg.type() === 'error') {
         errors.push(msg.text());
       }
-    });
+    };
+    page.on('console', handler);
+    test.afterEach(() => page.off('console', handler));
     await page.reload();
     await page.waitForLoadState('networkidle');
     // Filter out known non-critical errors

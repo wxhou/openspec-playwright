@@ -3,9 +3,11 @@ Run Playwright E2E verification for an OpenSpec change.
 ## Workflow
 
 1. **Validate environment**: Run the seed test to confirm your app is reachable.
+
    ```bash
    npx playwright test tests/playwright/seed.spec.ts --project=chromium
    ```
+
    If it fails, fix your BASE_URL or start the dev server first.
 
 2. **Select the change**: If no change name is provided, run `openspec list --json` and pick one. Then announce: "Using change: `<name>`".
@@ -23,10 +25,13 @@ Run Playwright E2E verification for an OpenSpec change.
    - Use `browser.newContext()` for auth guard tests (fresh session, no cookies)
 
 7. **Run tests**:
+
    ```bash
    openspec-pw run <change-name>
    ```
+
    Or with role filtering:
+
    ```bash
    npx playwright test tests/playwright/<name>.spec.ts --grep "@<role>"
    ```
