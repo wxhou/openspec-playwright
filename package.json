@@ -42,6 +42,8 @@
     "bin",
     "templates",
     "schemas",
+    ".claude",
+    "employee-standards.md",
     "README.md",
     "README.zh-CN.md"
   ],
