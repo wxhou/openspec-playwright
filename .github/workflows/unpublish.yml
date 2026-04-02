@@ -1,0 +1,12 @@
+name: Unpublish
+
+on:
+  workflow_dispatch:
+
+jobs:
+  unpublish:
+    runs-on: ubuntu-latest
+    steps:
+      - run: npm unpublish openspec-playwright@0.1.67 --force
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
