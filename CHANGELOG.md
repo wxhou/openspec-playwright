@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `employee-standards.md`: OpenSpec 阶段隔离 title uses colon instead of period (format consistency)
+- `employee-standards.md`: unify 'typecheck' spelling (remove inconsistent space)
+
 ## [0.1.62] - 2026-04-02
 
 ### Added
