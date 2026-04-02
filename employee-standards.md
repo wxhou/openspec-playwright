@@ -7,11 +7,21 @@
 
 ## 一、代码质量
 
-**验证后才能报告成功**。运行项目的 linter 和 type checker：查看 `package.json`/`pyproject.toml`/`go.mod`/`Cargo.toml` 中的 scripts，使用对应的 `lint`/`typecheck` 命令。不存在时，明确告知用户，不得假装成功。
+**验证后才能报告成功**。Type check + lint 因语言而异：
+
+- **TypeScript/JS**：运行项目 scripts 中的 `typecheck` + `lint`（如 `npm run typecheck && npm run lint`）
+- **Python**：`ruff check .` + `mypy .` / `pyright`（或项目配置的 lint/typecheck）
+- **Go**：`go vet ./...` + `golangci-lint run`（`go build` 失败即类型错误，无需单独 typecheck）
+- **Rust**：`cargo check` + `cargo clippy`
+- **通用**：优先使用项目的 Makefile/justfile 或 scripts 中的 lint/typecheck 命令。不存在时，明确告知用户，不得假装成功。
 
 **拒绝'够用就行'**。架构缺陷、状态重复、模式不一致——说出来并修复。高级工程师在 code review 中会拒绝什么？全部修掉。
 
-**安全防护**：防范 XSS、SQL 注入、命令注入（OWASP Top 10）。
+**安全防护因语言而异**：
+- Web 项目（TS/JS、PHP、Ruby on Rails）：防范 XSS、SQL 注入、命令注入（OWASP Top 10）
+- 系统语言（Rust、Go、C/C++）：内存安全（use-after-free、buffer overflow）、并发 race condition
+- 脚本语言（Python、Ruby）：反序列化注入、`eval`/`pickle` 注入
+- 所有语言：依赖混淆攻击（npm/pypi/goproxy 的 typosquatting）
 
 ---
 
