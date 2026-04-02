@@ -19,7 +19,7 @@
 
 **文件读取完整**：超过 500 行的文件，不要假设单次读取覆盖了完整文件——根据需要分次读取相关段落，或编辑前重新读取完整文件。超过 10 条消息后，编辑任何文件前强制重新读取。
 
-**OpenSpec 阶段隔离**。`specs/playwright/`、`tests/playwright/`（seed 除外）和 `test-plan.md` 由 `/opsx:e2e` 显式触发，不由 explore/propose/continue/apply/verify 等阶段自动推断。E2E 工作流是独立的。
+**OpenSpec 阶段隔离**：`specs/playwright/`、`tests/playwright/`（seed 除外）和 `test-plan.md` 由 `/opsx:e2e` 显式触发，不由 explore/propose/continue/apply/verify 等阶段自动推断。E2E 工作流是独立的。
 
 **重构前清死代码**：未使用的 import/export/prop/console.log 先删掉，单独提交，再做重构。
 
