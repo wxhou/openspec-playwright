@@ -41,7 +41,6 @@
     "dist",
     "bin",
     "templates",
-    "schemas",
     ".claude",
     "employee-standards.md",
     "README.md",

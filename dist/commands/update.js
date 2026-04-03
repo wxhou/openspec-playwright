@@ -1,5 +1,5 @@
 import { execSync, exec } from "child_process";
-import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync, statSync, } from "fs";
+import { existsSync, readFileSync, mkdirSync, rmSync, readdirSync, statSync, } from "fs";
 import { join } from "path";
 import { tmpdir, homedir } from "os";
 import { promisify } from "util";
@@ -33,9 +33,9 @@ export async function update(options) {
             console.log(chalk.gray("  Run manually: npm install -g openspec-playwright"));
         }
     }
-    // 2. Update commands for all detected editors + schema
+    // 2. Update commands for all detected editors
     if (options.skill !== false) {
-        console.log(chalk.blue("\n─── Updating Commands & Schema ───"));
+        console.log(chalk.blue("\n─── Updating Commands & Skill ───"));
         try {
             const tmpDir = join(tmpdir(), "openspec-e2e-update");
             rmSync(tmpDir, { recursive: true, force: true });
@@ -53,7 +53,6 @@ export async function update(options) {
             // Extract tarball
             await tar.extract({ file: tarballPath, cwd: tmpDir, strip: 1 });
             const bodySrc = join(tmpDir, ".claude", "commands", "opsx", "e2e-body.md");
-            const schemaSrc = join(tmpDir, "schemas", "playwright-e2e");
             // Install commands for all detected editors
             const adapters = detectEditors(projectRoot);
             if (adapters.length > 0 && existsSync(bodySrc)) {
@@ -66,10 +65,8 @@ export async function update(options) {
                 const skillContent = readFileSync(skillSrc, "utf-8");
                 installSkill(projectRoot, skillContent);
             }
-            // Install schema
-            installSchemaFrom(schemaSrc, projectRoot);
             rmSync(tmpDir, { recursive: true, force: true });
-            console.log(chalk.green("  ✓ Commands & schema updated to latest"));
+            console.log(chalk.green("  ✓ Commands & skill updated to latest"));
         }
         catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
@@ -133,33 +130,5 @@ export async function update(options) {
         console.log(chalk.bold("Restart your AI coding assistant to use the updated commands."));
         console.log(chalk.gray("  Then run openspec-pw run <change-name> to verify.\n"));
     }
-}
-function installSchemaFrom(schemaSrc, projectRoot) {
-    const schemaDest = join(projectRoot, "openspec", "schemas", "playwright-e2e");
-    mkdirSync(schemaDest, { recursive: true });
-    const schemaYamlSrc = join(schemaSrc, "schema.yaml");
-    if (existsSync(schemaYamlSrc)) {
-        writeFileSync(join(schemaDest, "schema.yaml"), readFileSync(schemaYamlSrc));
-    }
-    const templatesSrc = join(schemaSrc, "templates");
-    const templatesDest = join(schemaDest, "templates");
-    if (existsSync(templatesSrc)) {
-        mkdirSync(templatesDest, { recursive: true });
-        const templateFiles = [
-            "test-plan.md",
-            "report.md",
-            "e2e-test.ts",
-            "playwright.config.ts",
-            "app-knowledge.md",
-        ];
-        for (const file of templateFiles) {
-            const src = join(templatesSrc, file);
-            const dest = join(templatesDest, file);
-            if (existsSync(src)) {
-                writeFileSync(dest, readFileSync(src));
-            }
-        }
-    }
-    console.log(chalk.green("  ✓ Schema updated: openspec/schemas/playwright-e2e/"));
 }
 //# sourceMappingURL=update.js.map

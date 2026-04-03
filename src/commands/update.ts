@@ -61,9 +61,9 @@ export async function update(options: UpdateOptions) {
     }
   }
 
-  // 2. Update commands for all detected editors + schema
+  // 2. Update commands for all detected editors
   if (options.skill !== false) {
-    console.log(chalk.blue("\n─── Updating Commands & Schema ───"));
+    console.log(chalk.blue("\n─── Updating Commands & Skill ───"));
     try {
       const tmpDir = join(tmpdir(), "openspec-e2e-update");
       rmSync(tmpDir, { recursive: true, force: true });
@@ -95,7 +95,6 @@ export async function update(options: UpdateOptions) {
         "opsx",
         "e2e-body.md",
       );
-      const schemaSrc = join(tmpDir, "schemas", "playwright-e2e");
 
       // Install commands for all detected editors
       const adapters = detectEditors(projectRoot);
@@ -117,11 +116,8 @@ export async function update(options: UpdateOptions) {
         installSkill(projectRoot, skillContent);
       }
 
-      // Install schema
-      installSchemaFrom(schemaSrc, projectRoot);
-
       rmSync(tmpDir, { recursive: true, force: true });
-      console.log(chalk.green("  ✓ Commands & schema updated to latest"));
+      console.log(chalk.green("  ✓ Commands & skill updated to latest"));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.log(chalk.yellow(`  ⚠ Failed to update from npm: ${msg}`));
@@ -207,38 +203,4 @@ export async function update(options: UpdateOptions) {
       chalk.gray("  Then run openspec-pw run <change-name> to verify.\n"),
     );
   }
-}
-
-function installSchemaFrom(schemaSrc: string, projectRoot: string) {
-  const schemaDest = join(projectRoot, "openspec", "schemas", "playwright-e2e");
-
-  mkdirSync(schemaDest, { recursive: true });
-  const schemaYamlSrc = join(schemaSrc, "schema.yaml");
-  if (existsSync(schemaYamlSrc)) {
-    writeFileSync(join(schemaDest, "schema.yaml"), readFileSync(schemaYamlSrc));
-  }
-
-  const templatesSrc = join(schemaSrc, "templates");
-  const templatesDest = join(schemaDest, "templates");
-  if (existsSync(templatesSrc)) {
-    mkdirSync(templatesDest, { recursive: true });
-    const templateFiles = [
-      "test-plan.md",
-      "report.md",
-      "e2e-test.ts",
-      "playwright.config.ts",
-      "app-knowledge.md",
-    ];
-    for (const file of templateFiles) {
-      const src = join(templatesSrc, file);
-      const dest = join(templatesDest, file);
-      if (existsSync(src)) {
-        writeFileSync(dest, readFileSync(src));
-      }
-    }
-  }
-
-  console.log(
-    chalk.green("  ✓ Schema updated: openspec/schemas/playwright-e2e/"),
-  );
 }

@@ -16,7 +16,6 @@ import {
 } from "./editors.js";
 
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
-const SCHEMA_DIR = fileURLToPath(new URL("../../schemas", import.meta.url));
 const SKILL_SRC = fileURLToPath(
   new URL("../../.claude/skills/openspec-e2e/SKILL.md", import.meta.url),
 );
@@ -140,28 +139,24 @@ export async function init(options: InitOptions) {
     console.log(chalk.gray("  - Claude Code not detected, skipping MCP sync"));
   }
 
-  // 6. Install OpenSpec schema
-  console.log(chalk.blue("\n─── Installing OpenSpec Schema ───"));
-  await installSchema(projectRoot);
-
-  // 7. Generate seed test
+  // 6. Generate seed test
   if (options.seed !== false) {
     console.log(chalk.blue("\n─── Generating Seed Test ───"));
     await generateSeedTest(projectRoot);
   }
 
-  // 8. Generate app-knowledge.md
+  // 7. Generate app-knowledge.md
   console.log(chalk.blue("\n─── Generating App Knowledge ───"));
   await generateAppKnowledge(projectRoot);
 
-  // 9. Install employee-grade CLAUDE.md
+  // 8. Install employee-grade CLAUDE.md
   console.log(chalk.blue("\n─── Installing Employee Standards ───"));
   const standards = readEmployeeStandards(EMPLOYEE_STANDARDS_SRC);
   if (standards) {
     installProjectClaudeMd(projectRoot, standards);
   }
 
-  // 10. Summary
+  // 9. Summary
   console.log(chalk.blue("\n─── Summary ───"));
   console.log(chalk.green("  ✓ Setup complete!\n"));
 
@@ -197,7 +192,7 @@ export async function init(options: InitOptions) {
   );
   console.log(
     chalk.gray(
-      `  ${hasClaude ? "7." : "6."} Or: openspec-pw doctor to verify setup\n`,
+      `  ${hasClaude ? "6." : "5."} Or: openspec-pw doctor to verify setup\n`,
     ),
   );
 
@@ -256,12 +251,7 @@ async function generateSeedTest(projectRoot: string) {
 }
 
 async function generateAppKnowledge(projectRoot: string) {
-  const src = join(
-    SCHEMA_DIR,
-    "playwright-e2e",
-    "templates",
-    "app-knowledge.md",
-  );
+  const src = join(TEMPLATE_DIR, "app-knowledge.md");
   const dest = join(projectRoot, "tests", "playwright", "app-knowledge.md");
 
   if (existsSync(dest)) {
@@ -275,44 +265,6 @@ async function generateAppKnowledge(projectRoot: string) {
       chalk.green("  ✓ Generated: tests/playwright/app-knowledge.md"),
     );
   }
-}
-
-async function installSchema(projectRoot: string) {
-  const schemaSrc = SCHEMA_DIR + "/playwright-e2e";
-  const schemaDest = join(projectRoot, "openspec", "schemas", "playwright-e2e");
-  const schemaFiles = ["schema.yaml"];
-
-  mkdirSync(schemaDest, { recursive: true });
-  for (const file of schemaFiles) {
-    const src = join(schemaSrc, file);
-    const dest = join(schemaDest, file);
-    if (existsSync(src)) {
-      writeFileSync(dest, readFileSync(src));
-    }
-  }
-
-  // Copy templates
-  const templatesSrc = join(schemaSrc, "templates");
-  const templatesDest = join(schemaDest, "templates");
-  mkdirSync(templatesDest, { recursive: true });
-  const templateFiles = [
-    "test-plan.md",
-    "report.md",
-    "e2e-test.ts",
-    "playwright.config.ts",
-    "app-knowledge.md",
-  ];
-  for (const file of templateFiles) {
-    const src = join(templatesSrc, file);
-    const dest = join(templatesDest, file);
-    if (existsSync(src)) {
-      writeFileSync(dest, readFileSync(src));
-    }
-  }
-
-  console.log(
-    chalk.green("  ✓ Schema installed: openspec/schemas/playwright-e2e/"),
-  );
 }
 
 function execCmd(cmd: string, name: string, silent = false): boolean {

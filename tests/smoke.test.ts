@@ -165,8 +165,7 @@ const CRITICAL_PACKAGE_FILES = [
   "templates/seed.spec.ts",
   "templates/auth.setup.ts",
   "templates/credentials.yaml",
-  "schemas/playwright-e2e/schema.yaml",
-  "schemas/playwright-e2e/templates/playwright.config.ts",
+  "templates/playwright.config.ts",
 ];
 
 (distExists ? describe : describe.skip)("npm package contents", () => {

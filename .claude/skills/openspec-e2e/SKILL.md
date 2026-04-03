@@ -189,7 +189,7 @@ From `browser_snapshot` output, extract **interactive elements** for each route:
 
 Output: `openspec/changes/<name>/specs/playwright/app-exploration.md`
 
-Use template: `openspec/schemas/playwright-e2e/templates/app-exploration.md`
+Use template: `templates/app-exploration.md`
 
 Key fields per route:
 
@@ -247,7 +247,7 @@ Read `tests/playwright/app-knowledge.md` as context for cross-change patterns.
 
 **Create test cases**: functional requirement → test case, with `@role` and `@auth` tags. Reference verified selectors from app-exploration.md.
 
-Template: `openspec/schemas/playwright-e2e/templates/test-plan.md`
+Template: `templates/test-plan.md`
 
 **Idempotency**: If test-plan.md exists → read and use, do NOT regenerate.
 
@@ -378,7 +378,7 @@ Auth required. To set up:
 
 ### 8. Configure playwright.config.ts
 
-If missing → generate from `openspec/schemas/playwright-e2e/templates/playwright.config.ts`.
+If missing → generate from `templates/playwright.config.ts`.
 
 **Auto-detect BASE_URL** (in priority order):
 
@@ -450,13 +450,13 @@ Read report at `openspec/reports/playwright-e2e-<name>-<timestamp>.md`. Present:
 - Auto-heal notes
 - Recommendations with `file:line` references
 
-Report template: `openspec/schemas/playwright-e2e/templates/report.md`
+Report template: `templates/report.md`
 
 **Update tasks.md** if all tests pass: find E2E-related items, append `✅ Verified via Playwright E2E (<timestamp>)`.
 
 ## Report Structure
 
-Reference: `openspec/schemas/playwright-e2e/templates/report.md`
+Reference: `templates/report.md`
 
 ## Graceful Degradation
 
