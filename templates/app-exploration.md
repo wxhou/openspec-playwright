@@ -39,6 +39,17 @@ BASE_URL: <from env or seed.spec.ts>
 - <any dynamic content that was observed>
 - <test assertions should use toContainText, not toHaveText for user-specific data>
 
+### Special Elements Detected
+
+| Element | Type | Context | Dimensions | Test Strategy |
+|---------|------|---------|------------|---------------|
+| | | | | |
+| | | | | |
+
+> **Special element type legend**: `canvas-2d` | `canvas-webgl` | `iframe` | `shadow-dom` | `contenteditable` | `video` | `audio` | `datepicker` | `drag-drop` | `infinite-scroll`
+>
+> **Test strategy**: See `templates/test-plan.md` → **Special Element Test Cases**
+
 ## Exploration Failures
 
 | Route | Error | Notes |

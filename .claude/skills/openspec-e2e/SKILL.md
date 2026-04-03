@@ -184,6 +184,58 @@ From `browser_snapshot` output, extract **interactive elements** for each route:
 | **Headings**         | text content, selector               | for assertions                                             |
 | **Error messages**   | text patterns, selector              | for error path testing                                     |
 | **Dynamic content**  | structure — row counts, card layouts | for data-driven tests                                      |
+| **Special elements** | type, selector, dimensions           | for canvas/iframe/Shadow DOM test strategies               |
+
+#### 4.3.1. Detect special elements
+
+From `browser_snapshot` + `browser_evaluate`, identify these special elements per route:
+
+**Special element detection matrix:**
+
+| Element | Snapshot signal | Evaluate supplement                            | Exploration priority |
+| ------- | --------------- | ---------------------------------------------- | ------------------- |
+| `<canvas>` | `role="img"`, `tagName="CANVAS"` | `canvas.getContext('2d'/'webgl')`, `width`, `height` | High |
+| `<iframe>` | `role="iframe"`, `src` attribute | `frameLocator` available | High |
+| Shadow DOM | `role="generic"` with no children | Check `shadowRoot` via evaluate | Medium |
+| Rich text editor | `[contenteditable]`, `role="textbox"` | `innerHTML`, `getContent()` | Medium |
+| Video / Audio | `tagName="VIDEO"/"AUDIO"` | `paused`, `currentTime`, `volume` | Medium |
+| Date picker | specific `data-testid` or class patterns | Click triggers → evaluate value | Low (skip unless specs mention) |
+| Drag-and-drop | drag events in JS | Simulate DnD via coordinate clicks | Low |
+| Infinite scroll | Dynamic row insertion | Count elements before/after scroll | Low |
+| WebSocket / SSE | No DOM signal | Check `browser_console_messages` for WS events | Low |
+
+**For each detected special element, capture:**
+
+```javascript
+// Canvas — get metadata
+const canvasData = await browser_evaluate(() => {
+  const c = document.querySelector('canvas');
+  if (!c) return null;
+  return {
+    id: c.id || c.className,
+    context: (c.getContext('2d') ? '2d' : c.getContext('webgl') ? 'webgl' : c.getContext('webgl2') ? 'webgl2' : 'unknown'),
+    width: c.width,
+    height: c.height,
+  };
+});
+
+// Iframe — record frameLocator
+// Note: iframe has src or name attribute
+
+// Rich text editor — get content
+const editorContent = await browser_evaluate(() => {
+  const el = document.querySelector('[contenteditable]');
+  return el ? { tag: el.tagName, content: el.innerHTML, length: el.textContent.length } : null;
+});
+
+// Video — get state
+const videoState = await browser_evaluate(() => {
+  const v = document.querySelector('video');
+  return v ? { paused: v.paused, duration: v.duration, src: v.src } : null;
+});
+```
+
+Record findings in `app-exploration.md` → **Special Elements Detected** table.
 
 #### 4.4. Write app-exploration.md
 
@@ -273,6 +325,85 @@ Template: `templates/test-plan.md`
 5. If selector unverifiable → note for Healer (Step 9)
 
 **Test coverage — empty states**: For list/detail pages, explore the empty state. If the app shows a "no data" UI when the list is empty, generate a test to verify it. Empty states are often missing from specs but are real user paths.
+
+**Test coverage — special elements**: Check `app-exploration.md` → **Special Elements Detected** table. For each special element:
+
+```typescript
+// Canvas — screenshot + dimensions
+test('canvas renders with correct dimensions', async ({ page }) => {
+  await page.goto(`${BASE_URL}/<route>`);
+  const canvas = page.locator('canvas');
+  await expect(canvas).toBeVisible();
+  const box = await canvas.boundingBox();
+  expect(box.width).toBeGreaterThan(0);
+  await canvas.screenshot({ path: '__screenshots__/canvas.png' });
+});
+
+// Canvas — 2D pixel verification
+test('canvas 2D content is not blank', async ({ page }) => {
+  await page.goto(`${BASE_URL}/<route>`);
+  const hasContent = await page.evaluate(() => {
+    const c = document.querySelector('canvas');
+    if (!c) return false;
+    const ctx = c.getContext('2d');
+    if (!ctx) return false;
+    const data = ctx.getImageData(0, 0, c.width, c.height).data;
+    return data.some((v, i) => i % 4 !== 3 && v !== 0); // non-transparent non-black pixel
+  });
+  expect(hasContent).toBe(true);
+});
+
+// Canvas — WebGL screenshot
+test('canvas WebGL renders', async ({ page }) => {
+  await page.goto(`${BASE_URL}/<route>`);
+  const canvas = page.locator('canvas');
+  await expect(canvas).toBeVisible();
+  await canvas.screenshot({ path: '__screenshots__/webgl.png' });
+  // No pixel comparison — WebGL rendering may vary
+});
+
+// Iframe — switch context
+test('iframe content is accessible', async ({ page }) => {
+  await page.goto(`${BASE_URL}/<route>`);
+  const frame = page.frameLocator('iframe[name="<name>"]');
+  await expect(frame.locator('<selector-inside-frame>')).toBeVisible();
+});
+
+// Rich text editor — evaluate content
+test('editor content persists', async ({ page }) => {
+  await page.goto(`${BASE_URL}/<route>`);
+  const editor = page.locator('[contenteditable]');
+  await editor.click();
+  await page.keyboard.type('Hello E2E');
+  const content = await page.evaluate(() => {
+    const el = document.querySelector('[contenteditable]');
+    return el?.textContent;
+  });
+  expect(content).toContain('Hello E2E');
+});
+
+// Video — playback state
+test('video can be played', async ({ page }) => {
+  await page.goto(`${BASE_URL}/<route>`);
+  const video = page.locator('video');
+  await expect(video).toBeVisible();
+  await video.evaluate((v: HTMLVideoElement) => { v.play(); });
+  const isPlaying = await video.evaluate((v: HTMLVideoElement) => !v.paused);
+  expect(isPlaying).toBe(true);
+});
+```
+
+See `templates/test-plan.md` → **Special Element Test Cases** for full templates.
+
+```typescript
+// 🚫 Avoid for special elements:
+await canvas.screenshot() // screenshot alone — no dimension/size assertion
+await expect(canvas).toHaveScreenshot() // pixel-to-pixel comparison for WebGL
+
+// ✅ Always:
+const box = await canvas.boundingBox();
+expect(box.width).toBeGreaterThan(0);
+```
 
 **Output format**:
 
