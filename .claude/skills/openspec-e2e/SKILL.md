@@ -198,7 +198,7 @@ From `browser_snapshot` + `browser_evaluate`, identify these special elements pe
 | `<iframe>` | `role="iframe"`, `src` attribute | `frameLocator` available | High |
 | Shadow DOM | `role="generic"` with no children | Check `shadowRoot` via evaluate | Medium |
 | Rich text editor | `[contenteditable]`, `role="textbox"` | `innerHTML`, `getContent()` | Medium |
-| Video / Audio | `tagName="VIDEO"/"AUDIO"` | `paused`, `currentTime`, `volume` | Medium |
+| Video / Audio | `role="application"` or name contains "video"/"audio" | `evaluate` checks both `<video>` and `<audio>` tags | Medium |
 | Date picker | specific `data-testid` or class patterns | Click triggers → evaluate value | Low (skip unless specs mention) |
 | Drag-and-drop | drag events in JS | Simulate DnD via coordinate clicks | Low |
 | Infinite scroll | Dynamic row insertion | Count elements before/after scroll | Low |
@@ -207,13 +207,18 @@ From `browser_snapshot` + `browser_evaluate`, identify these special elements pe
 **For each detected special element, capture:**
 
 ```javascript
-// Canvas — get metadata
+// Canvas — get metadata (check WebGL first to avoid consuming 2D context)
 const canvasData = await browser_evaluate(() => {
   const c = document.querySelector('canvas');
   if (!c) return null;
+  // getContext consumes the context — check WebGL2 first, then WebGL1, then 2D
+  let context = 'unknown';
+  if (c.getContext('webgl2')) context = 'webgl2';
+  else if (c.getContext('webgl')) context = 'webgl';
+  else if (c.getContext('2d')) context = '2d';
   return {
-    id: c.id || c.className,
-    context: (c.getContext('2d') ? '2d' : c.getContext('webgl') ? 'webgl' : c.getContext('webgl2') ? 'webgl2' : 'unknown'),
+    id: c.id || '',
+    context,
     width: c.width,
     height: c.height,
   };
@@ -228,10 +233,19 @@ const editorContent = await browser_evaluate(() => {
   return el ? { tag: el.tagName, content: el.innerHTML, length: el.textContent.length } : null;
 });
 
-// Video — get state
-const videoState = await browser_evaluate(() => {
+// Video / Audio — get state via evaluate (snapshot doesn't expose tagName)
+const mediaState = await browser_evaluate(() => {
   const v = document.querySelector('video');
-  return v ? { paused: v.paused, duration: v.duration, src: v.src } : null;
+  if (v) return { type: 'video', paused: v.paused, duration: v.duration };
+  const a = document.querySelector('audio');
+  if (a) return { type: 'audio', paused: a.paused, duration: a.duration };
+  return null;
+});
+
+// contenteditable — detect via evaluate
+const isContentEditable = await browser_evaluate(() => {
+  const el = document.querySelector('[contenteditable]');
+  return !!el;
 });
 ```
 

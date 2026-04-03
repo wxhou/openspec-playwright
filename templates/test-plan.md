@@ -87,7 +87,7 @@ Generated from: `openspec/changes/<change-name>/specs/`
 2. Call `video.play()` via `page.evaluate()`
 3. Assert `!video.paused`
 
-### Video — Audio Playback
+### Audio — Playback Control
 
 - **Route**: `/<page>`
 - **Type**: `audio`
