@@ -86,22 +86,34 @@ export async function init(options: InitOptions) {
       try {
         execSync("claude mcp add playwright npx @playwright/mcp@latest", {
           cwd: projectRoot,
-          stdio: "inherit",
+          stdio: "pipe",
+          encoding: "utf-8",
         });
         console.log(chalk.green("  ✓ Playwright MCP installed globally"));
         console.log(chalk.gray("  (Restart Claude Code to activate)"));
-      } catch {
-        console.log(
-          chalk.yellow("  ⚠ Failed to run claude mcp add. Run manually:"),
-        );
-        console.log(
-          chalk.gray(
-            "    claude mcp add playwright npx @playwright/mcp@latest",
-          ),
-        );
-        console.log(
-          chalk.gray("    (Restart Claude Code to activate the MCP server)"),
-        );
+      } catch (err) {
+        const e = err as { stderr?: string };
+        if (e.stderr?.includes("already exists")) {
+          console.log(
+            chalk.green("  ✓ Playwright MCP already installed"),
+          );
+        } else {
+          console.log(
+            chalk.yellow(
+              "  ⚠ Failed to run claude mcp add. Run manually:",
+            ),
+          );
+          console.log(
+            chalk.gray(
+              "    claude mcp add playwright npx @playwright/mcp@latest",
+            ),
+          );
+          console.log(
+            chalk.gray(
+              "    (Restart Claude Code to activate the MCP server)",
+            ),
+          );
+        }
       }
     }
   }
