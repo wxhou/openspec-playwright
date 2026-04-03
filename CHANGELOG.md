@@ -7,9 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.71] - 2026-04-03
+
 ### Fixed
+- `init.ts`: install 5 SKILL reference templates to `.claude/skills/openspec-e2e/templates/` (previously they were in npm package but never copied to project, causing SKILL references to fail)
+- `update.ts`: sync SKILL reference templates from npm package
+- `init.ts`: handle "already exists" gracefully when MCP is already installed (no scary error on Windows)
 - `employee-standards.md`: OpenSpec 阶段隔离 title uses colon instead of period (format consistency)
 - `employee-standards.md`: unify 'typecheck' spelling (remove inconsistent space)
+- README.md & README.zh-CN.md: architecture diagrams updated to reflect new template location
+
+### Changed
+- Schema (openspec/schemas/playwright-e2e/) no longer installed to project — E2E workflow is fully SKILL-driven, not OpenSpec artifact-driven
+- Templates migrated from `schemas/playwright-e2e/templates/` to `templates/` in npm package
 
 ## [0.1.70] - 2026-04-02
 
