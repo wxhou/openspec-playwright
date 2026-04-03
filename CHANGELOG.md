@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- `employee-standards.md`: streamline "搜索要全" rule wording (fewer words, same meaning)
+
 ## [0.1.71] - 2026-04-03
 
 ### Fixed
