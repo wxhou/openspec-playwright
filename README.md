@@ -149,12 +149,12 @@ Playwright MCP is installed globally via `claude mcp add` and enables the Healer
 ## Architecture
 
 ```
-Schema (openspec/schemas/playwright-e2e/)
-  └── Templates: test-plan.md, report.md, playwright.config.ts, app-knowledge.md
+Templates (in npm package, installed to .claude/skills/openspec-e2e/templates/)
+  └── test-plan.md, report.md, playwright.config.ts, e2e-test.ts, app-exploration.md
 
 CLI (openspec-pw)
-  ├── init       → Installs commands for detected editors
-  ├── update     → Syncs commands + schema from npm
+  ├── init       → Installs commands, skill & templates to .claude/
+  ├── update     → Syncs commands, skill & templates from npm
   ├── run        → Executes E2E tests with server lifecycle
   ├── verify     → Checks implementation against artifacts
   └── doctor     → Checks prerequisites

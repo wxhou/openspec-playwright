@@ -116,8 +116,11 @@ export async function update(options: UpdateOptions) {
         installSkill(projectRoot, skillContent);
       }
 
+      // Sync SKILL reference templates
+      syncSkillTemplates(tmpDir, projectRoot);
+
       rmSync(tmpDir, { recursive: true, force: true });
-      console.log(chalk.green("  ✓ Commands & skill updated to latest"));
+      console.log(chalk.green("  ✓ Commands, skill & templates updated to latest"));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.log(chalk.yellow(`  ⚠ Failed to update from npm: ${msg}`));
@@ -202,5 +205,35 @@ export async function update(options: UpdateOptions) {
     console.log(
       chalk.gray("  Then run openspec-pw run <change-name> to verify.\n"),
     );
+  }
+}
+
+// Sync SKILL reference templates from extracted tarball to project
+function syncSkillTemplates(tmpDir: string, projectRoot: string) {
+  if (!existsSync(join(projectRoot, ".claude"))) return;
+
+  const SKILL_DIR = join(
+    projectRoot,
+    ".claude",
+    "skills",
+    "openspec-e2e",
+  );
+  const templatesDir = join(SKILL_DIR, "templates");
+  mkdirSync(templatesDir, { recursive: true });
+
+  const SKILL_TEMPLATE_FILES = [
+    "app-exploration.md",
+    "test-plan.md",
+    "playwright.config.ts",
+    "report.md",
+    "e2e-test.ts",
+  ];
+
+  for (const file of SKILL_TEMPLATE_FILES) {
+    const src = join(tmpDir, "templates", file);
+    const dest = join(templatesDir, file);
+    if (existsSync(src)) {
+      writeFileSync(dest, readFileSync(src));
+    }
   }
 }

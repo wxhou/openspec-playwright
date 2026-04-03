@@ -1,5 +1,5 @@
 import { execSync, exec } from "child_process";
-import { existsSync, readFileSync, mkdirSync, rmSync, readdirSync, statSync, } from "fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync, statSync, } from "fs";
 import { join } from "path";
 import { tmpdir, homedir } from "os";
 import { promisify } from "util";
@@ -65,8 +65,10 @@ export async function update(options) {
                 const skillContent = readFileSync(skillSrc, "utf-8");
                 installSkill(projectRoot, skillContent);
             }
+            // Sync SKILL reference templates
+            syncSkillTemplates(tmpDir, projectRoot);
             rmSync(tmpDir, { recursive: true, force: true });
-            console.log(chalk.green("  ✓ Commands & skill updated to latest"));
+            console.log(chalk.green("  ✓ Commands, skill & templates updated to latest"));
         }
         catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
@@ -129,6 +131,28 @@ export async function update(options) {
     else {
         console.log(chalk.bold("Restart your AI coding assistant to use the updated commands."));
         console.log(chalk.gray("  Then run openspec-pw run <change-name> to verify.\n"));
+    }
+}
+// Sync SKILL reference templates from extracted tarball to project
+function syncSkillTemplates(tmpDir, projectRoot) {
+    if (!existsSync(join(projectRoot, ".claude")))
+        return;
+    const SKILL_DIR = join(projectRoot, ".claude", "skills", "openspec-e2e");
+    const templatesDir = join(SKILL_DIR, "templates");
+    mkdirSync(templatesDir, { recursive: true });
+    const SKILL_TEMPLATE_FILES = [
+        "app-exploration.md",
+        "test-plan.md",
+        "playwright.config.ts",
+        "report.md",
+        "e2e-test.ts",
+    ];
+    for (const file of SKILL_TEMPLATE_FILES) {
+        const src = join(tmpDir, "templates", file);
+        const dest = join(templatesDir, file);
+        if (existsSync(src)) {
+            writeFileSync(dest, readFileSync(src));
+        }
     }
 }
 //# sourceMappingURL=update.js.map

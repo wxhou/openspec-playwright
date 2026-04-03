@@ -133,6 +133,7 @@ export async function init(options: InitOptions) {
   if (existsSync(join(projectRoot, ".claude"))) {
     const skillContent = await readFile(SKILL_SRC, "utf-8");
     installSkill(projectRoot, skillContent);
+    installSkillTemplates(projectRoot);
   }
 
   // 5. Sync Healer tools with latest @playwright/mcp (Claude Code only)
@@ -276,6 +277,34 @@ async function generateAppKnowledge(projectRoot: string) {
     console.log(
       chalk.green("  ✓ Generated: tests/playwright/app-knowledge.md"),
     );
+  }
+}
+
+// Install SKILL reference templates (format guides for LLM to read)
+function installSkillTemplates(projectRoot: string) {
+  const SKILL_DIR = join(
+    projectRoot,
+    ".claude",
+    "skills",
+    "openspec-e2e",
+  );
+  const templatesDir = join(SKILL_DIR, "templates");
+  mkdirSync(templatesDir, { recursive: true });
+
+  const SKILL_TEMPLATE_FILES = [
+    "app-exploration.md",
+    "test-plan.md",
+    "playwright.config.ts",
+    "report.md",
+    "e2e-test.ts",
+  ];
+
+  for (const file of SKILL_TEMPLATE_FILES) {
+    const src = join(TEMPLATE_DIR, file);
+    const dest = join(templatesDir, file);
+    if (existsSync(src)) {
+      writeFileSync(dest, readFileSync(src));
+    }
   }
 }
 
