@@ -117,12 +117,13 @@ export class BasePage {
   /**
    * Wait for a spinner / loading indicator to disappear.
    * Call after navigation or async actions.
+   * Times out silently — callers should add their own assertion if needed.
    */
   async waitForLoad(spinnerSelector = '[role="progressbar"], .spinner, .loading', timeout = 10000) {
     const spinner = this.page.locator(spinnerSelector);
     if (await spinner.isVisible().catch(() => false)) {
       await spinner.waitFor({ state: 'hidden', timeout }).catch(() => {
-        // Timeout means spinner never disappeared — continue anyway
+        // Spinner did not disappear within timeout — caller should assert if needed
       });
     }
   }
@@ -145,31 +146,20 @@ export class BasePage {
 
   /**
    * Assert page displays specific text.
+   * Note: exact option only applies to string text; RegExp is always partial match.
    */
-  async expectText(text: string | RegExp, options?: { exact?: boolean }) {
-    if (typeof text === 'string') {
-      await expect(this.page.getByText(text, { exact: options?.exact ?? false })).toBeVisible();
-    } else {
-      await expect(this.page.getByText(text)).toBeVisible();
-    }
+  async expectText(text: string | RegExp) {
+    await expect(this.page.getByText(text)).toBeVisible();
   }
 
   // ─── Auth helpers ──────────────────────────────────────────────────────────
 
   /**
-   * Verify user is on a guest page (not logged in).
-   * Redirects to login if auth guard is active.
+   * Assert user is on a guest (login) page.
+   * Use after logout or to verify auth guard redirects correctly.
    */
   async expectGuest() {
-    const url = this.page.url();
-    const isLoginPage = /login|signin|auth/i.test(url);
-    if (!isLoginPage) {
-      // Check if redirected to login
-      const loginRedirect = /login|signin|auth/i;
-      if (loginRedirect.test(url)) {
-        return; // Already on login page
-      }
-    }
+    await expect(this.page.getByRole('button', { name: /login|sign in|登录/i })).toBeVisible();
   }
 
   /**

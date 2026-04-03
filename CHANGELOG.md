@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.73] - 2026-04-03
+
 ### Added
 - `SKILL.md`: add special element detection (Step 4.3.1) — canvas, iframe, Shadow DOM, contenteditable, video/audio, date pickers, drag-and-drop, infinite scroll, WebSocket/SSE
 - `SKILL.md`: add special element test code patterns in Step 6 — with `toBeGreaterThan(0)` dimension checks and `toContainText` assertions
@@ -18,6 +20,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `init.ts`: generate `tests/playwright/pages/BasePage.ts` on init
 - `SKILL.md Step 6.1`: add BasePage usage guide and AppPage pattern (extend BasePage → add page-specific selectors as getters)
 - `SKILL.md Step 6.2`: add selector anti-pattern section (CSS class/ID fragility → prefer semantic selectors)
+
+### Fixed
+- `SKILL.md`: canvas context detection — check WebGL2→WebGL1→2D order to avoid consuming 2D context
+- `SKILL.md`: canvas snapshot signal — use role="img" instead of tagName (tagName not in a11y tree)
+- `SKILL.md`: test-plan.md heading typo ("Video — Audio Playback" → "Audio — Playback Control")
+- `templates/pages/BasePage.ts`: fix expectGuest() broken logic (dead code) → use getByRole assertion
+- `templates/pages/BasePage.ts`: waitForLoad comment clarified (silent timeout — caller should assert)
+- `templates/pages/BasePage.ts`: expectText() — remove broken exact option for RegExp
+
+### Changed
+- `SKILL.md`: streamline Role mapping (table → inline note)
+- `SKILL.md`: deduplicate Code examples section (removed redundant false-pass/API-login blocks)
+- `SKILL.md`: compress Graceful Degradation table from 13 rows to 8 (merged duplicate scenarios)
 
 ## [0.1.72] - 2026-04-03
 

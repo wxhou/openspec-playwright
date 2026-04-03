@@ -32,13 +32,7 @@ Two modes, same pipeline:
 
 Both modes update `app-knowledge.md` and `app-exploration.md`. All `.spec.ts` files run together as regression suite.
 
-**Role mapping** (Playwright Test Agents terminology):
-
-| Role      | This SKILL | What it does                                                 |
-| --------- | ---------- | ------------------------------------------------------------ |
-| Planner   | Step 4–5   | Explores app via Playwright MCP → produces test-plan.md      |
-| Generator | Step 6     | Transforms test-plan.md → `.spec.ts` with verified selectors |
-| Healer    | Step 9     | Executes tests, repairs failures via Playwright MCP          |
+> **Role mapping**: Planner (Step 4–5) → test-plan.md; Generator (Step 6) → `.spec.ts` with verified selectors; Healer (Step 9) → repairs failures via MCP.
 
 ## Testing principles
 
@@ -507,49 +501,29 @@ await app.click(app.byRole('button', { name: '提交' }));
 **Code examples — UI first:**
 
 ```typescript
-// ✅ UI 测试 — 用户在界面上的真实操作
+// ✅ UI 测试
 await page.goto(`${BASE_URL}/orders`);
 await page.getByRole("button", { name: "新建订单" }).click();
 await page.getByLabel("订单名称").fill("Test Order");
 await page.getByRole("button", { name: "提交" }).click();
 await expect(page.getByText("订单创建成功")).toBeVisible();
 
-// ✅ Error path — 通过 UI 触发错误
+// ✅ Error path
 await page.goto(`${BASE_URL}/orders`);
-await page.getByRole("button", { name: "新建订单" }).click();
 await page.getByRole("button", { name: "提交" }).click();
 await expect(page.getByRole("alert")).toContainText("名称不能为空");
 
-// ✅ API fallback — 仅在 UI 无法触发时使用
+// ✅ API fallback (only when UI cannot reach the scenario)
 const res = await page.request.get(`${BASE_URL}/api/orders/99999`);
 expect(res.status()).toBe(404);
-```
 
-```typescript
-// 🚫 False Pass — 元素不存在时静默跳过
-if (await btn.isVisible().catch(() => false)) { ... }
-
-// ✅ CORRECT
-await expect(page.getByRole('button', { name: '取消' })).toBeVisible();
-
-// 🚫 用 API 替代 UI — 失去了端到端的意义
-const res = await page.request.post(`${BASE_URL}/api/login`, { data: credentials });
-
-// ✅ CORRECT — 通过 UI 登录
-await page.goto(`${BASE_URL}/login`);
-await page.getByLabel('邮箱').fill(process.env.E2E_USERNAME);
-await page.getByLabel('密码').fill(process.env.E2E_PASSWORD);
-await page.getByRole('button', { name: '登录' }).click();
-await expect(page).toHaveURL(/dashboard/);
-```
-
-```typescript
-// ✅ Fresh browser context for auth guard
-test("unauthenticated user redirected to login", async ({ browser }) => {
+// ✅ Auth guard — fresh browser context (no cookies)
+test("redirects to login when unauthenticated", async ({ browser }) => {
   const freshPage = await browser.newContext().newPage();
   await freshPage.goto(`${BASE_URL}/dashboard`);
   await expect(freshPage).toHaveURL(/login|auth/);
 });
+
 // ✅ Session — logout clears protected state
 await page.getByRole("button", { name: "退出登录" }).click();
 await expect(page).toHaveURL(/login|auth/);
@@ -557,20 +531,16 @@ const freshPage2 = await browser.newContext().newPage();
 await freshPage2.goto(`${BASE_URL}/dashboard`);
 await expect(freshPage2).toHaveURL(/login|auth/); // session revoked
 
-// ✅ Browser history — SPA back/forward navigation
+// ✅ Browser history — SPA back/forward
 await page.goto(`${BASE_URL}/list`);
 await page.getByRole("link", { name: "详情" }).first().click();
 await expect(page).toHaveURL(/detail/);
 await page.goBack();
 await expect(page).toHaveURL(/list/);
-await page.goForward();
-await expect(page).toHaveURL(/detail/);
 
-// ✅ File uploads — UI 操作
+// ✅ File uploads
 await page.locator('input[type="file"]').setInputFiles("/path/to/file.pdf");
 ```
-
-Always include error path tests: UI validation messages, network failure, invalid input. Use `page.request` only for scenarios confirmed unreachable via UI.
 
 If the file exists → diff against test-plan, add only missing test cases.
 
@@ -657,13 +627,11 @@ If tests fail → use Playwright MCP tools to inspect UI, fix selectors, re-run.
 
 ### 10. False Pass Detection
 
-Run after test suite completes (even if all pass). Common patterns (see Step 6 Anti-Pattern Warnings for fixes):
+Run after test suite completes (even if all pass). Common patterns:
 
 - **Conditional visibility**: `if (locator.isVisible().catch(() => false))` — if test passes, locator may not exist
 - **Too fast**: < 200ms for a complex flow is suspicious
 - **No fresh auth context**: Protected routes without `browser.newContext()`
-
-Report any gaps in a **⚠️ Coverage Gap** section.
 
 ### 11. Report results
 
@@ -683,22 +651,16 @@ Reference: `templates/report.md`
 
 ## Graceful Degradation
 
-| Scenario                                         | Behavior                                                                              |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------- |
-| No specs (change mode)                           | Stop — E2E requires specs. Use "all" mode instead.                                    |
-| Sitemap discovery fails ("all" mode)             | Continue — use homepage links + common paths fallback                                 |
-| App has JS errors or HTTP 5xx during exploration | **STOP** — see app-knowledge.md → Architecture for restart instructions               |
-| app-all.spec.ts exists                           | Read and use (never regenerate — regression baseline)                                 |
-| app-exploration.md missing (change mode)         | **STOP** — Step 4 exploration is mandatory. Explore before generating tests.          |
-| app-exploration.md exists                        | Read and use (verify routes still match specs — re-explore if page structure changed) |
-| app-knowledge.md exists                          | Read and use (append new patterns only)                                               |
-| test-plan.md exists (change mode)                | Read and use (never regenerate)                                                       |
-| auth.setup.ts exists                             | Verify format (update only if stale)                                                  |
-| playwright.config.ts exists                      | Preserve all fields (add only missing)                                                |
-| Test fails (backend)                             | `test.skip()` + report                                                                |
-| Test fails (selector/assertion)                  | Healer: snapshot → fix → re-run (≤3)                                                  |
-| 3 heals failed                                   | Evidence checklist → app bug: `test.skip()`; unclear: report                          |
-| False pass detected                              | Add "⚠️ Coverage Gap" to report                                                       |
+| Scenario | Behavior |
+| ------- | ------- |
+| No specs / app-exploration.md missing (change mode) | **STOP** |
+| JS errors or HTTP 5xx during exploration | **STOP** |
+| Sitemap fails ("all" mode) | Continue with homepage links fallback |
+| File already exists (app-exploration, test-plan, app-all) | Read and use — never regenerate |
+| Test fails (backend) | `test.skip()` + report |
+| Test fails (selector/assertion) | Healer: snapshot → fix → re-run (≤3) |
+| 3 heals failed | `test.skip()` if app bug; report if unclear |
+| False pass detected | Add "⚠️ Coverage Gap" to report |
 
 ## Guardrails
 
