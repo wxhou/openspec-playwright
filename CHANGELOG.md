@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.72] - 2026-04-03
+
 ### Changed
+- `update.ts`: auto-cleanup deprecated `openspec/schemas/playwright-e2e/` from pre-v0.1.71 versions
 - `employee-standards.md`: streamline "搜索要全" rule wording (fewer words, same meaning)
 
 ## [0.1.71] - 2026-04-03

@@ -116,6 +116,9 @@ export async function update(options: UpdateOptions) {
         installSkill(projectRoot, skillContent);
       }
 
+      // Clean up deprecated schema installed by pre-v0.1.71 versions
+      cleanupDeprecatedSchema(projectRoot);
+
       // Sync SKILL reference templates
       syncSkillTemplates(tmpDir, projectRoot);
 
@@ -204,6 +207,24 @@ export async function update(options: UpdateOptions) {
     );
     console.log(
       chalk.gray("  Then run openspec-pw run <change-name> to verify.\n"),
+    );
+  }
+}
+
+// Clean up deprecated openspec/schemas/playwright-e2e/ from pre-v0.1.71 versions
+function cleanupDeprecatedSchema(projectRoot: string) {
+  const deprecatedSchemaPath = join(
+    projectRoot,
+    "openspec",
+    "schemas",
+    "playwright-e2e",
+  );
+  if (existsSync(deprecatedSchemaPath)) {
+    rmSync(deprecatedSchemaPath, { recursive: true, force: true });
+    console.log(
+      chalk.green(
+        "  ✓ Cleaned up deprecated openspec/schemas/playwright-e2e/ (v0.1.71 refactor — no longer needed)",
+      ),
     );
   }
 }
