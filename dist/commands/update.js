@@ -65,6 +65,8 @@ export async function update(options) {
                 const skillContent = readFileSync(skillSrc, "utf-8");
                 installSkill(projectRoot, skillContent);
             }
+            // Clean up deprecated schema installed by pre-v0.1.71 versions
+            cleanupDeprecatedSchema(projectRoot);
             // Sync SKILL reference templates
             syncSkillTemplates(tmpDir, projectRoot);
             rmSync(tmpDir, { recursive: true, force: true });
@@ -131,6 +133,14 @@ export async function update(options) {
     else {
         console.log(chalk.bold("Restart your AI coding assistant to use the updated commands."));
         console.log(chalk.gray("  Then run openspec-pw run <change-name> to verify.\n"));
+    }
+}
+// Clean up deprecated openspec/schemas/playwright-e2e/ from pre-v0.1.71 versions
+function cleanupDeprecatedSchema(projectRoot) {
+    const deprecatedSchemaPath = join(projectRoot, "openspec", "schemas", "playwright-e2e");
+    if (existsSync(deprecatedSchemaPath)) {
+        rmSync(deprecatedSchemaPath, { recursive: true, force: true });
+        console.log(chalk.green("  ✓ Cleaned up deprecated openspec/schemas/playwright-e2e/ (v0.1.71 refactor — no longer needed)"));
     }
 }
 // Sync SKILL reference templates from extracted tarball to project

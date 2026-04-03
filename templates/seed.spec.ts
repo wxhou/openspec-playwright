@@ -4,25 +4,19 @@
 
 import { test, expect, Page, ConsoleMessage } from '@playwright/test';
 import { existsSync } from 'fs';
+import { BasePage } from './pages/BasePage';
 
 // Customize these for your application
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
 /**
- * Page Object Pattern - customize these selectors for your app
+ * Page Object Pattern - extends BasePage for shared utilities
+ * Add your app's common selectors here
+ * Example:
+ *   get loginButton() { return this.byRole('button', { name: '登录' }); }
  */
-class AppPage {
-  constructor(private page: Page) {}
-
-  async goto(path: string = '/') {
-    await this.page.goto(`${BASE_URL}${path}`);
-  }
-
-  // Add your app's common selectors here
-  // Example:
-  // async getLoginButton() {
-  //   return this.page.locator('button[data-testid="login"]');
-  // }
+class AppPage extends BasePage {
+  // Add page-specific selectors here
 }
 
 /**

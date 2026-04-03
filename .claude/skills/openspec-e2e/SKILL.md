@@ -426,6 +426,84 @@ expect(box.width).toBeGreaterThan(0);
 - Each test: `test('描述性名称', async ({ page }) => { ... })`
 - Prefer `data-testid` selectors (see 4.3 table)
 
+#### 6.1. Use BasePage for shared navigation and selectors
+
+Read `tests/playwright/pages/BasePage.ts` for shared utilities:
+- `goto(path)` — navigation with configurable `waitUntil`
+- `byTestId(id)`, `byRole(role, opts)`, `byLabel(label)`, `byText(text)`, `byPlaceholder(text)` — selector helpers in priority order
+- `click(locator)`, `fill(locator, value)` — safe interactions with built-in `scrollIntoViewIfNeeded`
+- `waitForToast(text?)`, `waitForLoad(spinnerSelector?)` — wait utilities
+- `reload()` — page reload with hydration
+
+**AppPage pattern** — extend BasePage for page-specific selectors:
+
+```typescript
+// tests/playwright/pages/LoginPage.ts
+import { BasePage } from './BasePage';
+import type { Page } from '@playwright/test';
+
+export class LoginPage extends BasePage {
+  get usernameInput() { return this.byLabel('用户名'); }
+  get passwordInput() { return this.byLabel('密码'); }
+  get submitBtn() { return this.byRole('button', { name: '登录' }); }
+
+  constructor(page: Page) { super(page); }
+
+  async login(user: string, pass: string) {
+    await this.goto('/login');
+    await this.usernameInput.fill(user);
+    await this.passwordInput.fill(pass);
+    await this.submitBtn.click();
+  }
+}
+```
+
+```typescript
+// tests/playwright/<name>.spec.ts
+import { LoginPage } from '../pages/LoginPage';
+
+test('user can login', async ({ page }) => {
+  const loginPage = new LoginPage(page);
+  await loginPage.login('user@example.com', 'password123');
+  await loginPage.expectURL(/dashboard/);
+});
+```
+
+**If a shared page object doesn't exist yet**: define it inline in the spec AND write it to `tests/playwright/pages/<PageName>.ts` so future tests can reuse it.
+
+#### 6.2. Selector anti-patterns
+
+```typescript
+// 🚫 Fragile — CSS class selectors break on style refactors
+page.locator('.notification-bell')
+page.locator('.header-bar')
+page.locator('.skeleton-overlay')
+
+// ✅ Robust — semantic selectors survive style changes
+page.getByRole('button', { name: '通知' })
+page.getByTestId('header-bar')
+page.getByText('加载中')
+
+// 🚫 Fragile — CSS ID selectors can duplicate in React HMR
+page.locator('#avatarBtn')
+page.locator('#userAvatarBtn')
+
+// ✅ Robust — prefer role/label/testid over CSS ID
+page.getByTestId('user-avatar')
+page.getByRole('button', { name: '用户菜单' })
+
+// 🚫 Missing wait — leads to random CI failures
+await page.locator('.submit-btn').click();
+
+// ✅ Safe — scroll into view first
+await page.locator('.submit-btn').scrollIntoViewIfNeeded();
+await page.locator('.submit-btn').click();
+
+// ✅ Better — use BasePage click with built-in wait
+const app = new AppPage(page);
+await app.click(app.byRole('button', { name: '提交' }));
+```
+
 **Code examples — UI first:**
 
 ```typescript

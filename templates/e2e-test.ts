@@ -1,4 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
+import { BasePage } from './pages/BasePage';
 
 // ──────────────────────────────────────────────
 // Test plan: <change-name>
@@ -8,24 +9,24 @@ import { test, expect, Page } from '@playwright/test';
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
 /**
- * Page Object Pattern - add selectors for your app's pages
+ * Page Object Pattern
+ *
+ * Extend BasePage to add page-specific selectors and actions.
+ * Example:
+ *   class LoginPage extends BasePage {
+ *     get usernameInput() { return this.byLabel('用户名'); }
+ *     get passwordInput() { return this.byLabel('密码'); }
+ *     get submitBtn() { return this.byRole('button', { name: '登录' }); }
+ *     async login(user: string, pass: string) {
+ *       await this.usernameInput.fill(user);
+ *       await this.passwordInput.fill(pass);
+ *       await this.submitBtn.click();
+ *     }
+ *   }
  */
-class AppPage {
-  constructor(private page: Page) {}
-
-  async goto(path: string = '/') {
-    await this.page.goto(`${BASE_URL}${path}`);
-  }
-
-  async getByTestId(id: string) {
-    return this.page.locator(`[data-testid="${id}"]`);
-  }
-
-  async waitForToast(message?: string) {
-    if (message) {
-      await this.page.getByText(message, { state: 'visible' }).waitFor();
-    }
-  }
+class AppPage extends BasePage {
+  // Add page-specific selectors here
+  // Example: get heading() { return this.byRole('heading'); }
 }
 
 function createPage(page: Page): AppPage {

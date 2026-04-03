@@ -158,6 +158,12 @@ export async function init(options: InitOptions) {
     await generateSeedTest(projectRoot);
   }
 
+  // 6b. Generate shared pages directory
+  if (options.seed !== false) {
+    console.log(chalk.blue("\n─── Generating Shared Pages ───"));
+    await generateSharedPages(projectRoot);
+  }
+
   // 7. Generate app-knowledge.md
   console.log(chalk.blue("\n─── Generating App Knowledge ───"));
   await generateAppKnowledge(projectRoot);
@@ -192,20 +198,25 @@ export async function init(options: InitOptions) {
   console.log(
     chalk.gray("  4. Run auth setup: npx playwright test --project=setup"),
   );
+  console.log(
+    chalk.gray(
+      "  5. Page objects: extend tests/playwright/pages/BasePage.ts for shared selectors",
+    ),
+  );
   const hasClaude = existsSync(join(projectRoot, ".claude"));
   if (hasClaude) {
     console.log(
-      chalk.gray("  5. In Claude Code, run: /opsx:e2e <change-name>"),
+      chalk.gray("  6. In Claude Code, run: /opsx:e2e <change-name>"),
     );
   }
   console.log(
     chalk.gray(
-      `  ${hasClaude ? "6." : "5."} Or: openspec-pw run <change-name>`,
+      `  ${hasClaude ? "7." : "6."} Or: openspec-pw run <change-name>`,
     ),
   );
   console.log(
     chalk.gray(
-      `  ${hasClaude ? "6." : "5."} Or: openspec-pw doctor to verify setup\n`,
+      `  ${hasClaude ? "8." : "7."} Or: openspec-pw doctor to verify setup\n`,
     ),
   );
 
@@ -276,6 +287,27 @@ async function generateAppKnowledge(projectRoot: string) {
     writeFileSync(dest, readFileSync(src));
     console.log(
       chalk.green("  ✓ Generated: tests/playwright/app-knowledge.md"),
+    );
+  }
+}
+
+async function generateSharedPages(projectRoot: string) {
+  const pagesDir = join(projectRoot, "tests", "playwright", "pages");
+  mkdirSync(pagesDir, { recursive: true });
+
+  const basePageSrc = join(TEMPLATE_DIR, "pages", "BasePage.ts");
+  const basePageDest = join(pagesDir, "BasePage.ts");
+  if (existsSync(basePageDest)) {
+    console.log(chalk.gray("  - pages/BasePage.ts already exists, skipping"));
+  } else if (existsSync(basePageSrc)) {
+    writeFileSync(basePageDest, readFileSync(basePageSrc));
+    console.log(
+      chalk.green("  ✓ Generated: tests/playwright/pages/BasePage.ts"),
+    );
+    console.log(
+      chalk.gray(
+        "  (Extend BasePage to create page objects: pages/LoginPage.ts, etc.)",
+      ),
     );
   }
 }
