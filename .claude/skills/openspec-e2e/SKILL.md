@@ -343,9 +343,29 @@ Template: `templates/test-plan.md`
 
 **⚠️ Human verification — STOP before generating code.**
 
-After creating (or reading existing) test-plan.md, **stop and ask the user to confirm**:
+After creating (or reading existing) test-plan.md, **stop and display the test plan summary** for user confirmation:
 
-> "Review `test-plan.md` before I generate test code. Does the test coverage match your intent? Add, remove, or adjust test cases as needed."
+**Output format** — show the test plan in markdown directly in the conversation:
+
+````markdown
+## Test Plan Summary: `<change-name>`
+
+**Auth**: required / not required | Roles: ...
+
+### Test Cases
+- ✅ `<test-name>` — `<route>`, happy path
+- ✅ `<test-name>` — `<route>`, error path: `<error condition>`
+
+### Special Elements
+- ⚠️ **CAPTCHA** at `<route>` — strategy: `auth.setup bypass / skip / api-only`
+- ⚠️ **Canvas/WebGL** at `<route>` — strategy: screenshot + dimensions
+- ⚠️ **OTP** at `<route>` — strategy: test credentials / dev bypass
+
+### ⚠️ Not Covered (if any)
+- `<element or scenario not testable>`
+````
+
+Then ask: "Does this coverage match your intent? Reply **yes** to proceed, or tell me what to add/change."
 
 **Why this matters**: Step 5 is the last human-reviewable checkpoint before code generation. Once test code is written, fixes address *how* tests run, not *what* they verify. Reviewing the test plan takes seconds and catches logic errors that Healer cannot fix.
 
@@ -355,7 +375,7 @@ After creating (or reading existing) test-plan.md, **stop and ask the user to co
 - Auth states and roles are accurate
 - Nothing important is missing
 
-If the user requests changes → update test-plan.md → re-confirm → proceed.
+If the user requests changes → update test-plan.md → re-display summary → re-confirm → proceed.
 
 ### 6. Generate test file
 
