@@ -46,7 +46,9 @@ BASE_URL: <from env or seed.spec.ts>
 | | | | | |
 | | | | | |
 
-> **Special element type legend**: `canvas-2d` | `canvas-webgl` | `iframe` | `shadow-dom` | `contenteditable` | `video` | `audio` | `datepicker` | `drag-drop` | `infinite-scroll`
+> **Special element type legend**: `canvas-2d` | `canvas-webgl` | `iframe` | `shadow-dom` | `contenteditable` | `video` | `audio` | `datepicker` | `drag-drop` | `infinite-scroll` | `file-upload` | `captcha-image` | `captcha-slider` | `captcha-3d` | `recaptcha` | `hcaptcha` | `turnstile` | `otp-sms` | `otp-totp` | `websocket` | `sse`
+>
+> **AI-opaque strategy**: CAPTCHA/OTP/slider-CAPTCHA — see `templates/test-plan.md` → **AI-Opaque Elements**
 >
 > **Test strategy**: See `templates/test-plan.md` → **Special Element Test Cases**
 
