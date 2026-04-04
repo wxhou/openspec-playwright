@@ -25,14 +25,14 @@ metadata:
 
 Two modes, same pipeline:
 
-| Mode   | Command            | Route source             | Output            |
-| ------ | ------------------ | ------------------------ | ----------------- |
-| Change | `/opsx:e2e <name>` | OpenSpec specs           | `<name>.spec.ts`  |
-| All    | `/opsx:e2e all`    | sitemap + homepage crawl | `app-all.spec.ts` |
+| Mode   | Command            | Route source             | Output                         |
+| ------ | ------------------ | ------------------------ | ------------------------------- |
+| Change | `/opsx:e2e <name>` | OpenSpec specs           | `<name>.spec.ts`                |
+| All    | `/opsx:e2e all`    | sitemap + homepage crawl | `pages/*.ts` (Page Objects)     |
 
 Both modes update `app-knowledge.md` and `app-exploration.md`. All `.spec.ts` files run together as regression suite.
 
-> **Role mapping**: Planner (Step 4–5) → test-plan.md; Generator (Step 6) → `.spec.ts` with verified selectors; Healer (Step 9) → repairs failures via MCP.
+> **Role mapping**: Planner (Step 4–5) → test-plan.md; Generator (Step 6) → `.spec.ts` + Page Objects; Healer (Step 9) → repairs failures via MCP.
 
 ## Testing principles
 
@@ -71,7 +71,8 @@ Can this be tested through the UI?
 
 **"all" mode** (`/opsx:e2e all` — no OpenSpec needed):
 
-- Announce: "Mode: full app exploration"
+- Announce: "Mode: full app exploration + Page Object discovery"
+- **Goal**: Discover new routes, extract selectors, and build `pages/*.ts` Page Objects — accumulated asset for future Change tests
 - Discover routes via:
   1. Navigate to `${BASE_URL}/sitemap.xml` (if exists)
   2. Navigate to `${BASE_URL}/` → extract all links from snapshot
@@ -138,6 +139,9 @@ browser_navigate → browser_console_messages → browser_snapshot → browser_t
 | JS error in console           | App runtime error                 | **STOP** — tell user: "Page has JS errors. Fix them, then re-run /opsx:e2e."                  |
 | HTTP 404                      | Route not in app (metadata issue) | Continue — mark `⚠️ route not found` in app-exploration.md                                    |
 | Auth required, no credentials | Missing auth setup                | Continue — skip protected routes, explore login page                                          |
+| Suspicious network request     | API returned 4xx/5xx             | Continue — mark `⚠️ API error: <endpoint> returned <code>` in app-exploration.md               |
+
+**Network monitoring**: After navigating, use `browser_network_requests` to check for failed API calls. Failed requests (status ≥ 400) on a route indicate an API/backend issue — record in `app-exploration.md` for reference.
 
 **For guest routes** (no auth):
 
@@ -297,7 +301,7 @@ Read `tests/playwright/app-knowledge.md` as context for cross-change patterns.
 
 ### 5. Generate test plan
 
-> **"all" mode: skip this step — go directly to Step 6.**
+> **"all" mode: skip this step.** No OpenSpec specs → no test-plan to generate. Skip to Step 6.
 
 **Change mode — prerequisite**: If `openspec/changes/<name>/specs/playwright/app-exploration.md` does not exist → **STOP**. Run Step 4 (explore application) before generating tests. Without real DOM data from exploration, selectors are guesses and tests will be fragile.
 
@@ -313,11 +317,19 @@ Template: `templates/test-plan.md`
 
 ### 6. Generate test file
 
-**"all" mode** → `tests/playwright/app-all.spec.ts` (smoke regression):
+**"all" mode**: Build and expand Page Objects for future Change tests.
 
-- For each discovered route: navigate → assert HTTP 200 → assert ready signal visible
-- No detailed assertions — just "this page loads without crashing"
-- This is a regression baseline — catches when existing pages break
+**Prerequisite**: If `app-exploration.md` does not exist → **STOP**. Run Step 4 first. All mode explores routes via browser MCP to build exploration data.
+
+For each discovered route:
+
+1. Read existing `pages/<Route>Page.ts` (if any — incremental, not overwrite)
+2. Navigate to route with correct auth state
+3. browser_snapshot to extract interactive elements (see 4.3 table)
+4. Write or update `pages/<Route>Page.ts` — extend with newly discovered elements
+5. Also write `tests/playwright/app-all.spec.ts` — smoke test (route loads without crash)
+
+**Output priority**: Page Objects (`pages/*.ts`) are the primary asset. Smoke test is secondary. Existing Page Objects are never overwritten — only extended.
 
 **Change mode** → `tests/playwright/<name>.spec.ts` (functional):
 
@@ -402,6 +414,25 @@ test('video can be played', async ({ page }) => {
 ```
 
 See `templates/test-plan.md` → **Special Element Test Cases** for full templates.
+
+**Test coverage — performance**: Verify Core Web Vitals metrics. If the app specifies performance targets, generate a test:
+
+```typescript
+// Performance — Core Web Vitals
+test('page loads within performance budget', async ({ page }) => {
+  await page.goto(`${BASE_URL}/<route>`);
+  await expect(page.getByRole('heading')).toBeVisible();
+  const timings = await page.evaluate(() => {
+    const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
+    return {
+      ttfb: nav.responseStart - nav.requestStart,
+      lcp: nav.loadEventEnd - nav.requestStart,
+    };
+  });
+  expect(timings.ttfb).toBeLessThan(500);
+  expect(timings.lcp).toBeLessThan(2500);
+});
+```
 
 ```typescript
 // 🚫 Avoid for special elements:
