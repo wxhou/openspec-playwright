@@ -194,11 +194,14 @@ From `browser_snapshot` + `browser_evaluate`, identify these special elements pe
 | ------- | --------------- | ---------------------------------------------- | ------------------- |
 | `<canvas>` | `role="img"`, `tagName="CANVAS"` | `canvas.getContext('2d'/'webgl')`, `width`, `height` | High |
 | `<iframe>` | `role="iframe"`, `src` attribute | `frameLocator` available | High |
+| CAPTCHA | `.g-recaptcha`, `.h-captcha`, `[data-sitekey]`, canvas+slider | recaptcha score via API (if configured) | High |
+| OTP / SMS | 6-digit input, countdown timer | Check if dev bypass exists | High |
 | Shadow DOM | `role="generic"` with no children | Check `shadowRoot` via evaluate | Medium |
 | Rich text editor | `[contenteditable]`, `role="textbox"` | `innerHTML`, `getContent()` | Medium |
 | Video / Audio | `role="application"` or name contains "video"/"audio" | `evaluate` checks both `<video>` and `<audio>` tags | Medium |
-| Date picker | specific `data-testid` or class patterns | Click triggers → evaluate value | Low (skip unless specs mention) |
+| File upload | `<input type="file">` | `accept` attribute, `multiple` flag | Medium |
 | Drag-and-drop | drag events in JS | Simulate DnD via coordinate clicks | Low |
+| Date picker | specific `data-testid` or class patterns | Click triggers → evaluate value | Low (skip unless specs mention) |
 | Infinite scroll | Dynamic row insertion | Count elements before/after scroll | Low |
 | WebSocket / SSE | No DOM signal | Check `browser_console_messages` for WS events | Low |
 
@@ -244,6 +247,29 @@ const mediaState = await browser_evaluate(() => {
 const isContentEditable = await browser_evaluate(() => {
   const el = document.querySelector('[contenteditable]');
   return !!el;
+});
+
+// CAPTCHA — detect type
+const captchaInfo = await browser_evaluate(() => {
+  const recaptcha = document.querySelector('.g-recaptcha, [data-sitekey]');
+  if (recaptcha) return { type: 'recaptcha', sitekey: recaptcha.getAttribute('data-sitekey') };
+  const hcaptcha = document.querySelector('.h-captcha');
+  if (hcaptcha) return { type: 'hcaptcha', sitekey: hcaptcha.getAttribute('data-sitekey') };
+  const turnstile = document.querySelector('[data-sitekey*="cloudflare"]');
+  if (turnstile) return { type: 'turnstile' };
+  const canvas = document.querySelector('canvas[class*="captcha"]');
+  if (canvas) return { type: 'canvas-captcha' };
+  const slider = document.querySelector('[class*="slider"], [class*="drag"]');
+  if (slider) return { type: 'slider-captcha' };
+  return null;
+});
+
+// OTP input — detect
+const otpInfo = await browser_evaluate(() => {
+  const inputs = document.querySelectorAll('input');
+  const otpInputs = Array.from(inputs).filter(i => i.maxLength === 1 && i.type === 'text' || i.type === 'tel');
+  if (otpInputs.length >= 4) return { type: 'otp-sms', digits: otpInputs.length };
+  return null;
 });
 ```
 
@@ -413,7 +439,17 @@ test('video can be played', async ({ page }) => {
 });
 ```
 
-See `templates/test-plan.md` → **Special Element Test Cases** for full templates.
+See `templates/test-plan.md` → **Special Element Test Cases** for full templates including Canvas, Video, Audio, Iframe, and Rich Text Editor.
+
+**Test coverage — AI-opaque elements**: For CAPTCHA, OTP, slider CAPTCHA, file upload, and drag-drop — elements that Playwright cannot reliably automate:
+
+1. Mark the element in `app-exploration.md` → **Special Elements Detected** table with type and automation strategy
+2. Generate the test using the appropriate strategy from `templates/test-plan.md` → **AI-Opaque Elements** section:
+   - **CAPTCHA**: Bypass via `auth.setup.ts` storageState, or skip with `test.skip()`, or verify via API
+   - **OTP**: Use pre-verified test credentials (`E2E_OTP_CODE` env var), or development bypass flag
+   - **File upload**: Use `page.setInputFiles()` with fixture files
+   - **Drag-drop**: Use `page.dragAndDrop()` or `page.evaluate()` with custom event dispatching
+3. If the element is truly non-automatable, write `test.skip()` with a comment explaining why, and mark with `/handoff` for manual testing
 
 **Test coverage — performance**: Verify Core Web Vitals metrics. If the app specifies performance targets, generate a test:
 
