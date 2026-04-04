@@ -489,6 +489,16 @@ test('video can be played', async ({ page }) => {
   const isPlaying = await video.evaluate((v: HTMLVideoElement) => !v.paused);
   expect(isPlaying).toBe(true);
 });
+
+// Audio — playback state
+test('audio can be played', async ({ page }) => {
+  await page.goto(`${BASE_URL}/<route>`);
+  const audio = page.locator('audio');
+  await expect(audio).toBeVisible();
+  await audio.evaluate((a: HTMLAudioElement) => { a.play(); });
+  const isPlaying = await audio.evaluate((a: HTMLAudioElement) => !a.paused);
+  expect(isPlaying).toBe(true);
+});
 ```
 
 See `templates/test-plan.md` → **Special Element Test Cases** for full templates including Canvas, Video, Audio, Iframe, and Rich Text Editor.
@@ -718,8 +728,6 @@ If tests fail → use Playwright MCP tools to inspect UI, fix selectors, re-run.
 
 **Healer MCP tools** (in order of use):
 
-<!-- MCP_VERSION: 0.0.70 -->
-
 | Tool                       | Purpose                                         |
 | -------------------------- | ----------------------------------------------- |
 | `browser_navigate`         | Go to the failing test's page                   |
@@ -775,7 +783,7 @@ Reference: `templates/report.md`
 | No specs / app-exploration.md missing (change mode) | **STOP** |
 | JS errors or HTTP 5xx during exploration | **STOP** |
 | Sitemap fails ("all" mode) | Continue with homepage links fallback |
-| File already exists (app-exploration, test-plan, app-all) | Read and use — never regenerate |
+| File already exists (app-exploration, test-plan, app-all.spec.ts, Page Objects) | Read and use — never regenerate |
 | Test fails (backend) | `test.skip()` + report |
 | Test fails (selector/assertion) | Healer: snapshot → fix → re-run (≤3) |
 | 3 heals failed | `test.skip()` if app bug; report if unclear |
