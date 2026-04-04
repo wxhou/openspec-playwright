@@ -327,7 +327,7 @@ Read `tests/playwright/app-knowledge.md` as context for cross-change patterns.
 
 ### 5. Generate test plan
 
-> **"all" mode: skip this step.** No OpenSpec specs → no test-plan to generate. Skip to Step 6.
+> **"all" mode: skip this step.** No OpenSpec specs → no test-plan to generate. All mode skips test-plan verification — Page Objects are discovered incrementally from exploration, not from structured specs. Confirm understanding with user before Step 6 if needed.
 
 **Change mode — prerequisite**: If `openspec/changes/<name>/specs/playwright/app-exploration.md` does not exist → **STOP**. Run Step 4 (explore application) before generating tests. Without real DOM data from exploration, selectors are guesses and tests will be fragile.
 
@@ -340,6 +340,22 @@ Read `tests/playwright/app-knowledge.md` as context for cross-change patterns.
 Template: `templates/test-plan.md`
 
 **Idempotency**: If test-plan.md exists → read and use, do NOT regenerate.
+
+**⚠️ Human verification — STOP before generating code.**
+
+After creating (or reading existing) test-plan.md, **stop and ask the user to confirm**:
+
+> "Review `test-plan.md` before I generate test code. Does the test coverage match your intent? Add, remove, or adjust test cases as needed."
+
+**Why this matters**: Step 5 is the last human-reviewable checkpoint before code generation. Once test code is written, fixes address *how* tests run, not *what* they verify. Reviewing the test plan takes seconds and catches logic errors that Healer cannot fix.
+
+**Confirmation criteria**:
+- All scenarios from OpenSpec specs are covered
+- Special elements (Canvas, CAPTCHA, OTP) have correct automation strategy
+- Auth states and roles are accurate
+- Nothing important is missing
+
+If the user requests changes → update test-plan.md → re-confirm → proceed.
 
 ### 6. Generate test file
 
