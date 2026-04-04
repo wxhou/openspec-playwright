@@ -16,7 +16,9 @@ metadata:
 
 ## Output
 
-- **Test file**: `tests/playwright/<name>.spec.ts` (e.g. `app-all.spec.ts` for "all")
+- **Test file**: `tests/playwright/<name>.spec.ts`
+- **Page Objects** (all mode): `tests/playwright/pages/<Route>Page.ts`
+- **Auth setup**: `tests/playwright/auth.setup.ts` (if auth required)
 - **Auth setup**: `tests/playwright/auth.setup.ts` (if auth required)
 - **Report**: `openspec/reports/playwright-e2e-<name>-<timestamp>.md`
 - **Test plan**: `openspec/changes/<name>/specs/playwright/test-plan.md` (change mode only)
@@ -327,7 +329,16 @@ Read `tests/playwright/app-knowledge.md` as context for cross-change patterns.
 
 ### 5. Generate test plan
 
-> **"all" mode: skip this step.** No OpenSpec specs → no test-plan to generate. All mode skips test-plan verification — Page Objects are discovered incrementally from exploration, not from structured specs. Confirm understanding with user before Step 6 if needed.
+> **"all" mode: skip this step.** No OpenSpec specs → no test-plan to generate. All mode skips test-plan verification — Page Objects are discovered incrementally from exploration, not from structured specs.
+
+**All mode — brief confirmation before Step 6:**
+```
+## All Mode: Page Object Discovery
+Discovered <N> routes (<M> guest, <K> protected)
+Special elements: <element summary>
+Ready to generate Page Objects for: <page-name>Page.ts, <page-name>Page.ts, ...
+Reply **yes** to proceed, or tell me to exclude routes or adjust strategies.
+```
 
 **Change mode — prerequisite**: If `openspec/changes/<name>/specs/playwright/app-exploration.md` does not exist → **STOP**. Run Step 4 (explore application) before generating tests. Without real DOM data from exploration, selectors are guesses and tests will be fragile.
 
@@ -360,8 +371,13 @@ After creating (or reading existing) test-plan.md, **stop and display the test p
 - ⚠️ **CAPTCHA** at `<route>` — strategy: `auth.setup bypass / skip / api-only`
 - ⚠️ **Canvas/WebGL** at `<route>` — strategy: screenshot + dimensions
 - ⚠️ **OTP** at `<route>` — strategy: test credentials / dev bypass
+- ⚠️ **Iframe** at `<route>` — strategy: frameLocator + assert inner content
+- ⚠️ **Video/Audio** at `<route>` — strategy: play() + assert !paused
+- ⚠️ **File Upload** at `<route>` — strategy: setInputFiles + assert upload
+- ⚠️ **Drag-and-Drop** at `<route>` — strategy: dragAndDrop or evaluate events
+- ⚠️ **WebSocket/SSE** at `<route>` — strategy: waitForResponse + waitForFunction
 
-### ⚠️ Not Covered (if any)
+### Not Covered
 - `<element or scenario not testable>`
 ````
 
@@ -371,7 +387,7 @@ Then ask: "Does this coverage match your intent? Reply **yes** to proceed, or te
 
 **Confirmation criteria**:
 - All scenarios from OpenSpec specs are covered
-- Special elements (Canvas, CAPTCHA, OTP) have correct automation strategy
+- Special elements (Canvas, Iframe, Video, Audio, CAPTCHA, OTP, File Upload, Drag-drop, WebSocket) have correct automation strategy
 - Auth states and roles are accurate
 - Nothing important is missing
 
