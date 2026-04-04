@@ -733,6 +733,7 @@ If tests fail → use Playwright MCP tools to inspect UI, fix selectors, re-run.
 | `browser_navigate`         | Go to the failing test's page                   |
 | `browser_snapshot`         | Get page structure to find equivalent selectors |
 | `browser_console_messages` | Diagnose JS errors that may cause failures      |
+| `browser_network_requests` | Diagnose backend/API failures (4xx/5xx)          |
 | `browser_take_screenshot`  | Visually compare before/after fixes             |
 | `browser_run_code`         | Execute custom fix logic (optional)             |
 
@@ -743,7 +744,7 @@ If tests fail → use Playwright MCP tools to inspect UI, fix selectors, re-run.
 
 | Failure type                 | Signal                                  | Action                                                |
 | ---------------------------- | --------------------------------------- | ----------------------------------------------------- |
-| **Network/backend**          | `fetch failed`, `net::ERR`, 5xx         | `browser_console_messages` → `test.skip()`            |
+| **Network/backend**          | `fetch failed`, `net::ERR`, 4xx/5xx | `browser_network_requests` → `browser_console_messages` → `test.skip()` |
 | **Selector changed**         | Element not found                       | `browser_snapshot` → fix selector → re-run            |
 | **Assertion mismatch**       | Wrong content/value                     | `browser_snapshot` → compare → fix assertion → re-run |
 | **Timing issue**             | `waitFor`/`page.evaluate` timeout       | Switch to `request` API or add `waitFor` → re-run     |
