@@ -9,13 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.76] - 2026-04-07
 
-### Added
-- `run.ts`: scan `__screenshots__/` after test run and attach screenshot path to failed tests in markdown report
-- Markdown report: add "Screenshot" column — failed tests show `__screenshots__/<name>-failed.png` as clickable link
-
 ### Changed
-- Markdown report: convert test results from bullet list to markdown table format
-- `run.ts`: add `readFileSync`/`readdirSync` imports
+- `run.ts`: switch from `--reporter=list` to `--reporter=json` for authoritative structured results
+- `run.ts`: add `parsePlaywrightJsonReport()` to directly extract screenshot paths from Playwright JSON report output
+- `run.ts`: `parsePlaywrightOutput()` (list stdout) becomes fallback when JSON report unavailable
+- Markdown report: add "Screenshot" column — links directly to screenshot file path from reporter attachment
+
+### Added
+- `JsonReporterSuite`, `JsonReporterTest`, `JsonReporterTestResult`, `JsonReporterAttachment` TypeScript interfaces for type-safe JSON parsing
 
 ## [0.1.75] - 2026-04-07
 

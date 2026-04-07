@@ -1,5 +1,5 @@
 import { execSync } from "child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import chalk from "chalk";
 
@@ -52,10 +52,17 @@ export async function run(changeName: string, options: RunOptions) {
     );
   }
 
-  // 4. Run Playwright tests with output capture
+  // 4. Run Playwright tests — JSON reporter for structured results + screenshot paths
   console.log(chalk.blue("─── Running Tests ───"));
 
-  const args = ["npx", "playwright", "test", testFile, "--reporter=list"];
+  const testResultsDir = join(projectRoot, "test-results");
+  const jsonReportPath = join(testResultsDir, "results.json");
+
+  const args = [
+    "npx", "playwright", "test", testFile,
+    "--reporter=json",
+    "--output=" + testResultsDir,
+  ];
   if (options.project) {
     args.push("--project=" + options.project);
   }
@@ -63,7 +70,6 @@ export async function run(changeName: string, options: RunOptions) {
   let testOutput = "";
 
   try {
-    // Capture stdout to detect port mismatch
     const result = execSync(args.join(" "), {
       cwd: projectRoot,
       encoding: "utf-8",
@@ -72,18 +78,14 @@ export async function run(changeName: string, options: RunOptions) {
     });
     testOutput = result;
   } catch (err: unknown) {
-    const error = err as { stdout?: string; stderr?: string; status?: number };
+    const error = err as { stdout?: string; stderr?: string };
     testOutput = (error.stdout ?? "") + (error.stderr ?? "");
   }
 
-  // 5. Parse results from Playwright output
-  const results = parsePlaywrightOutput(testOutput);
+  // 5. Parse results from JSON reporter output (authoritative) or fallback to stdout
+  const results = parsePlaywrightJsonReport(jsonReportPath) ?? parsePlaywrightOutput(testOutput);
 
-  // 6. Scan for screenshots of failed tests
-  const screenshotDir = join(projectRoot, "__screenshots__");
-  scanScreenshots(screenshotDir, results.tests);
-
-  // 7. Detect port mismatch
+  // 6. Detect port mismatch
   if (
     testOutput.includes("net::ERR_CONNECTION_REFUSED") ||
     testOutput.includes("listen EADDRINUSE") ||
@@ -96,7 +98,7 @@ export async function run(changeName: string, options: RunOptions) {
     );
   }
 
-  // 8. Generate markdown report
+  // 7. Generate markdown report
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
   const reportPath = join(
     projectRoot,
@@ -160,29 +162,97 @@ interface TestResults {
   tests: Array<{ name: string; status: "passed" | "failed"; screenshot?: string }>;
 }
 
-function scanScreenshots(
-  dir: string,
-  tests: Array<{ name: string; status: "passed" | "failed"; screenshot?: string }>,
-) {
-  if (!existsSync(dir)) return;
+// ─── JSON Reporter Parser ────────────────────────────────────────────────────────
+// Parses Playwright's --reporter=json output to extract test results and screenshot paths.
+// Falls back to null on parse failure — caller uses stdout fallback.
 
-  const files = readdirSync(dir).filter((f) => f.endsWith(".png"));
+interface JsonReporterSuite {
+  title: string;
+  tests: JsonReporterTest[];
+}
 
-  for (const test of tests) {
-    if (test.status !== "failed") continue;
+interface JsonReporterTest {
+  title: string;
+  status: "passed" | "failed" | "skipped" | "timedOut";
+  results: JsonReporterTestResult[];
+}
 
-    // Playwright screenshot naming: "test-name-failed.png" or "test-name-failed-1.png"
-    const escaped = test.name.replace(/[^a-zA-Z0-9-_ ]/g, "").replace(/ /g, "-");
-    const match = files.find(
-      (f) =>
-        f.startsWith(escaped + "-") &&
-        f.includes("-failed"),
-    );
-    if (match) {
-      test.screenshot = `__screenshots__/${match}`;
+interface JsonReporterTestResult {
+  status: "passed" | "failed" | "skipped" | "timedOut";
+  duration: number; // milliseconds
+  attachments: JsonReporterAttachment[];
+}
+
+interface JsonReporterAttachment {
+  name: string;
+  contentType: string;
+  path?: string;
+}
+
+interface JsonReporterRoot {
+  suites: JsonReporterSuite[];
+}
+
+function parsePlaywrightJsonReport(jsonPath: string): TestResults | null {
+  if (!existsSync(jsonPath)) return null;
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(jsonPath, "utf-8"));
+  } catch {
+    return null;
+  }
+
+  const data = raw as JsonReporterRoot;
+  if (!data?.suites?.length) return null;
+
+  const results: TestResults = {
+    total: 0,
+    passed: 0,
+    failed: 0,
+    duration: "0s",
+    tests: [],
+  };
+
+  // Collect duration across all suites
+  let totalDurationMs = 0;
+
+  for (const suite of data.suites) {
+    for (const test of suite.tests) {
+      for (const result of test.results) {
+        const status: "passed" | "failed" =
+          result.status === "passed" ? "passed" : "failed";
+
+        // Find first screenshot attachment (image/png) if any
+        const screenshotAtt = result.attachments.find(
+          (a) => a.contentType === "image/png" && a.path,
+        );
+
+        results.tests.push({
+          name: test.title,
+          status,
+          screenshot: screenshotAtt?.path ?? undefined,
+        });
+
+        results.total++;
+        if (status === "passed") results.passed++;
+        else results.failed++;
+
+        totalDurationMs += result.duration;
+      }
     }
   }
+
+  if (results.total > 0 && totalDurationMs > 0) {
+    const secs = Math.round(totalDurationMs / 1000);
+    results.duration = secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m ${secs % 60}s`;
+  }
+
+  return results;
 }
+
+// ─── Fallback: stdout parser ───────────────────────────────────────────────────
+// Parses Playwright's --reporter=list stdout when JSON report is unavailable.
 
 export function parsePlaywrightOutput(output: string): TestResults {
   const results: TestResults = {
