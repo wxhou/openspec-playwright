@@ -101,7 +101,7 @@ export async function init(options) {
     // 6. Generate seed test
     if (options.seed !== false) {
         console.log(chalk.blue("\n─── Generating Seed Test ───"));
-        await generateSeedTest(projectRoot);
+        await generateSeedTest(projectRoot, options.seed === true);
     }
     // 6b. Generate shared pages directory
     if (options.seed !== false) {
@@ -137,17 +137,17 @@ export async function init(options) {
     console.log(chalk.gray("  E2E tests through a three-agent pipeline:"));
     console.log(chalk.gray("  Planner → Generator → Healer\n"));
 }
-async function generateSeedTest(projectRoot) {
+async function generateSeedTest(projectRoot, force) {
     const testsDir = join(projectRoot, "tests", "playwright");
     mkdirSync(testsDir, { recursive: true });
     const seedPath = join(testsDir, "seed.spec.ts");
-    if (existsSync(seedPath)) {
-        console.log(chalk.gray("  - seed.spec.ts already exists, skipping"));
+    if (existsSync(seedPath) && !force) {
+        console.log(chalk.gray("  - seed.spec.ts already exists, skipping (use --seed to overwrite)"));
     }
     else {
         const seedContent = await readFile(TEMPLATE_DIR + "/seed.spec.ts", "utf-8");
         writeFileSync(seedPath, seedContent);
-        console.log(chalk.green("  ✓ Generated: tests/playwright/seed.spec.ts"));
+        console.log(chalk.green("  ✓ Generated: tests/playwright/seed.spec.ts" + (force ? " (overwritten)" : "")));
     }
     // Generate auth.setup.ts
     const authSetupPath = join(testsDir, "auth.setup.ts");

@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [0.1.79] - 2026-04-07
+
+### Fixed
+- `init.ts`: implement `--seed` flag to force regenerate `seed.spec.ts` (previously only `--no-seed` existed)
+- `update.ts`: fix duplicate warning when `seed.spec.ts` is outdated (`syncProjectTemplates` called twice)
+
+### Changed
+- `update.ts`: warning message now correctly suggests `openspec-pw init --seed` instead of non-existent `--seed` option
+
 ## [0.1.78] - 2026-04-07
 
 ### Added

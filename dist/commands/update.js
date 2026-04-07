@@ -167,7 +167,7 @@ function syncSkillTemplates(tmpDir, projectRoot) {
         }
     }
     // Sync project-level templates (BasePage.ts)
-    syncProjectTemplates(tmpDir, projectRoot);
+    // Note: syncProjectTemplates is already called at the main flow above
 }
 // Sync project-level templates that SKILL.md depends on
 function syncProjectTemplates(tmpDir, projectRoot) {
@@ -210,7 +210,7 @@ function syncProjectTemplates(tmpDir, projectRoot) {
             // Old version — prompt user (seed.spec.ts may have custom tests)
             console.log(chalk.yellow("  ⚠ tests/playwright/seed.spec.ts is outdated (missing fillAndVerify examples)"));
             console.log(chalk.gray("    The SKILL references fillAndVerify() in examples. Your seed.spec.ts may be outdated."));
-            console.log(chalk.gray("    To update: backup your customizations, then run 'openspec-pw init --seed' to regenerate."));
+            console.log(chalk.gray("    Run 'openspec-pw init --seed' to regenerate from latest template (overwrites existing)."));
         }
     }
 }

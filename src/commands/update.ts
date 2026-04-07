@@ -262,7 +262,7 @@ function syncSkillTemplates(tmpDir: string, projectRoot: string) {
   }
 
   // Sync project-level templates (BasePage.ts)
-  syncProjectTemplates(tmpDir, projectRoot);
+  // Note: syncProjectTemplates is already called at the main flow above
 }
 
 // Sync project-level templates that SKILL.md depends on
@@ -328,7 +328,7 @@ function syncProjectTemplates(tmpDir: string, projectRoot: string) {
       );
       console.log(
         chalk.gray(
-          "    To update: backup your customizations, then run 'openspec-pw init --seed' to regenerate.",
+          "    Run 'openspec-pw init --seed' to regenerate from latest template (overwrites existing).",
         ),
       );
     }
