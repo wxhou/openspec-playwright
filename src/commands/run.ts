@@ -1,5 +1,5 @@
 import { execSync } from "child_process";
-import { existsSync, mkdirSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import chalk from "chalk";
 
@@ -79,7 +79,11 @@ export async function run(changeName: string, options: RunOptions) {
   // 5. Parse results from Playwright output
   const results = parsePlaywrightOutput(testOutput);
 
-  // 6. Detect port mismatch
+  // 6. Scan for screenshots of failed tests
+  const screenshotDir = join(projectRoot, "__screenshots__");
+  scanScreenshots(screenshotDir, results.tests);
+
+  // 7. Detect port mismatch
   if (
     testOutput.includes("net::ERR_CONNECTION_REFUSED") ||
     testOutput.includes("listen EADDRINUSE") ||
@@ -92,7 +96,7 @@ export async function run(changeName: string, options: RunOptions) {
     );
   }
 
-  // 7. Generate markdown report
+  // 8. Generate markdown report
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
   const reportPath = join(
     projectRoot,
@@ -153,7 +157,31 @@ interface TestResults {
   passed: number;
   failed: number;
   duration: string;
-  tests: Array<{ name: string; status: "passed" | "failed" }>;
+  tests: Array<{ name: string; status: "passed" | "failed"; screenshot?: string }>;
+}
+
+function scanScreenshots(
+  dir: string,
+  tests: Array<{ name: string; status: "passed" | "failed"; screenshot?: string }>,
+) {
+  if (!existsSync(dir)) return;
+
+  const files = readdirSync(dir).filter((f) => f.endsWith(".png"));
+
+  for (const test of tests) {
+    if (test.status !== "failed") continue;
+
+    // Playwright screenshot naming: "test-name-failed.png" or "test-name-failed-1.png"
+    const escaped = test.name.replace(/[^a-zA-Z0-9-_ ]/g, "").replace(/ /g, "-");
+    const match = files.find(
+      (f) =>
+        f.startsWith(escaped + "-") &&
+        f.includes("-failed"),
+    );
+    if (match) {
+      test.screenshot = `__screenshots__/${match}`;
+    }
+  }
 }
 
 export function parsePlaywrightOutput(output: string): TestResults {
@@ -214,9 +242,14 @@ function generateReport(
       "",
     );
   } else {
+    lines.push("| Test | Status | Screenshot |");
+    lines.push("|------|--------|-----------|");
     for (const test of results.tests) {
       const icon = test.status === "passed" ? "✅" : "❌";
-      lines.push(`- ${test.name}: ${icon} ${test.status}`);
+      const screenshot = test.screenshot
+        ? `[${test.screenshot}](${test.screenshot})`
+        : "-";
+      lines.push(`| ${test.name} | ${icon} ${test.status} | ${screenshot} |`);
     }
     lines.push("");
   }
@@ -224,11 +257,12 @@ function generateReport(
   lines.push("## Recommendations", "");
   if (results.failed > 0) {
     lines.push(
-      "Review failed tests above. Common fixes:",
+      "Review failed tests above. Screenshots are embedded in this report.",
+      "Common fixes:",
       "- Update selectors if UI changed (use `data-testid` attributes)",
       "- Adjust BASE_URL in seed.spec.ts if port differs",
       "- Set E2E_USERNAME/E2E_PASSWORD if auth is required",
-      "- Check `npx playwright show-report` for screenshots",
+      "- For full interactive reports: `npx playwright show-report`",
       "",
     );
   } else {

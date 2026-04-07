@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.76] - 2026-04-07
+
+### Added
+- `run.ts`: scan `__screenshots__/` after test run and attach screenshot path to failed tests in markdown report
+- Markdown report: add "Screenshot" column — failed tests show `__screenshots__/<name>-failed.png` as clickable link
+
+### Changed
+- Markdown report: convert test results from bullet list to markdown table format
+- `run.ts`: add `readFileSync`/`readdirSync` imports
+
 ## [0.1.75] - 2026-04-07
 
 ### Fixed
