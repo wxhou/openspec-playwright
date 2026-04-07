@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires openspec CLI, Playwright (with browsers installed), and @playwright/mcp (globally installed via `claude mcp add playwright npx @playwright/mcp@latest`).
 metadata:
   author: openspec-playwright
-  version: "2.11"
+  version: "2.13"
 ---
 
 ## Input
@@ -18,7 +18,6 @@ metadata:
 
 - **Test file**: `tests/playwright/<name>.spec.ts`
 - **Page Objects** (all mode): `tests/playwright/pages/<Route>Page.ts`
-- **Auth setup**: `tests/playwright/auth.setup.ts` (if auth required)
 - **Auth setup**: `tests/playwright/auth.setup.ts` (if auth required)
 - **Report**: `openspec/reports/playwright-e2e-<name>-<timestamp>.md`
 - **Test plan**: `openspec/changes/<name>/specs/playwright/test-plan.md` (change mode only)
@@ -75,10 +74,33 @@ Can this be tested through the UI?
 
 - Announce: "Mode: full app exploration + Page Object discovery"
 - **Goal**: Discover new routes, extract selectors, and build `pages/*.ts` Page Objects — accumulated asset for future Change tests
-- Discover routes via:
-  1. Navigate to `${BASE_URL}/sitemap.xml` (if exists)
-  2. Navigate to `${BASE_URL}/` → extract all links from snapshot
-  3. Fallback common paths: `/`, `/login`, `/dashboard`, `/admin`, `/profile`, `/api/`
+- **Route discovery** (in order):
+  1. **sitemap.xml**: `browser_navigate(${BASE_URL}/sitemap.xml)` → parse URLs
+  2. **Link extraction**: Navigate to `${BASE_URL}/` → `browser_evaluate` extracts all `<a href>`:
+     ```javascript
+     // Extract all internal links from current page
+     () => {
+       const origin = window.location.origin;
+       const links = Array.from(document.querySelectorAll('a[href]'));
+       return links
+         .map(a => a.href)
+         .filter(h => h.startsWith(origin) && !h.includes('/logout') && !h.includes('/api/'))
+         .map(h => new URL(h).pathname);
+     }
+     ```
+  3. **Fallback common paths**: `/`, `/login`, `/dashboard`, `/admin`, `/profile`, `/settings`
+
+**Decision table — route discovery fallback:**
+
+| Situation | Action |
+| — | — |
+| `sitemap.xml` returns 200 with URLs | Parse all URLs → extract pathname |
+| `sitemap.xml` returns 404/5xx | Skip → use link extraction |
+| Link extraction finds 0 links | Fall back to common paths |
+| Common path returns 200 | Add to routes |
+| Duplicate routes from multiple sources | Deduplicate by pathname |
+
+- **Persist routes**: Write discovered routes to `app-knowledge.md` → **Routes** table. Replace the entire table (including header) with fresh data — do not append.
 - Group routes: Guest vs Protected (by attempting direct access)
 
 ### 2. Detect auth
@@ -95,11 +117,13 @@ Can this be tested through the UI?
 
 **Exclude false positives**: HTTP header examples (`Authorization: Bearer ...`) and code snippets do not count.
 
-**Confidence**:
+**Confidence — decision table:**
 
-- High (auto-proceed): Multiple markers AND context indicators
-- Medium (proceed with note): Single marker, context unclear
-- Low (skip auth): No markers found
+| Confidence | Condition | Action |
+| — | — | — |
+| High | Multiple markers AND context indicators | Auto-proceed |
+| Medium | Single marker, context unclear | Proceed + note in output |
+| Low | No markers found | Skip auth, test as guest |
 
 ### 3. Validate environment
 
@@ -281,7 +305,7 @@ Record findings in `app-exploration.md` → **Special Elements Detected** table.
 
 Output: `openspec/changes/<name>/specs/playwright/app-exploration.md`
 
-Use template: `templates/app-exploration.md`
+Template: read from `.claude/skills/openspec-e2e/templates/app-exploration.md` (project-local skill directory)
 
 Key fields per route:
 
@@ -299,7 +323,7 @@ After exploration, add route-level notes (redirects, dynamic content → see 4.5
 | ------------------------------------------------- | ---------------------------------------------------------------- |
 | SPA routing (URL changes but page doesn't reload) | Explore via navigation clicks from known routes, not direct URLs |
 | Page loads but no interactive elements            | Wait longer for SPA hydration                                    |
-| Dynamic content (user-specific)                   | Record structure — use `toContainText`, not `toHaveText`         |
+| Dynamic content (user-specific)                   | Record structure — use `toContainText` or regex, not `toHaveText` |
 
 **Idempotency**: If `app-exploration.md` already exists → read it, verify routes still match specs, update only new routes or changed pages.
 
@@ -393,11 +417,45 @@ Then ask: "Does this coverage match your intent? Reply **yes** to proceed, or te
 
 If the user requests changes → update test-plan.md → re-display summary → re-confirm → proceed.
 
-### 6. Generate test file
+### 6. Generate (Generator role)
 
 **"all" mode**: Build and expand Page Objects for future Change tests.
 
 **Prerequisite**: If `app-exploration.md` does not exist → **STOP**. Run Step 4 first. All mode explores routes via browser MCP to build exploration data.
+
+**Page Object pattern** — read before writing any page file:
+
+Read: `templates/e2e-test.ts` → LoginPage example
+
+```typescript
+// ✅ 正确：getters + async actions + this.click/fill
+export class LoginPage extends BasePage {
+  get usernameInput() { return this.byLabel('用户名'); }
+  get submitBtn() { return this.byRole('button', { name: '登录' }); }
+  constructor(page: Page) { super(page); }
+  async login(user: string, pass: string) {
+    await this.goto('/login');
+    await this.fillAndVerify(this.usernameInput, user);
+    await this.click(this.submitBtn);
+  }
+}
+
+// ❌ 错误：测试文件里写 inline locators
+test('login', async ({ page }) => {
+  await page.getByLabel('用户名').fill('user'); // ← never do this!
+});
+```
+
+**Decision table — Page Object file handling**:
+
+| Situation | Action |
+| — | — |
+| `pages/<Route>Page.ts` does not exist | Create from LoginPage pattern |
+| File exists with some getters | Extend — add missing, preserve existing |
+| File exists but uses inline locators | Rewrite with Page Object pattern, keep selector strings |
+| Route removed from app | Remove corresponding Page Object file |
+
+**File naming**: `pages/<Route>Page.ts` — use kebab-case route → PascalCase. `/login` → `LoginPage.ts`, `/user-profile` → `UserProfilePage.ts`.
 
 For each discovered route:
 
@@ -576,7 +634,7 @@ export class LoginPage extends BasePage {
     await this.goto('/login');
     await this.fillAndVerify(this.usernameInput, user);
     await this.fillAndVerify(this.passwordInput, pass);
-    await this.submitBtn.click();
+    await this.click(this.submitBtn);
   }
 }
 ```
@@ -701,7 +759,9 @@ Auth required. To set up:
 
 ### 8. Configure playwright.config.ts
 
-If missing → generate from `templates/playwright.config.ts`.
+**Output**: `playwright.config.ts` (project root; or `tests/playwright/playwright.config.ts` if config already exists there)
+
+If missing → generate from `.claude/skills/openspec-e2e/templates/playwright.config.ts`.
 
 **Auto-detect BASE_URL** (in priority order):
 
@@ -738,21 +798,24 @@ If tests fail → use Playwright MCP tools to inspect UI, fix selectors, re-run.
 | `browser_take_screenshot`  | Visually compare before/after fixes             |
 | `browser_run_code`         | Execute custom fix logic (optional)             |
 
-**Healer workflow**:
+**Healer Decision Table — failure type → action:**
 
-1. Read the failing test → identify failure type
-2. Classify:
+| Failure type | Signal | Action |
+| — | — | — |
+| **Network/backend** | `fetch failed`, `net::ERR`, 4xx/5xx in console | `browser_network_requests` → verify backend → `test.skip()` + report |
+| **Selector changed** | Element not found | `browser_snapshot` → fix selector → re-run (attempt 1/3) |
+| **Assertion mismatch** | Wrong content/value | `browser_snapshot` → compare → fix assertion → re-run (attempt 1/3) |
+| **Timing issue** | waitFor/evaluate timeout | Switch to `request` API or add `waitFor` → re-run (attempt 1/3) |
+| **page.evaluate with fetch** | CORS errors in browser context | Switch to `page.request` API → re-run (attempt 1/3) |
+| **Auth expired** | Redirected to login mid-test | Re-run auth.setup → re-run test |
+| **3 heals failed** | After 3 attempts, still failing | **STOP**. `test.skip()` if app bug; report recommendation if test bug |
 
-| Failure type                 | Signal                                  | Action                                                |
-| ---------------------------- | --------------------------------------- | ----------------------------------------------------- |
-| **Network/backend**          | `fetch failed`, `net::ERR`, 4xx/5xx | `browser_network_requests` → `browser_console_messages` → `test.skip()` |
-| **Selector changed**         | Element not found                       | `browser_snapshot` → fix selector → re-run            |
-| **Assertion mismatch**       | Wrong content/value                     | `browser_snapshot` → compare → fix assertion → re-run |
-| **Timing issue**             | `waitFor`/`page.evaluate` timeout       | Switch to `request` API or add `waitFor` → re-run     |
-| **page.evaluate with fetch** | `fetch` in browser context, CORS errors | Switch to `page.request` API → re-run                 |
-
-3. **Heal** (≤3 attempts): snapshot → fix → re-run. If healed successfully → append to `app-knowledge.md` → **Selector Fixes** table: route, old selector → new selector, reason.
-4. **After 3 failures**: collect evidence checklist → `test.skip()` if app bug, report recommendation if test bug
+**Healer protocol:**
+1. Read failing test → identify failure type
+2. Match to decision table → take action
+3. After fix: re-run only that test
+4. If healed: append to `app-knowledge.md` → **Selector Fixes** table (route, old selector → new selector, reason)
+5. **If 3 attempts exhausted without heal → STOP**. Do not retry further.
 
 ### 10. False Pass Detection
 
@@ -780,6 +843,8 @@ Reference: `templates/report.md`
 
 ## Graceful Degradation
 
+**When these critical failures occur → STOP immediately:**
+
 | Scenario | Behavior |
 | ------- | ------- |
 | No specs / app-exploration.md missing (change mode) | **STOP** |
@@ -793,10 +858,17 @@ Reference: `templates/report.md`
 
 ## Guardrails
 
-- Read specs from `openspec/changes/<name>/specs/` as source of truth
-- Do NOT generate tests that contradict the specs
-- **DO generate real, runnable Playwright test code** — not placeholders or TODOs
-- Do NOT overwrite files outside: `specs/playwright/`, `tests/playwright/`, `openspec/reports/`, `playwright.config.ts`, `auth.setup.ts`
-- **Always explore before generating** — Step 4 is mandatory for accurate selectors
-- Cap auto-heal at 3 attempts
-- If no change specified → always ask user to select
+**Decision table:**
+
+| Rule | Why |
+| — | — |
+| Read specs as source of truth | Generated tests must match requirements |
+| Step 4 before Step 6 | Real DOM data → accurate selectors |
+| Never contradict specs | E2E validates implementation, not design |
+| Cap heal at 3 attempts | Prevents infinite loops |
+| Write runnable code, not TODOs | Placeholders fail CI |
+
+**Files you can write to:**
+`specs/playwright/`, `tests/playwright/`, `openspec/reports/`, `playwright.config.ts`, `auth.setup.ts`
+
+**Never write to:** any other directory

@@ -5,7 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.78] - 2026-04-07
+
+### Added
+- `SKILL.md` (v2.13): add Decision Table for Page Object file handling (create/extend/rewrite/remove)
+- `SKILL.md` (v2.13): add Decision Table for route discovery fallback (sitemap→link→common paths)
+- `SKILL.md` (v2.13): add Decision Table for Auth Confidence (High/Medium/Low → action)
+- `SKILL.md` (v2.13): add Decision Table for Healer failure types (7 failure types with signals and actions)
+- `SKILL.md` (v2.13): add complete Healer protocol (5-step workflow with STOP guard at 3 attempts)
+- `SKILL.md` (v2.13): add STOP guard header to Graceful Degradation section
+- `SKILL.md` (v2.13): restructure Guardrails from prose to Decision Table + file whitelist
+- `SKILL.md` (v2.13): add Output path for `playwright.config.ts`
+- `SKILL.md` (v2.13): clarify `app-exploration.md` template path (`.claude/skills/openspec-e2e/templates/`)
+- `SKILL.md` (v2.12): add Step 1 Decision Table — Routes table replaces entirely (no append)
+- `SKILL.md` (v2.12): add Step 6 Generator role identity + Page Object pattern (Read templates/e2e-test.ts)
+- `SKILL.md` (v2.12): add ✅/❌ code pattern comparison for Page Objects (getters vs inline locators)
+- `SKILL.md` (v2.12): add Page Object file naming convention (kebab→PascalCase)
+- `templates/app-knowledge.md`: add **Routes** table for discovered routes (Route, Auth, Page Object, Notes)
+- `templates/e2e-test.ts`: expand LoginPage example with full implementation pattern
+
+### Fixed
+- `SKILL.md` (v2.13): Step 6.1 LoginPage click consistency — `this.submitBtn.click()` → `this.click(this.submitBtn)`
+- `SKILL.md` (v2.13): Step 8 `playwright.config.ts` template path now explicit
+- `SKILL.md` (v2.13): Step 4.5 Dynamic content assertion — `toContainText` or regex (not `toHaveText`)
+- `SKILL.md` (v2.13): Graceful Degradation table — remove duplicate **STOP** bold since header covers it
+- `SKILL.md` (v2.13): Output section — remove duplicate "Auth setup" line
+- `update.ts`: auto-sync `tests/playwright/pages/BasePage.ts` when missing `fillAndVerify()` (v0.1.75+ feature)
+- `update.ts`: warn if `seed.spec.ts` is outdated and missing `fillAndVerify()` examples
 
 ## [0.1.77] - 2026-04-07
 

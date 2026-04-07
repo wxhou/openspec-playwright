@@ -1,5 +1,5 @@
 import { execSync } from "child_process";
-import { existsSync, mkdirSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import chalk from "chalk";
 const REPORTS_DIR = "openspec/reports";
@@ -21,15 +21,20 @@ export async function run(changeName, options) {
     if (!hasCredentials) {
         console.log(chalk.yellow("  ⚠ No credentials.yaml found — tests may fail if auth required"));
     }
-    // 4. Run Playwright tests with output capture
+    // 4. Run Playwright tests — JSON reporter for structured results + screenshot paths
     console.log(chalk.blue("─── Running Tests ───"));
-    const args = ["npx", "playwright", "test", testFile, "--reporter=list"];
+    const testResultsDir = join(projectRoot, "test-results");
+    const jsonReportPath = join(testResultsDir, "results.json");
+    const args = [
+        "npx", "playwright", "test", testFile,
+        "--reporter=json",
+        "--output=" + testResultsDir,
+    ];
     if (options.project) {
         args.push("--project=" + options.project);
     }
     let testOutput = "";
     try {
-        // Capture stdout to detect port mismatch
         const result = execSync(args.join(" "), {
             cwd: projectRoot,
             encoding: "utf-8",
@@ -42,8 +47,8 @@ export async function run(changeName, options) {
         const error = err;
         testOutput = (error.stdout ?? "") + (error.stderr ?? "");
     }
-    // 5. Parse results from Playwright output
-    const results = parsePlaywrightOutput(testOutput);
+    // 5. Parse results from JSON reporter output (authoritative) or fallback to stdout
+    const results = parsePlaywrightJsonReport(jsonReportPath) ?? parsePlaywrightOutput(testOutput);
     // 6. Detect port mismatch
     if (testOutput.includes("net::ERR_CONNECTION_REFUSED") ||
         testOutput.includes("listen EADDRINUSE") ||
@@ -90,6 +95,56 @@ export async function run(changeName, options) {
         console.log(chalk.green("✓ E2E verification PASSED"));
     }
 }
+function parsePlaywrightJsonReport(jsonPath) {
+    if (!existsSync(jsonPath))
+        return null;
+    let raw;
+    try {
+        raw = JSON.parse(readFileSync(jsonPath, "utf-8"));
+    }
+    catch {
+        return null;
+    }
+    const data = raw;
+    if (!data?.suites?.length)
+        return null;
+    const results = {
+        total: 0,
+        passed: 0,
+        failed: 0,
+        duration: "0s",
+        tests: [],
+    };
+    // Collect duration across all suites
+    let totalDurationMs = 0;
+    for (const suite of data.suites) {
+        for (const test of suite.tests) {
+            for (const result of test.results) {
+                const status = result.status === "passed" ? "passed" : "failed";
+                // Find first screenshot attachment (image/png) if any
+                const screenshotAtt = result.attachments.find((a) => a.contentType === "image/png" && a.path);
+                results.tests.push({
+                    name: test.title,
+                    status,
+                    screenshot: screenshotAtt?.path ?? undefined,
+                });
+                results.total++;
+                if (status === "passed")
+                    results.passed++;
+                else
+                    results.failed++;
+                totalDurationMs += result.duration;
+            }
+        }
+    }
+    if (results.total > 0 && totalDurationMs > 0) {
+        const secs = Math.round(totalDurationMs / 1000);
+        results.duration = secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m ${secs % 60}s`;
+    }
+    return results;
+}
+// ─── Fallback: stdout parser ───────────────────────────────────────────────────
+// Parses Playwright's --reporter=list stdout when JSON report is unavailable.
 export function parsePlaywrightOutput(output) {
     const results = {
         total: 0,
@@ -140,15 +195,20 @@ function generateReport(changeName, timestamp, results) {
         lines.push("_(No test output captured — check Playwright configuration)_", "");
     }
     else {
+        lines.push("| Test | Status | Screenshot |");
+        lines.push("|------|--------|-----------|");
         for (const test of results.tests) {
             const icon = test.status === "passed" ? "✅" : "❌";
-            lines.push(`- ${test.name}: ${icon} ${test.status}`);
+            const screenshot = test.screenshot
+                ? `[${test.screenshot}](${test.screenshot})`
+                : "-";
+            lines.push(`| ${test.name} | ${icon} ${test.status} | ${screenshot} |`);
         }
         lines.push("");
     }
     lines.push("## Recommendations", "");
     if (results.failed > 0) {
-        lines.push("Review failed tests above. Common fixes:", "- Update selectors if UI changed (use `data-testid` attributes)", "- Adjust BASE_URL in seed.spec.ts if port differs", "- Set E2E_USERNAME/E2E_PASSWORD if auth is required", "- Check `npx playwright show-report` for screenshots", "");
+        lines.push("Review failed tests above. Screenshots are embedded in this report.", "Common fixes:", "- Update selectors if UI changed (use `data-testid` attributes)", "- Adjust BASE_URL in seed.spec.ts if port differs", "- Set E2E_USERNAME/E2E_PASSWORD if auth is required", "- For full interactive reports: `npx playwright show-report`", "");
     }
     else {
         lines.push("All tests passed. No action needed.", "");

@@ -122,6 +122,9 @@ export async function update(options: UpdateOptions) {
       // Sync SKILL reference templates
       syncSkillTemplates(tmpDir, projectRoot);
 
+      // Sync project templates (BasePage.ts, seed.spec.ts)
+      syncProjectTemplates(tmpDir, projectRoot);
+
       rmSync(tmpDir, { recursive: true, force: true });
       console.log(chalk.green("  ✓ Commands, skill & templates updated to latest"));
     } catch (err) {
@@ -255,6 +258,79 @@ function syncSkillTemplates(tmpDir: string, projectRoot: string) {
     const dest = join(templatesDir, file);
     if (existsSync(src)) {
       writeFileSync(dest, readFileSync(src));
+    }
+  }
+
+  // Sync project-level templates (BasePage.ts)
+  syncProjectTemplates(tmpDir, projectRoot);
+}
+
+// Sync project-level templates that SKILL.md depends on
+function syncProjectTemplates(tmpDir: string, projectRoot: string) {
+  const testsDir = join(projectRoot, "tests", "playwright");
+  if (!existsSync(testsDir)) return;
+
+  // 1. Sync BasePage.ts — SKILL.md references fillAndVerify(), byTestId(), etc.
+  const basePageSrc = join(tmpDir, "templates", "pages", "BasePage.ts");
+  const basePageDest = join(testsDir, "pages", "BasePage.ts");
+
+  if (existsSync(basePageSrc)) {
+    if (!existsSync(basePageDest)) {
+      // BasePage.ts missing — create it
+      mkdirSync(join(testsDir, "pages"), { recursive: true });
+      writeFileSync(basePageDest, readFileSync(basePageSrc));
+      console.log(
+        chalk.green("  ✓ Generated: tests/playwright/pages/BasePage.ts"),
+      );
+    } else {
+      // BasePage.ts exists — check if it has fillAndVerify (v0.1.75+)
+      const existing = readFileSync(basePageDest, "utf-8");
+      const latest = readFileSync(basePageSrc, "utf-8");
+
+      const hasFillAndVerify = existing.includes("fillAndVerify");
+      const latestHasFillAndVerify = latest.includes("fillAndVerify");
+
+      if (!hasFillAndVerify && latestHasFillAndVerify) {
+        // Old version detected — update it
+        writeFileSync(basePageDest, latest);
+        console.log(
+          chalk.green(
+            "  ✓ Updated: tests/playwright/pages/BasePage.ts (v0.1.75+ with fillAndVerify)",
+          ),
+        );
+      }
+    }
+  }
+
+  // 2. Sync seed.spec.ts — only if it matches the template (user hasn't customized)
+  const seedSrc = join(tmpDir, "templates", "seed.spec.ts");
+  const seedDest = join(testsDir, "seed.spec.ts");
+
+  if (existsSync(seedSrc) && existsSync(seedDest)) {
+    const existing = readFileSync(seedDest, "utf-8");
+    const latest = readFileSync(seedSrc, "utf-8");
+
+    // Check if seed.spec.ts references fillAndVerify (v0.1.75+)
+    const hasFillAndVerify = existing.includes("fillAndVerify");
+    const latestHasFillAndVerify = latest.includes("fillAndVerify");
+
+    if (!hasFillAndVerify && latestHasFillAndVerify) {
+      // Old version — prompt user (seed.spec.ts may have custom tests)
+      console.log(
+        chalk.yellow(
+          "  ⚠ tests/playwright/seed.spec.ts is outdated (missing fillAndVerify examples)",
+        ),
+      );
+      console.log(
+        chalk.gray(
+          "    The SKILL references fillAndVerify() in examples. Your seed.spec.ts may be outdated.",
+        ),
+      );
+      console.log(
+        chalk.gray(
+          "    To update: backup your customizations, then run 'openspec-pw init --seed' to regenerate.",
+        ),
+      );
     }
   }
 }

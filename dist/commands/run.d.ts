@@ -12,6 +12,7 @@ interface TestResults {
     tests: Array<{
         name: string;
         status: "passed" | "failed";
+        screenshot?: string;
     }>;
 }
 export declare function parsePlaywrightOutput(output: string): TestResults;

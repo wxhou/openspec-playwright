@@ -12,17 +12,32 @@ const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
  * Page Object Pattern
  *
  * Extend BasePage to add page-specific selectors and actions.
- * Example:
- *   class LoginPage extends BasePage {
+ * Each route gets its own file: pages/LoginPage.ts, pages/DashboardPage.ts
+ *
+ * Example LoginPage (create at tests/playwright/pages/LoginPage.ts):
+ *
+ *   import { BasePage } from './BasePage';
+ *   import type { Page } from '@playwright/test';
+ *
+ *   export class LoginPage extends BasePage {
  *     get usernameInput() { return this.byLabel('用户名'); }
  *     get passwordInput() { return this.byLabel('密码'); }
  *     get submitBtn() { return this.byRole('button', { name: '登录' }); }
+ *
+ *     constructor(page: Page) { super(page); }
+ *
  *     async login(user: string, pass: string) {
+ *       await this.goto('/login');
  *       await this.fillAndVerify(this.usernameInput, user);
  *       await this.fillAndVerify(this.passwordInput, pass);
- *       await this.submitBtn.click();
+ *       await this.click(this.submitBtn);
  *     }
  *   }
+ *
+ * Usage in spec:
+ *   import { LoginPage } from '../pages/LoginPage';
+ *   const loginPage = new LoginPage(page);
+ *   await loginPage.login('user@example.com', 'password');
  */
 class AppPage extends BasePage {
   // Add page-specific selectors here

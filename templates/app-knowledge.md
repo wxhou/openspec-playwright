@@ -5,6 +5,17 @@ Last updated: <timestamp>
 
 Cross-change E2E knowledge. Updated by Step 4 exploration, read by Step 5/6.
 
+## Routes
+
+Discovered routes from sitemap.xml or link extraction. Used by "all" mode to generate Page Objects.
+
+| Route | Auth | Page Object | Notes |
+|-------|------|-------------|-------|
+| `/` | guest | `HomePage.ts` | Landing page |
+| `/login` | guest | `LoginPage.ts` | Auth entry |
+| `/dashboard` | required | `DashboardPage.ts` | Protected |
+| | | | |
+
 ## Credential Format
 
 | Field | Format | Source |
