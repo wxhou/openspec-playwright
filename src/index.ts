@@ -27,7 +27,8 @@ program
   )
   .option("-c, --change <name>", "default change name", "default")
   .option("--no-mcp", "skip Playwright MCP configuration")
-  .option("--seed/--no-seed", "force regenerate seed.spec.ts (default: generate only if missing)")
+  .option("--seed", "force regenerate seed.spec.ts (overwrite if exists)")
+  .option("--no-seed", "skip seed.spec.ts generation entirely")
   .action(init);
 
 program
