@@ -88,29 +88,21 @@ export async function update(options: UpdateOptions) {
       // Extract tarball
       await tar.extract({ file: tarballPath, cwd: tmpDir, strip: 1 });
 
-      const bodySrc = join(
-        tmpDir,
-        ".claude",
-        "commands",
-        "opsx",
-        "e2e-body.md",
-      );
+      // Read SKILL.md body as command content
+      const skillSrc = join(tmpDir, ".claude", "skills", "openspec-e2e", "SKILL.md");
+      let body = "";
+      if (existsSync(skillSrc)) {
+        const skillContent = readFileSync(skillSrc, "utf-8");
+        body = skillContent.replace(/^---\n[\s\S]*?\n---\n*/, "");
+      }
 
       // Install commands for all detected editors
       const adapters = detectEditors(projectRoot);
-      if (adapters.length > 0 && existsSync(bodySrc)) {
-        const body = readFileSync(bodySrc, "utf-8");
+      if (adapters.length > 0 && body) {
         installForAllEditors(body, adapters, projectRoot);
       }
 
       // Install SKILL.md for Claude Code
-      const skillSrc = join(
-        tmpDir,
-        ".claude",
-        "skills",
-        "openspec-e2e",
-        "SKILL.md",
-      );
       if (existsSync(join(projectRoot, ".claude")) && existsSync(skillSrc)) {
         const skillContent = readFileSync(skillSrc, "utf-8");
         installSkill(projectRoot, skillContent);

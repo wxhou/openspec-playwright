@@ -158,8 +158,6 @@ const CRITICAL_PACKAGE_FILES = [
   "dist/commands/update.js",
   "dist/commands/mcpSync.js",
   "dist/commands/editors.js",
-  ".claude/commands/opsx/e2e-body.md",
-  ".claude/commands/opsx/e2e.md",
   ".claude/skills/openspec-e2e/SKILL.md",
   "employee-standards.md",
   "templates/seed.spec.ts",

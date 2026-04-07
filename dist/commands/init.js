@@ -9,8 +9,11 @@ import { syncMcpTools } from "./mcpSync.js";
 import { detectEditors, installForAllEditors, installSkill, installProjectClaudeMd, readEmployeeStandards, claudeAdapter, } from "./editors.js";
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
 const SKILL_SRC = fileURLToPath(new URL("../../.claude/skills/openspec-e2e/SKILL.md", import.meta.url));
-const CMD_BODY_SRC = fileURLToPath(new URL("../../.claude/commands/opsx/e2e-body.md", import.meta.url));
 const EMPLOYEE_STANDARDS_SRC = fileURLToPath(new URL("../../employee-standards.md", import.meta.url));
+/** Strip YAML frontmatter from SKILL.md to get the body content */
+function extractSkillBody(content) {
+    return content.replace(/^---\n[\s\S]*?\n---\n*/, "");
+}
 export async function init(options) {
     console.log(chalk.blue("\n🔧 OpenSpec + Playwright E2E Setup\n"));
     const projectRoot = process.cwd();
@@ -71,20 +74,19 @@ export async function init(options) {
             }
         }
     }
-    // 4. Install E2E commands for detected editors
+    // 4. Install E2E commands for detected editors (body from SKILL.md)
     console.log(chalk.blue("\n─── Installing E2E Commands ───"));
+    const skillContent = await readFile(SKILL_SRC, "utf-8");
+    const body = extractSkillBody(skillContent);
     const detected = detectEditors(projectRoot);
     if (detected.length > 0) {
-        const body = await readFile(CMD_BODY_SRC, "utf-8");
         installForAllEditors(body, detected, projectRoot);
     }
     else {
-        const body = await readFile(CMD_BODY_SRC, "utf-8");
         installForAllEditors(body, [claudeAdapter], projectRoot);
     }
     // Claude Code also gets the SKILL.md
     if (existsSync(join(projectRoot, ".claude"))) {
-        const skillContent = await readFile(SKILL_SRC, "utf-8");
         installSkill(projectRoot, skillContent);
         installSkillTemplates(projectRoot);
     }
@@ -102,6 +104,11 @@ export async function init(options) {
     if (options.seed !== false) {
         console.log(chalk.blue("\n─── Generating Seed Test ───"));
         await generateSeedTest(projectRoot, options.seed === true);
+    }
+    // 6b. Generate shared pages directory
+    if (options.seed !== false) {
+        console.log(chalk.blue("\n─── Generating Shared Pages ───"));
+        await generateSharedPages(projectRoot);
     }
     // 6b. Generate shared pages directory
     if (options.seed !== false) {
