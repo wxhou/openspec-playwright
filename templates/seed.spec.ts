@@ -127,9 +127,10 @@ test.describe('Environment validation', () => {
 
 // test.describe('Error handling', () => {
 //   test('shows error message on invalid input', async ({ page }) => {
-//     await page.goto(`${BASE_URL}/submit`);
-//     await page.getByTestId('input').fill('');
-//     await page.getByTestId('submit').click();
+//     const app = createPage(page);
+//     await app.goto(`${BASE_URL}/submit`);
+//     await app.fillAndVerify(app.byTestId('input'), '');
+//     await app.click(app.byTestId('submit'));
 //     await expect(page.getByTestId('error')).toContainText('不能为空');
 //   });
 // });

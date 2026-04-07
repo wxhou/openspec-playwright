@@ -7,7 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.73] - 2026-04-03
+## [0.1.75] - 2026-04-07
+
+### Fixed
+- `BasePage.fill()` / `type()`: add `blur()` after operation to trigger Vue/React change events and reactive updates, preventing "input not committed before next action" race conditions
+- `BasePage`: add `fillAndVerify()` method for fields with debounced validation or when the next action depends on the value being fully committed
+
+### Changed
+- `SKILL.md`: update AppPage pattern example to use `fillAndVerify()`; update UI test code example to show verified fill pattern
+- `auth.setup.ts`: add `toHaveValue()` verification after each fill in UI login fallback
+- `seed.spec.ts`: update error path example to use `fillAndVerify()`
+- `e2e-test.ts`: update login example to use `fillAndVerify()`
+
+## [0.1.74] - 2026-04-03
 
 ### Added
 - `SKILL.md`: add special element detection (Step 4.3.1) — canvas, iframe, Shadow DOM, contenteditable, video/audio, date pickers, drag-and-drop, infinite scroll, WebSocket/SSE

@@ -18,8 +18,8 @@ const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
  *     get passwordInput() { return this.byLabel('密码'); }
  *     get submitBtn() { return this.byRole('button', { name: '登录' }); }
  *     async login(user: string, pass: string) {
- *       await this.usernameInput.fill(user);
- *       await this.passwordInput.fill(pass);
+ *       await this.fillAndVerify(this.usernameInput, user);
+ *       await this.fillAndVerify(this.passwordInput, pass);
  *       await this.submitBtn.click();
  *     }
  *   }

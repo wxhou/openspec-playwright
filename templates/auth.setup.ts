@@ -68,10 +68,11 @@ setup('authenticate via UI', async ({ page }) => {
 
   // Common selector patterns (uncomment the one that matches):
   await page.fill('[data-testid="username"]', username);
+  await expect(page.locator('[data-testid="username"]')).toHaveValue(username);
   // await page.fill('input[name="email"]', username);
-  // await page.fill('input[type="email"]', username);
 
   await page.fill('[data-testid="password"]', password);
+  await expect(page.locator('[data-testid="password"]')).toHaveValue(password);
   // await page.fill('input[name="password"]', password);
 
   await page.click('[data-testid="login-button"]');

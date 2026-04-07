@@ -554,7 +554,7 @@ expect(box.width).toBeGreaterThan(0);
 Read `tests/playwright/pages/BasePage.ts` for shared utilities:
 - `goto(path)` — navigation with configurable `waitUntil`
 - `byTestId(id)`, `byRole(role, opts)`, `byLabel(label)`, `byText(text)`, `byPlaceholder(text)` — selector helpers in priority order
-- `click(locator)`, `fill(locator, value)` — safe interactions with built-in `scrollIntoViewIfNeeded`
+- `click(locator)`, `fill(locator, value)`, `fillAndVerify(locator, value)` — safe interactions; use `fillAndVerify` when the next action depends on the value being committed
 - `waitForToast(text?)`, `waitForLoad(spinnerSelector?)` — wait utilities
 - `reload()` — page reload with hydration
 
@@ -574,8 +574,8 @@ export class LoginPage extends BasePage {
 
   async login(user: string, pass: string) {
     await this.goto('/login');
-    await this.usernameInput.fill(user);
-    await this.passwordInput.fill(pass);
+    await this.fillAndVerify(this.usernameInput, user);
+    await this.fillAndVerify(this.passwordInput, pass);
     await this.submitBtn.click();
   }
 }
@@ -630,12 +630,13 @@ await app.click(app.byRole('button', { name: '提交' }));
 **Code examples — UI first:**
 
 ```typescript
-// ✅ UI 测试
-await page.goto(`${BASE_URL}/orders`);
-await page.getByRole("button", { name: "新建订单" }).click();
-await page.getByLabel("订单名称").fill("Test Order");
-await page.getByRole("button", { name: "提交" }).click();
-await expect(page.getByText("订单创建成功")).toBeVisible();
+// ✅ UI 测试 — fill 后必须验证值，确保框架同步完成
+const app = new AppPage(page);
+await app.goto(`${BASE_URL}/orders`);
+await app.click(app.byRole('button', { name: '新建订单' }));
+await app.fillAndVerify(app.byLabel('订单名称'), 'Test Order');
+await app.click(app.byRole('button', { name: '提交' }));
+await expect(page.getByText('订单创建成功')).toBeVisible();
 
 // ✅ Error path
 await page.goto(`${BASE_URL}/orders`);

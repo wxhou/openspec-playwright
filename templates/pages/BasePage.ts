@@ -82,23 +82,40 @@ export class BasePage {
   }
 
   /**
-   * Fill with automatic scroll-into-view. Clears existing value first.
+   * Fill with automatic scroll-into-view + blur.
+   * blur() triggers framework (Vue/React) change events and reactive updates,
+   * ensuring form state syncs before the next action.
+   * For fields with debounced validation, use fillAndVerify() instead.
    */
   async fill(selector: Locator | string, value: string) {
     const el = typeof selector === 'string' ? this.page.locator(selector) : selector;
     await el.scrollIntoViewIfNeeded();
     await el.fill(value);
+    await el.blur();
   }
 
   /**
-   * Type with character-by-character input. Triggers keydown/keyup events.
-   * Use for editors and inputs that listen to keystroke events.
+   * Type with character-by-character input + blur. Same sync guarantee as fill().
    */
   async type(selector: Locator | string, text: string) {
     const el = typeof selector === 'string' ? this.page.locator(selector) : selector;
     await el.scrollIntoViewIfNeeded();
     await el.click();
     await this.page.keyboard.type(text);
+    await el.blur();
+  }
+
+  // ─── Verified interactions ─────────────────────────────────────────────────
+
+  /**
+   * Fill + verify: waits for the value to appear in the input.
+   * Use for fields with debounced validation, async handlers, or
+   * when the next action depends on the value being fully committed.
+   */
+  async fillAndVerify(selector: Locator | string, value: string) {
+    await this.fill(selector, value);
+    const el = typeof selector === 'string' ? this.page.locator(selector) : selector;
+    await expect(el).toHaveValue(value);
   }
 
   // ─── Wait utilities ─────────────────────────────────────────────────────────
