@@ -6,7 +6,43 @@ on:
       - 'v*'
 
 jobs:
+  # ─── Gate: all quality checks must pass before any release action ───
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify lockfile
+        run: npm ci --dry-run
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Run tests
+        run: npm run test:run
+
+  # ─── Publish: only runs after verify succeeds ──────────────────────
   release:
+    needs: verify
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -27,17 +63,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Verify lockfile
-        run: npm ci --dry-run
-
-      - name: Type check
-        run: npm run typecheck
-
       - name: Build
         run: npm run build
-
-      - name: Run tests
-        run: npm run test:run
 
       - name: Set version from tag
         run: |
