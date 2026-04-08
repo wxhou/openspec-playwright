@@ -37,8 +37,7 @@ npm run typecheck         # TypeScript type-check
 
 Before each `git tag vX.Y.Z && git push --tags`:
 
-- [ ] Code is on `main` and CI is green
-- [ ] `npm run lint` passes
+- [ ] `npm run lint` passes — **run before every commit**, not just before release
 - [ ] `npm run typecheck` passes
 - [ ] `npm run build && npm run test:run` passes
 - [ ] `npm run build && npm pack && tar tf openspec-playwright-*.tgz | grep .claude` succeeds (verifies package contents)
