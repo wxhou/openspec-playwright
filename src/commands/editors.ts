@@ -30,25 +30,11 @@ export interface CommandMeta {
   body: string;
 }
 
-/** Editor adapter — Strategy Pattern */
-export interface EditorAdapter {
-  toolId: string;
-  hasSkill: boolean;
-  getCommandPath(commandId: string): string;
-  formatCommand(meta: CommandMeta): string;
-}
-
 // ─── Claude Code ──────────────────────────────────────────────────────────────
 
-/** Claude Code: .claude/commands/opsx/<id>.md + SKILL.md */
-const claudeAdapter: EditorAdapter = {
-  toolId: "claude",
-  hasSkill: true,
-  getCommandPath(id) {
-    return join(".claude", "commands", "opsx", `${id}.md`);
-  },
-  formatCommand(meta) {
-    return `---
+/** Claude Code command file: .claude/commands/opsx/<id>.md */
+export function formatClaudeCommand(meta: CommandMeta): string {
+  return `---
 name: ${escapeYamlValue(meta.name)}
 description: ${escapeYamlValue(meta.description)}
 category: ${escapeYamlValue(meta.category)}
@@ -57,116 +43,13 @@ tags: ${formatTagsArray(meta.tags)}
 
 ${meta.body}
 `;
-  },
-};
-
-// ─── Cursor ─────────────────────────────────────────────────────────────────
-
-/** Cursor: .cursor/commands/opsx-<id>.md */
-const cursorAdapter: EditorAdapter = {
-  toolId: "cursor",
-  hasSkill: false,
-  getCommandPath(id) {
-    return join(".cursor", "commands", `opsx-${id}.md`);
-  },
-  formatCommand(meta) {
-    return `---
-name: /opsx-${meta.id}
-id: opsx-${meta.id}
-category: ${escapeYamlValue(meta.category)}
-description: ${escapeYamlValue(meta.description)}
----
-
-${meta.body}
-`;
-  },
-};
-
-// ─── Cline ───────────────────────────────────────────────────────────────────
-
-/** Cline: .clinerules/workflows/opsx-<id>.md */
-const clineAdapter: EditorAdapter = {
-  toolId: "cline",
-  hasSkill: false,
-  getCommandPath(id) {
-    return join(".clinerules", "workflows", `opsx-${id}.md`);
-  },
-  formatCommand(meta) {
-    return `# ${meta.name}
-
-${meta.description}
-
-${meta.body}
-`;
-  },
-};
-
-// ─── Gemini CLI ──────────────────────────────────────────────────────────────
-
-/** Gemini CLI: .gemini/commands/opsx/<id>.toml */
-const geminiAdapter: EditorAdapter = {
-  toolId: "gemini",
-  hasSkill: false,
-  getCommandPath(id) {
-    return join(".gemini", "commands", "opsx", `${id}.toml`);
-  },
-  formatCommand(meta) {
-    return `description = "${meta.description}"
-
-prompt = """
-${meta.body}
-"""
-`;
-  },
-};
-
-// ─── GitHub Copilot ────────────────────────────────────────────────────────
-
-/** GitHub Copilot: .github/prompts/opsx-<id>.prompt.md */
-const githubcopilotAdapter: EditorAdapter = {
-  toolId: "github-copilot",
-  hasSkill: false,
-  getCommandPath(id) {
-    return join(".github", "prompts", `opsx-${id}.prompt.md`);
-  },
-  formatCommand(meta) {
-    return `---
-description: ${meta.description}
----
-
-${meta.body}
-`;
-  },
-};
-
-// ─── Detection map ───────────────────────────────────────────────────────
-
-const ALL_ADAPTERS: EditorAdapter[] = [
-  claudeAdapter,
-  cursorAdapter,
-  clineAdapter,
-  geminiAdapter,
-  githubcopilotAdapter,
-];
-
-/** Detect which editors are installed by checking their config directories */
-export function detectEditors(projectRoot: string): EditorAdapter[] {
-  const checks: Array<[string, EditorAdapter]> = [
-    [".claude", claudeAdapter],
-    [".cursor", cursorAdapter],
-    [".clinerules", clineAdapter],
-    [".gemini", geminiAdapter],
-    [".github", githubcopilotAdapter],
-  ];
-
-  return checks
-    .filter(([dir]) => existsSync(join(projectRoot, dir)))
-    .map(([, adapter]) => adapter);
 }
 
-// ─── Install helpers ───────────────────────────────────────────────────────
+export function getClaudeCommandPath(id: string): string {
+  return join(".claude", "commands", "opsx", `${id}.md`);
+}
 
-/** Build the shared command metadata */
+/** Build the command metadata for Claude Code */
 export function buildCommandMeta(body: string): CommandMeta {
   return {
     id: "e2e",
@@ -178,24 +61,27 @@ export function buildCommandMeta(body: string): CommandMeta {
   };
 }
 
-/** Install command files for all detected editors */
-export function installForAllEditors(
+/** Detect if Claude Code is installed */
+export function hasClaudeCode(projectRoot: string): boolean {
+  return existsSync(join(projectRoot, ".claude"));
+}
+
+// ─── Install helpers ───────────────────────────────────────────────────────
+
+/** Install command files and SKILL.md for Claude Code */
+export function installForClaudeCode(
   body: string,
-  adapters: EditorAdapter[],
   projectRoot: string,
 ): void {
   const meta = buildCommandMeta(body);
-
-  for (const adapter of adapters) {
-    const relPath = adapter.getCommandPath(meta.id);
-    const absPath = pathResolve(projectRoot, relPath);
-    mkdirSync(dirname(absPath), { recursive: true });
-    writeFileSync(absPath, adapter.formatCommand(meta));
-    console.log(chalk.green(`  ✓ ${adapter.toolId}: ${relPath}`));
-  }
+  const relPath = getClaudeCommandPath(meta.id);
+  const absPath = pathResolve(projectRoot, relPath);
+  mkdirSync(dirname(absPath), { recursive: true });
+  writeFileSync(absPath, formatClaudeCommand(meta));
+  console.log(chalk.green(`  ✓ claude: ${relPath}`));
 }
 
-/** Install SKILL.md only for Claude Code */
+/** Install SKILL.md for Claude Code */
 export function installSkill(projectRoot: string, skillContent: string): void {
   const skillDir = join(projectRoot, ".claude", "skills", "openspec-e2e");
   mkdirSync(skillDir, { recursive: true });
@@ -251,5 +137,3 @@ export function installProjectClaudeMd(
 export function readEmployeeStandards(srcPath: string): string {
   return existsSync(srcPath) ? readFileSync(srcPath, "utf-8") : "";
 }
-
-export { claudeAdapter, ALL_ADAPTERS };

@@ -15,8 +15,8 @@ import chalk from "chalk";
 import * as tar from "tar";
 import { syncMcpTools } from "./mcpSync.js";
 import {
-  detectEditors,
-  installForAllEditors,
+  hasClaudeCode,
+  installForClaudeCode,
   installSkill,
 } from "./editors.js";
 
@@ -96,13 +96,10 @@ export async function update(options: UpdateOptions) {
         body = skillContent.replace(/^---\n[\s\S]*?\n---\n*/, "");
       }
 
-      const hasClaude = existsSync(join(projectRoot, ".claude"));
-      // Install commands for all detected editors (only if .claude exists)
-      const adapters = detectEditors(projectRoot);
-      if (adapters.length > 0 && body && hasClaude) {
-        installForAllEditors(body, adapters, projectRoot);
-      } else if (adapters.length === 0 && body && hasClaude) {
-        console.log(chalk.gray("  - No editors detected, skipping command installation"));
+      const hasClaude = hasClaudeCode(projectRoot);
+      // Install command and SKILL.md for Claude Code
+      if (hasClaude && body) {
+        installForClaudeCode(body, projectRoot);
       } else if (!hasClaude) {
         console.log(chalk.gray("  - .claude not found, skipping command installation"));
       }

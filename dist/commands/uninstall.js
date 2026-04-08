@@ -2,30 +2,24 @@ import { existsSync, readFileSync, writeFileSync, rmSync, readdirSync, rmdirSync
 import { join, dirname } from "path";
 import { execSync } from "child_process";
 import chalk from "chalk";
-import { detectEditors } from "./editors.js";
+import { getClaudeCommandPath } from "./editors.js";
 export async function uninstall() {
     console.log(chalk.blue("\n🗑️  Uninstalling OpenSpec + Playwright E2E\n"));
     const projectRoot = process.cwd();
     // 1. Remove Playwright MCP using claude CLI
     console.log(chalk.blue("─── Removing Playwright MCP ───"));
     removeMcp();
-    // 2. Remove E2E commands for detected editors
+    // 2. Remove E2E command file for Claude Code
     console.log(chalk.blue("\n─── Removing E2E Commands ───"));
-    const adapters = detectEditors(projectRoot);
-    if (adapters.length > 0) {
-        for (const adapter of adapters) {
-            const relPath = adapter.getCommandPath("e2e");
-            const absPath = join(projectRoot, relPath);
-            if (existsSync(absPath)) {
-                rmSync(absPath);
-                // Remove empty parent directories
-                cleanupEmptyDirs(dirname(absPath), projectRoot);
-                console.log(chalk.green(`  ✓ ${adapter.toolId}: removed ${relPath}`));
-            }
-        }
+    const relPath = getClaudeCommandPath("e2e");
+    const absPath = join(projectRoot, relPath);
+    if (existsSync(absPath)) {
+        rmSync(absPath);
+        cleanupEmptyDirs(dirname(absPath), projectRoot);
+        console.log(chalk.green(`  ✓ Removed ${relPath}`));
     }
     else {
-        console.log(chalk.gray("  - No editors detected, skipping"));
+        console.log(chalk.gray("  - E2E command not found, skipping"));
     }
     // 3. Remove SKILL.md
     console.log(chalk.blue("\n─── Removing Skill ───"));

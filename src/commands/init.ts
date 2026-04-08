@@ -6,12 +6,11 @@ import chalk from "chalk";
 import { readFile } from "fs/promises";
 import { syncMcpTools } from "./mcpSync.js";
 import {
-  detectEditors,
-  installForAllEditors,
+  hasClaudeCode,
+  installForClaudeCode,
   installSkill,
   installProjectClaudeMd,
   readEmployeeStandards,
-  claudeAdapter,
 } from "./editors.js";
 
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
@@ -125,21 +124,22 @@ export async function init(options: InitOptions) {
     }
   }
 
-  // 4. Install E2E commands for detected editors (body from SKILL.md)
+  // 4. Install E2E command and SKILL.md for Claude Code
   console.log(chalk.blue("\n─── Installing E2E Commands ───"));
   const skillContent = await readFile(SKILL_SRC, "utf-8");
   const body = extractSkillBody(skillContent);
-  const detected = detectEditors(projectRoot);
-  if (detected.length > 0) {
-    installForAllEditors(body, detected, projectRoot);
-  } else {
-    installForAllEditors(body, [claudeAdapter], projectRoot);
-  }
-
-  // Claude Code also gets the SKILL.md
-  if (existsSync(join(projectRoot, ".claude"))) {
+  if (hasClaudeCode(projectRoot)) {
+    installForClaudeCode(body, projectRoot);
     installSkill(projectRoot, skillContent);
     installSkillTemplates(projectRoot);
+  } else {
+    console.log(
+      chalk.yellow("  ⚠ Claude Code not detected (.claude/ not found)."),
+    );
+    console.log(
+      chalk.gray("  Run openspec-pw init from a Claude Code project to install commands.\n"),
+    );
+    return;
   }
 
   // 5. Sync Healer tools with latest @playwright/mcp (Claude Code only)

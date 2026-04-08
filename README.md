@@ -20,23 +20,14 @@ openspec-pw init          # Install Playwright E2E integration
 
 ## Supported AI Coding Assistants
 
-Auto-detects and installs commands for all 5 editors OpenSpec supports:
-
-| Editor | Path | Editor | Path |
-|--------|------|--------|------|
-| Claude Code | `.claude/` | Gemini CLI | `.gemini/` |
-| Cursor | `.cursor/` | GitHub Copilot | `.github/` |
-| Cline | `.clinerules/` | | |
-
-`openspec-pw init` auto-detects editors in your project and installs the right command files. Claude Code gets the full experience (skill + command + Playwright MCP). Other editors get command/workflow files with the complete E2E workflow.
+Claude Code — E2E workflow is driven by SKILL.md using Playwright MCP tools (`/opsx:e2e <change-name>`).
 
 ## Usage
 
-### In Your AI Coding Assistant
+### In Claude Code
 
 ```bash
-/opsx:e2e my-feature    # Claude Code
-/opsx-e2e my-feature   # Cursor, Cline, Gemini CLI, GitHub Copilot
+/opsx:e2e <change-name>
 ```
 
 ### CLI Commands

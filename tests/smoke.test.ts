@@ -59,10 +59,10 @@ const distExists = existsSync(distDir);
     const { update } = await import("../dist/commands/update.js");
     const { syncMcpTools } = await import("../dist/commands/mcpSync.js");
     const {
-      detectEditors,
+      hasClaudeCode,
+      installForClaudeCode,
       buildCommandMeta,
       escapeYamlValue,
-      ALL_ADAPTERS,
     } = await import("../dist/commands/editors.js");
 
     expect(typeof init).toBe("function");
@@ -71,15 +71,15 @@ const distExists = existsSync(distDir);
     expect(typeof uninstall).toBe("function");
     expect(typeof update).toBe("function");
     expect(typeof syncMcpTools).toBe("function");
-    expect(typeof detectEditors).toBe("function");
+    expect(typeof hasClaudeCode).toBe("function");
+    expect(typeof installForClaudeCode).toBe("function");
     expect(typeof buildCommandMeta).toBe("function");
     expect(typeof escapeYamlValue).toBe("function");
-    expect(ALL_ADAPTERS.length).toBeGreaterThan(0);
   });
 
-  it("ALL_ADAPTERS has 5 adapters", async () => {
-    const { ALL_ADAPTERS } = await import("../dist/commands/editors.js");
-    expect(ALL_ADAPTERS.length).toBe(5);
+  it("hasClaudeCode detects Claude Code in project", async () => {
+    const { hasClaudeCode } = await import("../dist/commands/editors.js");
+    expect(typeof hasClaudeCode(".")).toBe("boolean");
   });
 });
 

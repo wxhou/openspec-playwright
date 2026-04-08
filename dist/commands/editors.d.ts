@@ -11,26 +11,18 @@ export interface CommandMeta {
     tags: string[];
     body: string;
 }
-/** Editor adapter — Strategy Pattern */
-export interface EditorAdapter {
-    toolId: string;
-    hasSkill: boolean;
-    getCommandPath(commandId: string): string;
-    formatCommand(meta: CommandMeta): string;
-}
-/** Claude Code: .claude/commands/opsx/<id>.md + SKILL.md */
-declare const claudeAdapter: EditorAdapter;
-declare const ALL_ADAPTERS: EditorAdapter[];
-/** Detect which editors are installed by checking their config directories */
-export declare function detectEditors(projectRoot: string): EditorAdapter[];
-/** Build the shared command metadata */
+/** Claude Code command file: .claude/commands/opsx/<id>.md */
+export declare function formatClaudeCommand(meta: CommandMeta): string;
+export declare function getClaudeCommandPath(id: string): string;
+/** Build the command metadata for Claude Code */
 export declare function buildCommandMeta(body: string): CommandMeta;
-/** Install command files for all detected editors */
-export declare function installForAllEditors(body: string, adapters: EditorAdapter[], projectRoot: string): void;
-/** Install SKILL.md only for Claude Code */
+/** Detect if Claude Code is installed */
+export declare function hasClaudeCode(projectRoot: string): boolean;
+/** Install command files and SKILL.md for Claude Code */
+export declare function installForClaudeCode(body: string, projectRoot: string): void;
+/** Install SKILL.md for Claude Code */
 export declare function installSkill(projectRoot: string, skillContent: string): void;
 /** Install project-level CLAUDE.md with employee-grade standards + OpenSpec context */
 export declare function installProjectClaudeMd(projectRoot: string, standardsContent: string): void;
 /** Read the employee-grade standards from a source file */
 export declare function readEmployeeStandards(srcPath: string): string;
-export { claudeAdapter, ALL_ADAPTERS };

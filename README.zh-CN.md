@@ -20,23 +20,14 @@ openspec-pw init          # 安装 Playwright E2E 集成
 
 ## 支持的 AI 编码助手
 
-自动检测并安装 OpenSpec 支持的全部 5 个编辑器的命令文件：
-
-| 编辑器 | 路径 | 编辑器 | 路径 |
-|--------|------|--------|------|
-| Claude Code | `.claude/` | Gemini CLI | `.gemini/` |
-| Cursor | `.cursor/` | GitHub Copilot | `.github/` |
-| Cline | `.clinerules/` | | |
-
-`openspec-pw init` 会检测项目中安装了哪些编辑器并安装对应文件。Claude Code 获得完整体验（skill + 命令 + Playwright MCP）。其他编辑器获得包含完整 E2E 工作流的命令/工作流文件。
+Claude Code — E2E 工作流由 SKILL.md 驱动，使用 Playwright MCP 工具（`/opsx:e2e <change-name>`）。
 
 ## 使用
 
-### 在 AI 编码助手中
+### 在 Claude Code 中
 
 ```bash
-/opsx:e2e my-feature    # Claude Code
-/opsx-e2e my-feature   # Cursor, Cline, Gemini CLI, GitHub Copilot
+/opsx:e2e <change-name>
 ```
 
 ### CLI 命令

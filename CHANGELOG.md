@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking
+- Drop support for Cursor, Cline, Gemini CLI, GitHub Copilot — E2E workflow is Claude Code only (SKILL.md + Playwright MCP)
+- `editors.ts`: remove `detectEditors`, `installForAllEditors`, `ALL_ADAPTERS`, `EditorAdapter` interface, individual adapter objects; replace with `hasClaudeCode`, `installForClaudeCode`, `formatClaudeCommand`, `getClaudeCommandPath`
+- `init.ts`: remove multi-editor detection logic; require `.claude/` to be present or exit early
+- `update.ts`: same simplification
+- `uninstall.ts`: remove adapter loop; use `getClaudeCommandPath` directly
+- `tests/editors.test.ts`: rewrite for simplified API
+- `tests/smoke.test.ts`: update smoke tests for new exports
+- `README.md`, `README.zh-CN.md`: remove editor compatibility table
+
 ### Fixed
 - `doctor.ts`, `init.ts`, `update.ts`, `uninstall.ts`: replace direct `.claude.json` parsing with `claude mcp list` / `claude mcp remove` — platform-independent, uses Claude Code CLI as source of truth instead of JSON file
 

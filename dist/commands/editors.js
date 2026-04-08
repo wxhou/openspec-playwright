@@ -18,15 +18,9 @@ export function formatTagsArray(tags) {
     return `[${tags.map((t) => escapeYamlValue(t)).join(", ")}]`;
 }
 // ─── Claude Code ──────────────────────────────────────────────────────────────
-/** Claude Code: .claude/commands/opsx/<id>.md + SKILL.md */
-const claudeAdapter = {
-    toolId: "claude",
-    hasSkill: true,
-    getCommandPath(id) {
-        return join(".claude", "commands", "opsx", `${id}.md`);
-    },
-    formatCommand(meta) {
-        return `---
+/** Claude Code command file: .claude/commands/opsx/<id>.md */
+export function formatClaudeCommand(meta) {
+    return `---
 name: ${escapeYamlValue(meta.name)}
 description: ${escapeYamlValue(meta.description)}
 category: ${escapeYamlValue(meta.category)}
@@ -35,102 +29,11 @@ tags: ${formatTagsArray(meta.tags)}
 
 ${meta.body}
 `;
-    },
-};
-// ─── Cursor ─────────────────────────────────────────────────────────────────
-/** Cursor: .cursor/commands/opsx-<id>.md */
-const cursorAdapter = {
-    toolId: "cursor",
-    hasSkill: false,
-    getCommandPath(id) {
-        return join(".cursor", "commands", `opsx-${id}.md`);
-    },
-    formatCommand(meta) {
-        return `---
-name: /opsx-${meta.id}
-id: opsx-${meta.id}
-category: ${escapeYamlValue(meta.category)}
-description: ${escapeYamlValue(meta.description)}
----
-
-${meta.body}
-`;
-    },
-};
-// ─── Cline ───────────────────────────────────────────────────────────────────
-/** Cline: .clinerules/workflows/opsx-<id>.md */
-const clineAdapter = {
-    toolId: "cline",
-    hasSkill: false,
-    getCommandPath(id) {
-        return join(".clinerules", "workflows", `opsx-${id}.md`);
-    },
-    formatCommand(meta) {
-        return `# ${meta.name}
-
-${meta.description}
-
-${meta.body}
-`;
-    },
-};
-// ─── Gemini CLI ──────────────────────────────────────────────────────────────
-/** Gemini CLI: .gemini/commands/opsx/<id>.toml */
-const geminiAdapter = {
-    toolId: "gemini",
-    hasSkill: false,
-    getCommandPath(id) {
-        return join(".gemini", "commands", "opsx", `${id}.toml`);
-    },
-    formatCommand(meta) {
-        return `description = "${meta.description}"
-
-prompt = """
-${meta.body}
-"""
-`;
-    },
-};
-// ─── GitHub Copilot ────────────────────────────────────────────────────────
-/** GitHub Copilot: .github/prompts/opsx-<id>.prompt.md */
-const githubcopilotAdapter = {
-    toolId: "github-copilot",
-    hasSkill: false,
-    getCommandPath(id) {
-        return join(".github", "prompts", `opsx-${id}.prompt.md`);
-    },
-    formatCommand(meta) {
-        return `---
-description: ${meta.description}
----
-
-${meta.body}
-`;
-    },
-};
-// ─── Detection map ───────────────────────────────────────────────────────
-const ALL_ADAPTERS = [
-    claudeAdapter,
-    cursorAdapter,
-    clineAdapter,
-    geminiAdapter,
-    githubcopilotAdapter,
-];
-/** Detect which editors are installed by checking their config directories */
-export function detectEditors(projectRoot) {
-    const checks = [
-        [".claude", claudeAdapter],
-        [".cursor", cursorAdapter],
-        [".clinerules", clineAdapter],
-        [".gemini", geminiAdapter],
-        [".github", githubcopilotAdapter],
-    ];
-    return checks
-        .filter(([dir]) => existsSync(join(projectRoot, dir)))
-        .map(([, adapter]) => adapter);
 }
-// ─── Install helpers ───────────────────────────────────────────────────────
-/** Build the shared command metadata */
+export function getClaudeCommandPath(id) {
+    return join(".claude", "commands", "opsx", `${id}.md`);
+}
+/** Build the command metadata for Claude Code */
 export function buildCommandMeta(body) {
     return {
         id: "e2e",
@@ -141,18 +44,21 @@ export function buildCommandMeta(body) {
         body,
     };
 }
-/** Install command files for all detected editors */
-export function installForAllEditors(body, adapters, projectRoot) {
-    const meta = buildCommandMeta(body);
-    for (const adapter of adapters) {
-        const relPath = adapter.getCommandPath(meta.id);
-        const absPath = pathResolve(projectRoot, relPath);
-        mkdirSync(dirname(absPath), { recursive: true });
-        writeFileSync(absPath, adapter.formatCommand(meta));
-        console.log(chalk.green(`  ✓ ${adapter.toolId}: ${relPath}`));
-    }
+/** Detect if Claude Code is installed */
+export function hasClaudeCode(projectRoot) {
+    return existsSync(join(projectRoot, ".claude"));
 }
-/** Install SKILL.md only for Claude Code */
+// ─── Install helpers ───────────────────────────────────────────────────────
+/** Install command files and SKILL.md for Claude Code */
+export function installForClaudeCode(body, projectRoot) {
+    const meta = buildCommandMeta(body);
+    const relPath = getClaudeCommandPath(meta.id);
+    const absPath = pathResolve(projectRoot, relPath);
+    mkdirSync(dirname(absPath), { recursive: true });
+    writeFileSync(absPath, formatClaudeCommand(meta));
+    console.log(chalk.green(`  ✓ claude: ${relPath}`));
+}
+/** Install SKILL.md for Claude Code */
 export function installSkill(projectRoot, skillContent) {
     const skillDir = join(projectRoot, ".claude", "skills", "openspec-e2e");
     mkdirSync(skillDir, { recursive: true });
@@ -197,5 +103,4 @@ export function installProjectClaudeMd(projectRoot, standardsContent) {
 export function readEmployeeStandards(srcPath) {
     return existsSync(srcPath) ? readFileSync(srcPath, "utf-8") : "";
 }
-export { claudeAdapter, ALL_ADAPTERS };
 //# sourceMappingURL=editors.js.map
