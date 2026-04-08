@@ -9,10 +9,16 @@ interface TestResults {
     passed: number;
     failed: number;
     duration: string;
+    authRequired?: boolean;
+    appBugCount?: number;
+    healedCount?: number;
+    raftCount?: number;
+    escalatedCount?: number;
     tests: Array<{
         name: string;
         status: "passed" | "failed";
         screenshot?: string;
+        failureType?: string;
     }>;
 }
 export declare function parsePlaywrightOutput(output: string): TestResults;

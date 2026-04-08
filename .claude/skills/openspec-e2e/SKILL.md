@@ -798,39 +798,99 @@ If tests fail → use Playwright MCP tools to inspect UI, fix selectors, re-run.
 | `browser_take_screenshot`  | Visually compare before/after fixes             |
 | `browser_run_code`         | Execute custom fix logic (optional)             |
 
-**Healer Decision Table — failure type → action:**
+**Healer — Phase 1: Triage**
 
-| Failure type | Signal | Action |
-| — | — | — |
-| **Network/backend** | `fetch failed`, `net::ERR`, 4xx/5xx in console | `browser_network_requests` → verify backend → `test.skip()` + report |
-| **Selector changed** | Element not found | `browser_snapshot` → fix selector → re-run (attempt 1/3) |
-| **Assertion mismatch** | Wrong content/value | `browser_snapshot` → compare → fix assertion → re-run (attempt 1/3) |
-| **Timing issue** | waitFor/evaluate timeout | Switch to `request` API or add `waitFor` → re-run (attempt 1/3) |
-| **page.evaluate with fetch** | CORS errors in browser context | Switch to `page.request` API → re-run (attempt 1/3) |
-| **Auth expired** | Redirected to login mid-test | Re-run auth.setup → re-run test |
-| **3 heals failed** | After 3 attempts, still failing | **STOP**. `test.skip()` if app bug; report recommendation if test bug |
+When a test fails, classify before attempting repair:
 
-**Healer protocol:**
-1. Read failing test → identify failure type
-2. Match to decision table → take action
-3. After fix: re-run only that test
-4. If healed: append to `app-knowledge.md` → **Selector Fixes** table (route, old selector → new selector, reason)
-5. **If 3 attempts exhausted without heal → STOP**. Do not retry further.
+| Failure Type | Signal | Classification | Action |
+| — | — | — | — |
+| **Network/Backend** | `net::ERR`, 4xx/5xx in console/network | **App Bug** | `test.skip()` + report as app bug |
+| **JS Runtime Error** | Console error (non-network) | **App Bug** | `test.skip()` + report as app bug |
+| **Auth Expired** | Redirected to login mid-test | **Flaky** | Re-run auth.setup → re-run |
+| **Selector Not Found** | Element not found | **Test Bug** | → Phase 2 Healer |
+| **Assertion Mismatch** | Wrong content/value | **Ambiguous** | → Phase 2 Healer |
+| **Timeout** | waitFor/evaluate timeout | **Flaky** | Retry isolated (1×, not counted in heal attempts) |
+| **Same test fails in suite, passes isolated** | — | **RAFT** | `test.skip()` in suite, note RAFT in report |
 
-### 10. False Pass Detection
+- **App Bug** → skip immediately (no healing needed)
+- **Flaky** → retry once isolated
+- **Test Bug / Ambiguous** → Phase 2
 
-Run after test suite completes (even if all pass). Common patterns:
+> **Type ≠ Blame**: "Test Bug" means the assertion or selector is wrong — it does NOT mean "blame the test author." The test was generated from the spec. Root cause may be spec ambiguity, spec→test generation error, or app→spec deviation. Only a human can determine blame.
+
+**Healer — Phase 2: Repair**
+
+After Triage classifies failure as "Test Bug" or "Ambiguous":
+
+1. Navigate to the failing page
+2. Get page snapshot: `browser_snapshot`
+3. **EXPLICIT COMPARISON** — output before fixing:
+   ```
+   ASSERTION: "<what the test expects>"
+   ACTUAL:   "<what the snapshot shows>"
+   MATCH:    <yes/no>
+   ```
+4. If MATCH=no:
+   - Is `ACTUAL` reasonable per the test's intended spec behavior?
+     - If yes → fix the assertion to match ACTUAL (app behavior is correct)
+     - If uncertain → **Phase 3**
+5. If selector issue → find equivalent stable selector from snapshot
+6. Apply fix → re-run **only that test** (attempt 1/3)
+7. If healed → append to `app-knowledge.md` → **Selector Fixes** table (route, old → new selector, reason)
+
+**Healer — Phase 3: Escalate**
+
+When Phase 2 tried ≥3 heals without success, OR ASSERTION vs ACTUAL comparison is ambiguous:
+
+**STOP** and output:
+
+```
+E2E Test Failed — Human Decision Required
+
+Test: <test-name>
+Failure: <type>
+Assertion: "<what test expects>"
+Actual:   "<what app shows>"
+
+This failure could be:
+1. App does not match the spec → **app bug**
+2. Test was generated from ambiguous/incorrect spec → **spec issue**
+3. Spec itself is outdated (app was updated) → **spec drift**
+
+Please decide:
+(a) Fix the app to match the spec
+(b) Update the spec to match the app
+(c) Update the test assertion
+(d) Skip this test with test.skip() until resolved
+```
+
+Wait for user input before proceeding.
+
+### 10. False Pass Detection + RAFT Detection
+
+Run after test suite completes (even if all pass).
+
+**False Pass patterns** (test passed but shouldn't have):
 
 - **Conditional visibility**: `if (locator.isVisible().catch(() => false))` — if test passes, locator may not exist
 - **Too fast**: < 200ms for a complex flow is suspicious
 - **No fresh auth context**: Protected routes without `browser.newContext()`
 
+**RAFT detection** (Resource-Affected Flaky Test):
+
+- Full suite: test fails → run test isolated → passes
+- This is **NOT** a test bug or app bug. Mark as RAFT, add `test.skip()` in suite, note in report
+- RAFTs are infrastructure coupling issues (CPU/memory/I/O contention), not fixable by changing test or app
+
 ### 11. Report results
 
 Read report at `openspec/reports/playwright-e2e-<name>-<timestamp>.md`. Present:
 
-- Summary table (tests, passed, failed, duration, status)
-- Auto-heal notes
+- Summary table with failure type breakdown (App Bugs, Test Bugs/healed, Flaky-RAFT, Human Escalations)
+- Failure Classification table (test, type, action, healed?)
+- Auto-heal log (assertion vs actual comparison, fix applied, result)
+- RAFT Summary (if any detected)
+- Human Escalations (if any, with user decision)
 - Recommendations with `file:line` references
 
 Report template: `.claude/skills/openspec-e2e/templates/report.md`
@@ -851,9 +911,10 @@ Reference: `.claude/skills/openspec-e2e/templates/report.md`
 | JS errors or HTTP 5xx during exploration | **STOP** |
 | Sitemap fails ("all" mode) | Continue with homepage links fallback |
 | File already exists (app-exploration, test-plan, app-all.spec.ts, Page Objects) | Read and use — never regenerate |
-| Test fails (backend) | `test.skip()` + report |
-| Test fails (selector/assertion) | Healer: snapshot → fix → re-run (≤3) |
-| 3 heals failed | `test.skip()` if app bug; report if unclear |
+| Test fails (network/backend) | **App Bug** — `test.skip()` + report |
+| Test fails (selector/assertion) | **Test Bug/Ambiguous** — Healer Phase 1→2 (≤3 attempts) |
+| RAFT detected (suite fail, isolated pass) | **Flaky** — `test.skip()` in suite, note RAFT in report |
+| Phase 3 escalation | **Human needed** — STOP + ask user |
 | False pass detected | Add "⚠️ Coverage Gap" to report |
 
 ## Guardrails

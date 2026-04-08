@@ -7,15 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- `SKILL.md` Step 9 Healer: replace flat decision table with 3-phase protocol (Phase 1 Triage → Phase 2 Repair → Phase 3 Escalate)
+- `SKILL.md` Step 9: add explicit "ASSERTION vs ACTUAL" comparison before fixing
+- `SKILL.md` Step 9: distinguish Flaky (retry isolated, not counted) from Test Bug (Phase 2)
+- `SKILL.md` Step 9: Phase 3 escalation outputs structured 4-option question to user instead of guessing test vs app bug
+- `SKILL.md` Step 10: add RAFT detection guidance (suite fail → isolated pass = infrastructure coupling)
+- `SKILL.md` Graceful Degradation: update failure classification with App Bug / Test Bug / RAFT / Human Escalation types
+- `SKILL.md` Step 11: update report presentation to include failure type breakdown
+- `templates/report.md`: redesigned with Summary metrics, Failure Classification table, Auto-Heal Log, RAFT Summary, Human Escalations sections
+- `run.ts` `generateReport`: extended to output new report format with Failure Type / Healed columns and placeholder sections for Healer
+
 ### Breaking
-- Drop support for Cursor, Cline, Gemini CLI, GitHub Copilot — E2E workflow is Claude Code only (SKILL.md + Playwright MCP)
-- `editors.ts`: remove `detectEditors`, `installForAllEditors`, `ALL_ADAPTERS`, `EditorAdapter` interface, individual adapter objects; replace with `hasClaudeCode`, `installForClaudeCode`, `formatClaudeCommand`, `getClaudeCommandPath`
+- Drop support for Cursor, Cline, Gemini CLI, GitHub Copilot — E2E workflow is Claude Code only
+- `editors.ts`: remove `detectEditors`, `installForAllEditors`, `ALL_ADAPTERS`, `EditorAdapter` interface; replace with `hasClaudeCode`, `installForClaudeCode`, `formatClaudeCommand`, `getClaudeCommandPath`
 - `init.ts`: remove multi-editor detection logic; require `.claude/` to be present or exit early
 - `update.ts`: same simplification
 - `uninstall.ts`: remove adapter loop; use `getClaudeCommandPath` directly
 - `tests/editors.test.ts`: rewrite for simplified API
 - `tests/smoke.test.ts`: update smoke tests for new exports
-- `README.md`, `README.zh-CN.md`: remove editor compatibility table
+
+### Fixed
+- `doctor.ts`, `init.ts`, `update.ts`, `uninstall.ts`: replace direct `.claude.json` parsing with `claude mcp list` / `claude mcp remove`
+
+## [0.1.80] - 2026-04-08
 
 ### Fixed
 - `doctor.ts`, `init.ts`, `update.ts`, `uninstall.ts`: replace direct `.claude.json` parsing with `claude mcp list` / `claude mcp remove` — platform-independent, uses Claude Code CLI as source of truth instead of JSON file

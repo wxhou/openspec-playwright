@@ -159,7 +159,17 @@ interface TestResults {
   passed: number;
   failed: number;
   duration: string;
-  tests: Array<{ name: string; status: "passed" | "failed"; screenshot?: string }>;
+  authRequired?: boolean;
+  appBugCount?: number;
+  healedCount?: number;
+  raftCount?: number;
+  escalatedCount?: number;
+  tests: Array<{
+    name: string;
+    status: "passed" | "failed";
+    screenshot?: string;
+    failureType?: string;
+  }>;
 }
 
 // ─── JSON Reporter Parser ────────────────────────────────────────────────────────
@@ -286,23 +296,27 @@ function generateReport(
   timestamp: string,
   results: TestResults,
 ): string {
+  const duration = timestamp.replace("T", " ").slice(0, 16);
+  const status = results.failed === 0 ? "✅ PASS" : "❌ FAIL";
+
   const lines: string[] = [
     `# E2E Verify Report: ${changeName}`,
     "",
-    `**Change**: \`${changeName}\``,
-    `**Generated**: ${timestamp.replace("T", " ").slice(0, 16)} UTC`,
+    `**Change**: \`${changeName}\` | **Generated**: ${duration} UTC | **Auth**: ${results.authRequired ? "required" : "none"}`,
     "",
     "## Summary",
     "",
-    "| Check | Status |",
-    "|-------|--------|",
+    "| Metric | Value |",
+    "|--------|-------|",
     `| Tests Run | ${results.total} |`,
     `| Passed | ${results.passed} |`,
     `| Failed | ${results.failed} |`,
     `| Duration | ${results.duration} |`,
-    `| Final Status | ${results.failed === 0 ? "✅ PASS" : "❌ FAIL"} |`,
-    "",
-    "## Test Results",
+    `| App Bugs (skipped) | ${results.appBugCount ?? "—"} |`,
+    `| Test Bugs (healed) | ${results.healedCount ?? "—"} |`,
+    `| Flaky/RAFT | ${results.raftCount ?? "—"} |`,
+    `| Human Escalations | ${results.escalatedCount ?? "—"} |`,
+    `| Final Status | ${status} |`,
     "",
   ];
 
@@ -312,27 +326,52 @@ function generateReport(
       "",
     );
   } else {
-    lines.push("| Test | Status | Screenshot |");
-    lines.push("|------|--------|-----------|");
+    lines.push("## Test Results", "");
+    lines.push("| Test | Status | Failure Type | Healed? | Screenshot |");
+    lines.push("|------|--------|------------|---------|-----------|");
     for (const test of results.tests) {
       const icon = test.status === "passed" ? "✅" : "❌";
+      const type = test.failureType ?? (test.status === "passed" ? "—" : "pending");
+      const healed = test.status === "passed" ? "—" : (test.failureType ? "pending" : "—");
       const screenshot = test.screenshot
-        ? `[${test.screenshot}](${test.screenshot})`
+        ? `[screenshot](${test.screenshot})`
         : "-";
-      lines.push(`| ${test.name} | ${icon} ${test.status} | ${screenshot} |`);
+      lines.push(
+        `| ${test.name} | ${icon} ${test.status} | ${type} | ${healed} | ${screenshot} |`,
+      );
     }
     lines.push("");
   }
 
+  lines.push(
+    "## Failure Classification",
+    "",
+    "_(Populated by Healer after Phase 1/2/3 — see SKILL.md Step 9)_",
+    "",
+    "| Test | Failure Type | Action | Healed? |",
+    "|------|-------------|--------|---------|",
+    "| ... | ... | ... | ... |",
+    "",
+    "## Auto-Heal Log",
+    "",
+    "_(Populated by Healer — see SKILL.md Step 9 Phase 2)_",
+    "",
+    "## RAFT Summary",
+    "",
+    "_(If RAFTs detected: mark with test.skip() in suite, investigate infrastructure coupling)_",
+    "",
+    "## Human Escalations",
+    "",
+    "_(If Phase 3 escalations: present 4 options to user, wait for decision)_",
+    "",
+  );
+
   lines.push("## Recommendations", "");
   if (results.failed > 0) {
     lines.push(
-      "Review failed tests above. Screenshots are embedded in this report.",
-      "Common fixes:",
-      "- Update selectors if UI changed (use `data-testid` attributes)",
-      "- Adjust BASE_URL in seed.spec.ts if port differs",
-      "- Set E2E_USERNAME/E2E_PASSWORD if auth is required",
-      "- For full interactive reports: `npx playwright show-report`",
+      "Review failed tests above.",
+      "For Healer guidance: see SKILL.md Step 9 — Phase 1 Triage → Phase 2 Repair → Phase 3 Escalate.",
+      "For full interactive reports: `npx playwright show-report`",
       "",
     );
   } else {
