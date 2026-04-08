@@ -73,27 +73,23 @@ openspec-pw uninstall     # 移除项目中的集成
   └── 11. 报告 → openspec/reports/playwright-e2e-<name>.md
 ```
 
-### 两层验证
-
-| 层级 | 命令 | 验证内容 |
-|------|------|---------|
-| 静态验证 | `/opsx:verify` | 实现是否符合 artifacts |
-| E2E 验证 | `/opsx:e2e` | 应用运行是否正常 |
-
 ## 前置条件
 
 1. **Node.js >= 20**
 2. **OpenSpec** 已初始化: `npm install -g @fission-ai/openspec && openspec init`
-3. **任一 5 编辑器**: Claude Code、Cursor、Cline、Gemini CLI、GitHub Copilot（自动检测）
-4. **仅 Claude Code**: Playwright MCP — `claude mcp add playwright npx @playwright/mcp@latest`
+3. **Claude Code** 且项目中有 `.claude/` 目录
+
+安装 Playwright MCP：
+```bash
+claude mcp add playwright npx @playwright/mcp@latest
+```
 
 ## `openspec-pw init` 做了什么
 
-1. 检测已安装的 AI 编码助手（支持全部 5 个编辑器）
-2. 为每个检测到的编辑器安装 E2E 命令/工作流文件
-3. 为 Claude Code 安装 `/openspec-e2e` skill
-4. 为 Claude Code 全局安装 Playwright MCP（通过 `claude mcp add`）
-5. 生成 `tests/playwright/seed.spec.ts`、`auth.setup.ts`、`credentials.yaml`、`app-knowledge.md`
+1. 检测项目中的 Claude Code
+2. 安装 E2E 命令（`/opsx:e2e`）和 SKILL.md
+3. 从最新 `@playwright/mcp` 同步 Healer 工具
+4. 生成 `tests/playwright/seed.spec.ts`、`auth.setup.ts`、`credentials.yaml`、`app-knowledge.md`
 
 > **注意**：运行 `openspec-pw init` 后，手动安装 Playwright 浏览器：`npx playwright install --with-deps`
 
@@ -134,10 +130,6 @@ npx playwright test --project=setup
 - 配置测试用户凭证
 - 为角色测试添加多用户
 
-### MCP 服务器（仅 Claude Code）
-
-Playwright MCP 通过 `claude mcp add` 全局安装，启用 Healer Agent（通过 UI 检查自动修复测试失败）。设置后需重启 Claude Code 生效。
-
 ## 架构
 
 ```
@@ -148,15 +140,12 @@ CLI (openspec-pw)
   ├── init       → 安装命令、skill 和模板到 .claude/
   ├── update     → 从 npm 同步命令、skill 和模板
   ├── run        → 执行 E2E 测试并管理服务器生命周期
-  ├── verify     → 检查实现是否符合 artifacts
   └── doctor     → 检查前置条件
 
-Skill/命令（按编辑器）
-  ├── Claude Code → /opsx:e2e (skill) + /opsx:e2e (command) + MCP
-  ├── Cursor      → /opsx-e2e (command)
-  ├── Cline      → /opsx-e2e (workflow)
-  ├── Gemini CLI → /opsx-e2e (command)
-  └── GitHub Copilot → /opsx-e2e (command)
+Claude Code (/opsx:e2e)
+  ├── .claude/commands/opsx/e2e.md    → 命令文件
+  ├── .claude/skills/openspec-e2e/   → SKILL.md + 模板
+  └── @playwright/mcp                 → Healer Agent 工具
 
 测试资产 (tests/playwright/)
   ├── seed.spec.ts       → 环境验证
@@ -168,7 +157,7 @@ Skill/命令（按编辑器）
   ├── app-exploration.md → 本次 change 的路由 + 已验证选择器
   └── test-plan.md       → 本次 change 的测试用例
 
-Healer Agent（仅 Claude Code + MCP）
+Healer Agent (@playwright/mcp)
   └── browser_snapshot, browser_navigate, browser_run_code 等
 ```
 
