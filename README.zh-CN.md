@@ -10,6 +10,17 @@
 npm install -g openspec-playwright
 ```
 
+## 前置条件
+
+1. **Node.js >= 20**
+2. **OpenSpec** 已初始化: `npm install -g @fission-ai/openspec && openspec init`
+3. **Claude Code** 且项目中有 `.claude/` 目录
+
+安装 Playwright MCP：
+```bash
+claude mcp add playwright npx @playwright/mcp@latest
+```
+
 ## 初始化
 
 ```bash
@@ -17,6 +28,8 @@ npm install -g openspec-playwright
 openspec init              # 初始化 OpenSpec
 openspec-pw init          # 安装 Playwright E2E 集成
 ```
+
+> **注意**：运行 `openspec-pw init` 后，手动安装 Playwright 浏览器：`npx playwright install --with-deps`
 
 ## 支持的 AI 编码助手
 
@@ -73,17 +86,6 @@ openspec-pw uninstall     # 移除项目中的集成
   └── 11. 报告 → openspec/reports/playwright-e2e-<name>.md
 ```
 
-## 前置条件
-
-1. **Node.js >= 20**
-2. **OpenSpec** 已初始化: `npm install -g @fission-ai/openspec && openspec init`
-3. **Claude Code** 且项目中有 `.claude/` 目录
-
-安装 Playwright MCP：
-```bash
-claude mcp add playwright npx @playwright/mcp@latest
-```
-
 ## `openspec-pw init` 做了什么
 
 1. 检测项目中的 Claude Code
@@ -91,9 +93,23 @@ claude mcp add playwright npx @playwright/mcp@latest
 3. 从最新 `@playwright/mcp` 同步 Healer 工具
 4. 生成 `tests/playwright/seed.spec.ts`、`auth.setup.ts`、`credentials.yaml`、`app-knowledge.md`
 
-> **注意**：运行 `openspec-pw init` 后，手动安装 Playwright 浏览器：`npx playwright install --with-deps`
+## 首次配置清单
 
-## 认证
+首次使用 E2E 工作流，按顺序执行以下步骤：
+
+| 步骤 | 命令 | 失败时快速修复 |
+|------|------|----------------|
+| 1. 安装 CLI | `npm install -g openspec-playwright` | 检查 Node.js 版本 `node -v`（需 >= 20） |
+| 2. 安装 OpenSpec | `npm install -g @fission-ai/openspec && openspec init` | `npm cache clean -f && npm install -g @fission-ai/openspec` |
+| 3. 初始化 E2E | `openspec-pw init` | 运行 `openspec-pw doctor` 查看具体缺失项 |
+| 4. 安装 Playwright MCP | `claude mcp add playwright npx @playwright/mcp@latest` | `claude mcp list` 确认安装成功 |
+| 5. 安装浏览器 | `npx playwright install --with-deps` | macOS 可能需先运行 `xcode-select --install` |
+| 6. 启动开发服务器 | `npm run dev`（在另一个终端） | 确认端口，配置 `BASE_URL` |
+| 7. 验证环境 | `npx playwright test tests/playwright/seed.spec.ts` | 检查 `playwright.config.ts` 中的 `webServer` 配置 |
+| 8. 配置认证（如需要） | 见下方"认证配置" | `npx playwright test --project=setup` 调试 |
+| 9. 运行第一个 E2E | `/opsx:e2e <change-name>` | 查看 `openspec/reports/` 中的报告 |
+
+## 认证配置
 
 如果你的应用需要登录，配置一次凭证后，所有测试自动以已登录状态运行。
 

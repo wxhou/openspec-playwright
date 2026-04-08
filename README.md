@@ -92,6 +92,22 @@ claude mcp add playwright npx @playwright/mcp@latest
 
 > **Note**: After running `openspec-pw init`, manually install Playwright browsers: `npx playwright install --with-deps`
 
+## First-Time Setup Checklist
+
+Run through these steps in order when using the E2E workflow for the first time:
+
+| Step | Command | If it fails |
+|------|---------|-------------|
+| 1. Install CLI | `npm install -g openspec-playwright` | Check Node.js version `node -v` (needs >= 20) |
+| 2. Install OpenSpec | `npm install -g @fission-ai/openspec && openspec init` | `npm cache clean -f && npm install -g @fission-ai/openspec` |
+| 3. Initialize E2E | `openspec-pw init` | Run `openspec-pw doctor` to see what's missing |
+| 4. Install Playwright MCP | `claude mcp add playwright npx @playwright/mcp@latest` | `claude mcp list` to confirm installation |
+| 5. Install browsers | `npx playwright install --with-deps` | macOS may need `xcode-select --install` first |
+| 6. Start dev server | `npm run dev` (in a separate terminal) | Confirm port, set `BASE_URL` if non-standard |
+| 7. Validate env | `npx playwright test tests/playwright/seed.spec.ts` | Check `webServer` in `playwright.config.ts` |
+| 8. Configure auth (if needed) | See "Authentication" below | Debug with `npx playwright test --project=setup` |
+| 9. Run first E2E | `/opsx:e2e <change-name>` | Check `openspec/reports/` for the report |
+
 ## Authentication
 
 If your app requires login, set up credentials once, then all tests run authenticated automatically.

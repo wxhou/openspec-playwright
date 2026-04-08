@@ -866,6 +866,17 @@ Please decide:
 
 Wait for user input before proceeding.
 
+**Decision tree — follow the path based on user's choice:**
+
+| Choice | What to do | After fix, do this |
+|--------|-----------|-------------------|
+| **(a)** Fix the app to match the spec | Fix the app code | Re-run: `npx playwright test tests/playwright/<name>.spec.ts` to verify fix, then re-run `/opsx:e2e <change-name>` to confirm full suite passes |
+| **(b)** Update the spec to match the app | Edit the spec file | Then update the test assertion (→ option c), or regenerate the affected part of the test |
+| **(c)** Update the test assertion | Fix the assertion in `tests/playwright/<name>.spec.ts` | Re-run: `npx playwright test tests/playwright/<name>.spec.ts` to verify, then re-run `/opsx:e2e <change-name>` for full suite |
+| **(d)** Skip with `test.skip()` | Add `test.skip()` to the test | Note in `app-knowledge.md` → `Selector Fixes` table with reason "human escalation — skipped pending resolution" |
+
+**Same choice ≥ 2 times without progress**: If user picks the same option twice but the test still doesn't pass, STOP and ask: "This was tried before without success. Are you sure the root cause is still the same, or has something changed?"
+
 After the issue is resolved, re-run:
 ```
 /opsx:e2e <change-name>
