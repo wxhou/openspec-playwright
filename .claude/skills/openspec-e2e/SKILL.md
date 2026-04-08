@@ -866,6 +866,12 @@ Please decide:
 
 Wait for user input before proceeding.
 
+After the issue is resolved, re-run:
+```
+/opsx:e2e <change-name>
+```
+The existing `app-exploration.md` and `test-plan.md` will be reused (idempotent — Steps 4–6 will be fast).
+
 ### 10. False Pass Detection + RAFT Detection
 
 Run after test suite completes (even if all pass).
