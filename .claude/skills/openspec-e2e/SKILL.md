@@ -49,12 +49,14 @@ Both modes update `app-knowledge.md` and `app-exploration.md`. All `.spec.ts` fi
 - Edge cases requiring pre-condition data that UI cannot set up
 - Cases where Step 4 exploration confirmed no UI element exists
 
-**Decision rule**:
+**Setup vs Assertion**: API is acceptable for **setup/precondition** (preparing test data). Every **final assertion** about visible UI state must use UI selectors — never use `page.request` to assert something the user can see on screen.
+
+**Decision rule (per assertion)**:
 
 ```
-Can this be tested through the UI?
-  → Yes → page.getByRole/ByLabel/ByText + click/fill/type + assert UI
-  → No  → record reason → use page.request
+Can the user SEE this on screen?
+  → Yes → MUST use: page.getByRole/ByLabel/ByText + expect()
+  → No  → Record reason → page.request acceptable
 ```
 
 **Never use API calls to replace routine UI flows.** If a test completes in < 200ms, it is almost certainly using `page.request` instead of real UI interactions.
@@ -192,8 +194,9 @@ await browser_navigate(`${BASE_URL}/<route>`);
 
 Wait for page stability:
 
-- Prefer `browser_wait_for` with text or selector
-- Avoid `networkidle` / `load` — too slow or unreliable
+- **React 19 / Next.js App Router**: use `page.waitForLoadState('networkidle')` — React 19 concurrent mode batches events asynchronously; 200-500ms timeouts are unreliable under resource contention
+- **Vue 2/3 / Angular / React 18 / Plain JS / jQuery**: `waitForSelector(targetElement)` is sufficient and faster — DOM updates are synchronous; Playwright's actionability checks auto-wait correctly
+- Prefer specific element waits (`waitForSelector`) over generic load states
 - Ready signal: heading, spinner disappears, or URL change
 
 #### 4.3. Parse the snapshot
@@ -471,6 +474,16 @@ For each discovered route:
 
 - Read: test-plan.md, app-exploration.md, app-knowledge.md, seed.spec.ts
 - For each test case: verify selectors in real browser, then write Playwright code
+
+**Per-assertion UI check** (before writing each assertion):
+```
+Is this assertion about a visible UI result?
+  → Yes → MUST use: expect(locator) with page selector
+  → No  → Is this a precondition or unreachable HTTP error?
+    → Yes → page.request is acceptable (record reason)
+    → No → This is a bug — rewrite with UI selector
+```
+**Never use page.request for assertions the user can see on screen.** If you wrote page.request.get() for a visible result → rewrite with expect(locator) from the browser snapshot.
 
 **Selector verification (change mode)**:
 
@@ -809,7 +822,7 @@ When a test fails, classify before attempting repair:
 | **Auth Expired** | Redirected to login mid-test | **Flaky** | Re-run auth.setup → re-run |
 | **Selector Not Found** | Element not found | **Test Bug** | → Phase 2 Healer |
 | **Assertion Mismatch** | Wrong content/value | **Ambiguous** | → Phase 2 Healer |
-| **Timeout** | waitFor/evaluate timeout | **Flaky** | Retry isolated (1×, not counted in heal attempts) |
+| **Timeout** | waitFor/evaluate timeout | **Flaky** | Retry isolated (1×, not counted in heal attempts). If it passes isolated but fails in suite → **RAFT**. If it consistently times out → check framework: React 19 / Next.js App Router: add `page.waitForLoadState('networkidle')`. Vue/Angular/React 18 / Plain JS / jQuery: use `waitForSelector(targetElement)` instead of timeout tuning. |
 | **Same test fails in suite, passes isolated** | — | **RAFT** | `test.skip()` in suite, note RAFT in report |
 
 - **App Bug** → skip immediately (no healing needed)
