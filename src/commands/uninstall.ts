@@ -7,7 +7,7 @@ import {
   rmdirSync,
 } from "fs";
 import { join, dirname } from "path";
-import { homedir } from "os";
+import { execSync } from "child_process";
 import chalk from "chalk";
 import { detectEditors } from "./editors.js";
 
@@ -16,9 +16,9 @@ export async function uninstall() {
 
   const projectRoot = process.cwd();
 
-  // 1. Remove Playwright MCP from .claude.json
+  // 1. Remove Playwright MCP using claude CLI
   console.log(chalk.blue("─── Removing Playwright MCP ───"));
-  removeMcpFromClaudeJson(homedir(), projectRoot);
+  removeMcp();
 
   // 2. Remove E2E commands for detected editors
   console.log(chalk.blue("\n─── Removing E2E Commands ───"));
@@ -70,43 +70,28 @@ export async function uninstall() {
   );
 }
 
-function removeMcpFromClaudeJson(homeDir: string, projectRoot: string) {
-  const claudeJsonPath = join(homeDir, ".claude.json");
-  if (!existsSync(claudeJsonPath)) {
-    console.log(chalk.gray("  - .claude.json not found, skipping"));
-    return;
-  }
-
+function removeMcp() {
   try {
-    const content = readFileSync(claudeJsonPath, "utf-8");
-    const json = JSON.parse(content);
-    let changed = false;
-
-    // Remove from global mcpServers
-    if (json.mcpServers?.["playwright"]) {
-      delete json.mcpServers["playwright"];
-      changed = true;
-    }
-
-    // Remove from project-level mcpServers
-    if (json.projects?.[projectRoot]?.mcpServers?.["playwright"]) {
-      delete json.projects[projectRoot].mcpServers["playwright"];
-      changed = true;
-    }
-
-    if (changed) {
-      writeFileSync(claudeJsonPath, JSON.stringify(json, null, 2) + "\n");
-      console.log(chalk.green("  ✓ Removed playwright from .claude.json"));
-      console.log(chalk.gray("    Restart Claude Code to complete removal"));
-    } else {
-      console.log(chalk.gray("  - Playwright MCP not found in .claude.json"));
-    }
+    execSync("claude mcp remove playwright", {
+      encoding: "utf-8",
+      stdio: "pipe",
+    });
+    console.log(chalk.green("  ✓ Removed playwright MCP"));
+    console.log(chalk.gray("    Restart Claude Code to complete removal"));
   } catch (err) {
-    console.log(
-      chalk.yellow(
-        `  ⚠ Failed to update .claude.json: ${err instanceof Error ? err.message : String(err)}`,
-      ),
-    );
+    const e = err as { stderr?: string };
+    if (e.stderr?.includes("not found") || e.stderr?.includes("does not exist")) {
+      console.log(chalk.gray("  - Playwright MCP not found, skipping"));
+    } else {
+      console.log(
+        chalk.yellow(
+          `  ⚠ Failed to remove playwright MCP: ${e.stderr || (err instanceof Error ? err.message : String(err))}`,
+        ),
+      );
+      console.log(
+        chalk.gray("    Run manually: claude mcp remove playwright"),
+      );
+    }
   }
 }
 

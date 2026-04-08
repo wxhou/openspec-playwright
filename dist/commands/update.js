@@ -1,7 +1,7 @@
 import { execSync, exec } from "child_process";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync, statSync, } from "fs";
 import { join } from "path";
-import { tmpdir, homedir } from "os";
+import { tmpdir } from "os";
 import { promisify } from "util";
 import chalk from "chalk";
 import * as tar from "tar";
@@ -103,13 +103,21 @@ export async function update(options) {
     // 2b. Install Playwright MCP if not present (Claude Code only)
     if (options.mcp !== false && existsSync(join(projectRoot, ".claude"))) {
         console.log(chalk.blue("\n─── Installing Playwright MCP ───"));
-        const claudeJsonPath = join(homedir(), ".claude.json");
-        const claudeJson = existsSync(claudeJsonPath)
-            ? JSON.parse(readFileSync(claudeJsonPath, "utf-8"))
-            : {};
-        const globalMcp = claudeJson?.mcpServers ?? {};
-        const localMcp = claudeJson?.projects?.[projectRoot]?.mcpServers ?? {};
-        if (globalMcp["playwright"] || localMcp["playwright"]) {
+        // Use `claude mcp list` as source of truth (platform-independent)
+        let mcpInstalled = false;
+        try {
+            const output = execSync("claude mcp list", {
+                encoding: "utf-8",
+                timeout: 10000,
+            });
+            if (output.includes("playwright")) {
+                mcpInstalled = true;
+            }
+        }
+        catch {
+            // claude CLI not available — will try to install
+        }
+        if (mcpInstalled) {
             console.log(chalk.green("  ✓ Playwright MCP already installed"));
         }
         else {

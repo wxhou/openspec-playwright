@@ -1,6 +1,5 @@
-import { existsSync, readFileSync } from "fs";
+import { existsSync } from "fs";
 import { join } from "path";
-import { homedir } from "os";
 import { execSync } from "child_process";
 import chalk from "chalk";
 
@@ -83,21 +82,18 @@ export async function doctor(options: DoctorOptions = {}) {
     });
   }
 
-  // Playwright MCP
-  const homeDir = homedir();
-  const claudeJsonPath = join(homeDir, ".claude.json");
+  // Playwright MCP — use `claude mcp list` as source of truth (platform-independent)
   let mcpInstalled = false;
-  if (existsSync(claudeJsonPath)) {
-    try {
-      const claudeJson = JSON.parse(readFileSync(claudeJsonPath, "utf-8"));
-      const globalMcp = claudeJson?.mcpServers ?? {};
-      const localMcp = claudeJson?.projects?.[projectRoot]?.mcpServers ?? {};
-      if (globalMcp["playwright"] || localMcp["playwright"]) {
-        mcpInstalled = true;
-      }
-    } catch {
-      // .claude.json missing or malformed — MCP not configured
+  try {
+    const output = execSync("claude mcp list", {
+      encoding: "utf-8",
+      timeout: 10000,
+    });
+    if (output.includes("playwright")) {
+      mcpInstalled = true;
     }
+  } catch {
+    // claude CLI not available or failed — MCP not configured
   }
   checks.push({
     category: "Playwright MCP",
