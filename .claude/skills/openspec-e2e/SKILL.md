@@ -163,8 +163,8 @@ browser_navigate → browser_console_messages → browser_snapshot → browser_t
 
 | Signal                        | Meaning                           | Action                                                                                        |
 | ----------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------- |
-| HTTP 5xx or unreachable       | Backend/server error              | **STOP** — tell user: "App has a backend error (HTTP <code>). Fix it, then re-run /opsx:e2e." |
-| JS error in console           | App runtime error                 | **STOP** — tell user: "Page has JS errors. Fix them, then re-run /opsx:e2e."                  |
+| HTTP 5xx or unreachable       | Backend/server error              | **STOP** — tell user: "App has a backend error (HTTP <code>). Fix it, then re-run: `openspec-pw run <change-name>`" |
+| JS error in console           | App runtime error                 | **STOP** — tell user: "Page has JS errors. Fix them, then re-run: `openspec-pw run <change-name>`"                  |
 | HTTP 404                      | Route not in app (metadata issue) | Continue — mark `⚠️ route not found` in app-exploration.md                                    |
 | Auth required, no credentials | Missing auth setup                | Continue — skip protected routes, explore login page                                          |
 | Suspicious network request     | API returned 4xx/5xx             | Continue — mark `⚠️ API error: <endpoint> returned <code>` in app-exploration.md               |
@@ -822,7 +822,7 @@ When a test fails, classify before attempting repair:
 | **Auth Expired** | Redirected to login mid-test | **Flaky** | Re-run auth.setup → re-run |
 | **Selector Not Found** | Element not found | **Test Bug** | → Phase 2 Healer |
 | **Assertion Mismatch** | Wrong content/value | **Ambiguous** | → Phase 2 Healer |
-| **Timeout** | waitFor/evaluate timeout | **Flaky** | Retry isolated (1×, not counted in heal attempts). If it passes isolated but fails in suite → **RAFT**. If it consistently times out → check framework: React 19 / Next.js App Router: add `page.waitForLoadState('networkidle')`. Vue/Angular/React 18 / Plain JS / jQuery: use `waitForSelector(targetElement)` instead of timeout tuning. |
+| **Timeout** | waitFor/evaluate timeout | **Flaky** | Retry isolated: `npx playwright test tests/playwright/<name>.spec.ts --grep "<test-name>"` (1×, not counted in heal attempts). If it passes isolated but fails in suite → **RAFT**. If it consistently times out → check framework: React 19 / Next.js App Router: add `page.waitForLoadState('networkidle')`. Vue/Angular/React 18 / Plain JS / jQuery: use `waitForSelector(targetElement)` instead of timeout tuning. |
 | **Same test fails in suite, passes isolated** | — | **RAFT** | `test.skip()` in suite, note RAFT in report |
 
 - **App Bug** → skip immediately (no healing needed)
@@ -883,18 +883,18 @@ Wait for user input before proceeding.
 
 | Choice | What to do | After fix, do this |
 |--------|-----------|-------------------|
-| **(a)** Fix the app to match the spec | Fix the app code | Re-run: `npx playwright test tests/playwright/<name>.spec.ts` to verify fix, then re-run `/opsx:e2e <change-name>` to confirm full suite passes |
+| **(a)** Fix the app to match the spec | Fix the app code | Re-run: `openspec-pw run <change-name>` to verify fix |
 | **(b)** Update the spec to match the app | Edit the spec file | Then update the test assertion (→ option c), or regenerate the affected part of the test |
-| **(c)** Update the test assertion | Fix the assertion in `tests/playwright/<name>.spec.ts` | Re-run: `npx playwright test tests/playwright/<name>.spec.ts` to verify, then re-run `/opsx:e2e <change-name>` for full suite |
+| **(c)** Update the test assertion | Fix the assertion in `tests/playwright/<name>.spec.ts` | Re-run: `openspec-pw run <change-name>` to verify |
 | **(d)** Skip with `test.skip()` | Add `test.skip()` to the test | Note in `app-knowledge.md` → `Selector Fixes` table with reason "human escalation — skipped pending resolution" |
 
 **Same choice ≥ 2 times without progress**: If user picks the same option twice but the test still doesn't pass, STOP and ask: "This was tried before without success. Are you sure the root cause is still the same, or has something changed?"
 
-After the issue is resolved, re-run:
+After the issue is resolved, re-run tests:
 ```
-/opsx:e2e <change-name>
+openspec-pw run <change-name>
 ```
-The existing `app-exploration.md` and `test-plan.md` will be reused (idempotent — Steps 4–6 will be fast).
+`/opsx:e2e <change-name>` re-runs the full 11-step workflow — unnecessary after Phase 3. The test file and auth context are already correct. Use `openspec-pw run` to verify fixes directly.
 
 ### 10. False Pass Detection + RAFT Detection
 
@@ -908,7 +908,7 @@ Run after test suite completes (even if all pass).
 
 **RAFT detection** (Resource-Affected Flaky Test):
 
-- Full suite: test fails → run test isolated → passes
+- Full suite: test fails → run isolated: `npx playwright test tests/playwright/<name>.spec.ts --grep "<test-name>"` → if it passes in isolation but fails in suite → **RAFT**
 - This is **NOT** a test bug or app bug. Mark as RAFT, add `test.skip()` in suite, note in report
 - RAFTs are infrastructure coupling issues (CPU/memory/I/O contention), not fixable by changing test or app
 
