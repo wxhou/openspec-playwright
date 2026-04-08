@@ -2,6 +2,7 @@ export interface RunOptions {
     project?: string;
     timeout?: number;
     json?: boolean;
+    grep?: string;
 }
 export declare function run(changeName: string, options: RunOptions): Promise<void>;
 interface TestResults {

@@ -53,6 +53,7 @@ program
   )
   .option("-t, --timeout <seconds>", "Test timeout in seconds", "300")
   .option("--json", "Output results as JSON")
+  .option("-g, --grep <pattern>", "Run only tests matching pattern")
   .action(run);
 
 program

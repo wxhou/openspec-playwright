@@ -7,9 +7,10 @@ export async function run(changeName, options) {
     console.log(chalk.blue(`\n🔍 OpenSpec Playwright E2E: ${changeName}\n`));
     const projectRoot = process.cwd();
     // 1. Verify test file exists
-    const testFile = join(projectRoot, "tests", "playwright", `${changeName}.spec.ts`);
+    const testFileName = changeName === "all" ? "app-all.spec.ts" : `${changeName}.spec.ts`;
+    const testFile = join(projectRoot, "tests", "playwright", testFileName);
     if (!existsSync(testFile)) {
-        console.log(chalk.red(`  ✗ Test file not found: tests/playwright/${changeName}.spec.ts`));
+        console.log(chalk.red(`  ✗ Test file not found: tests/playwright/${testFileName}`));
         console.log(chalk.gray("  Run /opsx:e2e first to generate tests.\n"));
         process.exit(1);
     }
@@ -32,6 +33,9 @@ export async function run(changeName, options) {
     ];
     if (options.project) {
         args.push("--project=" + options.project);
+    }
+    if (options.grep) {
+        args.push("--grep=" + options.grep);
     }
     let testOutput = "";
     try {

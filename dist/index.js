@@ -39,6 +39,7 @@ program
     .option("-p, --project <name>", "Playwright project to run (e.g., user, admin)")
     .option("-t, --timeout <seconds>", "Test timeout in seconds", "300")
     .option("--json", "Output results as JSON")
+    .option("-g, --grep <pattern>", "Run only tests matching pattern")
     .action(run);
 program
     .command("uninstall")

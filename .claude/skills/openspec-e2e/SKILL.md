@@ -163,8 +163,8 @@ browser_navigate → browser_console_messages → browser_snapshot → browser_t
 
 | Signal                        | Meaning                           | Action                                                                                        |
 | ----------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------- |
-| HTTP 5xx or unreachable       | Backend/server error              | **STOP** — tell user: "App has a backend error (HTTP <code>). Fix it, then re-run: `openspec-pw run <change-name>`" |
-| JS error in console           | App runtime error                 | **STOP** — tell user: "Page has JS errors. Fix them, then re-run: `openspec-pw run <change-name>`"                  |
+| HTTP 5xx or unreachable       | Backend/server error              | **STOP** — tell user: "App has a backend error (HTTP <code>). Fix it, then re-run `/opsx:e2e <name>` to re-explore." |
+| JS error in console           | App runtime error                 | **STOP** — tell user: "Page has JS errors. Fix them, then re-run `/opsx:e2e <name>` to re-explore." |
 | HTTP 404                      | Route not in app (metadata issue) | Continue — mark `⚠️ route not found` in app-exploration.md                                    |
 | Auth required, no credentials | Missing auth setup                | Continue — skip protected routes, explore login page                                          |
 | Suspicious network request     | API returned 4xx/5xx             | Continue — mark `⚠️ API error: <endpoint> returned <code>` in app-exploration.md               |
@@ -328,7 +328,7 @@ After exploration, add route-level notes (redirects, dynamic content → see 4.5
 | Page loads but no interactive elements            | Wait longer for SPA hydration                                    |
 | Dynamic content (user-specific)                   | Record structure — use `toContainText` or regex, not `toHaveText` |
 
-**Idempotency**: If `app-exploration.md` already exists → read it, verify routes still match specs, update only new routes or changed pages.
+**Idempotency**: If `app-exploration.md` already exists → read it, verify routes still match the live app, update only new routes or changed pages.
 
 #### 4.6. Update app-knowledge.md
 
@@ -356,7 +356,7 @@ Read `tests/playwright/app-knowledge.md` as context for cross-change patterns.
 
 ### 5. Generate test plan
 
-> **"all" mode: skip this step.** No OpenSpec specs → no test-plan to generate. All mode skips test-plan verification — Page Objects are discovered incrementally from exploration, not from structured specs.
+> **"all" mode: skip test-plan generation.** No OpenSpec specs → no test-plan to generate. Still show confirmation below, then proceed to Step 6.
 
 **All mode — brief confirmation before Step 6:**
 ```
@@ -765,7 +765,7 @@ Auth required. To set up:
 1. Customize tests/playwright/credentials.yaml
 2. Export: export E2E_USERNAME=xxx E2E_PASSWORD=yyy
 3. Run auth: npx playwright test --project=setup
-4. Re-run /opsx:e2e to execute tests
+4. Then run tests: openspec-pw run <name>   # skips to Step 9 directly (artifacts are reused)
 ```
 
 **Idempotency**: If `auth.setup.ts` already exists → verify format, update only if stale.
@@ -793,7 +793,7 @@ If playwright.config.ts exists → READ first, preserve ALL existing fields, add
 ### 9. Execute tests
 
 ```bash
-openspec-pw run <name> --project=<role>
+openspec-pw run <name> [--project <role>]
 ```
 
 The CLI handles: server lifecycle, port mismatch, report generation.
@@ -822,12 +822,14 @@ When a test fails, classify before attempting repair:
 | **Auth Expired** | Redirected to login mid-test | **Flaky** | Re-run auth.setup → re-run |
 | **Selector Not Found** | Element not found | **Test Bug** | → Phase 2 Healer |
 | **Assertion Mismatch** | Wrong content/value | **Ambiguous** | → Phase 2 Healer |
-| **Timeout** | waitFor/evaluate timeout | **Flaky** | Retry isolated: `npx playwright test tests/playwright/<name>.spec.ts --grep "<test-name>"` (1×, not counted in heal attempts). If it passes isolated but fails in suite → **RAFT**. If it consistently times out → check framework: React 19 / Next.js App Router: add `page.waitForLoadState('networkidle')`. Vue/Angular/React 18 / Plain JS / jQuery: use `waitForSelector(targetElement)` instead of timeout tuning. |
+| **Timeout** | waitFor/evaluate timeout | **Flaky** | Retry isolated: `openspec-pw run <name> --grep "<test-name>"` (1×, not counted in heal attempts). If it passes isolated but fails in suite → **RAFT**. If it consistently times out → check framework: React 19 / Next.js App Router: add `page.waitForLoadState('networkidle')`. Vue/Angular/React 18 / Plain JS / jQuery: use `waitForSelector(targetElement)` instead of timeout tuning. |
 | **Same test fails in suite, passes isolated** | — | **RAFT** | `test.skip()` in suite, note RAFT in report |
 
 - **App Bug** → skip immediately (no healing needed)
 - **Flaky** → retry once isolated
 - **Test Bug / Ambiguous** → Phase 2
+
+> **Global attempt guard**: Each test has an independent heal counter (max 3 per test). If the same test enters Phase 2 more than once and reaches the cap each time → treat as "consecutive escalation without progress" → Phase 3 immediately.
 
 > **Type ≠ Blame**: "Test Bug" means the assertion or selector is wrong — it does NOT mean "blame the test author." The test was generated from the spec. Root cause may be spec ambiguity, spec→test generation error, or app→spec deviation. Only a human can determine blame.
 
@@ -888,7 +890,7 @@ Wait for user input before proceeding.
 | **(c)** Update the test assertion | Fix the assertion in `tests/playwright/<name>.spec.ts` | Re-run: `openspec-pw run <change-name>` to verify |
 | **(d)** Skip with `test.skip()` | Add `test.skip()` to the test | Note in `app-knowledge.md` → `Selector Fixes` table with reason "human escalation — skipped pending resolution" |
 
-**Same choice ≥ 2 times without progress**: If user picks the same option twice but the test still doesn't pass, STOP and ask: "This was tried before without success. Are you sure the root cause is still the same, or has something changed?"
+**Stuck in escalation loop**: If 3 consecutive Phase 3 escalations result in no progress (test still failing), STOP and ask: "This test has been escalated 3 times without resolution. Are you sure the root cause is still the same, or has something changed?"
 
 After the issue is resolved, re-run tests:
 ```
@@ -908,7 +910,7 @@ Run after test suite completes (even if all pass).
 
 **RAFT detection** (Resource-Affected Flaky Test):
 
-- Full suite: test fails → run isolated: `npx playwright test tests/playwright/<name>.spec.ts --grep "<test-name>"` → if it passes in isolation but fails in suite → **RAFT**
+- Full suite: test fails → run isolated: `openspec-pw run <name> --grep "<test-name>"` → if it passes in isolation but fails in suite → **RAFT**
 - This is **NOT** a test bug or app bug. Mark as RAFT, add `test.skip()` in suite, note in report
 - RAFTs are infrastructure coupling issues (CPU/memory/I/O contention), not fixable by changing test or app
 
@@ -938,7 +940,7 @@ Reference: `.claude/skills/openspec-e2e/templates/report.md`
 | Scenario | Behavior |
 | ------- | ------- |
 | No specs / app-exploration.md missing (change mode) | **STOP** |
-| JS errors or HTTP 5xx during exploration | **STOP** |
+| JS errors or HTTP 5xx during exploration | **STOP** → user fixes app → re-run `/opsx:e2e <name>` to re-explore from Step 4 |
 | Sitemap fails ("all" mode) | Continue with homepage links fallback |
 | File already exists (app-exploration, test-plan, app-all.spec.ts, Page Objects) | Read and use — never regenerate |
 | Test fails (network/backend) | **App Bug** — `test.skip()` + report |
@@ -960,6 +962,10 @@ Reference: `.claude/skills/openspec-e2e/templates/report.md`
 | Write runnable code, not TODOs | Placeholders fail CI |
 
 **Files you can write to:**
-`specs/playwright/`, `tests/playwright/`, `openspec/reports/`, `playwright.config.ts`, `auth.setup.ts`
+`tests/playwright/`, `openspec/changes/<name>/specs/playwright/`, `openspec/reports/`, `playwright.config.ts`, `auth.setup.ts`
+
+> `tests/playwright/` — spec files, Page Objects, auth, credentials, app-knowledge.md
+> `openspec/changes/<name>/specs/playwright/` — app-exploration.md, test-plan.md (change mode)
+> `openspec/reports/` — test reports
 
 **Never write to:** any other directory
