@@ -96,20 +96,22 @@ export async function update(options: UpdateOptions) {
         body = skillContent.replace(/^---\n[\s\S]*?\n---\n*/, "");
       }
 
-      // Install commands for all detected editors
+      const hasClaude = existsSync(join(projectRoot, ".claude"));
+      // Install commands for all detected editors (only if .claude exists)
       const adapters = detectEditors(projectRoot);
-      if (adapters.length > 0 && body) {
+      if (adapters.length > 0 && body && hasClaude) {
         installForAllEditors(body, adapters, projectRoot);
+      } else if (adapters.length === 0 && body && hasClaude) {
+        console.log(chalk.gray("  - No editors detected, skipping command installation"));
+      } else if (!hasClaude) {
+        console.log(chalk.gray("  - .claude not found, skipping command installation"));
       }
 
-      // Install SKILL.md for Claude Code
-      if (existsSync(join(projectRoot, ".claude")) && existsSync(skillSrc)) {
+      // Install SKILL.md for Claude Code (only if .claude exists)
+      if (hasClaude && existsSync(skillSrc)) {
         const skillContent = readFileSync(skillSrc, "utf-8");
         installSkill(projectRoot, skillContent);
       }
-
-      // Clean up deprecated schema installed by pre-v0.1.71 versions
-      cleanupDeprecatedSchema(projectRoot);
 
       // Sync SKILL reference templates
       syncSkillTemplates(tmpDir, projectRoot);
@@ -206,24 +208,6 @@ export async function update(options: UpdateOptions) {
   }
 }
 
-// Clean up deprecated openspec/schemas/playwright-e2e/ from pre-v0.1.71 versions
-function cleanupDeprecatedSchema(projectRoot: string) {
-  const deprecatedSchemaPath = join(
-    projectRoot,
-    "openspec",
-    "schemas",
-    "playwright-e2e",
-  );
-  if (existsSync(deprecatedSchemaPath)) {
-    rmSync(deprecatedSchemaPath, { recursive: true, force: true });
-    console.log(
-      chalk.green(
-        "  ✓ Cleaned up deprecated openspec/schemas/playwright-e2e/ (v0.1.71 refactor — no longer needed)",
-      ),
-    );
-  }
-}
-
 // Sync SKILL reference templates from extracted tarball to project
 function syncSkillTemplates(tmpDir: string, projectRoot: string) {
   if (!existsSync(join(projectRoot, ".claude"))) return;
@@ -249,12 +233,14 @@ function syncSkillTemplates(tmpDir: string, projectRoot: string) {
     const src = join(tmpDir, "templates", file);
     const dest = join(templatesDir, file);
     if (existsSync(src)) {
-      writeFileSync(dest, readFileSync(src));
+      const existing = existsSync(dest) ? readFileSync(dest, "utf-8") : "";
+      const latest = readFileSync(src, "utf-8");
+      if (existing !== latest) {
+        writeFileSync(dest, latest);
+        console.log(chalk.green(`  ✓ Updated: ${file}`));
+      }
     }
   }
-
-  // Sync project-level templates (BasePage.ts)
-  // Note: syncProjectTemplates is already called at the main flow above
 }
 
 // Sync project-level templates that SKILL.md depends on
@@ -262,67 +248,143 @@ function syncProjectTemplates(tmpDir: string, projectRoot: string) {
   const testsDir = join(projectRoot, "tests", "playwright");
   if (!existsSync(testsDir)) return;
 
-  // 1. Sync BasePage.ts — SKILL.md references fillAndVerify(), byTestId(), etc.
+  // 1. Sync BasePage.ts — always update if content differs
   const basePageSrc = join(tmpDir, "templates", "pages", "BasePage.ts");
   const basePageDest = join(testsDir, "pages", "BasePage.ts");
 
   if (existsSync(basePageSrc)) {
     if (!existsSync(basePageDest)) {
-      // BasePage.ts missing — create it
       mkdirSync(join(testsDir, "pages"), { recursive: true });
       writeFileSync(basePageDest, readFileSync(basePageSrc));
       console.log(
         chalk.green("  ✓ Generated: tests/playwright/pages/BasePage.ts"),
       );
     } else {
-      // BasePage.ts exists — check if it has fillAndVerify (v0.1.75+)
       const existing = readFileSync(basePageDest, "utf-8");
       const latest = readFileSync(basePageSrc, "utf-8");
-
-      const hasFillAndVerify = existing.includes("fillAndVerify");
-      const latestHasFillAndVerify = latest.includes("fillAndVerify");
-
-      if (!hasFillAndVerify && latestHasFillAndVerify) {
-        // Old version detected — update it
+      if (existing !== latest) {
         writeFileSync(basePageDest, latest);
         console.log(
-          chalk.green(
-            "  ✓ Updated: tests/playwright/pages/BasePage.ts (v0.1.75+ with fillAndVerify)",
-          ),
+          chalk.green("  ✓ Updated: tests/playwright/pages/BasePage.ts"),
         );
       }
     }
   }
 
-  // 2. Sync seed.spec.ts — only if it matches the template (user hasn't customized)
+  // 2. Sync app-knowledge.md — generate if missing
+  const appKnowledgeSrc = join(tmpDir, "templates", "app-knowledge.md");
+  const appKnowledgeDest = join(testsDir, "app-knowledge.md");
+
+  if (existsSync(appKnowledgeSrc) && !existsSync(appKnowledgeDest)) {
+    writeFileSync(appKnowledgeDest, readFileSync(appKnowledgeSrc));
+    console.log(
+      chalk.green("  ✓ Generated: tests/playwright/app-knowledge.md"),
+    );
+  }
+
+  // 3. Sync seed.spec.ts — warn if content differs (may have user customizations)
   const seedSrc = join(tmpDir, "templates", "seed.spec.ts");
   const seedDest = join(testsDir, "seed.spec.ts");
 
   if (existsSync(seedSrc) && existsSync(seedDest)) {
     const existing = readFileSync(seedDest, "utf-8");
     const latest = readFileSync(seedSrc, "utf-8");
-
-    // Check if seed.spec.ts references fillAndVerify (v0.1.75+)
-    const hasFillAndVerify = existing.includes("fillAndVerify");
-    const latestHasFillAndVerify = latest.includes("fillAndVerify");
-
-    if (!hasFillAndVerify && latestHasFillAndVerify) {
-      // Old version — prompt user (seed.spec.ts may have custom tests)
+    if (existing !== latest) {
       console.log(
         chalk.yellow(
-          "  ⚠ tests/playwright/seed.spec.ts is outdated (missing fillAndVerify examples)",
+          "  ⚠ tests/playwright/seed.spec.ts differs from latest template",
         ),
       );
       console.log(
         chalk.gray(
-          "    The SKILL references fillAndVerify() in examples. Your seed.spec.ts may be outdated.",
-        ),
-      );
-      console.log(
-        chalk.gray(
-          "    Run 'openspec-pw init --seed' to regenerate from latest template (overwrites existing).",
+          "    Run 'openspec-pw init --seed' to regenerate (overwrites existing).",
         ),
       );
     }
   }
+
+  // 4. Sync credentials.yaml — preserve user credentials
+  syncCredentials(tmpDir, projectRoot);
 }
+
+/**
+ * Sync credentials.yaml — update template structure while preserving user data.
+ * Extracts api + users array from existing file, injects into latest template.
+ * Falls back to warning if template structure changed significantly.
+ */
+function syncCredentials(tmpDir: string, projectRoot: string) {
+  const credsSrc = join(tmpDir, "templates", "credentials.yaml");
+  const credsDest = join(projectRoot, "tests", "playwright", "credentials.yaml");
+
+  if (!existsSync(credsSrc)) return;
+
+  const latest = readFileSync(credsSrc, "utf-8");
+
+  if (!existsSync(credsDest)) {
+    writeFileSync(credsDest, latest);
+    console.log(
+      chalk.green("  ✓ Generated: tests/playwright/credentials.yaml"),
+    );
+    return;
+  }
+
+  const existing = readFileSync(credsDest, "utf-8");
+  if (existing === latest) return;
+
+  // Backup existing credentials
+  const backupDest = credsDest + ".bak";
+  writeFileSync(backupDest, existing);
+  console.log(chalk.gray(`  - Backed up: tests/playwright/credentials.yaml → credentials.yaml.bak`));
+
+  // Extract user data from existing file
+  const users: Array<{ name: string; username: string; password: string }> = [];
+  const userBlockMatch = existing.match(/^users:\s*\n([\s\S]*?)(?=\n\w|\n$)/m);
+  if (userBlockMatch) {
+    const userEntries = userBlockMatch[1].match(/^\s+- name:\s*(\S+)[\s\S]*?username:\s*(.+?)[\s\S]*?password:\s*(.+?)(?:\n|$)/gm);
+    if (userEntries) {
+      for (const entry of userEntries) {
+        const nameMatch = entry.match(/^- name:\s*(\S+)/);
+        const userMatch = entry.match(/username:\s*(.+?)[\n#]/);
+        const passMatch = entry.match(/password:\s*(.+?)(?:\n|$)/);
+        if (nameMatch && userMatch && passMatch) {
+          users.push({
+            name: nameMatch[1],
+            username: userMatch[1].trim(),
+            password: passMatch[1].trim(),
+          });
+        }
+      }
+    }
+  }
+
+  // Extract api field from existing
+  const apiMatch = existing.match(/^api:\s*(.+?)(?:\n|$)/m);
+  const apiValue = apiMatch ? apiMatch[1].trim() : "";
+
+  // Build updated template with preserved user data
+  let updated = latest;
+  if (users.length > 0) {
+    const userLines = users
+      .map(
+        (u) =>
+          `  - name: ${u.name}\n    username: ${u.username}\n    password: ${u.password}`,
+      )
+      .join("\n\n");
+
+    // Replace the users section in template
+    updated = updated.replace(
+      /^users:\s*\n(\s*- name:[\s\S]*?)(\n\s*#|\n\s*# Multi-user)/m,
+      `users:\n${userLines}\n$2`,
+    );
+  }
+
+  if (apiValue && !apiValue.includes("CHANGE_ME")) {
+    updated = updated.replace(/^api:\s*.*$/m, `api: ${apiValue}`);
+  }
+
+  writeFileSync(credsDest, updated);
+  console.log(
+    chalk.green("  ✓ Updated: tests/playwright/credentials.yaml (preserved user data)"),
+  );
+}
+

@@ -7,8 +7,7 @@ dist/
 # GitHub (issue templates have special YAML format prettier can't parse)
 .github/
 
-# Schemas and templates (generated content)
-schemas/
+# Templates (do not format — distributed as-is)
 templates/
 
 # Editor and OS

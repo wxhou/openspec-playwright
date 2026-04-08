@@ -7,10 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.80] - 2026-04-08
+
+### Fixed
+- `SKILL.md`: fix 6 template path references from `templates/xxx` to `.claude/skills/openspec-e2e/templates/xxx` (paths were broken in v0.1.78 refactor)
+- `update.ts`: `syncProjectTemplates` now uses full content comparison instead of single-flag detection for BasePage.ts
+- `update.ts`: add `syncCredentials` to preserve user credentials when updating credentials.yaml template (auto-backup + merge)
+- `update.ts`: add `app-knowledge.md` generation (if missing) during update flow
+- `update.ts`: add `.claude` existence check and "no editors detected" messages for consistency
+- `.prettierignore`: restore `templates/` to ignore list
+
+### Changed
+- `src/index.ts`: `--seed/--no-seed` broken commander syntax replaced with two separate boolean options
+- `syncSkillTemplates`: now only updates when content actually differs (no spurious output)
+
+### Removed
+- `cleanupDeprecatedSchema` from `update.ts` (schemas/ no longer in package — cleanup unnecessary)
+
 ## [0.1.79] - 2026-04-07
 
 ### Fixed
-- `init.ts`: implement `--seed` flag to force regenerate `seed.spec.ts` (previously only `--no-seed` existed)
+- `init.ts`: implement `--seed` flag to force regenerate `seed.spec.ts` (overwrites existing file)
 - `update.ts`: fix duplicate warning when `seed.spec.ts` is outdated (`syncProjectTemplates` called twice)
 
 ### Changed

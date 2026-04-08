@@ -372,7 +372,7 @@ Reply **yes** to proceed, or tell me to exclude routes or adjust strategies.
 
 **Create test cases**: functional requirement → test case, with `@role` and `@auth` tags. Reference verified selectors from app-exploration.md.
 
-Template: `templates/test-plan.md`
+Template: `.claude/skills/openspec-e2e/templates/test-plan.md`
 
 **Idempotency**: If test-plan.md exists → read and use, do NOT regenerate.
 
@@ -425,7 +425,7 @@ If the user requests changes → update test-plan.md → re-display summary → 
 
 **Page Object pattern** — read before writing any page file:
 
-Read: `templates/e2e-test.ts` → LoginPage example
+Read: `.claude/skills/openspec-e2e/templates/e2e-test.ts` → LoginPage example
 
 ```typescript
 // ✅ 正确：getters + async actions + this.click/fill
@@ -559,12 +559,12 @@ test('audio can be played', async ({ page }) => {
 });
 ```
 
-See `templates/test-plan.md` → **Special Element Test Cases** for full templates including Canvas, Video, Audio, Iframe, and Rich Text Editor.
+See `.claude/skills/openspec-e2e/templates/test-plan.md` → **Special Element Test Cases** for full templates including Canvas, Video, Audio, Iframe, and Rich Text Editor.
 
 **Test coverage — AI-opaque elements**: For CAPTCHA, OTP, slider CAPTCHA, file upload, and drag-drop — elements that Playwright cannot reliably automate:
 
 1. Mark the element in `app-exploration.md` → **Special Elements Detected** table with type and automation strategy
-2. Generate the test using the appropriate strategy from `templates/test-plan.md` → **AI-Opaque Elements** section:
+2. Generate the test using the appropriate strategy from `.claude/skills/openspec-e2e/templates/test-plan.md` → **AI-Opaque Elements** section:
    - **CAPTCHA**: Bypass via `auth.setup.ts` storageState, or skip with `test.skip()`, or verify via API
    - **OTP**: Use pre-verified test credentials (`E2E_OTP_CODE` env var), or development bypass flag
    - **File upload**: Use `page.setInputFiles()` with fixture files
@@ -833,13 +833,13 @@ Read report at `openspec/reports/playwright-e2e-<name>-<timestamp>.md`. Present:
 - Auto-heal notes
 - Recommendations with `file:line` references
 
-Report template: `templates/report.md`
+Report template: `.claude/skills/openspec-e2e/templates/report.md`
 
 **Update tasks.md** if all tests pass: find E2E-related items, append `✅ Verified via Playwright E2E (<timestamp>)`.
 
 ## Report Structure
 
-Reference: `templates/report.md`
+Reference: `.claude/skills/openspec-e2e/templates/report.md`
 
 ## Graceful Degradation
 

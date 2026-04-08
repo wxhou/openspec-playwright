@@ -110,11 +110,6 @@ export async function init(options) {
         console.log(chalk.blue("\n─── Generating Shared Pages ───"));
         await generateSharedPages(projectRoot);
     }
-    // 6b. Generate shared pages directory
-    if (options.seed !== false) {
-        console.log(chalk.blue("\n─── Generating Shared Pages ───"));
-        await generateSharedPages(projectRoot);
-    }
     // 7. Generate app-knowledge.md
     console.log(chalk.blue("\n─── Generating App Knowledge ───"));
     await generateAppKnowledge(projectRoot);
