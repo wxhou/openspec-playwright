@@ -12,7 +12,10 @@ export async function run(changeName, options) {
         : `${changeName}.spec.ts`;
     const testFile = join(projectRoot, "tests", "playwright", changeName === "all" ? testFileName : `changes/${changeName}/${testFileName}`);
     if (!existsSync(testFile)) {
-        console.log(chalk.red(`  ✗ Test file not found: tests/playwright/changes/${changeName}/${testFileName}`));
+        const testFileDisplayPath = changeName === "all"
+            ? `tests/playwright/${testFileName}`
+            : `tests/playwright/changes/${changeName}/${testFileName}`;
+        console.log(chalk.red(`  ✗ Test file not found: ${testFileDisplayPath}`));
         console.log(chalk.gray("  Run /opsx:e2e first to generate tests.\n"));
         process.exit(1);
     }

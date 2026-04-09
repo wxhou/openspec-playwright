@@ -6,6 +6,7 @@ import { init } from "./commands/init.js";
 import { update } from "./commands/update.js";
 import { doctor } from "./commands/doctor.js";
 import { run } from "./commands/run.js";
+import { migrate } from "./commands/migrate.js";
 import { uninstall } from "./commands/uninstall.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -59,6 +60,18 @@ program
   .option("--raft <n>", "Number of RAFTs detected", (v) => parseInt(v, 10), undefined)
   .option("--escalated <n>", "Number of human escalations", (v) => parseInt(v, 10), undefined)
   .action(run);
+
+program
+  .command("migrate")
+  .description(
+    "Migrate old-style change spec files to the new tests/playwright/changes/<name>/ structure",
+  )
+  .option(
+    "-n, --dry-run",
+    "Show what would be migrated without moving files",
+  )
+  .option("-f, --force", "Overwrite existing files at the new location")
+  .action(migrate);
 
 program
   .command("uninstall")
