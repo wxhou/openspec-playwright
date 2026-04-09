@@ -741,6 +741,21 @@ await expect(page).toHaveURL(/list/);
 
 // ✅ File uploads
 await page.locator('input[type="file"]').setInputFiles("/path/to/file.pdf");
+
+// ✅ Visual regression — toHaveScreenshot() for key pages and state transitions
+// Baselines stored in __snapshots__/ (auto-excluded from audit)
+await page.goto(`${BASE_URL}/dashboard`);
+await expect(page).toHaveScreenshot('dashboard-authenticated.png', { animations: 'disabled' });
+
+// ✅ Form state snapshot — after submit
+await page.goto(`${BASE_URL}/contact`);
+await page.getByLabel('邮箱').fill('test@example.com');
+await page.getByLabel('内容').fill('Hello');
+await expect(page).toHaveScreenshot('contact-form-filled.png');
+
+// ✅ Canvas/WebGL pixel verification
+const canvas = page.locator('canvas');
+await expect(canvas).toHaveScreenshot('webgl-render.png');
 ```
 
 If the file exists → diff against test-plan, add only missing test cases.
@@ -795,7 +810,7 @@ If playwright.config.ts exists → READ first, preserve ALL existing fields, add
 ### 9. Execute tests
 
 ```bash
-openspec-pw run <name> [--project <role>] [--headed]
+openspec-pw run <name> [--project <role>] [--headed] [--update-snapshots]
 ```
 
 The CLI handles: server lifecycle, port mismatch, report generation.

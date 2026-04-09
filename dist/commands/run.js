@@ -45,6 +45,9 @@ export async function run(changeName, options) {
     if (options.headed) {
         args.push("--headed");
     }
+    if (options.updateSnapshots) {
+        args.push("--update-snapshots");
+    }
     let testOutput = "";
     try {
         const result = execSync(args.join(" "), {

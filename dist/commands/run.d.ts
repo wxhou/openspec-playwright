@@ -8,6 +8,7 @@ export interface RunOptions {
     raft?: number;
     escalated?: number;
     headed?: boolean;
+    updateSnapshots?: boolean;
 }
 export declare function run(changeName: string, options: RunOptions): Promise<void>;
 interface TestResults {

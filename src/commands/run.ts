@@ -13,6 +13,7 @@ export interface RunOptions {
   raft?: number;
   escalated?: number;
   headed?: boolean;
+  updateSnapshots?: boolean;
 }
 
 const REPORTS_DIR = "openspec/reports";
@@ -83,6 +84,9 @@ export async function run(changeName: string, options: RunOptions) {
   }
   if (options.headed) {
     args.push("--headed");
+  }
+  if (options.updateSnapshots) {
+    args.push("--update-snapshots");
   }
 
   let testOutput = "";
