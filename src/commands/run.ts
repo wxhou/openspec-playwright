@@ -33,10 +33,12 @@ export async function run(changeName: string, options: RunOptions) {
     changeName === "all" ? testFileName : `changes/${changeName}/${testFileName}`,
   );
   if (!existsSync(testFile)) {
+    const testFileDisplayPath =
+      changeName === "all"
+        ? `tests/playwright/${testFileName}`
+        : `tests/playwright/changes/${changeName}/${testFileName}`;
     console.log(
-      chalk.red(
-        `  ✗ Test file not found: tests/playwright/changes/${changeName}/${testFileName}`,
-      ),
+      chalk.red(`  ✗ Test file not found: ${testFileDisplayPath}`),
     );
     console.log(chalk.gray("  Run /opsx:e2e first to generate tests.\n"));
     process.exit(1);
