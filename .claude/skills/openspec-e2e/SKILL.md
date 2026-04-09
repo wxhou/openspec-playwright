@@ -802,7 +802,7 @@ The CLI handles: server lifecycle, port mismatch, report generation.
 
 If tests fail → use Playwright MCP tools to inspect UI, fix selectors, re-run.
 
-**Browser visibility**: During Healer Phase 1/2/3 (debugging failures) → add `--headed` to watch the browser. For normal regression runs → omit (headless is faster).
+**Browser visibility**: The Healer uses browser MCP tools (snapshot, screenshot, console messages) to inspect failures — no need for `--headed`. If you want to **watch the browser yourself** during debugging, add `--headed`: `openspec-pw run <name> --headed`.
 
 **Healer MCP tools** (in order of use):
 
