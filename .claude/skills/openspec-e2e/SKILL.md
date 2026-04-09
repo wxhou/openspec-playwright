@@ -795,12 +795,14 @@ If playwright.config.ts exists → READ first, preserve ALL existing fields, add
 ### 9. Execute tests
 
 ```bash
-openspec-pw run <name> [--project <role>]
+openspec-pw run <name> [--project <role>] [--headed]
 ```
 
 The CLI handles: server lifecycle, port mismatch, report generation.
 
 If tests fail → use Playwright MCP tools to inspect UI, fix selectors, re-run.
+
+**Browser visibility**: During Healer Phase 1/2/3 (debugging failures) → add `--headed` to watch the browser. For normal regression runs → omit (headless is faster).
 
 **Healer MCP tools** (in order of use):
 

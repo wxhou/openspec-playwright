@@ -62,3 +62,4 @@ Before each `git tag vX.Y.Z && git push --tags`:
 - CI workflow must NEVER modify git history (no amend, no force-push)
 - Tests must not use hardcoded absolute paths — use `process.cwd()` or env vars
 - Periodically regenerate lockfile: `rm -rf node_modules package-lock.json && npm install`
+- **不主动发布**：未经用户明确要求，不执行 `git tag` 和 `git push --tags`
