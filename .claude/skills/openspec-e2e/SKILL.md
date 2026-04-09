@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires openspec CLI, Playwright (with browsers installed), and @playwright/mcp (globally installed via `claude mcp add playwright npx @playwright/mcp@latest`).
 metadata:
   author: openspec-playwright
-  version: "2.13"
+  version: "2.19"
 ---
 
 ## Input
@@ -20,6 +20,7 @@ metadata:
 - **Page Objects** (all mode): `tests/playwright/pages/<Route>Page.ts`
 - **Auth setup**: `tests/playwright/auth.setup.ts` (if auth required)
 - **Report**: `openspec/reports/playwright-e2e-<name>-<timestamp>.md`
+- **App Bug Registry**: `openspec/reports/app-bug-registry.md` (cumulative, per-project)
 - **Test plan**: `openspec/changes/<name>/specs/playwright/test-plan.md` (change mode only)
 
 ## Architecture
@@ -57,6 +58,46 @@ Both modes update `app-knowledge.md` and `app-exploration.md`. All `.spec.ts` fi
 Can the user SEE this on screen?
   → Yes → MUST use: page.getByRole/ByLabel/ByText + expect()
   → No  → Record reason → page.request acceptable
+```
+
+**Business logic assertion rule — numerical/calculated values MUST use API assertion**:
+
+UI assertions verify **rendering** correctness, not **calculation** correctness. A UI that correctly displays a wrong value will pass UI-only tests.
+
+```
+Is the assertion about a computed/counted/calculated value?
+  (e.g., balance, total, discount, count, percentage, score, ranking)
+  → Yes → Use page.request to fetch backend data → assert the raw value
+  → No  → UI assertion is sufficient
+```
+
+**Examples where API assertion is required:**
+
+```typescript
+// ❌ UI-only assertion — hides calculation bugs
+await page.getByText('¥800').click(); // buy item
+await expect(page.getByText('总金额: ¥800')).toBeVisible(); // passes even if backend rounded wrong
+
+// ✅ API assertion — catches calculation bugs
+const order = await page.request.get(`${BASE_URL}/api/orders/${orderId}`);
+const body = await order.json();
+expect(body.total).toBe(800); // backend calculation is verified
+
+// ❌ UI-only assertion — hides optimistic update failures
+await page.getByRole('button', { name: '点赞' }).click();
+await expect(page.getByText('1 个赞')).toBeVisible(); // passes even if POST failed silently
+
+// ✅ API assertion — catches backend sync failures
+const post = await page.request.get(`${BASE_URL}/api/posts/${postId}`);
+const body = await post.json();
+expect(body.likeCount).toBeGreaterThan(0); // backend state is verified
+
+// ✅ Optimistic update with API verification
+await page.getByRole('button', { name: '点赞' }).click();
+await expect(page.getByText('1 个赞')).toBeVisible(); // optimistic UI
+await page.waitForResponse(r => r.url().includes('/api/like')); // wait for backend
+const post = await page.request.get(`${BASE_URL}/api/posts/${postId}`);
+expect((await post.json()).likeCount).toBeGreaterThan(0); // verify persistence
 ```
 
 **Never use API calls to replace routine UI flows.** If a test completes in < 200ms, it is almost certainly using `page.request` instead of real UI interactions.
@@ -231,76 +272,17 @@ From `browser_snapshot` + `browser_evaluate`, identify these special elements pe
 | File upload | `<input type="file">` | `accept` attribute, `multiple` flag | Medium |
 | Drag-and-drop | drag events in JS | Simulate DnD via coordinate clicks | Low |
 | Date picker | specific `data-testid` or class patterns | Click triggers → evaluate value | Low (skip unless specs mention) |
-| Infinite scroll | Dynamic row insertion | Count elements before/after scroll | Low |
-| WebSocket / SSE | No DOM signal | Check `browser_console_messages` for WS events | Low |
+| Infinite scroll | Dynamic row insertion | Count elements before/after scroll | Low (skip unless specs mention dynamic lists/pagination) |
+| WebSocket / SSE | No DOM signal | Check `browser_console_messages` for WS events | Low (check only if app uses real-time features) |
 
-**For each detected special element, capture:**
-
-```javascript
-// Canvas — get metadata (check WebGL first to avoid consuming 2D context)
-const canvasData = await browser_evaluate(() => {
-  const c = document.querySelector('canvas');
-  if (!c) return null;
-  // getContext consumes the context — check WebGL2 first, then WebGL1, then 2D
-  let context = 'unknown';
-  if (c.getContext('webgl2')) context = 'webgl2';
-  else if (c.getContext('webgl')) context = 'webgl';
-  else if (c.getContext('2d')) context = '2d';
-  return {
-    id: c.id || '',
-    context,
-    width: c.width,
-    height: c.height,
-  };
-});
-
-// Iframe — record frameLocator
-// Note: iframe has src or name attribute
-
-// Rich text editor — get content
-const editorContent = await browser_evaluate(() => {
-  const el = document.querySelector('[contenteditable]');
-  return el ? { tag: el.tagName, content: el.innerHTML, length: el.textContent.length } : null;
-});
-
-// Video / Audio — get state via evaluate (snapshot doesn't expose tagName)
-const mediaState = await browser_evaluate(() => {
-  const v = document.querySelector('video');
-  if (v) return { type: 'video', paused: v.paused, duration: v.duration };
-  const a = document.querySelector('audio');
-  if (a) return { type: 'audio', paused: a.paused, duration: a.duration };
-  return null;
-});
-
-// contenteditable — detect via evaluate
-const isContentEditable = await browser_evaluate(() => {
-  const el = document.querySelector('[contenteditable]');
-  return !!el;
-});
-
-// CAPTCHA — detect type
-const captchaInfo = await browser_evaluate(() => {
-  const recaptcha = document.querySelector('.g-recaptcha, [data-sitekey]');
-  if (recaptcha) return { type: 'recaptcha', sitekey: recaptcha.getAttribute('data-sitekey') };
-  const hcaptcha = document.querySelector('.h-captcha');
-  if (hcaptcha) return { type: 'hcaptcha', sitekey: hcaptcha.getAttribute('data-sitekey') };
-  const turnstile = document.querySelector('[data-sitekey*="cloudflare"]');
-  if (turnstile) return { type: 'turnstile' };
-  const canvas = document.querySelector('canvas[class*="captcha"]');
-  if (canvas) return { type: 'canvas-captcha' };
-  const slider = document.querySelector('[class*="slider"], [class*="drag"]');
-  if (slider) return { type: 'slider-captcha' };
-  return null;
-});
-
-// OTP input — detect
-const otpInfo = await browser_evaluate(() => {
-  const inputs = document.querySelectorAll('input');
-  const otpInputs = Array.from(inputs).filter(i => i.maxLength === 1 && i.type === 'text' || i.type === 'tel');
-  if (otpInputs.length >= 4) return { type: 'otp-sms', digits: otpInputs.length };
-  return null;
-});
-```
+**For each detected special element, capture via `browser_evaluate` with targeted DOM queries:**
+- Canvas: `getContext('webgl2'/'webgl'/'2d')`, `width`, `height`
+- Iframe: `src` attribute → use `frameLocator` in tests
+- CAPTCHA: `.g-recaptcha`, `.h-captcha`, `[data-sitekey]`, canvas+slider detection
+- OTP: `input` elements with `maxLength === 1` or `type === 'tel'`
+- Rich text: `[contenteditable]` → `innerHTML`, `textContent.length`
+- Video/Audio: `querySelector('video'/'audio')` → `paused`, `duration`
+- Shadow DOM: `role="generic"` with no children → check `shadowRoot`
 
 Record findings in `app-exploration.md` → **Special Elements Detected** table.
 
@@ -377,7 +359,7 @@ Reply **yes** to proceed, or tell me to exclude routes or adjust strategies.
 
 Template: `.claude/skills/openspec-e2e/templates/test-plan.md`
 
-**Idempotency**: If test-plan.md exists → read and use, do NOT regenerate.
+**Idempotency**: If test-plan.md exists → read and use, **but you MAY supplement missing test cases**. "Do not regenerate" means: do not discard existing cases, but you CAN add new ones discovered during Step 4 exploration that weren't in the original spec (e.g., empty states, error paths found during DOM exploration).
 
 **⚠️ Human verification — STOP before generating code.**
 
@@ -408,15 +390,9 @@ After creating (or reading existing) test-plan.md, **stop and display the test p
 - `<element or scenario not testable>`
 ````
 
+**Important**: Only list special elements that were actually detected in Step 4. Do not pre-populate with all possible types. If no special elements were found → omit the **Special Elements** section entirely.
+
 Then ask: "Does this coverage match your intent? Reply **yes** to proceed, or tell me what to add/change."
-
-**Why this matters**: Step 5 is the last human-reviewable checkpoint before code generation. Once test code is written, fixes address *how* tests run, not *what* they verify. Reviewing the test plan takes seconds and catches logic errors that Healer cannot fix.
-
-**Confirmation criteria**:
-- All scenarios from OpenSpec specs are covered
-- Special elements (Canvas, Iframe, Video, Audio, CAPTCHA, OTP, File Upload, Drag-drop, WebSocket) have correct automation strategy
-- Auth states and roles are accurate
-- Nothing important is missing
 
 If the user requests changes → update test-plan.md → re-display summary → re-confirm → proceed.
 
@@ -424,7 +400,7 @@ If the user requests changes → update test-plan.md → re-display summary → 
 
 **"all" mode**: Build and expand Page Objects for future Change tests.
 
-**Prerequisite**: If `app-exploration.md` does not exist → **STOP**. Run Step 4 first. All mode explores routes via browser MCP to build exploration data.
+**Prerequisite** (change mode only): If `app-exploration.md` does not exist → **STOP**. Run Step 4 first. For **all mode**, exploration is embedded dynamically in Step 6 — no pre-existing app-exploration.md is required.
 
 **Page Object pattern** — read before writing any page file:
 
@@ -466,7 +442,7 @@ For each discovered route:
 2. Navigate to route with correct auth state
 3. browser_snapshot to extract interactive elements (see 4.3 table)
 4. Write or update `pages/<Route>Page.ts` — extend with newly discovered elements
-5. Also write `tests/playwright/app-all.spec.ts` — smoke test (route loads without crash)
+5. Also write `tests/playwright/app-all.spec.ts` — smoke test. **Minimum standard**: verify at least one heading or key interactive element is visible — not just "no crash". If the page loads but shows an empty shell or an error, the test must fail.
 
 **Output priority**: Page Objects (`pages/*.ts`) are the primary asset. Smoke test is secondary. Existing Page Objects are never overwritten — only extended.
 
@@ -495,84 +471,13 @@ Is this assertion about a visible UI result?
 
 **Test coverage — empty states**: For list/detail pages, explore the empty state. If the app shows a "no data" UI when the list is empty, generate a test to verify it. Empty states are often missing from specs but are real user paths.
 
-**Test coverage — special elements**: Check `app-exploration.md` → **Special Elements Detected** table. For each special element:
-
-```typescript
-// Canvas — screenshot + dimensions
-test('canvas renders with correct dimensions', async ({ page }) => {
-  await page.goto(`${BASE_URL}/<route>`);
-  const canvas = page.locator('canvas');
-  await expect(canvas).toBeVisible();
-  const box = await canvas.boundingBox();
-  expect(box.width).toBeGreaterThan(0);
-  await canvas.screenshot({ path: '__screenshots__/canvas.png' });
-});
-
-// Canvas — 2D pixel verification
-test('canvas 2D content is not blank', async ({ page }) => {
-  await page.goto(`${BASE_URL}/<route>`);
-  const hasContent = await page.evaluate(() => {
-    const c = document.querySelector('canvas');
-    if (!c) return false;
-    const ctx = c.getContext('2d');
-    if (!ctx) return false;
-    const data = ctx.getImageData(0, 0, c.width, c.height).data;
-    return data.some((v, i) => i % 4 !== 3 && v !== 0); // non-transparent non-black pixel
-  });
-  expect(hasContent).toBe(true);
-});
-
-// Canvas — WebGL screenshot
-test('canvas WebGL renders', async ({ page }) => {
-  await page.goto(`${BASE_URL}/<route>`);
-  const canvas = page.locator('canvas');
-  await expect(canvas).toBeVisible();
-  await canvas.screenshot({ path: '__screenshots__/webgl.png' });
-  // No pixel comparison — WebGL rendering may vary
-});
-
-// Iframe — switch context
-test('iframe content is accessible', async ({ page }) => {
-  await page.goto(`${BASE_URL}/<route>`);
-  const frame = page.frameLocator('iframe[name="<name>"]');
-  await expect(frame.locator('<selector-inside-frame>')).toBeVisible();
-});
-
-// Rich text editor — evaluate content
-test('editor content persists', async ({ page }) => {
-  await page.goto(`${BASE_URL}/<route>`);
-  const editor = page.locator('[contenteditable]');
-  await editor.click();
-  await page.keyboard.type('Hello E2E');
-  const content = await page.evaluate(() => {
-    const el = document.querySelector('[contenteditable]');
-    return el?.textContent;
-  });
-  expect(content).toContain('Hello E2E');
-});
-
-// Video — playback state
-test('video can be played', async ({ page }) => {
-  await page.goto(`${BASE_URL}/<route>`);
-  const video = page.locator('video');
-  await expect(video).toBeVisible();
-  await video.evaluate((v: HTMLVideoElement) => { v.play(); });
-  const isPlaying = await video.evaluate((v: HTMLVideoElement) => !v.paused);
-  expect(isPlaying).toBe(true);
-});
-
-// Audio — playback state
-test('audio can be played', async ({ page }) => {
-  await page.goto(`${BASE_URL}/<route>`);
-  const audio = page.locator('audio');
-  await expect(audio).toBeVisible();
-  await audio.evaluate((a: HTMLAudioElement) => { a.play(); });
-  const isPlaying = await audio.evaluate((a: HTMLAudioElement) => !a.paused);
-  expect(isPlaying).toBe(true);
-});
-```
-
-See `.claude/skills/openspec-e2e/templates/test-plan.md` → **Special Element Test Cases** for full templates including Canvas, Video, Audio, Iframe, and Rich Text Editor.
+**Test coverage — special elements**: Check `app-exploration.md` → **Special Elements Detected** table. For each special element, generate tests using templates from `.claude/skills/openspec-e2e/templates/test-plan.md` → **Special Element Test Cases**:
+- Canvas: screenshot + boundingBox → dimensions > 0, or 2D pixel verification
+- WebGL: screenshot only (no pixel comparison — rendering varies)
+- Iframe: `frameLocator` + assert inner content visible
+- Rich text: `contenteditable` → type + `textContent` assertion
+- Video/Audio: `play()` → assert `!paused`
+- CAPTCHA/OTP/File upload/Drag-drop: See AI-Opaque Elements section in templates
 
 **Test coverage — AI-opaque elements**: For CAPTCHA, OTP, slider CAPTCHA, file upload, and drag-drop — elements that Playwright cannot reliably automate:
 
@@ -584,24 +489,7 @@ See `.claude/skills/openspec-e2e/templates/test-plan.md` → **Special Element T
    - **Drag-drop**: Use `page.dragAndDrop()` or `page.evaluate()` with custom event dispatching
 3. If the element is truly non-automatable, write `test.skip()` with a comment explaining why, and mark with `/handoff` for manual testing
 
-**Test coverage — performance**: Verify Core Web Vitals metrics. If the app specifies performance targets, generate a test:
-
-```typescript
-// Performance — Core Web Vitals
-test('page loads within performance budget', async ({ page }) => {
-  await page.goto(`${BASE_URL}/<route>`);
-  await expect(page.getByRole('heading')).toBeVisible();
-  const timings = await page.evaluate(() => {
-    const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
-    return {
-      ttfb: nav.responseStart - nav.requestStart,
-      lcp: nav.loadEventEnd - nav.requestStart,
-    };
-  });
-  expect(timings.ttfb).toBeLessThan(500);
-  expect(timings.lcp).toBeLessThan(2500);
-});
-```
+**Test coverage — performance**: Generate a Core Web Vitals test **only if** the OpenSpec spec or app-exploration.md specifies explicit performance targets (e.g., "LCP must be under 2s"). If no business target is defined, skip performance testing — hard-coded thresholds (lcp < 2500ms) produce false passes and add noise.
 
 ```typescript
 // 🚫 Avoid for special elements:
@@ -665,98 +553,14 @@ test('user can login', async ({ page }) => {
 
 **If a shared page object doesn't exist yet**: define it inline in the spec AND write it to `tests/playwright/pages/<PageName>.ts` so future tests can reuse it.
 
-#### 6.2. Selector anti-patterns
+#### 6.2. Selector patterns
 
-```typescript
-// 🚫 Fragile — CSS class selectors break on style refactors
-page.locator('.notification-bell')
-page.locator('.header-bar')
-page.locator('.skeleton-overlay')
+| Prefer (robust) | Avoid (fragile) |
+| — | — |
+| `getByRole`, `getByTestId`, `getByLabel` | CSS class (`'.notification-bell'`), CSS ID (`'#avatarBtn'`) |
+| `waitForSelector(targetElement)` | hardcoded `200ms` / `500ms` delays |
 
-// ✅ Robust — semantic selectors survive style changes
-page.getByRole('button', { name: '通知' })
-page.getByTestId('header-bar')
-page.getByText('加载中')
-
-// 🚫 Fragile — CSS ID selectors can duplicate in React HMR
-page.locator('#avatarBtn')
-page.locator('#userAvatarBtn')
-
-// ✅ Robust — prefer role/label/testid over CSS ID
-page.getByTestId('user-avatar')
-page.getByRole('button', { name: '用户菜单' })
-
-// 🚫 Missing wait — leads to random CI failures
-await page.locator('.submit-btn').click();
-
-// ✅ Safe — scroll into view first
-await page.locator('.submit-btn').scrollIntoViewIfNeeded();
-await page.locator('.submit-btn').click();
-
-// ✅ Better — use BasePage click with built-in wait
-const app = new AppPage(page);
-await app.click(app.byRole('button', { name: '提交' }));
-```
-
-**Code examples — UI first:**
-
-```typescript
-// ✅ UI 测试 — fill 后必须验证值，确保框架同步完成
-const app = new AppPage(page);
-await app.goto(`${BASE_URL}/orders`);
-await app.click(app.byRole('button', { name: '新建订单' }));
-await app.fillAndVerify(app.byLabel('订单名称'), 'Test Order');
-await app.click(app.byRole('button', { name: '提交' }));
-await expect(page.getByText('订单创建成功')).toBeVisible();
-
-// ✅ Error path
-await page.goto(`${BASE_URL}/orders`);
-await page.getByRole("button", { name: "提交" }).click();
-await expect(page.getByRole("alert")).toContainText("名称不能为空");
-
-// ✅ API fallback (only when UI cannot reach the scenario)
-const res = await page.request.get(`${BASE_URL}/api/orders/99999`);
-expect(res.status()).toBe(404);
-
-// ✅ Auth guard — fresh browser context (no cookies)
-test("redirects to login when unauthenticated", async ({ browser }) => {
-  const freshPage = await browser.newContext().newPage();
-  await freshPage.goto(`${BASE_URL}/dashboard`);
-  await expect(freshPage).toHaveURL(/login|auth/);
-});
-
-// ✅ Session — logout clears protected state
-await page.getByRole("button", { name: "退出登录" }).click();
-await expect(page).toHaveURL(/login|auth/);
-const freshPage2 = await browser.newContext().newPage();
-await freshPage2.goto(`${BASE_URL}/dashboard`);
-await expect(freshPage2).toHaveURL(/login|auth/); // session revoked
-
-// ✅ Browser history — SPA back/forward
-await page.goto(`${BASE_URL}/list`);
-await page.getByRole("link", { name: "详情" }).first().click();
-await expect(page).toHaveURL(/detail/);
-await page.goBack();
-await expect(page).toHaveURL(/list/);
-
-// ✅ File uploads
-await page.locator('input[type="file"]').setInputFiles("/path/to/file.pdf");
-
-// ✅ Visual regression — toHaveScreenshot() for key pages and state transitions
-// Baselines stored in __snapshots__/ (auto-excluded from audit)
-await page.goto(`${BASE_URL}/dashboard`);
-await expect(page).toHaveScreenshot('dashboard-authenticated.png', { animations: 'disabled' });
-
-// ✅ Form state snapshot — after submit
-await page.goto(`${BASE_URL}/contact`);
-await page.getByLabel('邮箱').fill('test@example.com');
-await page.getByLabel('内容').fill('Hello');
-await expect(page).toHaveScreenshot('contact-form-filled.png');
-
-// ✅ Canvas/WebGL pixel verification
-const canvas = page.locator('canvas');
-await expect(canvas).toHaveScreenshot('webgl-render.png');
-```
+See `.claude/skills/openspec-e2e/templates/e2e-test.ts` for full examples of Page Object pattern, UI-first flows, error paths, auth guards, session handling, and visual regression.
 
 If the file exists → diff against test-plan, add only missing test cases.
 
@@ -832,21 +636,66 @@ If tests fail → use Playwright MCP tools to inspect UI, fix selectors, re-run.
 
 **Healer — Phase 1: Triage**
 
-When a test fails, classify before attempting repair:
+When a test fails, classify before attempting repair.
+
+**Batch Failure Detection — run this FIRST when multiple tests fail:**
+
+```
+Collect ALL failing test names + their failure reasons.
+Group by: same route + same action + same error pattern.
+If ≥2 tests fall into the same group:
+  → Pause individual healing
+  → Navigate to that route + perform the action manually
+  → Check browser_console_messages + browser_network_requests
+  → If console error or 4xx/5xx present:
+      → This is an App Bug (backend/API change), NOT Test Bugs
+      → Classify all tests in this group as App Bug
+      → Skip all → record 1 App Bug in registry (not N bugs)
+      → Skip the rest of individual Triage for this group
+  → If no console/network error but all still fail:
+      → Likely a shared state issue → RAFT
+      → Skip all → note RAFT in report
+Proceed with individual Triage only for tests NOT in a batch failure group.
+```
+
+**After Batch Detection, individual Triage:**
 
 | Failure Type | Signal | Classification | Action |
 | — | — | — | — |
-| **Network/Backend** | `net::ERR`, 4xx/5xx in console/network | **App Bug** | `test.skip()` + report as app bug |
-| **JS Runtime Error** | Console error (non-network) | **App Bug** | `test.skip()` + report as app bug |
+| **Network/Backend** | `net::ERR`, 4xx/5xx in console/network | **App Bug** | `test.skip()` + record in `app-bug-registry.md` |
+| **JS Runtime Error** | Console error (non-network) | **App Bug** | `test.skip()` + record in `app-bug-registry.md` |
 | **Auth Expired** | Redirected to login mid-test | **Flaky** | Re-run auth.setup → re-run |
 | **Selector Not Found** | Element not found | **Test Bug** | → Phase 2 Healer |
 | **Assertion Mismatch** | Wrong content/value | **Ambiguous** | → Phase 2 Healer |
 | **Timeout** | waitFor/evaluate timeout | **Flaky** | Retry isolated: `openspec-pw run <name> --grep "<test-name>"` (1×, not counted in heal attempts). If it passes isolated but fails in suite → **RAFT**. If it consistently times out → check framework: React 19 / Next.js App Router: add `page.waitForLoadState('networkidle')`. Vue/Angular/React 18 / Plain JS / jQuery: use `waitForSelector(targetElement)` instead of timeout tuning. |
 | **Same test fails in suite, passes isolated** | — | **RAFT** | `test.skip()` in suite, note RAFT in report |
 
-- **App Bug** → skip immediately (no healing needed)
+- **App Bug** → skip immediately (no healing needed) → record in App Bug Registry
 - **Flaky** → retry once isolated
 - **Test Bug / Ambiguous** → Phase 2
+
+#### App Bug Registry
+
+For every App Bug classified in Phase 1, record it in `openspec/reports/app-bug-registry.md` (create if missing):
+
+```markdown
+# App Bug Registry
+
+<!-- Auto-generated. Do not edit manually. -->
+
+## Active App Bugs
+
+| # | Test | Route | Signal | First Detected | Status |
+|---|------|-------|--------|---------------|--------|
+| 1 | test-name | /route | net::ERR_CONNECTION_REFUSED | 2026-04-09 | open |
+```
+
+**Update rules**:
+- **New App Bug**: Append new row, increment `#`
+- **App Bug re-run and now passes**: Keep row, change status to `resolved` + add `Resolved` column with date
+- **Keep all rows** (never delete) — the resolved count is the signal that bugs are being fixed
+
+> **Why this matters**: `test.skip()` hides App Bugs from the pass/fail count. Without an explicit registry, "all tests passed" is a false positive when App Bugs exist. The registry makes the invisible visible.
 
 > **Global attempt guard**: Each test has an independent heal counter (max 3 per test). If the same test enters Phase 2 more than once and reaches the cap each time → treat as "consecutive escalation without progress" → Phase 3 immediately.
 
@@ -865,12 +714,37 @@ After Triage classifies failure as "Test Bug" or "Ambiguous":
    MATCH:    <yes/no>
    ```
 4. If MATCH=no:
-   - Is `ACTUAL` reasonable per the test's intended spec behavior?
-     - If yes → fix the assertion to match ACTUAL (app behavior is correct)
-     - If uncertain → **Phase 3**
+
+   **⚠️ Assertion modification guard — never skip Phase 3 unless ALL conditions are met:**
+
+   - The test has **never passed with the current assertion** (newly generated test, or this is the first time this assertion fails)
+   - The ACTUAL value is **verifiably** from a different spec section (e.g., this test was in the wrong describe block)
+   - You can point to the **specific line in the spec** that defines the ACTUAL behavior
+
+   **If ANY condition is uncertain → Phase 3 immediately.** Do NOT modify the assertion.
+
+   **Safe to fix without Phase 3:**
+   - Typo in assertion (e.g., "Submmit" vs "Submit" in the expected text)
+   - Selector was correct but the element was moved to a different location (same text, different selector)
+   - Explicit spec drift confirmed by reading the spec (e.g., spec says "button says Submit" but test says "button says Submit Form")
+
+   **Never fix without Phase 3:**
+   - App behavior changed after an action (e.g., "after clicking submit, balance should decrease" → ACTUAL shows no change → **Phase 3**, could be optimistic update bug, backend failure, or spec mismatch)
+   - Data values differ (e.g., expected "¥1000" but got "¥999" → **Phase 3**, could be rounding, discount, or calculation bug)
+   - Missing elements after interaction (e.g., "after creating order, success message should appear" → no message → **Phase 3**)
+
 5. If selector issue → find equivalent stable selector from snapshot
 6. Apply fix → re-run **only that test** (attempt 1/3)
 7. If healed → append to `app-knowledge.md` → **Selector Fixes** table (route, old → new selector, reason)
+
+**Element Missing handling (when browser_snapshot shows element not found):**
+
+| Situation | Check | Action |
+| — | — | — |
+| JS error in console after action | `browser_console_messages` | **App Bug** → Phase 1 → App Bug classification |
+| Auth redirected mid-action | URL changed to `/login` | **Flaky** → re-run with fresh auth |
+| SPA route didn't update | URL is correct but element missing | Wait for SPA hydration → `page.waitForLoadState('networkidle')` or `waitForSelector(target)` |
+| Element genuinely missing | None of the above | **Test Bug** → find alternative selector or **Phase 3** if no equivalent exists |
 
 **Healer — Phase 3: Escalate**
 
@@ -917,7 +791,7 @@ openspec-pw run <change-name>
 ```
 `/opsx:e2e <change-name>` re-runs the full 11-step workflow — unnecessary after Phase 3. The test file and auth context are already correct. Use `openspec-pw run` to verify fixes directly.
 
-### 10. False Pass Detection + RAFT Detection
+### 10. False Pass Detection + RAFT Detection + App Bug Accumulation
 
 Run after test suite completes (even if all pass).
 
@@ -933,11 +807,23 @@ Run after test suite completes (even if all pass).
 - This is **NOT** a test bug or app bug. Mark as RAFT, add `test.skip()` in suite, note in report
 - RAFTs are infrastructure coupling issues (CPU/memory/I/O contention), not fixable by changing test or app
 
+**App Bug Accumulation Detection** (most critical):
+
+1. Read `openspec/reports/app-bug-registry.md`
+2. Count `open` status rows
+3. If ≥ 3 active App Bugs → add "⚠️ App Bug accumulation: N bugs unresolved" to report summary. **Do NOT suppress or hide this warning.** The test suite may report "all passed" (skipped ≠ failed), but N broken features is not a passing system.
+4. Check for **App Bugs that became "resolved"** (passing on re-run) → this is the signal that bugs were fixed. Update `app-bug-registry.md` accordingly, and remove `test.skip()` from those tests so they re-enter the regression suite.
+
 ### 11. Report results
 
 Read report at `openspec/reports/playwright-e2e-<name>-<timestamp>.md`. Present:
 
-- Summary table with failure type breakdown (App Bugs, Test Bugs/healed, Flaky-RAFT, Human Escalations)
+- **Summary table** with failure type breakdown (App Bugs, Test Bugs/healed, Flaky-RAFT, Human Escalations)
+- **App Bug Summary**: Table of all active App Bugs from `app-bug-registry.md` — test name, route, signal, first detected. If ≥ 3 active → display "⚠️ App Bug accumulation warning" prominently.
+- **Conditional "All Pass" conclusion**:
+  - ✅ **"All tests passed"** — only if 0 active App Bugs and 0 skipped tests
+  - ⚠️ **"All tests passed (N skipped)"** — if skipped tests exist but no active App Bugs
+  - ⚠️ **"All tests passed (N skipped, M App Bugs unresolved)"** — if active App Bugs exist
 - Failure Classification table (test, type, action, healed?)
 - Auto-heal log (assertion vs actual comparison, fix applied, result)
 - RAFT Summary (if any detected)
@@ -946,11 +832,9 @@ Read report at `openspec/reports/playwright-e2e-<name>-<timestamp>.md`. Present:
 
 Report template: `.claude/skills/openspec-e2e/templates/report.md`
 
-**Update tasks.md** if all tests pass: find E2E-related items, append `✅ Verified via Playwright E2E (<timestamp>)`.
-
-## Report Structure
-
-Reference: `.claude/skills/openspec-e2e/templates/report.md`
+**Update tasks.md**:
+- If 0 active App Bugs → find E2E-related items, append `✅ Verified via Playwright E2E (<timestamp>)`.
+- If active App Bugs exist → **do not mark as verified**. Append instead: `⚠️ App Bug blocked: <bug summary> (<timestamp>)`.
 
 ## Graceful Degradation
 
@@ -962,11 +846,12 @@ Reference: `.claude/skills/openspec-e2e/templates/report.md`
 | JS errors or HTTP 5xx during exploration | **STOP** → user fixes app → re-run `/opsx:e2e <name>` to re-explore from Step 4 |
 | Sitemap fails ("all" mode) | Continue with homepage links fallback |
 | File already exists (app-exploration, test-plan, app-all.spec.ts, Page Objects) | Read and use — never regenerate |
-| Test fails (network/backend) | **App Bug** — `test.skip()` + report |
+| Test fails (network/backend) | **App Bug** — `test.skip()` + record in `app-bug-registry.md` |
 | Test fails (selector/assertion) | **Test Bug/Ambiguous** — Healer Phase 1→2 (≤3 attempts) |
 | RAFT detected (suite fail, isolated pass) | **Flaky** — `test.skip()` in suite, note RAFT in report |
 | Phase 3 escalation | **Human needed** — STOP + ask user |
 | False pass detected | Add "⚠️ Coverage Gap" to report |
+| App Bug skip accumulation (≥3 active App Bugs) | **Warning** — add "⚠️ App Bug accumulation: N bugs unresolved" to report summary. Do not suppress. |
 
 ## Guardrails
 
@@ -985,6 +870,6 @@ Reference: `.claude/skills/openspec-e2e/templates/report.md`
 
 > `tests/playwright/` — spec files, Page Objects, auth, credentials, app-knowledge.md
 > `openspec/changes/<name>/specs/playwright/` — app-exploration.md, test-plan.md (change mode)
-> `openspec/reports/` — test reports
+> `openspec/reports/` — test reports, app-bug-registry.md
 
 **Never write to:** any other directory
