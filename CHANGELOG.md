@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5] - 2026-04-09
+
+### Added
+- `openspec-pw audit` command: scans `tests/playwright/` for orphaned spec files, routes not in sitemap, missing auth.setup, and old-style file locations
+
+### Changed
+- README.md & README.zh-CN.md: added `audit` and `migrate` to CLI command tree
+
 ## [0.2.4] - 2026-04-09
 
 ### Fixed

@@ -36,6 +36,8 @@ Claude Code — E2E workflow is driven by SKILL.md using Playwright MCP tools (`
 openspec-pw init          # Initialize integration (one-time setup)
 openspec-pw update        # Update CLI and commands to latest version
 openspec-pw doctor        # Check prerequisites
+openspec-pw audit         # Audit tests for orphaned specs and issues
+openspec-pw migrate       # Migrate old test files to new structure
 openspec-pw uninstall     # Remove integration from the project
 ```
 
@@ -156,6 +158,7 @@ CLI (openspec-pw)
   ├── update     → Syncs commands, skill & templates from npm
   ├── run        → Executes E2E tests with server lifecycle
   ├── migrate    → Migrates old test files to new structure
+  ├── audit      → Audits tests for orphaned specs and issues
   ├── doctor     → Checks prerequisites
   └── uninstall  → Removes integration from the project
 

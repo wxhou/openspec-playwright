@@ -8,6 +8,7 @@ import { doctor } from "./commands/doctor.js";
 import { run } from "./commands/run.js";
 import { migrate } from "./commands/migrate.js";
 import { uninstall } from "./commands/uninstall.js";
+import { audit } from "./commands/audit.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -80,5 +81,10 @@ program
     "Remove OpenSpec + Playwright E2E integration from the current project",
   )
   .action(uninstall);
+
+program
+  .command("audit")
+  .description("Audit test files for orphaned specs, missing auth, sitemap issues")
+  .action(audit);
 
 program.parse();
