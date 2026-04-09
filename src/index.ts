@@ -54,6 +54,10 @@ program
   .option("-t, --timeout <seconds>", "Test timeout in seconds", "300")
   .option("--json", "Output results as JSON")
   .option("-g, --grep <pattern>", "Run only tests matching pattern")
+  .option("--app-bugs <n>", "Number of app bugs (skipped tests)", (v) => parseInt(v, 10), undefined)
+  .option("--healed <n>", "Number of test bugs healed by Healer", (v) => parseInt(v, 10), undefined)
+  .option("--raft <n>", "Number of RAFTs detected", (v) => parseInt(v, 10), undefined)
+  .option("--escalated <n>", "Number of human escalations", (v) => parseInt(v, 10), undefined)
   .action(run);
 
 program

@@ -16,7 +16,7 @@ metadata:
 
 ## Output
 
-- **Test file**: `tests/playwright/<name>.spec.ts`
+- **Test file**: `tests/playwright/changes/<name>/<name>.spec.ts`
 - **Page Objects** (all mode): `tests/playwright/pages/<Route>Page.ts`
 - **Auth setup**: `tests/playwright/auth.setup.ts` (if auth required)
 - **Report**: `openspec/reports/playwright-e2e-<name>-<timestamp>.md`
@@ -28,7 +28,7 @@ Two modes, same pipeline:
 
 | Mode   | Command            | Route source             | Output                         |
 | ------ | ------------------ | ------------------------ | ------------------------------- |
-| Change | `/opsx:e2e <name>` | OpenSpec specs           | `<name>.spec.ts`                |
+| Change | `/opsx:e2e <name>` | OpenSpec specs           | `changes/<name>/<name>.spec.ts` |
 | All    | `/opsx:e2e all`    | sitemap + homepage crawl | `pages/*.ts` (Page Objects)     |
 
 Both modes update `app-knowledge.md` and `app-exploration.md`. All `.spec.ts` files run together as regression suite.
@@ -470,7 +470,7 @@ For each discovered route:
 
 **Output priority**: Page Objects (`pages/*.ts`) are the primary asset. Smoke test is secondary. Existing Page Objects are never overwritten — only extended.
 
-**Change mode** → `tests/playwright/<name>.spec.ts` (functional):
+**Change mode** → `tests/playwright/changes/<name>/<name>.spec.ts` (functional):
 
 - Read: test-plan.md, app-exploration.md, app-knowledge.md, seed.spec.ts
 - For each test case: verify selectors in real browser, then write Playwright code
@@ -653,7 +653,7 @@ export class LoginPage extends BasePage {
 ```
 
 ```typescript
-// tests/playwright/<name>.spec.ts
+// tests/playwright/changes/<name>/<name>.spec.ts
 import { LoginPage } from '../pages/LoginPage';
 
 test('user can login', async ({ page }) => {
@@ -889,7 +889,7 @@ Wait for user input before proceeding.
 |--------|-----------|-------------------|
 | **(a)** Fix the app to match the spec | Fix the app code | Re-run: `openspec-pw run <change-name>` to verify fix |
 | **(b)** Update the spec to match the app | Edit the spec file | Then update the test assertion (→ option c), or regenerate the affected part of the test |
-| **(c)** Update the test assertion | Fix the assertion in `tests/playwright/<name>.spec.ts` | Re-run: `openspec-pw run <change-name>` to verify |
+| **(c)** Update the test assertion | Fix the assertion in `tests/playwright/changes/<name>/<name>.spec.ts` | Re-run: `openspec-pw run <change-name>` to verify |
 | **(d)** Skip with `test.skip()` | Add `test.skip()` to the test | Note in `app-knowledge.md` → `Selector Fixes` table with reason "human escalation — skipped pending resolution" |
 
 **Stuck in escalation loop**: If 3 consecutive Phase 3 escalations result in no progress (test still failing), STOP and ask: "This test has been escalated 3 times without resolution. Are you sure the root cause is still the same, or has something changed?"

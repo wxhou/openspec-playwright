@@ -3,6 +3,10 @@ export interface RunOptions {
     timeout?: number;
     json?: boolean;
     grep?: string;
+    appBugs?: number;
+    healed?: number;
+    raft?: number;
+    escalated?: number;
 }
 export declare function run(changeName: string, options: RunOptions): Promise<void>;
 interface TestResults {

@@ -72,7 +72,7 @@ openspec-pw uninstall     # 移除项目中的集成
   │
   ├── 5. Planner → 生成 test-plan.md
   │
-  ├── 6. Generator → 创建 tests/playwright/<name>.spec.ts
+  ├── 6. Generator → 创建 tests/playwright/changes/<name>/<name>.spec.ts
   │       └─ 写测试前先在真实浏览器验证选择器
   │
   ├── 7. 配置 auth → auth.setup.ts（如需要）

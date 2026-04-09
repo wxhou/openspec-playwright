@@ -59,7 +59,7 @@ openspec-pw uninstall     # Remove integration from the project
   │
   ├── 5. Planner → generates test-plan.md
   │
-  ├── 6. Generator → creates tests/playwright/<name>.spec.ts
+  ├── 6. Generator → creates tests/playwright/changes/<name>/<name>.spec.ts
   │       └─ Verifies selectors in real browser before writing
   │
   ├── 7. Configure auth → auth.setup.ts (if required)

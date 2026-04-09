@@ -21,7 +21,7 @@ openspec-pw (CLI - setup only)
   │
   ├── 1. Read OpenSpec specs from openspec/changes/<name>/specs/
   ├── 2. Planner Agent → specs/playwright/test-plan.md
-  ├── 3. Generator Agent → tests/playwright/<name>.spec.ts
+  ├── 3. Generator Agent → tests/playwright/changes/<name>/<name>.spec.ts
   └── 4. Healer Agent → run tests + auto-heal
           │
           └── Report: openspec/reports/playwright-e2e-<name>-<ts>.md

@@ -8,6 +8,10 @@ export interface RunOptions {
   timeout?: number;
   json?: boolean;
   grep?: string;
+  appBugs?: number;
+  healed?: number;
+  raft?: number;
+  escalated?: number;
 }
 
 const REPORTS_DIR = "openspec/reports";
@@ -19,12 +23,19 @@ export async function run(changeName: string, options: RunOptions) {
 
   // 1. Verify test file exists
   const testFileName =
-    changeName === "all" ? "app-all.spec.ts" : `${changeName}.spec.ts`;
-  const testFile = join(projectRoot, "tests", "playwright", testFileName);
+    changeName === "all"
+      ? "app-all.spec.ts"
+      : `${changeName}.spec.ts`;
+  const testFile = join(
+    projectRoot,
+    "tests",
+    "playwright",
+    changeName === "all" ? testFileName : `changes/${changeName}/${testFileName}`,
+  );
   if (!existsSync(testFile)) {
     console.log(
       chalk.red(
-        `  ✗ Test file not found: tests/playwright/${testFileName}`,
+        `  ✗ Test file not found: tests/playwright/changes/${changeName}/${testFileName}`,
       ),
     );
     console.log(chalk.gray("  Run /opsx:e2e first to generate tests.\n"));
@@ -107,7 +118,7 @@ export async function run(changeName: string, options: RunOptions) {
     `playwright-e2e-${changeName}-${timestamp}.md`,
   );
 
-  const reportContent = generateReport(changeName, timestamp, results);
+  const reportContent = generateReport(changeName, timestamp, results, options);
   writeFileSync(reportPath, reportContent);
 
   // 8. Summary
@@ -296,6 +307,7 @@ function generateReport(
   changeName: string,
   timestamp: string,
   results: TestResults,
+  options: RunOptions,
 ): string {
   const duration = timestamp.replace("T", " ").slice(0, 16);
   const status = results.failed === 0 ? "✅ PASS" : "❌ FAIL";
@@ -313,10 +325,10 @@ function generateReport(
     `| Passed | ${results.passed} |`,
     `| Failed | ${results.failed} |`,
     `| Duration | ${results.duration} |`,
-    `| App Bugs (skipped) | ${results.appBugCount ?? "—"} |`,
-    `| Test Bugs (healed) | ${results.healedCount ?? "—"} |`,
-    `| Flaky/RAFT | ${results.raftCount ?? "—"} |`,
-    `| Human Escalations | ${results.escalatedCount ?? "—"} |`,
+    `| App Bugs (skipped) | ${options.appBugs ?? "—"} |`,
+    `| Test Bugs (healed) | ${options.healed ?? "—"} |`,
+    `| Flaky/RAFT | ${options.raft ?? "—"} |`,
+    `| Human Escalations | ${options.escalated ?? "—"} |`,
     `| Final Status | ${status} |`,
     "",
   ];

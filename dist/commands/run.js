@@ -7,10 +7,12 @@ export async function run(changeName, options) {
     console.log(chalk.blue(`\n🔍 OpenSpec Playwright E2E: ${changeName}\n`));
     const projectRoot = process.cwd();
     // 1. Verify test file exists
-    const testFileName = changeName === "all" ? "app-all.spec.ts" : `${changeName}.spec.ts`;
-    const testFile = join(projectRoot, "tests", "playwright", testFileName);
+    const testFileName = changeName === "all"
+        ? "app-all.spec.ts"
+        : `${changeName}.spec.ts`;
+    const testFile = join(projectRoot, "tests", "playwright", changeName === "all" ? testFileName : `changes/${changeName}/${testFileName}`);
     if (!existsSync(testFile)) {
-        console.log(chalk.red(`  ✗ Test file not found: tests/playwright/${testFileName}`));
+        console.log(chalk.red(`  ✗ Test file not found: tests/playwright/changes/${changeName}/${testFileName}`));
         console.log(chalk.gray("  Run /opsx:e2e first to generate tests.\n"));
         process.exit(1);
     }
@@ -62,7 +64,7 @@ export async function run(changeName, options) {
     // 7. Generate markdown report
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
     const reportPath = join(projectRoot, REPORTS_DIR, `playwright-e2e-${changeName}-${timestamp}.md`);
-    const reportContent = generateReport(changeName, timestamp, results);
+    const reportContent = generateReport(changeName, timestamp, results, options);
     writeFileSync(reportPath, reportContent);
     // 8. Summary
     if (options.json) {
@@ -175,7 +177,7 @@ export function parsePlaywrightOutput(output) {
         results.duration = durationMatch[1];
     return results;
 }
-function generateReport(changeName, timestamp, results) {
+function generateReport(changeName, timestamp, results, options) {
     const duration = timestamp.replace("T", " ").slice(0, 16);
     const status = results.failed === 0 ? "✅ PASS" : "❌ FAIL";
     const lines = [
@@ -191,10 +193,10 @@ function generateReport(changeName, timestamp, results) {
         `| Passed | ${results.passed} |`,
         `| Failed | ${results.failed} |`,
         `| Duration | ${results.duration} |`,
-        `| App Bugs (skipped) | ${results.appBugCount ?? "—"} |`,
-        `| Test Bugs (healed) | ${results.healedCount ?? "—"} |`,
-        `| Flaky/RAFT | ${results.raftCount ?? "—"} |`,
-        `| Human Escalations | ${results.escalatedCount ?? "—"} |`,
+        `| App Bugs (skipped) | ${options.appBugs ?? "—"} |`,
+        `| Test Bugs (healed) | ${options.healed ?? "—"} |`,
+        `| Flaky/RAFT | ${options.raft ?? "—"} |`,
+        `| Human Escalations | ${options.escalated ?? "—"} |`,
         `| Final Status | ${status} |`,
         "",
     ];
