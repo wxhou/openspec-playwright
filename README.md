@@ -155,7 +155,9 @@ CLI (openspec-pw)
   ├── init       → Installs commands, skill & templates to .claude/
   ├── update     → Syncs commands, skill & templates from npm
   ├── run        → Executes E2E tests with server lifecycle
-  └── doctor     → Checks prerequisites
+  ├── migrate    → Migrates old test files to new structure
+  ├── doctor     → Checks prerequisites
+  └── uninstall  → Removes integration from the project
 
 Claude Code (/opsx:e2e)
   ├── .claude/commands/opsx/e2e.md    → Command file

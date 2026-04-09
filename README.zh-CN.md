@@ -156,7 +156,9 @@ CLI (openspec-pw)
   ├── init       → 安装命令、skill 和模板到 .claude/
   ├── update     → 从 npm 同步命令、skill 和模板
   ├── run        → 执行 E2E 测试并管理服务器生命周期
-  └── doctor     → 检查前置条件
+  ├── migrate    → 迁移旧测试文件到新目录结构
+  ├── doctor     → 检查前置条件
+  └── uninstall  → 移除项目中的集成
 
 Claude Code (/opsx:e2e)
   ├── .claude/commands/opsx/e2e.md    → 命令文件

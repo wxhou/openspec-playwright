@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2026-04-09
+
+### Changed
+- Change test files now live under `tests/playwright/changes/<name>/<name>.spec.ts` (mirrors OpenSpec's change management philosophy); shared assets (seed.spec.ts, auth.setup.ts, credentials.yaml, pages/) remain at `tests/playwright/` root
+- `run.ts`: test file lookup now uses `changes/<name>/` subdirectory structure
+- `run.ts`: "all" mode test file lookup corrected to `tests/playwright/app-all.spec.ts` (not under changes/)
+- `run.ts`: "file not found" error message now shows correct path for both change and "all" modes
+- `run.ts`: added `--app-bugs`, `--healed`, `--raft`, `--escalated` flags for Healer classification reporting
+- `SKILL.md`: updated all path references from `tests/playwright/<name>.spec.ts` to `tests/playwright/changes/<name>/<name>.spec.ts` (5 locations + Architecture table)
+- `SKILL.md`: Phase 3 decision tree and Guardrails paths updated to new structure
+- `README.md` & `README.zh-CN.md`: architecture diagram and CLI tree updated to reflect new structure
+- `docs/plans/`: design doc path references updated
+
+### Added
+- `openspec-pw migrate` command: scans `tests/playwright/` for old-style `<name>.spec.ts` files, validates against `openspec list`, and moves them to the new `changes/<name>/` structure
+  - `--dry-run` / `-n`: preview without moving
+  - `--force` / `-f`: overwrite existing files at destination
+
 ## [0.2.2] - 2026-04-08
 
 ### Fixed
