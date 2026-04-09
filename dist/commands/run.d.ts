@@ -7,6 +7,7 @@ export interface RunOptions {
     healed?: number;
     raft?: number;
     escalated?: number;
+    headed?: boolean;
 }
 export declare function run(changeName: string, options: RunOptions): Promise<void>;
 interface TestResults {

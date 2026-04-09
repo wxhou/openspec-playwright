@@ -42,6 +42,9 @@ export async function run(changeName, options) {
     if (options.grep) {
         args.push("--grep=" + options.grep);
     }
+    if (options.headed) {
+        args.push("--headed");
+    }
     let testOutput = "";
     try {
         const result = execSync(args.join(" "), {

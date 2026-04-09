@@ -12,6 +12,7 @@ export interface RunOptions {
   healed?: number;
   raft?: number;
   escalated?: number;
+  headed?: boolean;
 }
 
 const REPORTS_DIR = "openspec/reports";
@@ -79,6 +80,9 @@ export async function run(changeName: string, options: RunOptions) {
   }
   if (options.grep) {
     args.push("--grep=" + options.grep);
+  }
+  if (options.headed) {
+    args.push("--headed");
   }
 
   let testOutput = "";

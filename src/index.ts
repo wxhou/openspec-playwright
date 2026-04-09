@@ -59,6 +59,7 @@ program
   .option("--healed <n>", "Number of test bugs healed by Healer", (v) => parseInt(v, 10), undefined)
   .option("--raft <n>", "Number of RAFTs detected", (v) => parseInt(v, 10), undefined)
   .option("--escalated <n>", "Number of human escalations", (v) => parseInt(v, 10), undefined)
+  .option("--headed", "Show browser during test run (default: headless)")
   .action(run);
 
 program
