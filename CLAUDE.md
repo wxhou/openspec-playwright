@@ -33,6 +33,19 @@ npm run typecheck         # TypeScript type-check
 - **Release runs on tag push (`v*`)** — verify job must pass before publish job runs
 - Always merge to `main` via PR so CI gates the code before it reaches `main`
 
+## Code × Docs Sync Rule
+
+改这些文件时，**必须同步更新**文档：
+
+| 修改了 | 必须更新 |
+|--------|---------|
+| `src/commands/*.ts` 或 `src/index.ts` | `README.md`（CLI树）、`CHANGELOG.md` |
+| `.claude/skills/openspec-e2e/SKILL.md` | `README.md`（架构图）、`CHANGELOG.md` |
+| `templates/*` | `README.md`（如涉及路径）、`CHANGELOG.md` |
+| 任何 CLI 逻辑变更 | `README.md`（CLI说明）、`CHANGELOG.md` |
+
+> 规则：文档更新和代码变更在**同一个 commit** 里，不要单独拆出来。
+
 ## Release Checklist
 
 Before each `git tag vX.Y.Z && git push --tags`:
