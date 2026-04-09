@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `docs/plans/`: design doc path references updated
 
 ### Added
-- `openspec-pw migrate` command: scans `tests/playwright/` for old-style `<name>.spec.ts` files, validates against `openspec list`, and moves them to the new `changes/<name>/` structure
+- `openspec-pw migrate` command: scans `tests/playwright/` for old-style `<name>.spec.ts` files and moves them to the new `changes/<name>/` structure; no longer requires OpenSpec change to exist (supports archived/renamed changes)
   - `--dry-run` / `-n`: preview without moving
   - `--force` / `-f`: overwrite existing files at destination
 
