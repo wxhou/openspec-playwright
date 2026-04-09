@@ -143,7 +143,7 @@ Seed test initializes the `page` context — it runs all fixtures, hooks, and gl
 
 Explore to collect real DOM data before writing test plan. This eliminates blind selector guessing.
 
-**Prerequisites**: seed test pass. If auth is required, ensure `auth.setup.ts` has been run (Step 7). BASE_URL must be verified reachable (see 4.1).
+**Prerequisites**: seed test pass. BASE_URL must be verified reachable (see 4.1). If auth is required and `auth.setup.ts` already exists → auth is ready. If auth is not yet configured → use the workaround below (Option B for protected routes).
 
 #### 4.1. Verify BASE_URL + Read app-knowledge.md
 
@@ -769,6 +769,8 @@ Auth required. To set up:
 ```
 
 **Idempotency**: If `auth.setup.ts` already exists → verify format, update only if stale.
+
+**Post-auth re-exploration**: If Step 4 skipped protected routes due to missing auth, re-run exploration for those routes now that auth is configured. Navigate to each protected route with auth context → `browser_snapshot` → update `app-exploration.md`. Selectors verified now are better than guesses used during test generation.
 
 ### 8. Configure playwright.config.ts
 
