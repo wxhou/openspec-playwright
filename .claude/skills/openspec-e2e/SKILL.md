@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires openspec CLI, Playwright (with browsers installed), and @playwright/mcp (globally installed via `claude mcp add playwright npx @playwright/mcp@latest`).
 metadata:
   author: openspec-playwright
-  version: "2.20"
+  version: "2.22"
 ---
 
 ## Input
@@ -349,7 +349,7 @@ After writing `app-exploration.md`, extract **project-level shared knowledge** a
 | Common Selector Patterns | New patterns discovered that apply across routes                          |
 | SPA Routing              | SPA framework, routing behavior                                           |
 | Project Conventions      | BASE_URL, auth method, multi-user roles                                   |
-| Selector Fixes           | Healed selectors (see Step 9) — route, old selector, new selector, reason |
+| Selector Fixes           | Healed selectors (see Step 9) — route, old → new selector, reason, date |
 
 Append only new/changed items — preserve existing content.
 
@@ -660,6 +660,10 @@ If tests fail → use Playwright MCP tools to inspect UI, fix selectors, re-run.
 | `browser_take_screenshot`  | Visually compare before/after fixes             |
 | `browser_run_code`         | Execute custom fix logic (optional)             |
 
+**Before Phase 1 — check accumulated knowledge:**
+
+Read `tests/playwright/app-knowledge.md` → **Selector Fixes** table. If the failing test's selector or route matches a known fix, use it directly (skip Phase 2). If partial match → use as the top candidate in Phase 2 Step 5a. If file does not exist → skip.
+
 **Healer — Phase 1: Triage**
 
 When a test fails, classify before attempting repair.
@@ -761,9 +765,29 @@ After Triage classifies failure as "Test Bug" or "Ambiguous":
    - Data values differ (e.g., expected "¥1000" but got "¥999" → **Phase 3**, could be rounding, discount, or calculation bug)
    - Missing elements after interaction (e.g., "after creating order, success message should appear" → no message → **Phase 3**)
 
-5. If selector issue → find equivalent stable selector from snapshot
+5. If selector issue → generate candidate list, then select:
+
+   **5a. Extract candidates** — identify the target element from the failing test's assertion, then from the snapshot list all selectors for that element:
+
+   First check `app-knowledge.md` → **Common Selector Patterns** for project-specific conventions (e.g., if project uses Tailwind and `.btn-primary` is listed as preferred → treat it as Fair or higher, not Fragile).
+
+   ```
+   Target: <element from failing assertion, e.g. "button with text 'Submit'">
+   Candidates (stable → fragile):
+   - getByRole(button, { name: 'Submit' })   ← Stable (semantic)
+   - getByText('Submit')                       ← Fair (unique text)
+   - getByLabel('Email')                       ← Fair (form fields)
+   - locator('#submit')                         ← Fair (id attribute)
+   - locator('.btn-primary')                   ← Fragile (style class) — upgrade if listed in Common Selector Patterns
+   - locator('button:nth-child(3)')            ← Fragile (DOM order)
+   ```
+
+   Stability: `getByRole` > `getByText`/`getByLabel` > `locator('#id')` > `locator('.class')` > `locator('nth-child')`. Upgrade stability if `app-knowledge.md` → **Common Selector Patterns** explicitly lists the selector as preferred for this project.
+
+   **5b. Select top candidate** — pick the highest-stability candidate that matches the target. Output: `SELECTED: <selector> — reason: <why this one>`.
+
 6. Apply fix → re-run **only that test** (attempt 1/3)
-7. If healed → append to `app-knowledge.md` → **Selector Fixes** table (route, old → new selector, reason)
+7. If healed → append to `app-knowledge.md` → **Selector Fixes** table (route, old → new selector, reason, date)
 
 **Element Missing handling (when browser_snapshot shows element not found):**
 

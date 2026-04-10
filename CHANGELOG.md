@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.9] - 2026-04-10
+
+### Changed
+- `SKILL.md` v2.22: Phase 2 Step 5 selector repair — split into 5a Extract (structured candidate list with stability ranking: Stable/Fair/Fragile, project-specific upgrade via Common Selector Patterns) and 5b Select (top candidate with reason); Selector Fixes log adds date field; add "Before Phase 1 — check accumulated knowledge" step to leverage app-knowledge.md Selector Fixes table for known fixes (closes the learning loop); add file-missing guard
+
 ## [0.2.8] - 2026-04-10
 
 ### Changed
