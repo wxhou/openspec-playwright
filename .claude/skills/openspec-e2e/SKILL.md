@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires openspec CLI, Playwright (with browsers installed), and @playwright/mcp (globally installed via `claude mcp add playwright npx @playwright/mcp@latest`).
 metadata:
   author: openspec-playwright
-  version: "2.19"
+  version: "2.20"
 ---
 
 ## Input
@@ -209,6 +209,32 @@ browser_navigate → browser_console_messages → browser_snapshot → browser_t
 | HTTP 404                      | Route not in app (metadata issue) | Continue — mark `⚠️ route not found` in app-exploration.md                                    |
 | Auth required, no credentials | Missing auth setup                | Continue — skip protected routes, explore login page                                          |
 | Suspicious network request     | API returned 4xx/5xx             | Continue — mark `⚠️ API error: <endpoint> returned <code>` in app-exploration.md               |
+
+**Redirect / Refresh loop detection** — run after initial navigate:
+
+```
+// 1. Initial capture
+await browser_navigate(`${BASE_URL}/<route>`);
+await new Promise(r => setTimeout(r, 1500)); // wait for SPA hydration
+const url1 = await browser_evaluate(() => window.location.href);
+
+// 2. Observe stability
+await new Promise(r => setTimeout(r, 2000));
+const url2 = await browser_evaluate(() => window.location.href);
+const msgs = await browser_console_messages();
+
+// 3. Detect
+if (url1 !== url2) {
+  → ❌ URL changed — redirect loop (ERR_TOO_MANY_REDIRECTS)
+  → Is this route protected without valid auth.storageState?
+    → Yes → auth.setup.ts is broken → fix auth first
+    → No → App middleware bug → mark route ❌ skip, record as App Bug
+}
+if (msgs.filter(m => m.type === 'warning' || m.type === 'error').length > 10) {
+  → ❌ Excessive console errors — page refresh / JS crash loop
+  → Mark route ❌ skip, record as App Bug
+}
+```
 
 **Network monitoring**: After navigating, use `browser_network_requests` to check for failed API calls. Failed requests (status ≥ 400) on a route indicate an API/backend issue — record in `app-exploration.md` for reference.
 
@@ -665,6 +691,8 @@ Proceed with individual Triage only for tests NOT in a batch failure group.
 | **Network/Backend** | `net::ERR`, 4xx/5xx in console/network | **App Bug** | `test.skip()` + record in `app-bug-registry.md` |
 | **JS Runtime Error** | Console error (non-network) | **App Bug** | `test.skip()` + record in `app-bug-registry.md` |
 | **Auth Expired** | Redirected to login mid-test | **Flaky** | Re-run auth.setup → re-run |
+| **Redirect Loop** | `ERR_TOO_MANY_REDIRECTS`, URL keeps changing on each snapshot | **App Bug** | Check auth first (see Step 4.2 loop detection). If auth is the cause → re-run auth. Otherwise → `test.skip()` + App Bug Registry |
+| **Page Refresh Loop** | Excessive console errors (>10) after navigation, page unstable | **App Bug** | `test.skip()` + record in App Bug Registry |
 | **Selector Not Found** | Element not found | **Test Bug** | → Phase 2 Healer |
 | **Assertion Mismatch** | Wrong content/value | **Ambiguous** | → Phase 2 Healer |
 | **Timeout** | waitFor/evaluate timeout | **Flaky** | Retry isolated: `openspec-pw run <name> --grep "<test-name>"` (1×, not counted in heal attempts). If it passes isolated but fails in suite → **RAFT**. If it consistently times out → check framework: React 19 / Next.js App Router: add `page.waitForLoadState('networkidle')`. Vue/Angular/React 18 / Plain JS / jQuery: use `waitForSelector(targetElement)` instead of timeout tuning. |
@@ -844,7 +872,7 @@ Report template: `.claude/skills/openspec-e2e/templates/report.md`
 | ------- | ------- |
 | No specs / app-exploration.md missing (change mode) | **STOP** |
 | JS errors or HTTP 5xx during exploration | **STOP** → user fixes app → re-run `/opsx:e2e <name>` to re-explore from Step 4 |
-| Sitemap fails ("all" mode) | Continue with homepage links fallback |
+| Redirect loop / page refresh loop during exploration | **App Bug** — **STOP** → check auth.setup.ts first (common cause). If auth is valid → app middleware/cookie bug → mark route skipped, record in App Bug Registry. Re-run exploration after fix. |
 | File already exists (app-exploration, test-plan, app-all.spec.ts, Page Objects) | Read and use — never regenerate |
 | Test fails (network/backend) | **App Bug** — `test.skip()` + record in `app-bug-registry.md` |
 | Test fails (selector/assertion) | **Test Bug/Ambiguous** — Healer Phase 1→2 (≤3 attempts) |
