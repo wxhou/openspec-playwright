@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires openspec CLI, Playwright (with browsers installed), and @playwright/mcp (globally installed via `claude mcp add playwright npx @playwright/mcp@latest`).
 metadata:
   author: openspec-playwright
-  version: "2.22"
+  version: "2.24"
 ---
 
 ## Input
@@ -44,13 +44,7 @@ Both modes update `app-knowledge.md` and `app-exploration.md`. All `.spec.ts` fi
 用户操作 → 浏览器 UI → 后端 → 数据库 → UI 反馈
 ```
 
-**API only as fallback** — Use `page.request` only when UI genuinely cannot cover the scenario:
-
-- Triggering HTTP 5xx/4xx error responses (hard to reach via UI)
-- Edge cases requiring pre-condition data that UI cannot set up
-- Cases where Step 4 exploration confirmed no UI element exists
-
-**Setup vs Assertion**: API is acceptable for **setup/precondition** (preparing test data). Every **final assertion** about visible UI state must use UI selectors — never use `page.request` to assert something the user can see on screen.
+**API only as fallback** — See **Mock data rule** below. `page.request` is acceptable for pre-condition setup (preparing test data) and API-level mocking via `page.route()`. Every **final assertion** about visible UI state must use UI selectors — never use `page.request` to assert something the user can see on screen.
 
 **Decision rule (per assertion)**:
 
@@ -71,7 +65,24 @@ Is the assertion about a computed/counted/calculated value?
   → No  → UI assertion is sufficient
 ```
 
-**Examples where API assertion is required:**
+**Mock data rule:**
+
+- **Frontend: forbidden.** UI interactions must use real browser + real app data. Mocking frontend code (JS variables, component state, module-level stubs) hides real integration issues. If the frontend cannot reach a scenario through normal UI flow → **ask the user**.
+- **API: allowed at HTTP level.** Use `page.route()` to intercept and mock API responses (status codes, body data, latency) when:
+  - Triggering HTTP 5xx/4xx error responses (hard to reach via UI)
+  - Edge cases requiring pre-condition data that UI cannot set up
+  - Third-party API failures (payment, SMS, email providers)
+  - **Scope: API level only** — `page.route()` intercepts HTTP; do NOT mock at the database or backend service level. Mocking below the HTTP layer bypasses the real API contract and produces false confidence.
+- **User consent required.** Before using `page.route()` mocking, stop and ask:
+  ```
+  API mocking needed for: <reason>
+  Mocked endpoint: <URL or pattern>
+  Expected behavior: <what the test verifies>
+  Reply **yes** to proceed, or tell me to find a UI-based approach instead.
+  ```
+  If the user says no → attempt a UI-based approach or skip that test case.
+
+**Examples where API assertion is required:
 
 ```typescript
 // ❌ UI-only assertion — hides calculation bugs
@@ -316,8 +327,6 @@ Record findings in `app-exploration.md` → **Special Elements Detected** table.
 
 Output: `openspec/changes/<name>/specs/playwright/app-exploration.md`
 
-Template: read from `.claude/skills/openspec-e2e/templates/app-exploration.md` (project-local skill directory)
-
 Key fields per route:
 
 - **URL**: `${BASE_URL}<path>`
@@ -383,7 +392,7 @@ Reply **yes** to proceed, or tell me to exclude routes or adjust strategies.
 
 **Create test cases**: functional requirement → test case, with `@role` and `@auth` tags. Reference verified selectors from app-exploration.md.
 
-Template: `.claude/skills/openspec-e2e/templates/test-plan.md`
+If a test case requires `page.route()` API mocking → append `⚠️ API Mock` flag to the test case line in the summary, with reason.
 
 **Idempotency**: If test-plan.md exists → read and use, **but you MAY supplement missing test cases**. "Do not regenerate" means: do not discard existing cases, but you CAN add new ones discovered during Step 4 exploration that weren't in the original spec (e.g., empty states, error paths found during DOM exploration).
 
@@ -429,8 +438,6 @@ If the user requests changes → update test-plan.md → re-display summary → 
 **Prerequisite** (change mode only): If `app-exploration.md` does not exist → **STOP**. Run Step 4 first. For **all mode**, exploration is embedded dynamically in Step 6 — no pre-existing app-exploration.md is required.
 
 **Page Object pattern** — read before writing any page file:
-
-Read: `.claude/skills/openspec-e2e/templates/e2e-test.ts` → LoginPage example
 
 ```typescript
 // ✅ 正确：getters + async actions + this.click/fill
@@ -497,7 +504,7 @@ Is this assertion about a visible UI result?
 
 **Test coverage — empty states**: For list/detail pages, explore the empty state. If the app shows a "no data" UI when the list is empty, generate a test to verify it. Empty states are often missing from specs but are real user paths.
 
-**Test coverage — special elements**: Check `app-exploration.md` → **Special Elements Detected** table. For each special element, generate tests using templates from `.claude/skills/openspec-e2e/templates/test-plan.md` → **Special Element Test Cases**:
+**Test coverage — special elements**: Check `app-exploration.md` → **Special Elements Detected** table. For each special element, generate tests using the following strategies:
 - Canvas: screenshot + boundingBox → dimensions > 0, or 2D pixel verification
 - WebGL: screenshot only (no pixel comparison — rendering varies)
 - Iframe: `frameLocator` + assert inner content visible
@@ -508,7 +515,7 @@ Is this assertion about a visible UI result?
 **Test coverage — AI-opaque elements**: For CAPTCHA, OTP, slider CAPTCHA, file upload, and drag-drop — elements that Playwright cannot reliably automate:
 
 1. Mark the element in `app-exploration.md` → **Special Elements Detected** table with type and automation strategy
-2. Generate the test using the appropriate strategy from `.claude/skills/openspec-e2e/templates/test-plan.md` → **AI-Opaque Elements** section:
+2. Generate the test using the appropriate strategy:
    - **CAPTCHA**: Bypass via `auth.setup.ts` storageState, or skip with `test.skip()`, or verify via API
    - **OTP**: Use pre-verified test credentials (`E2E_OTP_CODE` env var), or development bypass flag
    - **File upload**: Use `page.setInputFiles()` with fixture files
@@ -586,7 +593,7 @@ test('user can login', async ({ page }) => {
 | `getByRole`, `getByTestId`, `getByLabel` | CSS class (`'.notification-bell'`), CSS ID (`'#avatarBtn'`) |
 | `waitForSelector(targetElement)` | hardcoded `200ms` / `500ms` delays |
 
-See `.claude/skills/openspec-e2e/templates/e2e-test.ts` for full examples of Page Object pattern, UI-first flows, error paths, auth guards, session handling, and visual regression.
+See above for Page Object pattern, LoginPage example, and BasePage utilities.
 
 If the file exists → diff against test-plan, add only missing test cases.
 
@@ -621,7 +628,7 @@ Auth required. To set up:
 
 **Output**: `playwright.config.ts` (project root; or `tests/playwright/playwright.config.ts` if config already exists there)
 
-If missing → generate from `.claude/skills/openspec-e2e/templates/playwright.config.ts`.
+If missing → generate a minimal `playwright.config.ts` with webServer, projects, and reporters.
 
 **Auto-detect BASE_URL** (in priority order):
 
@@ -882,7 +889,7 @@ Read report at `openspec/reports/playwright-e2e-<name>-<timestamp>.md`. Present:
 - Human Escalations (if any, with user decision)
 - Recommendations with `file:line` references
 
-Report template: `.claude/skills/openspec-e2e/templates/report.md`
+Generate report based on the structure described in Step 11.
 
 **Update tasks.md**:
 - If 0 active App Bugs → find E2E-related items, append `✅ Verified via Playwright E2E (<timestamp>)`.
