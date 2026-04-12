@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `docs/index.html`: Hero 按钮布局修复 — `.hero-desc` 和 `.hero-actions` 同处 grid row 3 导致 margin-bottom:36 + margin-top:80 = 116px 间隙；改为 grid 行 4 分离；`employee-standards.md` Step 5 同步 CSS 审计步骤
 
-- `employee-standards.md`: Step 5 CSS 审计升级为两步式框架感知方法 — 1a) 确定项目间距基准（CSS variables / Tailwind spacing / Bootstrap spacer）；1b) grep 提取值对比基准；2) 检查同一 grid/flex 容器中相邻元素的 margin 组合，识别 margin hack（margin 和 > 基准 2 倍应改为 grid 行或 gap 控制）；移除写死的阈值数字
+- `employee-standards.md`: Step 5 CSS 审计升级为两步式框架感知方法 — 1) 确定间距基准 → grep 提取值对比基准，列低于基准的项；2) 检查 margin hack（同一 grid/flex 容器中相邻元素 margin 和 > 基准 2 倍 → 改为 grid 行或 gap 控制）；移除写死的阈值数字；描述精简（14 行→7 行）
 
 ## [0.2.9] - 2026-04-10
 

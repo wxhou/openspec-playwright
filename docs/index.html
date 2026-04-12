@@ -1696,7 +1696,7 @@ footer {
             <span class="step-name">自审</span>
             <span class="step-badge badge-required">必需</span>
           </div>
-          <div class="step-desc"><code>/opsx:verify</code> <code>/design-review</code> <code>/review</code> 自审实现代码，确保质量。设计审查后对 HTML/CSS 执行两步式 CSS 结构审计：1a) 确定项目间距基准（CSS variables / Tailwind spacing / Bootstrap spacer）；1b) grep 提取值对比基准，列出低于标准的项；2) 检查同一 grid/flex 容器中相邻元素的 margin 组合，识别 margin hack（margin 和 > 基准 2 倍应改为 grid 行或 gap 控制）。</div>
+          <div class="step-desc"><code>/opsx:verify</code> <code>/design-review</code> <code>/review</code> 自审实现代码，确保质量。设计审查后执行两步式 CSS 结构审计：1) 确定间距基准（CSS variables / Tailwind / Bootstrap）→ grep 提取值对比基准，列低于基准的项；2) 检查 margin hack（同一 grid/flex 容器中相邻元素 margin 和 > 基准 2 倍 → 改为 grid 行或 gap 控制）。</div>
           <div class="step-tags">
             <span class="step-tag tag-openspec">opsx:verify</span>
             <span class="step-tag tag-gstack">design-review</span>
