@@ -211,6 +211,30 @@ For each route:
 $B goto <url> → $B console → $B snapshot → $B screenshot
 ```
 
+#### Parallel Exploration
+
+For apps with many routes (>=5), explore routes in parallel to reduce total time.
+
+**Serial** (old): 20 routes x 8s each = 160s
+**Parallel** (new): Promise.all([...routes]) = ~16s (limited by slowest route)
+
+```javascript
+// Batch explore: parallel with error isolation
+const routeResults = await Promise.allSettled(
+  routes.map(async (route) => {
+    $B goto <route.url>
+    $B wait --networkidle
+    const snapshot = $B snapshot
+    const console = $B console --errors
+    return { route: route.path, snapshot, console }
+  })
+)
+// Filter successful results
+const successful = routeResults.filter(r => r.status === 'fulfilled').map(r => r.value)
+```
+
+**Rule**: Use `Promise.allSettled` (not `Promise.all`) so one failed route doesn't cancel others.
+
 **After navigating, check for app-level errors**:
 
 | Signal                        | Meaning                           | Action                                                                                        |
@@ -345,6 +369,24 @@ After exploration, add route-level notes (redirects, dynamic content → see 4.5
 | Dynamic content (user-specific)                   | Record structure — use `toContainText` or regex, not `toHaveText` |
 
 **Idempotency**: If `app-exploration.md` already exists → read it, verify routes still match the live app, update only new routes or changed pages.
+
+#### Route Snapshot Hash -- Skip Unchanged Routes
+
+Before re-exploring, compute a lightweight hash of the app's current state:
+
+1. **Quick hash** (for re-runs): Navigate to `${BASE_URL}/sitemap.xml` → hash the XML content
+2. **If hash unchanged** since last exploration: Skip re-exploration entirely -- use cached `app-exploration.md`
+3. **If hash changed**: Re-explore only changed routes (diff sitemap XML)
+4. **Store hash** in `app-knowledge.md` → `Exploration State` section
+
+```markdown
+## Exploration State
+Last explored: 2026-04-12T07:30:00Z
+Sitemap hash: sha256:abc123...
+Routes count: 20
+```
+
+This prevents redundant exploration on every `/opsx:e2e` run.
 
 #### 4.6. Update app-knowledge.md
 
@@ -500,6 +542,28 @@ Is this assertion about a visible UI result?
 3. For each selector: verify from current snapshot (see 4.3 table for priority)
 4. Write test code with verified selectors
 5. If selector unverifiable → note for Healer (Step 9)
+
+**Selector Caching — reuse Step 4 exploration results:**
+
+After Step 4, verified selectors are stored in `app-exploration.md`. Before navigating to verify a selector in Step 6, check if the route already has verified selectors from Step 4.
+
+```javascript
+// Step 6: Before navigating to verify, check cached selectors
+const cachedSelectors = appExploration.routes.find(r => r.path === routePath)?.elements
+if (cachedSelectors && cachedSelectors.length > 0) {
+  // Use first-priority selector from cache instead of re-navigating
+  const selector = getFirstPrioritySelector(cachedSelectors)
+  // Only navigate to verify if selector is missing or marked "Fragile"
+  if (selector.stability !== 'Fragile') {
+    return selector // use cached, skip verification navigation
+  }
+}
+// Fallback: navigate + snapshot + verify
+```
+
+**Benefit**: For a 50-test case suite, this saves 30-50 redundant navigations (~2-5 minutes).
+
+**File to read**: The selector caching uses data already stored in Step 4.4's `app-exploration.md` output — no new file needed.
 
 **Test coverage — empty states**: For list/detail pages, explore the empty state. If the app shows a "no data" UI when the list is empty, generate a test to verify it. Empty states are often missing from specs but are real user paths.
 
