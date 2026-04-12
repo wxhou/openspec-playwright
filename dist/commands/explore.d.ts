@@ -5,7 +5,7 @@ export interface ExploreOptions {
 export interface RouteResult {
     path: string;
     url: string;
-    status: "ok" | "error" | "skipped";
+    status: "ok" | "error" | "auth-required" | "skipped";
     errorMessage?: string;
     snapshot: {
         title?: string;
