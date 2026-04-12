@@ -827,6 +827,8 @@ nav {
 .tag-gstack::before { color: #7c3aed; }
 .tag-pw { border-color: rgba(16,185,129,0.3); color: #16a34a; }
 .tag-pw::before { color: #16a34a; }
+.tag-tool { border-color: rgba(232,93,4,0.3); color: #e85d04; }
+.tag-tool::before { color: #e85d04; }
 
 /* Workflow sidebar */
 .workflow-sidebar {
@@ -1695,11 +1697,12 @@ footer {
             <span class="step-name">自审</span>
             <span class="step-badge badge-required">必需</span>
           </div>
-          <div class="step-desc"><code>/opsx:verify</code> <code>/design-review</code> <code>/review</code> 自审实现代码，确保质量。</div>
+          <div class="step-desc"><code>/opsx:verify</code> <code>/design-review</code> <code>/review</code> 自审实现代码，确保质量。设计审查后对 HTML/CSS 执行 CSS 结构审计（Grep gap/padding/margin → 对比阈值：gap≥16px, padding≥16px, margin≥20px）。</div>
           <div class="step-tags">
             <span class="step-tag tag-openspec">opsx:verify</span>
             <span class="step-tag tag-gstack">design-review</span>
             <span class="step-tag tag-gstack">review</span>
+            <span class="step-tag tag-tool">CSS审计</span>
           </div>
         </div>
       </div>
