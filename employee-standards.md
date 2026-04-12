@@ -82,7 +82,10 @@ E2E 工作流前提（由用户确保，非 AI 操作）：
 
 **4. 实现**：执行 `/opsx:apply` 进行实现 → `lint + typecheck` 通过才算成功。
 
-**5. 自审**：`/opsx:verify` `/design-review` `/review` 自审实现代码，确保质量。
+**5. 自审**：`/opsx:verify` `/design-review` `/review` 自审实现代码，确保质量。**设计审查后**，对 HTML/CSS 文件执行 CSS 结构审计（防止 `/design-review` 靠截图漏检间距问题）：
+```
+Grep 提取 gap/padding/margin 值 → 对比阈值（gap ≥ 16px, padding ≥ 16px, margin ≥ 20px）→ 列出低于标准的项 → 修复
+```
 
 **6. E2E 测试生成与执行**：`/opsx:e2e <change-name>` 生成 Playwright 测试 → `/browse` 探索真实 DOM → Healer 自动修复 → `/qa` 真实浏览器验证。E2E 通过后进入发布环节。
 
