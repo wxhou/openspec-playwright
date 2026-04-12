@@ -217,7 +217,7 @@ Bypass OTP UI entirely and test the protected endpoint directly.
 
 **Test approach:**
 ```
-1. Identify drag handle and drop target via Playwright MCP snapshot
+1. Identify drag handle and drop target via /browse snapshot
 2. Use `page.dragAndDrop()` or `locator.dragTo()`
 3. If custom implementation uses JS events, use `page.evaluate()` to dispatch events
 4. Assert: target state reflects the drag result

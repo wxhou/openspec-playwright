@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenSpec Playwright — AI-Driven E2E Testing for OpenSpec Projects</title>
+<meta name="description" content="自动化 E2E 测试框架，专为 OpenSpec 规范驱动开发设计。AI 生成测试、Healer 自愈、Claude Code 一键执行。">
+<meta property="og:title" content="OpenSpec Playwright">
+<meta property="og:description" content="AI-Driven E2E Testing for OpenSpec Projects">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>">
+<style>
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --surface2: #22263a;
+  --border: #2d3348;
+  --text: #e4e7f0;
+  --muted: #8890a8;
+  --accent: #6366f1;
+  --accent2: #818cf8;
+  --accent-glow: rgba(99,102,241,0.2);
+  --green: #10b981;
+  --step1: #3b82f6;
+  --step2: #8b5cf6;
+  --step3: #ec4899;
+  --step4: #f59e0b;
+  --step5: #10b981;
+  --step6: #ef4444;
+  --step7: #06b6d4;
+  --step8: #14b8a6;
+  --step9: #f43f5e;
+  --glow1: rgba(59,130,246,0.15);
+  --glow2: rgba(139,92,246,0.15);
+  --glow3: rgba(236,72,153,0.15);
+  --glow4: rgba(245,158,11,0.15);
+  --glow5: rgba(16,185,129,0.15);
+  --glow6: rgba(239,68,68,0.15);
+  --glow7: rgba(6,182,212,0.15);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+/* ── Nav ──────────────────────────── */
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: rgba(15,17,23,0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+}
+
+.nav-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+}
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--text);
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.nav-logo-icon {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  list-style: none;
+}
+
+.nav-links a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.875rem;
+  transition: color 0.2s;
+}
+
+.nav-links a:hover { color: var(--text); }
+
+.nav-cta {
+  background: var(--accent);
+  color: #fff !important;
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-weight: 600 !important;
+  transition: background 0.2s;
+}
+
+.nav-cta:hover { background: var(--accent2); }
+
+/* ── Hero ──────────────────────────── */
+.hero {
+  padding: 140px 20px 100px;
+  text-align: center;
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(99,102,241,0.12) 0%, transparent 70%);
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(99,102,241,0.1);
+  border: 1px solid rgba(99,102,241,0.3);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  color: var(--accent2);
+  margin-bottom: 28px;
+}
+
+.hero-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent2);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.hero h1 {
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: 20px;
+  letter-spacing: -0.02em;
+}
+
+.hero h1 .gradient-text {
+  background: linear-gradient(135deg, var(--accent), var(--accent2), #ec4899);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-sub {
+  font-size: 1.2rem;
+  color: var(--muted);
+  max-width: 640px;
+  margin: 0 auto 40px;
+  line-height: 1.7;
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #fff;
+  box-shadow: 0 0 30px var(--accent-glow);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 40px var(--accent-glow);
+}
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+  background: var(--surface2);
+  border-color: var(--accent);
+}
+
+.hero-stats {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  margin-top: 60px;
+  padding-top: 40px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.stat {
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 1.8rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--text), var(--accent2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* ── Section base ──────────────────────────── */
+.section {
+  padding: 80px 20px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.section-label {
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent2);
+  margin-bottom: 12px;
+}
+
+.section-title {
+  text-align: center;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.section-desc {
+  text-align: center;
+  color: var(--muted);
+  max-width: 560px;
+  margin: 0 auto 48px;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+/* ── Features ──────────────────────────── */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.feature-card {
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.feature-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.feature-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  margin-bottom: 14px;
+}
+
+.fi-blue { background: var(--glow1); }
+.fi-purple { background: var(--glow2); }
+.fi-pink { background: var(--glow3); }
+.fi-yellow { background: var(--glow4); }
+.fi-green { background: var(--glow5); }
+.fi-red { background: var(--glow6); }
+
+.feature-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.feature-desc {
+  font-size: 0.875rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* ── How it works ──────────────────────────── */
+.how-it-works {
+  padding: 80px 20px;
+  background: linear-gradient(180deg, transparent 0%, rgba(99,102,241,0.03) 50%, transparent 100%);
+}
+
+.workflow-container {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.workflow-container .timeline {
+  position: relative;
+}
+
+.workflow-container .timeline-track {
+  position: absolute;
+  left: 22px;
+  top: 68px;
+  bottom: 68px;
+  width: 2px;
+  background: var(--border);
+  z-index: 0;
+}
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 20px 0;
+}
+
+.step-number {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+  color: #fff;
+}
+
+.step-s1 .step-number { background: var(--step1); box-shadow: 0 0 20px var(--glow1); }
+.step-s2 .step-number { background: var(--step2); box-shadow: 0 0 20px var(--glow2); }
+.step-s3 .step-number { background: var(--step3); box-shadow: 0 0 20px var(--glow3); }
+.step-s4 .step-number { background: var(--step4); box-shadow: 0 0 20px var(--glow4); }
+.step-s5 .step-number { background: var(--step5); box-shadow: 0 0 20px var(--glow5); }
+.step-s6 .step-number { background: var(--step6); box-shadow: 0 0 20px var(--glow6); }
+.step-s7 .step-number { background: var(--step7); box-shadow: 0 0 20px var(--glow7); }
+.step-s8 .step-number { background: var(--step8); box-shadow: 0 0 20px rgba(20,184,166,0.15); }
+.step-s9 .step-number { background: var(--step9); box-shadow: 0 0 20px rgba(244,63,94,0.15); }
+
+.step-content { flex: 1; }
+
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.step-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.step-badge {
+  font-size: 0.65rem;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+
+.step-badge.required {
+  background: rgba(239,68,68,0.1);
+  color: #fca5a5;
+  border: 1px solid rgba(239,68,68,0.3);
+}
+
+.step-badge.optional {
+  background: rgba(99,102,241,0.1);
+  color: #a5b4fc;
+  border: 1px solid rgba(99,102,241,0.3);
+}
+
+.step-desc {
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.step-desc code {
+  font-family: 'SF Mono', monospace;
+  font-size: 0.8rem;
+  background: rgba(0,0,0,0.4);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--accent2);
+}
+
+/* ── Quick Start ──────────────────────────── */
+.quickstart {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px;
+  margin-top: 48px;
+}
+
+.quickstart h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.quickstart h3::before {
+  content: '⚡';
+}
+
+.quickstart-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.qs-step {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.qs-step-num {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--accent2);
+  margin-bottom: 6px;
+}
+
+.qs-step-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.qs-step code {
+  font-family: 'SF Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--muted);
+  display: block;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+.code-block {
+  background: rgba(0,0,0,0.5);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  font-family: 'SF Mono', monospace;
+  font-size: 0.85rem;
+  color: #10b981;
+  line-height: 1.8;
+  overflow-x: auto;
+}
+
+.code-block .comment { color: var(--muted); }
+.code-block .cmd { color: #60a5fa; }
+.code-block .flag { color: #fbbf24; }
+
+/* ── Comparison ──────────────────────────── */
+.comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  margin-top: 40px;
+}
+
+.comparison-card {
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.comparison-card.better {
+  border-color: var(--green);
+  background: rgba(16,185,129,0.04);
+}
+
+.comparison-card-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 12px;
+}
+
+.comparison-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(45,51,72,0.5);
+  font-size: 0.875rem;
+}
+
+.comparison-item:last-child { border-bottom: none; }
+
+.comparison-item .icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.icon-check { color: var(--green); }
+.icon-cross { color: #ef4444; }
+
+.comparison-card:not(.better) .comparison-item {
+  color: var(--muted);
+}
+
+/* ── Stack ──────────────────────────── */
+.stack-section {
+  text-align: center;
+}
+
+.stack-logos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  flex-wrap: wrap;
+  margin-top: 32px;
+}
+
+.stack-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 28px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  min-width: 140px;
+  transition: border-color 0.2s;
+}
+
+.stack-item:hover { border-color: var(--accent); }
+
+.stack-icon {
+  font-size: 2rem;
+}
+
+.stack-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.stack-role {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+/* ── Feedback ──────────────────────────── */
+.feedback-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 40px;
+}
+
+.feedback-card {
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.feedback-signal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+}
+
+.feedback-signal .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.dot-red { background: #ef4444; }
+.dot-yellow { background: #f59e0b; }
+.dot-blue { background: #3b82f6; }
+.dot-gray { background: #6b7280; }
+
+.feedback-arrow {
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding-left: 16px;
+}
+
+.feedback-target {
+  color: var(--accent2);
+  font-weight: 600;
+}
+
+/* ── Footer ──────────────────────────── */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 40px 20px;
+  margin-top: 40px;
+}
+
+.footer-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  list-style: none;
+}
+
+.footer-links a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.875rem;
+  transition: color 0.2s;
+}
+
+.footer-links a:hover { color: var(--accent2); }
+
+.footer-copy {
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-align: center;
+  margin-top: 20px;
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+
+/* ── Responsive ──────────────────────────── */
+@media (max-width: 640px) {
+  .hero { padding: 120px 20px 60px; }
+  .hero h1 { font-size: 2rem; }
+  .hero-stats { gap: 24px; }
+  .nav-links { display: none; }
+  .step { gap: 14px; }
+  .step-number { width: 36px; height: 36px; font-size: 0.85rem; }
+  .workflow-container .timeline-track { left: 18px; }
+  .quickstart { padding: 20px; }
+  .footer-inner { flex-direction: column; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── Nav ── -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">
+      <div class="nav-logo-icon">🧪</div>
+      openspec-playwright
+    </a>
+    <ul class="nav-links">
+      <li><a href="#features">特性</a></li>
+      <li><a href="#how-it-works">工作流</a></li>
+      <li><a href="#quickstart">快速开始</a></li>
+      <li><a href="https://github.com/fission-ai/openspec-playwright" target="_blank" class="nav-cta">GitHub</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ── Hero ── -->
+<section class="hero">
+  <div class="hero-badge">
+    <span class="hero-badge-dot"></span>
+    AI-Driven E2E Testing
+  </div>
+  <h1>
+    从规范到测试，<br>
+    <span class="gradient-text">一行命令搞定</span>
+  </h1>
+  <p class="hero-sub">
+    OpenSpec Playwright 将 OpenSpec 规范自动转化为 Playwright E2E 测试。
+    AI 生成测试用例、Healer 自动修复选择器、Claude Code 一键执行。
+    告别手动维护测试，专注于真正重要的代码。
+  </p>
+  <div class="hero-actions">
+    <a href="#quickstart" class="btn btn-primary">
+      ⚡ 快速开始
+    </a>
+    <a href="https://github.com/fission-ai/openspec-playwright" target="_blank" class="btn btn-secondary">
+      📦 GitHub
+    </a>
+  </div>
+  <div class="hero-stats">
+    <div class="stat">
+      <div class="stat-value">9</div>
+      <div class="stat-label">步闭环工作流</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">AI</div>
+      <div class="stat-label">Healer 自动修复</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">Claude</div>
+      <div class="stat-label">Code 原生集成</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Features ── -->
+<section class="section" id="features">
+  <div class="section-label">核心特性</div>
+  <h2 class="section-title">为什么选择 OpenSpec Playwright？</h2>
+  <p class="section-desc">专为 OpenSpec 规范驱动开发设计，AI 全流程自动化，测试不再成为交付瓶颈。</p>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon fi-blue">🎯</div>
+      <div class="feature-title">规范驱动测试生成</div>
+      <div class="feature-desc">读取 OpenSpec 规范文档，自动提取路由、表单、验证规则，生成对应 Playwright 测试用例。不再需要手动编写和维护测试。</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon fi-purple">🤖</div>
+      <div class="feature-title">Healer 自愈机制</div>
+      <div class="feature-desc">选择器失效时 AI 自动诊断并修复。区分测试 Bug 和 App Bug，三阶段修复流程：分类 → 修复 → 升级。</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon fi-pink">👁️</div>
+      <div class="feature-title">真实浏览器探索</div>
+      <div class="feature-desc">通过 gstack /browse 遍历每个路由，snapshot + @ref 精确定位元素。Token 高效，状态持久，可视化操作。</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon fi-yellow">🔒</div>
+      <div class="feature-title">规范即文档</div>
+      <div class="feature-desc">测试与 OpenSpec 规范严格对齐。验证通过意味着规范得到实现，规范变更自动驱动测试更新。</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon fi-green">📊</div>
+      <div class="feature-title">完整测试报告</div>
+      <div class="feature-desc">自动生成 Markdown 报告，包含测试结果、截图、失败分类（App Bug / Test Bug / RAFT）。可追溯、可分享。</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon fi-red">⚡</div>
+      <div class="feature-title">Claude Code 原生集成</div>
+      <div class="feature-desc">作为 Claude Code skill 提供，一个 <code>/opsx:e2e &lt;name&gt;</code> 命令完成从规范到报告的全流程。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── How it works ── -->
+<section class="how-it-works" id="how-it-works">
+  <div class="section-label">工作流</div>
+  <h2 class="section-title">9 步端到端闭环</h2>
+  <p class="section-desc">严格按顺序执行，每步有明确产出。反馈循环确保问题不过夜。</p>
+
+  <div class="workflow-container">
+    <div class="timeline">
+      <div class="timeline-track"></div>
+
+      <div class="step step-s1">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <div class="step-header">
+            <span class="step-title">探索与提案</span>
+            <span class="step-badge required">必需</span>
+          </div>
+          <div class="step-desc">现有项目先探索（<code>/opsx:explore</code>）再写 proposal；新项目直接生成 proposal + scenarios。</div>
+        </div>
+      </div>
+
+      <div class="step step-s2">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <div class="step-header">
+            <span class="step-title">产品与架构评审</span>
+            <span class="step-badge optional">按需触发</span>
+          </div>
+          <div class="step-desc">/office-hours、/plan-ceo-review、/plan-eng-review。战略和架构影响评审。</div>
+        </div>
+      </div>
+
+      <div class="step step-s3">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <div class="step-header">
+            <span class="step-title">设计审查</span>
+            <span class="step-badge required">必需</span>
+          </div>
+          <div class="step-desc">在实现前进行设计评审，确保方案合理。评审通过后开始实现。</div>
+        </div>
+      </div>
+
+      <div class="step step-s4">
+        <div class="step-number">4</div>
+        <div class="step-content">
+          <div class="step-header">
+            <span class="step-title">实现</span>
+            <span class="step-badge required">必需</span>
+          </div>
+          <div class="step-desc">执行 <code>/opsx:apply</code> 进行实现 → <code>lint + typecheck</code> 通过才算成功。</div>
+        </div>
+      </div>
+
+      <div class="step step-s5">
+        <div class="step-number">5</div>
+        <div class="step-content">
+          <div class="step-header">
+            <span class="step-title">自审</span>
+            <span class="step-badge required">必需</span>
+          </div>
+          <div class="step-desc"><code>/opsx:verify</code> <code>/design-review</code> <code>/review</code> 自审实现代码，确保质量。</div>
+        </div>
+      </div>
+
+      <div class="step step-s6">
+        <div class="step-number">6</div>
+        <div class="step-content">
+          <div class="step-header">
+            <span class="step-title">E2E 测试生成与执行</span>
+            <span class="step-badge required">必需</span>
+          </div>
+          <div class="step-desc"><code>/opsx:e2e</code> 生成测试 → <code>/browse</code> 探索 DOM → Healer 修复 → <code>/qa</code> 真实浏览器验证。</div>
+        </div>
+      </div>
+
+      <div class="step step-s7">
+        <div class="step-number">7</div>
+        <div class="step-content">
+          <div class="step-header">
+            <span class="step-title">验证通过后归档</span>
+            <span class="step-badge required">必需</span>
+          </div>
+          <div class="step-desc">永久归档，更新 <code>specs/</code>。</div>
+        </div>
+      </div>
+
+      <div class="step step-s8">
+        <div class="step-number">8</div>
+        <div class="step-content">
+          <div class="step-header">
+            <span class="step-title">发布</span>
+            <span class="step-badge required">必需</span>
+          </div>
+          <div class="step-desc">/ship、/land-and-deploy 或 /canary。选择合适的发布策略。</div>
+        </div>
+      </div>
+
+      <div class="step step-s9">
+        <div class="step-number">9</div>
+        <div class="step-content">
+          <div class="step-header">
+            <span class="step-title">迭代回顾</span>
+            <span class="step-badge optional">按需触发</span>
+          </div>
+          <div class="step-desc">评审本次迭代，总结经验教训。<code>/retro</code></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feedback Loop -->
+    <div style="margin-top: 48px;">
+      <div class="section-label" style="text-align:left;">反馈循环</div>
+      <div class="feedback-grid">
+        <div class="feedback-card">
+          <div class="feedback-signal">
+            <span class="dot dot-red"></span>
+            测试失败（App Bug）
+          </div>
+          <div class="feedback-arrow">→ 回到 <span class="feedback-target">步骤 4</span> 修复 → 重新测试</div>
+        </div>
+        <div class="feedback-card">
+          <div class="feedback-signal">
+            <span class="dot dot-yellow"></span>
+            发现架构问题
+          </div>
+          <div class="feedback-arrow">→ 回到 <span class="feedback-target">步骤 2</span> 重新评审 → 步骤 4 修复</div>
+        </div>
+        <div class="feedback-card">
+          <div class="feedback-signal">
+            <span class="dot dot-blue"></span>
+            Proposal 需调整
+          </div>
+          <div class="feedback-arrow">→ 回到 <span class="feedback-target">步骤 1</span> 重新提案</div>
+        </div>
+        <div class="feedback-card">
+          <div class="feedback-signal">
+            <span class="dot dot-gray"></span>
+            评审不通过
+          </div>
+          <div class="feedback-arrow">→ 回到对应步骤重新处理</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Quick Start ── -->
+<section class="section" id="quickstart">
+  <div class="section-label">快速开始</div>
+  <h2 class="section-title">5 分钟上手</h2>
+  <p class="section-desc">已有 Node.js 环境？一行命令安装，立即体验。</p>
+
+  <div class="quickstart">
+    <h3>安装步骤</h3>
+    <div class="quickstart-steps">
+      <div class="qs-step">
+        <div class="qs-step-num">STEP 1</div>
+        <div class="qs-step-label">安装 CLI</div>
+        <code>npm install -g openspec-playwright</code>
+      </div>
+      <div class="qs-step">
+        <div class="qs-step-num">STEP 2</div>
+        <div class="qs-step-label">安装 gstack</div>
+        <code>git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup</code>
+      </div>
+      <div class="qs-step">
+        <div class="qs-step-num">STEP 3</div>
+        <div class="qs-step-label">初始化 OpenSpec</div>
+        <code>npm install -g @fission-ai/openspec && openspec init</code>
+      </div>
+      <div class="qs-step">
+        <div class="qs-step-num">STEP 4</div>
+        <div class="qs-step-label">安装 Playwright MCP</div>
+        <code>claude mcp add playwright npx @playwright/mcp@latest</code>
+      </div>
+      <div class="qs-step">
+        <div class="qs-step-num">STEP 5</div>
+        <div class="qs-step-label">初始化 E2E</div>
+        <code>openspec-pw init && npx playwright install --with-deps</code>
+      </div>
+    </div>
+
+    <h3>运行第一个 E2E 测试</h3>
+    <div class="code-block"><span class="comment"># 在 OpenSpec 项目中，运行：</span>
+<span class="cmd">/opsx:e2e</span> <span class="flag">&lt;change-name&gt;</span>
+
+<span class="comment"># Claude Code 自动完成：</span>
+<span class="comment"># 1. 读取规范 → 2. 检测认证 → 3. 探索真实 DOM</span>
+<span class="comment"># 4. 生成测试 → 5. 执行测试 → 6. Healer 修复</span>
+<span class="comment"># 7. 生成报告</span></div>
+  </div>
+</section>
+
+<!-- ── Tech Stack ── -->
+<section class="section stack-section">
+  <div class="section-label">技术栈</div>
+  <h2 class="section-title">构建于成熟工具之上</h2>
+  <p class="section-desc">每个组件都是业界最佳实践，无自造轮子。</p>
+
+  <div class="stack-logos">
+    <div class="stack-item">
+      <div class="stack-icon">🤖</div>
+      <div class="stack-name">Claude Code</div>
+      <div class="stack-role">AI 执行引擎</div>
+    </div>
+    <div class="stack-item">
+      <div class="stack-icon">🧪</div>
+      <div class="stack-name">Playwright</div>
+      <div class="stack-role">测试框架</div>
+    </div>
+    <div class="stack-item">
+      <div class="stack-icon">🔍</div>
+      <div class="stack-name">gstack /browse</div>
+      <div class="stack-role">浏览器探索</div>
+    </div>
+    <div class="stack-item">
+      <div class="stack-icon">📋</div>
+      <div class="stack-name">OpenSpec</div>
+      <div class="stack-role">规范驱动</div>
+    </div>
+    <div class="stack-item">
+      <div class="stack-icon">🔌</div>
+      <div class="stack-name">Playwright MCP</div>
+      <div class="stack-role">测试执行</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Comparison ── -->
+<section class="section">
+  <div class="section-label">对比</div>
+  <h2 class="section-title">与传统测试方式对比</h2>
+  <p class="section-desc">从手动维护到 AI 自动化，测试生产力的本质飞跃。</p>
+
+  <div class="comparison-grid">
+    <div class="comparison-card better">
+      <div class="comparison-card-title">OpenSpec Playwright</div>
+      <div class="comparison-item">
+        <span class="icon icon-check">✅</span>
+        <span>规范驱动，变更即测试</span>
+      </div>
+      <div class="comparison-item">
+        <span class="icon icon-check">✅</span>
+        <span>AI 自动生成测试用例</span>
+      </div>
+      <div class="comparison-item">
+        <span class="icon icon-check">✅</span>
+        <span>Healer 自动修复选择器</span>
+      </div>
+      <div class="comparison-item">
+        <span class="icon icon-check">✅</span>
+        <span>一行命令完成全流程</span>
+      </div>
+      <div class="comparison-item">
+        <span class="icon icon-check">✅</span>
+        <span>测试与规范严格对齐</span>
+      </div>
+    </div>
+    <div class="comparison-card">
+      <div class="comparison-card-title">手动维护 E2E</div>
+      <div class="comparison-item">每次变更手动更新测试</div>
+      <div class="comparison-item">选择器失效靠人工发现</div>
+      <div class="comparison-item">测试覆盖靠经验判断</div>
+      <div class="comparison-item">规范与测试容易脱节</div>
+      <div class="comparison-item">维护成本随项目线性增长</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ── -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <span>🧪</span>
+      openspec-playwright
+    </div>
+    <ul class="footer-links">
+      <li><a href="https://github.com/fission-ai/openspec-playwright" target="_blank">GitHub</a></li>
+      <li><a href="https://github.com/fission-ai/openspec-playwright#readme" target="_blank">文档</a></li>
+      <li><a href="https://www.npmjs.com/package/openspec-playwright" target="_blank">npm</a></li>
+      <li><a href="https://github.com/garrytan/gstack" target="_blank">gstack</a></li>
+      <li><a href="https://github.com/fission-ai/openspec" target="_blank">OpenSpec</a></li>
+    </ul>
+  </div>
+  <div class="footer-copy">
+    MIT License · Built with Claude Code + Playwright + gstack + OpenSpec
+  </div>
+</footer>
+
+</body>
+</html>

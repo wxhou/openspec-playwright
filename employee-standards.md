@@ -10,9 +10,10 @@
 本规范适用于 OpenSpec + openspec-playwright 项目（Claude Code 作为开发工具）。
 
 E2E 工作流前提（由用户确保，非 AI 操作）：
-- OpenSpec CLI：`npm install -g @fission-ai/openspec && openspec init`（提供 `/opsx:propose`、`/opsx:archive` 等命令）
+- gstack：`git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup`（提供 `/browse` 探索 + `/qa` 浏览器验证）
+- OpenSpec CLI：`npm install -g @fission-ai/openspec && openspec init`（提供变更管理能力）
 - openspec-playwright：`openspec-pw init`（提供 `/opsx:e2e` 命令）
-- Playwright MCP：`claude mcp add playwright npx @playwright/mcp@latest`
+- Playwright MCP：`claude mcp add playwright npx @playwright/mcp@latest`（用于测试执行 + Healer）
 - 浏览器已安装：`npx playwright install --with-deps`
 - 项目包含 `specs/`、`changes/`、`tests/playwright/` 目录
 
@@ -59,39 +60,45 @@ Claude Code 会根据上下文自动调度 gstack 技能，无需手动路由。
 ## 6. 完整生产工作流（严格执行 + 反馈循环）
 
 ```
-1. 探索与提案 → /opsx:propose → 生成 proposal + scenarios
-2. 产品与架构思考（按需触发）
-3. 设计审查 → Build（遵守 OpenSpec delta markers）→ /review 自审
-4. E2E 测试 → /opsx:e2e <change-name> → /qa（真实浏览器 + healer）
-5. 验证通过后 → /opsx:archive
-6. 发布 → /ship 或 /land-and-deploy
-7. 迭代回顾 → /retro
+ 1. 探索与提案
+ 2. 产品与架构评审（按需触发）
+ 3. 设计审查
+ 4. 实现 → /opsx:apply
+ 5. 自审 → /opsx:verify /design-review /review
+ 6. E2E 测试 → /opsx:e2e <change-name> → /browse 探索 + /qa 验证
+ 7. 验证通过后归档 → /opsx:archive
+ 8. 发布 → /ship 或 /land-and-deploy
+ 9. 迭代回顾 → /retro
 ```
 
 ### 步骤详解
 
-**1. 探索与规范**：`/opsx:propose` → 生成 proposal + scenarios（记录到 `specs/` 和 `changes/`）。对 proposal 进行评审和调整。如需代码探索，单独使用 `/opsx:explore`（不是生成规范）。
+**1. 探索与提案**：现有项目先探索（`/opsx:explore`）再写 proposal（`/opsx:propose`）；新项目（greenfield）直接生成 proposal + scenarios（记录到 `specs/` 和 `changes/`）。
 
-**2. 产品与架构思考**（按需触发，不是每个功能都走）：
+**2. 产品与架构评审**（按需触发）：
 - `/office-hours`：产品方向、范围、优先级不确定时
 - `/plan-ceo-review`：产品战略影响、竞争格局变化时
 - `/plan-eng-review`：架构影响（新增服务、API 契约变更、数据模型重构）时
 
-**3. 设计与实现**：设计审查 → Build（遵守 OpenSpec delta markers），过程中 `/review` 自审。构建完成后，E2E 测试覆盖通过才能继续。
+**3. 设计审查**：在实现前进行设计评审，确保方案合理。评审通过后开始实现。
 
-**4. E2E 测试生成与执行**：`/opsx:e2e <change-name>` 生成 Playwright 测试并执行 → 执行 `/qa`（真实浏览器 + healer）验证。E2E 通过后进入发布环节。
+**4. 实现**：执行 `/opsx:apply` 进行实现 → `lint + typecheck` 通过才算成功。
 
-**5. 验证通过后**：`/opsx:archive` 永久归档，更新 `specs/`
+**5. 自审**：`/opsx:verify` `/design-review` `/review` 自审实现代码，确保质量。
 
-**6. 发布**：`/ship` 或 `/land-and-deploy`
+**6. E2E 测试生成与执行**：`/opsx:e2e <change-name>` 生成 Playwright 测试 → `/browse` 探索真实 DOM → Healer 自动修复 → `/qa` 真实浏览器验证。E2E 通过后进入发布环节。
 
-**7. 迭代回顾**：`/retro`
+**7. 验证通过后归档**：`/opsx:archive` 永久归档，更新 `specs/`
+
+**8. 发布**：`/ship` 或 `/land-and-deploy`
+
+**9. 迭代回顾**：`/retro`
 
 ### 反馈循环（生产中必然发生）
 
 | 信号 | 回到 |
 |------|------|
-| 测试失败（App Bug） | 步骤 3 修复后 → 步骤 4 重新测试 |
-| 发现架构问题 | 步骤 2 重新评审 → 步骤 3 修复 |
-| proposal 需调整 | 步骤 1 重新提案 |
+| 测试失败（App Bug） | 回到步骤 4 修复 → 重新测试 |
+| 发现架构问题 | 回到步骤 2 重新评审 → 步骤 4 修复 |
+| Proposal 需调整 | 回到步骤 1 重新提案 |
 | 评审不通过 | 回到对应步骤重新处理 |

@@ -2,7 +2,7 @@
 name: openspec-e2e
 description: Run Playwright E2E verification for an OpenSpec change. Use when the user wants to validate that the implementation works end-to-end by running Playwright tests generated from the specs.
 license: MIT
-compatibility: Requires openspec CLI, Playwright (with browsers installed), and @playwright/mcp (globally installed via `claude mcp add playwright npx @playwright/mcp@latest`).
+compatibility: Requires openspec CLI, Playwright (with browsers installed), /browse (gstack, for exploration), and @playwright/mcp (globally installed via `claude mcp add playwright npx @playwright/mcp@latest`, for test execution + Healer).
 metadata:
   author: openspec-playwright
   version: "2.24"
@@ -129,8 +129,8 @@ expect((await post.json()).likeCount).toBeGreaterThan(0); // verify persistence
 - Announce: "Mode: full app exploration + Page Object discovery"
 - **Goal**: Discover new routes, extract selectors, and build `pages/*.ts` Page Objects — accumulated asset for future Change tests
 - **Route discovery** (in order):
-  1. **sitemap.xml**: `browser_navigate(${BASE_URL}/sitemap.xml)` → parse URLs
-  2. **Link extraction**: Navigate to `${BASE_URL}/` → `browser_evaluate` extracts all `<a href>`:
+  1. **sitemap.xml**: `$B goto ${BASE_URL}/sitemap.xml` → parse URLs
+  2. **Link extraction**: Navigate to `${BASE_URL}/` → `$B js` extracts all `<a href>`:
      ```javascript
      // Extract all internal links from current page
      () => {
@@ -199,16 +199,16 @@ Explore to collect real DOM data before writing test plan. This eliminates blind
 
 #### 4.1. Verify BASE_URL + Read app-knowledge.md
 
-1. **Verify BASE_URL**: `browser_navigate(BASE_URL)` → if HTTP 5xx → **STOP: backend error. Fix app first.**
+1. **Verify BASE_URL**: `$B goto <BASE_URL>` → if HTTP 5xx → **STOP: backend error. Fix app first.**
 2. **Read app-knowledge.md**: known risks, project conventions
 3. **Routes** (from Step 1): use already-discovered routes — no need to re-extract
 
-#### 4.2. Explore each route via Playwright MCP
+#### 4.2. Explore each route via /browse
 
 For each route:
 
 ```
-browser_navigate → browser_console_messages → browser_snapshot → browser_take_screenshot
+$B goto <url> → $B console → $B snapshot → $B screenshot
 ```
 
 **After navigating, check for app-level errors**:
@@ -225,43 +225,42 @@ browser_navigate → browser_console_messages → browser_snapshot → browser_t
 
 ```
 // 1. Initial capture
-await browser_navigate(`${BASE_URL}/<route>`);
-await new Promise(r => setTimeout(r, 1500)); // wait for SPA hydration
-const url1 = await browser_evaluate(() => window.location.href);
+$B goto <url>
+$B wait --networkidle    // wait for SPA hydration
+$B js "window.location.href"    // url1
+$B wait 2000
 
 // 2. Observe stability
-await new Promise(r => setTimeout(r, 2000));
-const url2 = await browser_evaluate(() => window.location.href);
-const msgs = await browser_console_messages();
+$B js "window.location.href"    // url2
+$B console --errors
 
 // 3. Detect
 if (url1 !== url2) {
-  → ❌ URL changed — redirect loop (ERR_TOO_MANY_REDIRECTS)
-  → Is this route protected without valid auth.storageState?
+  → ❌ URL changed — redirect loop
+  → Is this route protected without valid auth?
     → Yes → auth.setup.ts is broken → fix auth first
     → No → App middleware bug → mark route ❌ skip, record as App Bug
 }
-if (msgs.filter(m => m.type === 'warning' || m.type === 'error').length > 10) {
+if (console errors/warnings > 10) {
   → ❌ Excessive console errors — page refresh / JS crash loop
   → Mark route ❌ skip, record as App Bug
 }
 ```
 
-**Network monitoring**: After navigating, use `browser_network_requests` to check for failed API calls. Failed requests (status ≥ 400) on a route indicate an API/backend issue — record in `app-exploration.md` for reference.
+**Network monitoring**: After navigating, use `$B network` to check for failed API calls. Failed requests (status ≥ 400) on a route indicate an API/backend issue — record in `app-exploration.md` for reference.
 
 **For guest routes** (no auth):
 
-```javascript
-// Navigate directly
-await browser_navigate(`${BASE_URL}/<route>`);
+```
+$B goto <url>
 ```
 
 **For protected routes** (auth required):
 
-```javascript
+```
 // Option A: use existing storageState (recommended)
 // Option B: navigate to /login first, fill form, then navigate to target
-// Option C: use browser_run_code to set auth cookies directly
+// Option C: $B cookie to set auth cookies directly
 ```
 
 **If credentials are not yet available**:
@@ -279,7 +278,7 @@ Wait for page stability:
 
 #### 4.3. Parse the snapshot
 
-From `browser_snapshot` output, extract **interactive elements** for each route:
+From `$B snapshot` output, extract **interactive elements** for each route:
 
 | Element type         | What to capture                      | Selector priority                                          |
 | -------------------- | ------------------------------------ | ---------------------------------------------------------- |
@@ -293,7 +292,7 @@ From `browser_snapshot` output, extract **interactive elements** for each route:
 
 #### 4.3.1. Detect special elements
 
-From `browser_snapshot` + `browser_evaluate`, identify these special elements per route:
+From `$B snapshot` + `$B js`, identify these special elements per route:
 
 **Special element detection matrix:**
 
@@ -310,9 +309,9 @@ From `browser_snapshot` + `browser_evaluate`, identify these special elements pe
 | Drag-and-drop | drag events in JS | Simulate DnD via coordinate clicks | Low |
 | Date picker | specific `data-testid` or class patterns | Click triggers → evaluate value | Low (skip unless specs mention) |
 | Infinite scroll | Dynamic row insertion | Count elements before/after scroll | Low (skip unless specs mention dynamic lists/pagination) |
-| WebSocket / SSE | No DOM signal | Check `browser_console_messages` for WS events | Low (check only if app uses real-time features) |
+| WebSocket / SSE | No DOM signal | Check `$B console --errors` for WS events | Low (check only if app uses real-time features) |
 
-**For each detected special element, capture via `browser_evaluate` with targeted DOM queries:**
+**For each detected special element, capture via `$B js` with targeted DOM queries:**
 - Canvas: `getContext('webgl2'/'webgl'/'2d')`, `width`, `height`
 - Iframe: `src` attribute → use `frameLocator` in tests
 - CAPTCHA: `.g-recaptcha`, `.h-captcha`, `[data-sitekey]`, canvas+slider detection
@@ -622,7 +621,7 @@ Auth required. To set up:
 
 **Idempotency**: If `auth.setup.ts` already exists → verify format, update only if stale.
 
-**Post-auth re-exploration**: If Step 4 skipped protected routes due to missing auth, re-run exploration for those routes now that auth is configured. Navigate to each protected route with auth context → `browser_snapshot` → update `app-exploration.md`. Selectors verified now are better than guesses used during test generation.
+**Post-auth re-exploration**: If Step 4 skipped protected routes due to missing auth, re-run exploration for those routes now that auth is configured. Navigate to each protected route with auth context → `$B snapshot` → update `app-exploration.md`. Selectors verified now are better than guesses used during test generation.
 
 ### 8. Configure playwright.config.ts
 
