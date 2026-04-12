@@ -13,13 +13,11 @@ E2E 工作流前提（由用户确保，非 AI 操作）：
 - gstack：`git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup`（提供 `/browse` 探索 + `/qa` 浏览器验证）
 - OpenSpec CLI：`npm install -g @fission-ai/openspec && openspec init`（提供变更管理能力）
 - openspec-playwright：`openspec-pw init`（提供 `/opsx:e2e` 命令）
-- Playwright MCP：`claude mcp add playwright npx @playwright/mcp@latest`（用于测试执行 + Healer）
-- 浏览器已安装：`npx playwright install --with-deps`
 - 项目包含 `specs/`、`changes/`、`tests/playwright/` 目录
 
 ## 1. 浏览器操作约束
 
-所有浏览器操作用 gstack 的 `/browse` 探索 + `/qa` 验证，Playwright MCP 执行测试。Claude Code 会根据上下文自动调度，无需手动路由。
+所有浏览器操作用 gstack 的 `/browse` 探索 + `/qa` 验证，Playwright MCP 执行测试。
 
 **冲突解决**：gstack 任何想直接修改代码的行为，都必须先确认当前 OpenSpec proposal 是否已存在并通过（检查 `changes/<name>/proposal.md` 是否处于 `approved` 状态）。
 
@@ -55,14 +53,14 @@ E2E 工作流前提（由用户确保，非 AI 操作）：
 
 ---
 
-## 6. 完整生产工作流（严格执行 + 反馈循环）
+## 6. 完整生产工作流
 
 ```
  1. 探索与提案
  2. 产品与架构评审（按需触发）
  3. 设计审查
  4. 实现 → /opsx:apply
- 5. 自审 → /opsx:verify /design-review /review
+ 5. 自审 → /opsx:verify
  6. E2E 测试 → /opsx:e2e <change-name> → /browse 探索 + /qa 验证
  7. 验证通过后归档 → /opsx:archive
  8. 发布 → /ship 或 /land-and-deploy
@@ -82,30 +80,12 @@ E2E 工作流前提（由用户确保，非 AI 操作）：
 
 **4. 实现**：执行 `/opsx:apply` 进行实现 → `lint + typecheck` 通过才算成功。
 
-**5. 自审**：`/opsx:verify` `/design-review` `/review` 自审实现代码，确保质量。**设计审查后**，对 HTML/CSS 文件执行 CSS 结构审计（防止 `/design-review` 靠截图漏检间距问题）：
+**5. 自审**：`/opsx:verify` 自审实现代码，确保质量。
 
-```
-两步式审计：
-1. 确定间距基准 — 查 CSS variables / Tailwind spacing / Bootstrap $spacer
-   grep 'gap:|padding:|margin:' *.html → 提取值 → 对比基准，列低于基准的项
-2. 检查 margin hack — 同一 grid/flex 容器中相邻元素各自用 margin 硬撑间距
-   信号：两个子元素的 margin 和 > 基准间距 2 倍 → 应改为 grid 行或 gap 控制
-   例：.desc{margin-b:36}+.btn{margin-t:80} 在同一 row → grid 行分离
-```
-
-**6. E2E 测试生成与执行**：`/opsx:e2e <change-name>` 生成 Playwright 测试 → `/browse` 探索真实 DOM → Healer 自动修复 → `/qa` 真实浏览器验证。E2E 通过后进入发布环节。
+**6. E2E 测试**：`/opsx:e2e <change-name>` 生成 Playwright 测试 → `/browse` 探索真实 DOM → Healer 自动修复 → `/qa` 真实浏览器验证。E2E 通过后进入发布环节。
 
 **7. 验证通过后归档**：`/opsx:archive` 永久归档，更新 `specs/`
 
 **8. 发布**：`/ship` 或 `/land-and-deploy`
 
 **9. 迭代回顾**：`/retro`
-
-### 反馈循环（生产中必然发生）
-
-| 信号 | 回到 |
-|------|------|
-| 测试失败（App Bug） | 回到步骤 4 修复 → 重新测试 |
-| 发现架构问题 | 回到步骤 2 重新评审 → 步骤 4 修复 |
-| Proposal 需调整 | 回到步骤 1 重新提案 |
-| 评审不通过 | 回到对应步骤重新处理 |
