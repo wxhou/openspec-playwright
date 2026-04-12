@@ -81,9 +81,15 @@ export async function run(changeName: string, options: RunOptions) {
   if (options.project) {
     args.push("--project=" + options.project);
   }
+  // Escape regex special chars in grep to prevent injection.
+  // Note: | is escaped too, so grep "a|b" matches the literal string "a|b",
+  // not "a OR b". For OR semantics, run two separate commands.
+  const escapeGrep = (s: string) =>
+    s.replace(/[.*+?()[\]{}|\\^$]/g, "\\$&");
   if (options.grep && options.smoke) {
-    // Combine: run tests matching BOTH smoke tag AND the grep pattern
-    args.push("--grep", `@smoke.*${options.grep}|${options.grep}.*@smoke`);
+    // Run tests matching BOTH smoke tag AND the grep pattern
+    const eg = escapeGrep(options.grep);
+    args.push("--grep", `@smoke.*${eg}|${eg}.*@smoke`);
   } else if (options.grep) {
     args.push("--grep=" + options.grep);
   } else if (options.smoke) {
