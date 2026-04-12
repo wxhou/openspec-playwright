@@ -211,29 +211,18 @@ For each route:
 $B goto <url> → $B console → $B snapshot → $B screenshot
 ```
 
-#### Parallel Exploration
+#### Parallel Exploration (via `openspec-pw explore`)
 
-For apps with many routes (>=5), explore routes in parallel to reduce total time.
+For apps with many routes (>=5), use the dedicated CLI command for true parallel exploration:
 
-**Serial** (old): 20 routes x 8s each = 160s
-**Parallel** (new): Promise.all([...routes]) = ~16s (limited by slowest route)
-
-```javascript
-// Batch explore: parallel with error isolation
-const routeResults = await Promise.allSettled(
-  routes.map(async (route) => {
-    $B goto <route.url>
-    $B wait --networkidle
-    const snapshot = $B snapshot
-    const console = $B console --errors
-    return { route: route.path, snapshot, console }
-  })
-)
-// Filter successful results
-const successful = routeResults.filter(r => r.status === 'fulfilled').map(r => r.value)
+```bash
+openspec-pw explore --parallel 4    # 4 independent Chromium workers
+openspec-pw explore --dry-run       # preview chunk assignment first
 ```
 
-**Rule**: Use `Promise.allSettled` (not `Promise.all`) so one failed route doesn't cancel others.
+**Why**: `$B` uses a single shared Chromium instance with one active page — `Promise.allSettled` on `$B` commands serializes execution and causes navigation state conflicts. `openspec-pw explore` launches N independent browser processes, each with its own Chromium context, for genuine parallelism.
+
+**After parallel exploration completes**, read the updated `app-exploration.md` to continue with Step 4.3.
 
 **After navigating, check for app-level errors**:
 
