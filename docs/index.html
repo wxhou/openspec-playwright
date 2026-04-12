@@ -540,7 +540,6 @@ nav {
   font-size: 0.65rem;
   font-weight: 800;
   letter-spacing: 0.12em;
-  text-transform: uppercase;
   margin-bottom: 14px;
   display: flex;
   align-items: center;
@@ -1149,7 +1148,7 @@ nav {
 
 .si-claude { background: #fff7ed; }
 .si-pw { background: #f0fdf4; }
-.si-gstack { background: #fff7ed; }
+.si-gstack { background: #fef3c7; }
 .si-openspec { background: #eff6ff; }
 .si-mcp { background: #f0fdf4; }
 
@@ -1489,8 +1488,8 @@ footer {
 <section class="hero">
   <div class="hero-eyebrow anim">AI-Driven E2E Testing</div>
   <h1 class="hero-title anim anim-1">
-    从规范到测试，<br>
-    <em>一行命令搞定</em>
+    AI 研发闭环，<br>
+    <em>从规范到测试自动完成</em>
   </h1>
   <p class="hero-desc anim anim-2">
     OpenSpec Playwright 将 OpenSpec 规范自动转化为 Playwright E2E 测试。
@@ -1540,6 +1539,14 @@ footer {
       <div class="feature-title">规范驱动测试生成</div>
       <div class="feature-desc">读取 OpenSpec 规范文档，自动提取路由、表单、验证规则，生成对应 Playwright 测试用例。不再需要手动编写和维护测试。</div>
     </div>
+    <div class="feature-card anim anim-2">
+      <div class="feature-label fl-amber">
+        <span class="feature-label-dot"></span>
+        规范即文档
+      </div>
+      <div class="feature-title">规范变更，测试即更新</div>
+      <div class="feature-desc">测试与 OpenSpec 规范严格对齐。验证通过意味着规范得到实现，规范变更自动驱动测试更新。</div>
+    </div>
     <div class="feature-card anim anim-1">
       <div class="feature-label fl-purple">
         <span class="feature-label-dot"></span>
@@ -1557,14 +1564,6 @@ footer {
       <div class="feature-desc">通过 gstack <code>/browse</code> 遍历每个路由，snapshot + @ref 精确定位元素。Token 高效，状态持久，可视化操作。</div>
     </div>
     <div class="feature-card anim anim-1">
-      <div class="feature-label fl-amber">
-        <span class="feature-label-dot"></span>
-        规范即文档
-      </div>
-      <div class="feature-title">规范即文档</div>
-      <div class="feature-desc">测试与 OpenSpec 规范严格对齐。验证通过意味着规范得到实现，规范变更自动驱动测试更新。</div>
-    </div>
-    <div class="feature-card anim anim-2">
       <div class="feature-label fl-green">
         <span class="feature-label-dot"></span>
         测试报告
@@ -1696,7 +1695,7 @@ footer {
             <span class="step-name">自审</span>
             <span class="step-badge badge-required">必需</span>
           </div>
-          <div class="step-desc"><code>/opsx:verify</code> <code>/design-review</code> <code>/review</code> 自审实现代码，确保质量。设计审查后执行两步式 CSS 结构审计：1) 确定间距基准（CSS variables / Tailwind / Bootstrap）→ grep 提取值对比基准，列低于基准的项；2) 检查 margin hack（同一 grid/flex 容器中相邻元素 margin 和 > 基准 2 倍 → 改为 grid 行或 gap 控制）。</div>
+          <div class="step-desc"><code>/opsx:verify</code> <code>/design-review</code> <code>/review</code> 自审实现代码，确保质量。设计审查后执行两步式 CSS 审计：1) grep 提取间距值对比基准；2) 检查 margin hack（margin 和 > 基准 2 倍 → 改为 gap/grid 控制）。</div>
           <div class="step-tags">
             <span class="step-tag tag-openspec">opsx:verify</span>
             <span class="step-tag tag-gstack">design-review</span>
@@ -1930,8 +1929,8 @@ footer {
 <section class="section" id="stack">
   <div class="section-header anim">
     <div class="section-label">技术栈</div>
-    <h2 class="section-title">构建于成熟工具之上</h2>
-    <p class="section-desc">每个组件都是业界最佳实践，无自造轮子。</p>
+    <h2 class="section-title">AI 执行引擎驱动闭环</h2>
+    <p class="section-desc">每个组件都是业界最佳实践，共同支撑 AI 驱动的研发闭环。</p>
   </div>
 
   <div class="stack-grid">
