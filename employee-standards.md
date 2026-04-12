@@ -83,8 +83,21 @@ E2E 工作流前提（由用户确保，非 AI 操作）：
 **4. 实现**：执行 `/opsx:apply` 进行实现 → `lint + typecheck` 通过才算成功。
 
 **5. 自审**：`/opsx:verify` `/design-review` `/review` 自审实现代码，确保质量。**设计审查后**，对 HTML/CSS 文件执行 CSS 结构审计（防止 `/design-review` 靠截图漏检间距问题）：
+
 ```
-Grep 提取 gap/padding/margin 值 → 对比阈值（gap ≥ 16px, padding ≥ 16px, margin ≥ 20px）→ 列出低于标准的项 → 修复
+两步式审计：
+1a. 确定项目间距基准 — 查看设计 token（Tailwind config / CSS variables / spacing scale）
+    - 自定义 CSS：查看 :root 中的 spacing tokens（例：--space-sm, --space-md）
+    - Tailwind：查看 tailwind.config.js 的 spacing scale
+    - Bootstrap：查看 $spacer / $spacers 变量
+1b. 用 grep 提取 gap/padding/margin 值，对比基准
+    - 自定义 CSS：`grep -oE '(gap|padding|margin):\s*[0-9]+' *.html`
+    - Tailwind：`grep -oE 'gap-\d+|space-\d+|p\[|m\[' *.html`
+    - 列出低于基准的值，评估是否为布局缺陷
+2. 检查同一 grid 行 / flex 列中相邻元素的 margin 组合
+    - 若两个元素共享同一行/列，且各自用 margin 硬撑间距 → 应通过 grid 行定义或 gap 控制
+    - 例：`.desc { margin-bottom: 36px } + .actions { margin-top: 80px }` 在同一 grid row → 应改为 grid 行分离
+    - 识别信号：同一容器内两个子元素的 margin 和 > 基准间距 2 倍
 ```
 
 **6. E2E 测试生成与执行**：`/opsx:e2e <change-name>` 生成 Playwright 测试 → `/browse` 探索真实 DOM → Healer 自动修复 → `/qa` 真实浏览器验证。E2E 通过后进入发布环节。
