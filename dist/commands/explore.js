@@ -53,7 +53,7 @@ function acquireLock(lockPath) {
             try {
                 renameSync(lockPath, `${lockPath}.stale`);
             }
-            catch { }
+            catch { /* ignore */ }
         }
     }
     try {
@@ -66,9 +66,12 @@ function acquireLock(lockPath) {
 }
 function releaseLock(lockPath) {
     try {
-        existsSync(lockPath) && renameSync(lockPath, `${lockPath}.released`);
+        if (existsSync(lockPath))
+            renameSync(lockPath, `${lockPath}.released`);
     }
-    catch { }
+    catch {
+        // ignore — lock release is best-effort
+    }
 }
 // ── Parsing ────────────────────────────────────────────────────────────────────
 function parseExplorationFile(content) {
@@ -119,27 +122,6 @@ function updateExplorationFile(original, results) {
         updatedLines.push(line);
     }
     return updatedLines.join("\n");
-}
-function buildSummaryTable(results) {
-    const lines = [
-        "## Exploration Results",
-        "",
-        "| Route | Status | Title | Forms | Links | Error |",
-        "|-------|--------|-------|-------|-------|-------|",
-    ];
-    for (const r of results) {
-        const icon = r.status === "ok"
-            ? "ok"
-            : r.status === "error"
-                ? "error"
-                : r.status === "auth-required"
-                    ? "auth-required"
-                    : "skipped";
-        const title = r.snapshot.title ? r.snapshot.title.slice(0, 30) : "-";
-        const error = r.errorMessage ? r.errorMessage.slice(0, 40) : "-";
-        lines.push(`| ${r.path} | ${icon} | ${title} | ${r.snapshot.formCount} | ${r.snapshot.linkCount} | ${error} |`);
-    }
-    return lines.join("\n");
 }
 function appendFailureSection(content, results) {
     const failures = results.filter((r) => r.status === "error" || r.status === "auth-required");

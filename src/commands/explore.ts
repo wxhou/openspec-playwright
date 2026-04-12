@@ -79,7 +79,7 @@ function acquireLock(lockPath: string): boolean {
       }
     } catch {
       // Can't read lock, try to remove it
-      try { renameSync(lockPath, `${lockPath}.stale`); } catch {}
+      try { renameSync(lockPath, `${lockPath}.stale`); } catch { /* ignore */ }
     }
   }
   try {
@@ -92,8 +92,10 @@ function acquireLock(lockPath: string): boolean {
 
 function releaseLock(lockPath: string): void {
   try {
-    existsSync(lockPath) && renameSync(lockPath, `${lockPath}.released`);
-  } catch {}
+    if (existsSync(lockPath)) renameSync(lockPath, `${lockPath}.released`);
+  } catch {
+    // ignore — lock release is best-effort
+  }
 }
 
 // ── Parsing ────────────────────────────────────────────────────────────────────
@@ -155,33 +157,6 @@ function updateExplorationFile(
   }
 
   return updatedLines.join("\n");
-}
-
-function buildSummaryTable(results: RouteResult[]): string {
-  const lines: string[] = [
-    "## Exploration Results",
-    "",
-    "| Route | Status | Title | Forms | Links | Error |",
-    "|-------|--------|-------|-------|-------|-------|",
-  ];
-
-  for (const r of results) {
-    const icon =
-      r.status === "ok"
-        ? "ok"
-        : r.status === "error"
-          ? "error"
-          : r.status === "auth-required"
-            ? "auth-required"
-            : "skipped";
-    const title = r.snapshot.title ? r.snapshot.title.slice(0, 30) : "-";
-    const error = r.errorMessage ? r.errorMessage.slice(0, 40) : "-";
-    lines.push(
-      `| ${r.path} | ${icon} | ${title} | ${r.snapshot.formCount} | ${r.snapshot.linkCount} | ${error} |`,
-    );
-  }
-
-  return lines.join("\n");
 }
 
 function appendFailureSection(

@@ -5,19 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.1] - 2026-04-12
 
 ### Added
 - `openspec-pw explore` command: parallel route exploration via N independent Chromium workers, each with its own browser context (no shared state). `--parallel <n>` sets worker count (default 4, max 16). `--dry-run` previews chunk assignment. Built-in auth redirect detection (compares final URL vs expected URL to flag protected routes), atomic write with backup, lock file to prevent concurrent runs, SIGINT/SIGTERM cleanup handlers.
 - CLI: `openspec-pw run --smoke` to run only smoke tests (`--grep @smoke`)
 - CLI: `openspec-pw run -w/--workers <n>` to control parallel worker count
+- CLI: `openspec-pw run --grep` combined with `--smoke` produces AND pattern (all regex chars escaped)
 - SKILL.md Step 4.5: Route Snapshot Hash — sitemap.xml hash to skip unchanged routes on re-runs
 - SKILL.md Step 6: Selector Caching — reuse Step 4 exploration selectors in test generation (~30-50 fewer navigations per 50-test suite)
 - playwright.config.ts: CI workers default raised to 4 (from 1)
 
 ### Fixed
 - SKILL.md Step 4.2: removed broken `Promise.allSettled` + `$B` parallel approach (caused data pollution due to shared Chromium instance). Replaced with `openspec-pw explore` redirect.
-- `openspec-pw explore`: added auth redirect detection (prevents HTTP 200 + login page being reported as "ok"), atomic write with backup, lock file, signal handlers.
+- `openspec-pw explore`: added auth redirect detection (prevents HTTP 200 + login page being reported as "ok"), atomic write with backup, lock file (30min TTL + stale-lock auto-detection), signal handlers, max workers cap.
+- `openspec-pw explore` lock file: stale locks (>30min) are auto-removed; process.alive check via `kill(pid, 0)` prevents false "already locked" errors from crashed processes.
+- `openspec-pw run`: `--grep` and `--smoke` now combine into AND pattern with full regex escaping (previously last flag won, silently dropping the other).
+
+### Performance
+- **Healer Phase 2**: batch diagnosis first (read specs + app-knowledge.md, no Playwright overhead), then apply ALL fixes + single `--workers=1` run for all Phase 2 tests as one combined grep. Eliminates N×M Playwright startups where N=failures, M=heal attempts. Estimated ~15-20s saved per eliminated startup.
+- **Healer Phase 2**: `--workers=1` sequential isolated execution eliminates data races from shared Playwright state (previously parallel workers polluted each other's state causing cascading failures).
+- **Parallel exploration**: 4 workers default (up to 16) — each worker launches independent Chromium, true parallelism vs sequential single-process. Estimated exploration time reduced by ~3-4x.
 
 ## [0.3.0] - 2026-04-12
 
