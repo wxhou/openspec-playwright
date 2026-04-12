@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- `openspec-pw explore` command: parallel route exploration via N independent Chromium workers, each with its own browser context (no shared state). `--parallel <n>` sets worker count (default 4). `--dry-run` previews chunk assignment.
+- `openspec-pw explore` command: parallel route exploration via N independent Chromium workers, each with its own browser context (no shared state). `--parallel <n>` sets worker count (default 4, max 16). `--dry-run` previews chunk assignment. Built-in auth redirect detection (compares final URL vs expected URL to flag protected routes), atomic write with backup, lock file to prevent concurrent runs, SIGINT/SIGTERM cleanup handlers.
 - CLI: `openspec-pw run --smoke` to run only smoke tests (`--grep @smoke`)
 - CLI: `openspec-pw run -w/--workers <n>` to control parallel worker count
 - SKILL.md Step 4.5: Route Snapshot Hash — sitemap.xml hash to skip unchanged routes on re-runs
@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - SKILL.md Step 4.2: removed broken `Promise.allSettled` + `$B` parallel approach (caused data pollution due to shared Chromium instance). Replaced with `openspec-pw explore` redirect.
+- `openspec-pw explore`: added auth redirect detection (prevents HTTP 200 + login page being reported as "ok"), atomic write with backup, lock file, signal handlers.
 
 ## [0.3.0] - 2026-04-12
 
