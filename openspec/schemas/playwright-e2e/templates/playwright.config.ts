@@ -28,7 +28,9 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // CI: respect PW_WORKERS env var (defaults to 4 for parallel execution).
+  // Local: undefined lets Playwright auto-select based on CPU cores.
+  workers: process.env.CI ? (parseInt(process.env.PW_WORKERS || '4') || 4) : undefined,
   reporter: 'list',
 
   use: {

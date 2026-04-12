@@ -9,6 +9,7 @@ import { run } from "./commands/run.js";
 import { migrate } from "./commands/migrate.js";
 import { uninstall } from "./commands/uninstall.js";
 import { audit } from "./commands/audit.js";
+import { explore } from "./commands/explore.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -89,5 +90,22 @@ program
   .command("audit")
   .description("Audit test files for orphaned specs, missing auth, sitemap issues")
   .action(audit);
+
+program
+  .command("explore")
+  .description("Explore routes in parallel with Playwright")
+  .option(
+    "-p, --parallel <n>",
+    "Number of parallel workers",
+    (v) => parseInt(v, 10),
+    4,
+  )
+  .option(
+    "-n, --dry-run",
+    "Show what would be explored without running",
+  )
+  .action(async (opts) => {
+    await explore(opts);
+  });
 
 program.parse();
