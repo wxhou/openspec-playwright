@@ -3,6 +3,8 @@ export interface RunOptions {
     timeout?: number;
     json?: boolean;
     grep?: string;
+    smoke?: boolean;
+    workers?: number;
     appBugs?: number;
     healed?: number;
     raft?: number;

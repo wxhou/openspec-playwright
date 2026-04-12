@@ -42,6 +42,12 @@ export async function run(changeName, options) {
     if (options.grep) {
         args.push("--grep=" + options.grep);
     }
+    if (options.smoke) {
+        args.push("--grep", "@smoke");
+    }
+    if (options.workers) {
+        args.push("--workers=" + options.workers);
+    }
     if (options.headed) {
         args.push("--headed");
     }

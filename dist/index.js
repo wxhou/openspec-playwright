@@ -42,6 +42,8 @@ program
     .option("-t, --timeout <seconds>", "Test timeout in seconds", "300")
     .option("--json", "Output results as JSON")
     .option("-g, --grep <pattern>", "Run only tests matching pattern")
+    .option("--smoke", "Run only smoke tests (--grep @smoke)")
+    .option("-w, --workers <n>", "Number of parallel workers", (v) => parseInt(v, 10), undefined)
     .option("--app-bugs <n>", "Number of app bugs (skipped tests)", (v) => parseInt(v, 10), undefined)
     .option("--healed <n>", "Number of test bugs healed by Healer", (v) => parseInt(v, 10), undefined)
     .option("--raft <n>", "Number of RAFTs detected", (v) => parseInt(v, 10), undefined)
