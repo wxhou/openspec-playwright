@@ -820,7 +820,9 @@ For ALL Phase 2 failures in this run, do this simultaneously:
 
 **Skip remaining steps for `needs-phase3` tests** — go directly to Phase 3.
 
-**Step 1** (for `needs-assertion-fix`): Navigate to the failing page → `browser_snapshot` → **EXPLICIT COMPARISON**:
+**For `needs-more-diagnosis` tests** — go to Step 1 (navigate + snapshot) for each individually.
+
+**Step 1** (for `needs-assertion-fix` or `needs-more-diagnosis`): Navigate to the failing page → `browser_snapshot` → **EXPLICIT COMPARISON**:
    ```
    ASSERTION: "<what the test expects>"
    ACTUAL:   "<what the snapshot shows>"
@@ -843,6 +845,8 @@ For ALL Phase 2 failures in this run, do this simultaneously:
 - App behavior changed after an action (e.g., "after clicking submit, balance should decrease" → ACTUAL shows no change → **Phase 3**, could be optimistic update bug, backend failure, or spec mismatch)
 - Data values differ (e.g., expected "¥1000" but got "¥999" → **Phase 3**, could be rounding, discount, or calculation bug)
 - Missing elements after interaction (e.g., "after creating order, success message should appear" → no message → **Phase 3**)
+
+**Steps 2-4 (original)** — consolidated into Step 1 (navigate + snapshot + comparison).
 
 **Step 5** (for `ready-to-fix` with selector issue): Generate candidate list from snapshot:
 

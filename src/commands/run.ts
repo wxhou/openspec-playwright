@@ -81,10 +81,12 @@ export async function run(changeName: string, options: RunOptions) {
   if (options.project) {
     args.push("--project=" + options.project);
   }
-  if (options.grep) {
+  if (options.grep && options.smoke) {
+    // Combine: run tests matching BOTH smoke tag AND the grep pattern
+    args.push("--grep", `@smoke.*${options.grep}|${options.grep}.*@smoke`);
+  } else if (options.grep) {
     args.push("--grep=" + options.grep);
-  }
-  if (options.smoke) {
+  } else if (options.smoke) {
     args.push("--grep", "@smoke");
   }
   if (options.workers) {

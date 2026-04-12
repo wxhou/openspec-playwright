@@ -49,12 +49,41 @@ function atomicWrite(filePath: string, content: string): void {
   }
 }
 
+const LOCK_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
 /**
- * Acquire a lock file. Returns false if already locked by a live process.
+ * Acquire a lock file. Stale locks (>30min) are auto-removed.
+ * Returns false if already locked by a live process.
  */
 function acquireLock(lockPath: string): boolean {
+  // Check for stale lock from crashed process
+  if (existsSync(lockPath)) {
+    try {
+      const content = readFileSync(lockPath, "utf-8");
+      const [pidStr, tsStr] = content.split(":");
+      const ts = parseInt(tsStr, 10);
+      if (!isNaN(ts) && Date.now() - ts > LOCK_TTL_MS) {
+        // Stale: remove and retry
+        renameSync(lockPath, `${lockPath}.stale`);
+      } else {
+        // Check if process is still alive
+        if (pidStr) {
+          try {
+            process.kill(parseInt(pidStr, 10), 0);
+            return false; // Process alive, lock held
+          } catch {
+            // Process dead, stale lock
+            renameSync(lockPath, `${lockPath}.stale`);
+          }
+        }
+      }
+    } catch {
+      // Can't read lock, try to remove it
+      try { renameSync(lockPath, `${lockPath}.stale`); } catch {}
+    }
+  }
   try {
-    writeFileSync(lockPath, `${process.pid}`, { flag: "wx" });
+    writeFileSync(lockPath, `${process.pid}:${Date.now()}`, { flag: "wx" });
     return true;
   } catch {
     return false;
