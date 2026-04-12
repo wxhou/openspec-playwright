@@ -176,6 +176,10 @@ nav {
   letter-spacing: -0.01em;
 }
 
+.nav-logo-text {
+  white-space: nowrap;
+}
+
 .nav-logo-mark {
   width: 30px;
   height: 30px;
@@ -666,7 +670,7 @@ nav {
   display: grid;
   grid-template-columns: 56px 1fr;
   gap: 20px;
-  padding: 24px 0;
+  padding: 28px 0 20px;
   border-bottom: 1px solid var(--border);
   transition: background 200ms;
   margin: 0 -16px;
@@ -717,7 +721,7 @@ nav {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 6px;
+  margin-bottom: 10px;
   flex-wrap: wrap;
 }
 
@@ -848,7 +852,7 @@ nav {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  padding: 10px 0;
+  padding: 14px 0;
   border-bottom: 1px solid var(--border);
   font-size: 0.875rem;
 }
@@ -1363,6 +1367,7 @@ footer {
   }
   .hero-card {
     width: 100%;
+    margin-top: 16px;
   }
   .features-grid {
     grid-template-columns: 1fr;
@@ -1411,6 +1416,49 @@ footer {
   #features {
     padding: 48px 0;
   }
+  /* Nav: hide logo text on very small screens */
+  .nav-logo-text {
+    display: none;
+  }
+  /* Hero: reduce hero text size on mobile */
+  .hero-title {
+    font-size: clamp(2rem, 8vw, 2.5rem);
+  }
+  /* Prereq cards: readable font on mobile */
+  .prereq-card {
+    padding: 16px;
+  }
+  .prereq-cmd {
+    font-size: 0.68rem;
+    line-height: 1.6;
+  }
+  /* Workflow: reduce step font and badge size on mobile */
+  .step-name {
+    font-size: 0.9rem;
+  }
+  .step-desc {
+    font-size: 0.82rem;
+  }
+  .step-tag {
+    font-size: 0.65rem;
+    padding: 2px 6px;
+  }
+  .step-badge {
+    font-size: 0.6rem;
+  }
+  /* Sidebar on mobile */
+  .sidebar-card {
+    padding: 20px;
+  }
+  .sidebar-stat {
+    padding: 12px 0;
+  }
+  .sidebar-stat-label {
+    font-size: 0.82rem;
+  }
+  .sidebar-stat-value {
+    font-size: 0.85rem;
+  }
 }
 </style>
 </head>
@@ -1421,7 +1469,7 @@ footer {
   <div class="nav-inner">
     <a href="#" class="nav-logo">
       <div class="nav-logo-mark">OP</div>
-      openspec-playwright
+      <span class="nav-logo-text">openspec-playwright</span>
     </a>
     <ul class="nav-links">
       <li><a href="#features"><span class="nav-link-text">特性</span></a></li>
