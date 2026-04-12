@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `SKILL.md` v2.24: Mock Data Rule 大幅扩展 — Frontend mocking 禁止（禁止 mock JS 变量/组件状态，否则隐藏真实集成问题）；API mocking 仅限 HTTP 层（`page.route()` 拦截，不能 mock 数据库/后端服务）；使用前必须用户授权（列 reason + endpoint + expected behavior）；业务计算类断言必须用 API 验证（余额、总数、折扣等）；移除 5 处模板路径引用（模板已通过 `openspec-pw init/update` 同步到项目本地）；test-plan.md 的 test case 如需 API mock 则标记 `⚠️ API Mock`
 
+- `docs/index.html`: Hero 按钮布局修复 — `.hero-desc` 和 `.hero-actions` 同处 grid row 3 导致 margin-bottom:36 + margin-top:80 = 116px 间隙；改为 grid 行 4 分离；`employee-standards.md` Step 5 同步 CSS 审计步骤
+
+- `employee-standards.md`: Step 5 CSS 审计升级为两步式框架感知方法 — 1a) 确定项目间距基准（CSS variables / Tailwind spacing / Bootstrap spacer）；1b) grep 提取值对比基准；2) 检查同一 grid/flex 容器中相邻元素的 margin 组合，识别 margin hack（margin 和 > 基准 2 倍应改为 grid 行或 gap 控制）；移除写死的阈值数字
+
 ## [0.2.9] - 2026-04-10
 
 ### Changed
