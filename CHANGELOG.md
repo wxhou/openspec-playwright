@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - `employee-standards.md`: complete rewrite — add 6-chapter structure (适用范围、浏览器操作约束、代码质量、上下文管理、大规模任务处理、工具限制与编辑安全) + 完整生产工作流（含步骤详解 + 反馈循环表）；4轮深度检查后 P0/P1 问题全部修复
 
+- `SKILL.md` v2.24: Mock Data Rule 大幅扩展 — Frontend mocking 禁止（禁止 mock JS 变量/组件状态，否则隐藏真实集成问题）；API mocking 仅限 HTTP 层（`page.route()` 拦截，不能 mock 数据库/后端服务）；使用前必须用户授权（列 reason + endpoint + expected behavior）；业务计算类断言必须用 API 验证（余额、总数、折扣等）；移除 5 处模板路径引用（模板已通过 `openspec-pw init/update` 同步到项目本地）；test-plan.md 的 test case 如需 API mock 则标记 `⚠️ API Mock`
+
 ## [0.2.9] - 2026-04-10
 
 ### Changed
