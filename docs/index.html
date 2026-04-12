@@ -588,6 +588,67 @@ nav {
   background: var(--bg);
 }
 
+.workflow-prereq {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 48px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid var(--border);
+}
+
+.prereq-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  transition: border-color 200ms;
+}
+
+.prereq-card:hover {
+  border-color: var(--accent);
+}
+
+.prereq-card-title {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.prereq-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.prereq-icon svg {
+  width: 12px;
+  height: 12px;
+}
+
+.prereq-cmd {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.prereq-role {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
 .workflow-layout {
   display: grid;
   grid-template-columns: 1fr 340px;
@@ -704,6 +765,60 @@ nav {
   border-radius: 4px;
   color: var(--accent-dark);
 }
+
+.step-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.step-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 3px 8px;
+  border-radius: 4px;
+  transition: border-color 150ms, color 150ms;
+}
+
+.step-tag:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.step-tag::before {
+  content: '/';
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.65rem;
+}
+
+.step-tag.tool {
+  background: transparent;
+  border-color: transparent;
+  padding-left: 4px;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.step-tag.tool::before {
+  content: '';
+}
+
+.tag-openspec { border-color: rgba(59,130,246,0.3); color: #3b82f6; }
+.tag-openspec::before { color: #3b82f6; }
+.tag-gstack { border-color: rgba(139,92,246,0.3); color: #7c3aed; }
+.tag-gstack::before { color: #7c3aed; }
+.tag-pw { border-color: rgba(16,185,129,0.3); color: #16a34a; }
+.tag-pw::before { color: #16a34a; }
 
 /* Workflow sidebar */
 .workflow-sidebar {
@@ -1229,6 +1344,12 @@ footer {
   }
 }
 
+@media (max-width: 1024px) {
+  .workflow-prereq {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 768px) {
   .hero {
     grid-template-columns: 1fr;
@@ -1267,6 +1388,9 @@ footer {
   }
   .nav-links a:not(.nav-cta) {
     padding: 6px;
+  }
+  .workflow-prereq {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1416,6 +1540,41 @@ footer {
     <p class="section-desc">严格按顺序执行，每步有明确产出。反馈循环确保问题不过夜。</p>
   </div>
 
+  <div class="workflow-prereq anim">
+    <div class="prereq-card">
+      <div class="prereq-card-title">
+        <span class="prereq-icon"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="6" stroke="#e85d04" stroke-width="1.5"/><path d="M14 14l4.5 4.5" stroke="#e85d04" stroke-width="2" stroke-linecap="round"/></svg></span>
+        gstack
+      </div>
+      <div class="prereq-cmd">git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup</div>
+      <div class="prereq-role">/browse 探索 + /qa 验证</div>
+    </div>
+    <div class="prereq-card">
+      <div class="prereq-card-title">
+        <span class="prereq-icon"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="3" width="14" height="18" rx="2" stroke="#3b82f6" stroke-width="1.5"/><path d="M8 7h8M8 11h8M8 15h5" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+        OpenSpec CLI
+      </div>
+      <div class="prereq-cmd">npm install -g @fission-ai/openspec && openspec init</div>
+      <div class="prereq-role">/opsx:propose、/opsx:apply 等命令</div>
+    </div>
+    <div class="prereq-card">
+      <div class="prereq-card-title">
+        <span class="prereq-icon"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2v4M7 6l2-2M17 6l-2-2" stroke="#2ead73" stroke-width="1.5" stroke-linecap="round"/><rect x="6" y="6" width="12" height="10" rx="2" fill="#2ead73"/><path d="M9 16v2a3 3 0 006 0v-2" stroke="#2ead73" stroke-width="1.5"/></svg></span>
+        openspec-playwright
+      </div>
+      <div class="prereq-cmd">npm install -g openspec-playwright && openspec-pw init</div>
+      <div class="prereq-role">/opsx:e2e 命令 + 测试模板</div>
+    </div>
+    <div class="prereq-card">
+      <div class="prereq-card-title">
+        <span class="prereq-icon"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2v4M7 6l2-2M17 6l-2-2" stroke="#7c3aed" stroke-width="1.5" stroke-linecap="round"/><rect x="6" y="6" width="12" height="10" rx="2" fill="#7c3aed"/></svg></span>
+        Playwright MCP
+      </div>
+      <div class="prereq-cmd">claude mcp add playwright npx @playwright/mcp@latest</div>
+      <div class="prereq-role">测试执行 + Healer 自愈</div>
+    </div>
+  </div>
+
   <div class="workflow-layout">
     <div class="workflow-steps">
       <div class="workflow-step anim">
@@ -1426,6 +1585,10 @@ footer {
             <span class="step-badge badge-required">必需</span>
           </div>
           <div class="step-desc">现有项目先探索（<code>/opsx:explore</code>）再写 proposal；新项目直接生成 proposal + scenarios。</div>
+          <div class="step-tags">
+            <span class="step-tag tag-openspec">opsx:explore</span>
+            <span class="step-tag tag-openspec">opsx:propose</span>
+          </div>
         </div>
       </div>
 
@@ -1437,6 +1600,11 @@ footer {
             <span class="step-badge badge-optional">按需</span>
           </div>
           <div class="step-desc"><code>/office-hours</code>、<code>/plan-ceo-review</code>、<code>/plan-eng-review</code>。战略和架构影响评审。</div>
+          <div class="step-tags">
+            <span class="step-tag tag-gstack">office-hours</span>
+            <span class="step-tag tag-gstack">plan-ceo-review</span>
+            <span class="step-tag tag-gstack">plan-eng-review</span>
+          </div>
         </div>
       </div>
 
@@ -1448,6 +1616,9 @@ footer {
             <span class="step-badge badge-required">必需</span>
           </div>
           <div class="step-desc">在实现前进行设计评审，确保方案合理。评审通过后开始实现。</div>
+          <div class="step-tags">
+            <span class="step-tag tag-gstack">plan-design-review</span>
+          </div>
         </div>
       </div>
 
@@ -1459,6 +1630,9 @@ footer {
             <span class="step-badge badge-required">必需</span>
           </div>
           <div class="step-desc">执行 <code>/opsx:apply</code> 进行实现 → <code>lint + typecheck</code> 通过才算成功。</div>
+          <div class="step-tags">
+            <span class="step-tag tag-openspec">opsx:apply</span>
+          </div>
         </div>
       </div>
 
@@ -1470,6 +1644,11 @@ footer {
             <span class="step-badge badge-required">必需</span>
           </div>
           <div class="step-desc"><code>/opsx:verify</code> <code>/design-review</code> <code>/review</code> 自审实现代码，确保质量。</div>
+          <div class="step-tags">
+            <span class="step-tag tag-openspec">opsx:verify</span>
+            <span class="step-tag tag-gstack">design-review</span>
+            <span class="step-tag tag-gstack">review</span>
+          </div>
         </div>
       </div>
 
@@ -1481,6 +1660,12 @@ footer {
             <span class="step-badge badge-required">必需</span>
           </div>
           <div class="step-desc"><code>/opsx:e2e</code> 生成测试 → <code>/browse</code> 探索 DOM → Healer 修复 → <code>/qa</code> 真实浏览器验证。</div>
+          <div class="step-tags">
+            <span class="step-tag tag-openspec">opsx:e2e</span>
+            <span class="step-tag tag-gstack">browse</span>
+            <span class="step-tag tag-gstack">qa</span>
+            <span class="step-tag tag-pw tool">Playwright MCP</span>
+          </div>
         </div>
       </div>
 
@@ -1492,6 +1677,9 @@ footer {
             <span class="step-badge badge-required">必需</span>
           </div>
           <div class="step-desc">永久归档，更新 <code>specs/</code>。</div>
+          <div class="step-tags">
+            <span class="step-tag tag-openspec">opsx:archive</span>
+          </div>
         </div>
       </div>
 
@@ -1503,6 +1691,11 @@ footer {
             <span class="step-badge badge-required">必需</span>
           </div>
           <div class="step-desc"><code>/ship</code>、<code>/land-and-deploy</code> 或 <code>/canary</code>。选择合适的发布策略。</div>
+          <div class="step-tags">
+            <span class="step-tag tag-gstack">ship</span>
+            <span class="step-tag tag-gstack">land-and-deploy</span>
+            <span class="step-tag tag-gstack">canary</span>
+          </div>
         </div>
       </div>
 
@@ -1514,6 +1707,9 @@ footer {
             <span class="step-badge badge-optional">按需</span>
           </div>
           <div class="step-desc">评审本次迭代，总结经验教训。<code>/retro</code></div>
+          <div class="step-tags">
+            <span class="step-tag tag-gstack">retro</span>
+          </div>
         </div>
       </div>
     </div>
