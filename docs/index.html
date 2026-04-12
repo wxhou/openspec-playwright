@@ -1019,15 +1019,20 @@ nav {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.4rem;
   margin-bottom: 4px;
+  overflow: hidden;
 }
 
 .si-claude { background: #fff7ed; }
 .si-pw { background: #f0fdf4; }
-.si-gstack { background: #faf5ff; }
+.si-gstack { background: #fff7ed; }
 .si-openspec { background: #eff6ff; }
-.si-mcp { background: #fdf4ff; }
+.si-mcp { background: #f0fdf4; }
+
+.stack-icon svg {
+  width: 26px;
+  height: 26px;
+}
 
 .stack-name {
   font-family: var(--font-display);
@@ -1681,27 +1686,64 @@ footer {
 
   <div class="stack-grid">
     <div class="stack-item anim anim-1">
-      <div class="stack-icon si-claude">🤖</div>
+      <div class="stack-icon si-claude">
+        <!-- Anthropic / Claude Code logo -->
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2L20 20H4L12 2Z" stroke="#d4a574" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="M8 14h8M10 18h4" stroke="#d4a574" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
       <div class="stack-name">Claude Code</div>
       <div class="stack-role">AI 执行引擎</div>
     </div>
     <div class="stack-item anim anim-2">
-      <div class="stack-icon si-pw">🧪</div>
+      <div class="stack-icon si-pw">
+        <!-- Playwright logo -->
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M10 4C7.2 4 5 6.2 5 9v6c0 2.8 2.2 5 5 5h4c2.8 0 5-2.2 5-5V9c0-2.8-2.2-5-5-5h-4Z" fill="#2ead73"/>
+          <path d="M10 4C7.2 4 5 6.2 5 9v6c0 2.8 2.2 5 5 5" stroke="#2ead73" stroke-width="1.5"/>
+          <path d="M14 4c2.8 0 5 2.2 5 5v6c0 2.8-2.2 5-5 5" stroke="#16a34a" stroke-width="1.5"/>
+          <circle cx="9.5" cy="9" r="1.5" fill="white"/>
+          <circle cx="14.5" cy="9" r="1.5" fill="white"/>
+        </svg>
+      </div>
       <div class="stack-name">Playwright</div>
       <div class="stack-role">测试框架</div>
     </div>
     <div class="stack-item anim anim-3">
-      <div class="stack-icon si-gstack">🔍</div>
+      <div class="stack-icon si-gstack">
+        <!-- gstack logo — magnifier + gear -->
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="10" cy="10" r="6" stroke="#e85d04" stroke-width="1.5"/>
+          <path d="M14 14l4.5 4.5" stroke="#e85d04" stroke-width="2" stroke-linecap="round"/>
+          <path d="M8 9h4M10 7v4" stroke="#e85d04" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
       <div class="stack-name">gstack /browse</div>
       <div class="stack-role">浏览器探索</div>
     </div>
     <div class="stack-item anim anim-4">
-      <div class="stack-icon si-openspec">📋</div>
+      <div class="stack-icon si-openspec">
+        <!-- OpenSpec logo — document with checkmark -->
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="5" y="3" width="14" height="18" rx="2" stroke="#3b82f6" stroke-width="1.5"/>
+          <path d="M8 7h8M8 11h8M8 15h5" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M15.5 13.5l2 2 3.5-3.5" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
       <div class="stack-name">OpenSpec</div>
       <div class="stack-role">规范驱动</div>
     </div>
     <div class="stack-item anim anim-5">
-      <div class="stack-icon si-mcp">🔌</div>
+      <div class="stack-icon si-mcp">
+        <!-- Playwright MCP — plug icon -->
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2v4M7 6l2-2M17 6l-2-2" stroke="#7c3aed" stroke-width="1.5" stroke-linecap="round"/>
+          <rect x="6" y="6" width="12" height="10" rx="2" fill="#7c3aed"/>
+          <path d="M9 16v2a3 3 0 006 0v-2" stroke="#7c3aed" stroke-width="1.5"/>
+          <circle cx="12" cy="11" r="1.5" fill="white"/>
+        </svg>
+      </div>
       <div class="stack-name">Playwright MCP</div>
       <div class="stack-role">测试执行</div>
     </div>
