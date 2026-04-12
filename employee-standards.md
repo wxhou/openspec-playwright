@@ -19,9 +19,7 @@ E2E 工作流前提（由用户确保，非 AI 操作）：
 
 ## 1. 浏览器操作约束
 
-所有浏览器操作**必须**使用 gstack 的 `/browse`（禁止使用其他 MCP Chrome 工具）。
-
-Claude Code 会根据上下文自动调度 gstack 技能，无需手动路由。
+所有浏览器操作用 gstack 的 `/browse` 探索 + `/qa` 验证，Playwright MCP 执行测试。Claude Code 会根据上下文自动调度，无需手动路由。
 
 **冲突解决**：gstack 任何想直接修改代码的行为，都必须先确认当前 OpenSpec proposal 是否已存在并通过（检查 `changes/<name>/proposal.md` 是否处于 `approved` 状态）。
 
