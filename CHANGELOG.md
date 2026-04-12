@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- `openspec-pw explore` command: parallel route exploration via N independent Chromium workers, each with its own browser context (no shared state). `--parallel <n>` sets worker count (default 4). `--dry-run` previews chunk assignment.
+- CLI: `openspec-pw run --smoke` to run only smoke tests (`--grep @smoke`)
+- CLI: `openspec-pw run -w/--workers <n>` to control parallel worker count
+- SKILL.md Step 4.5: Route Snapshot Hash — sitemap.xml hash to skip unchanged routes on re-runs
+- SKILL.md Step 6: Selector Caching — reuse Step 4 exploration selectors in test generation (~30-50 fewer navigations per 50-test suite)
+- playwright.config.ts: CI workers default raised to 4 (from 1)
+
+### Fixed
+- SKILL.md Step 4.2: removed broken `Promise.allSettled` + `$B` parallel approach (caused data pollution due to shared Chromium instance). Replaced with `openspec-pw explore` redirect.
+
 ## [0.3.0] - 2026-04-12
 
 ### Changed
