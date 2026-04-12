@@ -794,41 +794,61 @@ For every App Bug classified in Phase 1, record it in `openspec/reports/app-bug-
 
 **Healer — Phase 2: Repair**
 
+> **Performance note**: Playwright startup (~15-20s) is the dominant cost. Batch diagnosis first, then sequential isolated runs.
+
 After Triage classifies failure as "Test Bug" or "Ambiguous":
 
-1. Navigate to the failing page
-2. Get page snapshot: `browser_snapshot`
-3. **EXPLICIT COMPARISON** — output before fixing:
+**Step 0 — Batch diagnosis** (no Playwright, fast):
+For ALL Phase 2 failures in this run, do this simultaneously:
+1. Read the failing test spec file(s) to understand what each test verifies
+2. Read `app-knowledge.md` for any previous fixes or selector patterns
+3. Read `app-knowledge.md` → **Common Selector Patterns** for project conventions
+4. For each test, output:
+   ```
+   TEST: <test-name>
+   ROUTE: <route>
+   ASSERTION: "<what the test expects>"
+   EXPECTED_BEHAVIOR: <from spec, one line>
+   KNOWN_FIX: <yes/no — from app-knowledge.md Selector Fixes table>
+   SELECTOR_CANDIDATES: <list from app-knowledge.md patterns if available>
+   ```
+5. Classify each test:
+   - `ready-to-fix` — known fix exists, or selector pattern is clear
+   - `needs-assertion-fix` — assertion itself needs changing (typo, wrong expected value)
+   - `needs-phase3` — ambiguous, no clear fix path
+   - `needs-more-diagnosis` — need to see actual page to determine
+
+**Skip remaining steps for `needs-phase3` tests** — go directly to Phase 3.
+
+**Step 1** (for `needs-assertion-fix`): Navigate to the failing page → `browser_snapshot` → **EXPLICIT COMPARISON**:
    ```
    ASSERTION: "<what the test expects>"
    ACTUAL:   "<what the snapshot shows>"
    MATCH:    <yes/no>
    ```
-4. If MATCH=no:
 
-   **⚠️ Assertion modification guard — never skip Phase 3 unless ALL conditions are met:**
+**Assertion modification guard — never skip Phase 3 unless ALL conditions are met:**
+- The test has **never passed with the current assertion** (newly generated test, or this is the first time this assertion fails)
+- The ACTUAL value is **verifiably** from a different spec section (e.g., this test was in the wrong describe block)
+- You can point to the **specific line in the spec** that defines the ACTUAL behavior
 
-   - The test has **never passed with the current assertion** (newly generated test, or this is the first time this assertion fails)
-   - The ACTUAL value is **verifiably** from a different spec section (e.g., this test was in the wrong describe block)
-   - You can point to the **specific line in the spec** that defines the ACTUAL behavior
+**If ANY condition is uncertain → Phase 3 immediately.** Do NOT modify the assertion.
 
-   **If ANY condition is uncertain → Phase 3 immediately.** Do NOT modify the assertion.
+**Safe to fix without Phase 3:**
+- Typo in assertion (e.g., "Subm\"it" vs "Submit" in the expected text)
+- Selector was correct but the element was moved to a different location (same text, different selector)
+- Explicit spec drift confirmed by reading the spec (e.g., spec says "button says Submit" but test says "button says Submit Form")
 
-   **Safe to fix without Phase 3:**
-   - Typo in assertion (e.g., "Submmit" vs "Submit" in the expected text)
-   - Selector was correct but the element was moved to a different location (same text, different selector)
-   - Explicit spec drift confirmed by reading the spec (e.g., spec says "button says Submit" but test says "button says Submit Form")
+**Never fix without Phase 3:**
+- App behavior changed after an action (e.g., "after clicking submit, balance should decrease" → ACTUAL shows no change → **Phase 3**, could be optimistic update bug, backend failure, or spec mismatch)
+- Data values differ (e.g., expected "¥1000" but got "¥999" → **Phase 3**, could be rounding, discount, or calculation bug)
+- Missing elements after interaction (e.g., "after creating order, success message should appear" → no message → **Phase 3**)
 
-   **Never fix without Phase 3:**
-   - App behavior changed after an action (e.g., "after clicking submit, balance should decrease" → ACTUAL shows no change → **Phase 3**, could be optimistic update bug, backend failure, or spec mismatch)
-   - Data values differ (e.g., expected "¥1000" but got "¥999" → **Phase 3**, could be rounding, discount, or calculation bug)
-   - Missing elements after interaction (e.g., "after creating order, success message should appear" → no message → **Phase 3**)
+**Step 5** (for `ready-to-fix` with selector issue): Generate candidate list from snapshot:
 
-5. If selector issue → generate candidate list, then select:
+   **5a. Extract candidates** — identify the target element from the failing test's assertion, then from the snapshot list all selectors for that element.
 
-   **5a. Extract candidates** — identify the target element from the failing test's assertion, then from the snapshot list all selectors for that element:
-
-   First check `app-knowledge.md` → **Common Selector Patterns** for project-specific conventions (e.g., if project uses Tailwind and `.btn-primary` is listed as preferred → treat it as Fair or higher, not Fragile).
+   First check `app-knowledge.md` → **Common Selector Patterns** for project-specific conventions.
 
    ```
    Target: <element from failing assertion, e.g. "button with text 'Submit'">
@@ -845,8 +865,14 @@ After Triage classifies failure as "Test Bug" or "Ambiguous":
 
    **5b. Select top candidate** — pick the highest-stability candidate that matches the target. Output: `SELECTED: <selector> — reason: <why this one>`.
 
-6. Apply fix → re-run **only that test** (attempt 1/3)
-7. If healed → append to `app-knowledge.md` → **Selector Fixes** table (route, old → new selector, reason, date)
+**Step 6** — **Apply ALL fixes, then run sequential isolated**:
+1. Apply all prepared fixes to all Phase 2 tests in this run
+2. Run: `npx playwright test --workers=1 --grep "<test1|test2|test3|...>"` (all Phase 2 tests as a single combined grep)
+3. `--workers=1` ensures true isolated execution — no data races, no shared state pollution
+4. Each test result is independent — even if one fails, others proceed cleanly
+5. Report per-test result (pass/fail/error) and update heal counters accordingly
+
+**Step 7** — If healed → append to `app-knowledge.md` → **Selector Fixes** table (route, old → new selector, reason, date)
 
 **Element Missing handling (when browser_snapshot shows element not found):**
 
