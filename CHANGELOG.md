@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2026-04-13
+
+### Fixed
+- `installProjectClaudeMd`: always replace content inside OPENSPEC:START/END markers (previously skipped if markers existed, leaving stale content forever). Update now refreshes standards in all projects regardless of prior install date.
+- `openspec-pw update`: now syncs employee-grade standards to project CLAUDE.md alongside skill/commands/templates.
+
 ## [0.3.2] - 2026-04-13
 
 ### Changed

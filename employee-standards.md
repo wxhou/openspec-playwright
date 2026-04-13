@@ -55,9 +55,8 @@ E2E 工作流前提（由用户确保，非 AI 操作）：
  4. 实现 → /opsx:apply
  5. 自审 → /opsx:verify
  6. E2E 测试 → /opsx:e2e <change-name> → /browse 探索 + /qa 验证
- 7. 验证通过后归档 → /opsx:archive
- 8. 发布 → /ship 或 /land-and-deploy
- 9. 迭代回顾 → /retro
+ 7. 发布 → /ship 或 /land-and-deploy
+ 8. 迭代回顾 → /retro
 ```
 
 ### 步骤详解
@@ -77,8 +76,6 @@ E2E 工作流前提（由用户确保，非 AI 操作）：
 
 **6. E2E 测试**：`/opsx:e2e <change-name>` 生成 Playwright 测试 → `/browse` 探索真实 DOM → Healer 自动修复 → `/qa` 真实浏览器验证。E2E 通过后进入发布环节。
 
-**7. 验证通过后归档**：`/opsx:archive` 永久归档，更新 `specs/`
+**7. 发布**：`/ship` 或 `/land-and-deploy`
 
-**8. 发布**：`/ship` 或 `/land-and-deploy`
-
-**9. 迭代回顾**：`/retro`
+**8. 迭代回顾**：`/retro`

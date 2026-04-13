@@ -95,40 +95,55 @@ export function installProjectClaudeMd(
   standardsContent: string,
 ): void {
   const dest = join(projectRoot, "CLAUDE.md");
-  const exists = existsSync(dest);
-  if (exists) {
-    // Append standards inside OPENSPEC:START/END markers
-    const existing = readFileSync(dest, "utf-8");
-    const markerStart = "<!-- OPENSPEC:START -->";
-    const markerEnd = "<!-- OPENSPEC:END -->";
+  const markerStart = "<!-- OPENSPEC:START -->";
+  const markerEnd = "<!-- OPENSPEC:END -->";
 
-    if (existing.includes(markerStart) && existing.includes(markerEnd)) {
-      // Already has markers, skip
-      console.log(
-        chalk.gray("  - CLAUDE.md already has standards markers, skipping"),
-      );
-    } else {
-      const updated =
-        existing.trim() +
-        "\n\n" +
-        markerStart +
-        "\n\n" +
-        standardsContent +
-        "\n\n" +
-        markerEnd +
-        "\n";
-      writeFileSync(dest, updated);
-      console.log(
-        chalk.green("  ✓ CLAUDE.md: appended employee-grade standards"),
-      );
-    }
-  } else {
-    // No existing CLAUDE.md, create from template
+  if (!existsSync(dest)) {
+    // No CLAUDE.md → create with markers wrapping standards
     const projName = projectRoot.split("/").pop() ?? "Project";
-    const content = `# ${projName}\n\n${standardsContent}\n`;
+    const content = `# ${projName}\n\n${markerStart}\n\n${standardsContent}\n\n${markerEnd}\n`;
     writeFileSync(dest, content);
     console.log(
-      chalk.green("  ✓ CLAUDE.md: created with employee-grade standards"),
+      chalk.green(`  ✓ CLAUDE.md: created with employee-grade standards`),
+    );
+    return;
+  }
+
+  // CLAUDE.md exists → read and manage OPENSPEC block
+  const existing = readFileSync(dest, "utf-8");
+  const hasStart = existing.includes(markerStart);
+  const hasEnd = existing.includes(markerEnd);
+
+  if (hasStart && hasEnd) {
+    // Markers exist → replace the block (preserves outside content)
+    const startIdx = existing.indexOf(markerStart);
+    const endIdx = existing.indexOf(markerEnd) + markerEnd.length;
+    const before = existing.slice(0, startIdx).trimEnd();
+    const after = existing.slice(endIdx);
+    const updated = before + "\n" + markerStart + "\n\n" + standardsContent.trim() + "\n\n" + markerEnd + after;
+    writeFileSync(dest, updated);
+    console.log(
+      chalk.green(`  ✓ CLAUDE.md: updated employee-grade standards (markers preserved, content refreshed)`),
+    );
+  } else if (!hasStart && !hasEnd) {
+    // No markers → append with markers
+    const updated =
+      existing.trim() +
+      "\n\n" +
+      markerStart +
+      "\n\n" +
+      standardsContent +
+      "\n\n" +
+      markerEnd +
+      "\n";
+    writeFileSync(dest, updated);
+    console.log(
+      chalk.green(`  ✓ CLAUDE.md: appended employee-grade standards with markers`),
+    );
+  } else {
+    // Partial markers (start without end or vice versa) → malformed, warn
+    console.log(
+      chalk.yellow(`  ⚠ CLAUDE.md has incomplete OPENSPEC markers — skipped`),
     );
   }
 }

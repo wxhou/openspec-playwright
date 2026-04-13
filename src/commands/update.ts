@@ -13,6 +13,7 @@ import { tmpdir } from "os";
 import { promisify } from "util";
 import chalk from "chalk";
 import * as tar from "tar";
+import { installProjectClaudeMd } from "./editors.js";
 import { syncMcpTools } from "./mcpSync.js";
 import {
   hasClaudeCode,
@@ -115,6 +116,13 @@ export async function update(options: UpdateOptions) {
 
       // Sync project templates (BasePage.ts, seed.spec.ts)
       syncProjectTemplates(tmpDir, projectRoot);
+
+      // Update employee-grade standards in project CLAUDE.md
+      const standardsSrc = join(tmpDir, "employee-standards.md");
+      if (existsSync(standardsSrc)) {
+        const standards = readFileSync(standardsSrc, "utf-8");
+        installProjectClaudeMd(projectRoot, standards);
+      }
 
       rmSync(tmpDir, { recursive: true, force: true });
       console.log(chalk.green("  ✓ Commands, skill & templates updated to latest"));

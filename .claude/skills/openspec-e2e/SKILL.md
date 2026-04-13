@@ -794,8 +794,6 @@ For every App Bug classified in Phase 1, record it in `openspec/reports/app-bug-
 
 **Healer — Phase 2: Repair**
 
-> **Performance note**: Playwright startup (~15-20s) is the dominant cost. Batch diagnosis first, then sequential isolated runs.
-
 After Triage classifies failure as "Test Bug" or "Ambiguous":
 
 **Step 0 — Batch diagnosis** (no Playwright, fast):
@@ -845,8 +843,6 @@ For ALL Phase 2 failures in this run, do this simultaneously:
 - App behavior changed after an action (e.g., "after clicking submit, balance should decrease" → ACTUAL shows no change → **Phase 3**, could be optimistic update bug, backend failure, or spec mismatch)
 - Data values differ (e.g., expected "¥1000" but got "¥999" → **Phase 3**, could be rounding, discount, or calculation bug)
 - Missing elements after interaction (e.g., "after creating order, success message should appear" → no message → **Phase 3**)
-
-**Steps 2-4 (original)** — consolidated into Step 1 (navigate + snapshot + comparison).
 
 **Step 5** (for `ready-to-fix` with selector issue): Generate candidate list from snapshot:
 
