@@ -234,7 +234,7 @@ export async function init(options: InitOptions) {
   console.log(chalk.gray("  Planner → Generator → Healer\n"));
 }
 
-async function generateSeedTest(projectRoot: string, force: boolean) {
+export async function generateSeedTest(projectRoot: string, force: boolean) {
   const testsDir = join(projectRoot, "tests", "playwright");
   mkdirSync(testsDir, { recursive: true });
 
@@ -280,7 +280,7 @@ async function generateSeedTest(projectRoot: string, force: boolean) {
   );
 }
 
-async function generateAppKnowledge(projectRoot: string) {
+export async function generateAppKnowledge(projectRoot: string) {
   const src = join(TEMPLATE_DIR, "app-knowledge.md");
   const dest = join(projectRoot, "tests", "playwright", "app-knowledge.md");
 
@@ -297,7 +297,7 @@ async function generateAppKnowledge(projectRoot: string) {
   }
 }
 
-async function generateSharedPages(projectRoot: string) {
+export async function generateSharedPages(projectRoot: string) {
   const pagesDir = join(projectRoot, "tests", "playwright", "pages");
   mkdirSync(pagesDir, { recursive: true });
 
@@ -319,7 +319,7 @@ async function generateSharedPages(projectRoot: string) {
 }
 
 // Install SKILL reference templates (format guides for LLM to read)
-function installSkillTemplates(projectRoot: string) {
+export function installSkillTemplates(projectRoot: string) {
   const SKILL_DIR = join(
     projectRoot,
     ".claude",
@@ -340,7 +340,7 @@ function installSkillTemplates(projectRoot: string) {
   for (const file of SKILL_TEMPLATE_FILES) {
     const src = join(TEMPLATE_DIR, file);
     const dest = join(templatesDir, file);
-    if (existsSync(src)) {
+    if (existsSync(src) && !existsSync(dest)) {
       writeFileSync(dest, readFileSync(src));
     }
   }
