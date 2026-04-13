@@ -61,10 +61,9 @@ E2E 工作流前提（由用户确保，非 AI 操作）：
 
 ### 步骤详解
 
-**1. 探索与提案**：现有项目先探索（`/opsx:explore`）再写 proposal（`/opsx:propose`）；新项目（greenfield）直接生成 proposal + scenarios（记录到 `specs/` 和 `changes/`）。
+**1. 探索与提案**：现有项目先探索（`/opsx:explore`）再写 proposal（`/opsx:propose`）；新项目（greenfield）直接生成 proposal + scenarios（记录到 `specs/` 和 `changes/`）。方向不明确时可用 `/office-hours` 做创意验证。
 
 **2. 产品与架构评审**（按需触发）：
-- `/office-hours`：产品方向、范围、优先级不确定时
 - `/plan-ceo-review`：产品战略影响、竞争格局变化时
 - `/plan-eng-review`：架构影响（新增服务、API 契约变更、数据模型重构）时
 
