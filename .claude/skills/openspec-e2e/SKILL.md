@@ -422,6 +422,8 @@ Reply **yes** to proceed, or tell me to exclude routes or adjust strategies.
 
 **Create test cases**: functional requirement → test case, with `@role` and `@auth` tags. Reference verified selectors from app-exploration.md.
 
+> **State mutual exclusion**: before creating each test case — where are the state boundaries? During state transitions, which elements disappear or appear? Mutual exclusion must be asserted explicitly.
+
 If a test case requires `page.route()` API mocking → append `⚠️ API Mock` flag to the test case line in the summary, with reason.
 
 **Idempotency**: If test-plan.md exists → read and use, **but you MAY supplement missing test cases**. "Do not regenerate" means: do not discard existing cases, but you CAN add new ones discovered during Step 4 exploration that weren't in the original spec (e.g., empty states, error paths found during DOM exploration).
