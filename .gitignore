@@ -3,6 +3,7 @@ node_modules/
 
 # Build output
 # dist/ is committed for npm install-from-git compatibility
+*.tgz
 
 # GitHub (workflows tracked, rest ignored)
 .github/
