@@ -16,7 +16,7 @@
     "test:run": "vitest run",
     "test:smoke": "npm run build && vitest run tests/smoke.test.ts",
     "prepublishOnly": "npm run build",
-    "release": "npm version patch && npm run build && git push && git push --tags && npm publish"
+    "release": "npm version patch && node scripts/bump-docs.js && npm run build && git add docs/index.html && git push && git push --tags && npm publish"
   },
   "dependencies": {
     "@types/tar": "^6.1.13",
@@ -42,6 +42,7 @@
     "dist",
     "bin",
     "templates",
+    "scripts",
     ".claude",
     "employee-standards.md",
     "README.md",

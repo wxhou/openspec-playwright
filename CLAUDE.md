@@ -48,18 +48,24 @@ npm run typecheck         # TypeScript type-check
 
 ## Release Checklist
 
-Before each `git tag vX.Y.Z && git push --tags`:
+Before each `npm run release` (bumps version, builds, pushes, publishes):
 
-- [ ] `npm run lint` passes — **run before every commit**, not just before release
+- [ ] `npm run lint` passes
 - [ ] `npm run typecheck` passes
 - [ ] `npm run build && npm run test:run` passes
-- [ ] `npm run build && npm pack && tar tf openspec-playwright-*.tgz | grep .claude` succeeds (verifies package contents)
-- [ ] `package.json` version already updated to `X.Y.Z`
+- [ ] `npm run build && npm pack && tar tf openspec-playwright-*.tgz | grep scripts` succeeds (verifies `scripts/bump-docs.js` is included)
+- [ ] `git status` is clean (no uncommitted changes)
 - [ ] `git log --oneline` shows expected changes
-- [ ] If re-tagging: delete old tag first — `git tag -d vX.Y.Z && git push origin :refs/tags/vX.Y.Z`
+
+**`npm run release` does:**
+1. `npm version patch` — bumps version in `package.json` + creates git commit
+2. `node scripts/bump-docs.js` — auto-updates `docs/index.html` version badge
+3. `npm run build` — compiles TypeScript
+4. `git add docs/index.html && git push` — pushes docs update
+5. `git push --tags && npm publish` — pushes tags + publishes to npm
 
 **Key rules:**
 - CI workflow must NEVER modify git history (no amend, no force-push)
 - Tests must not use hardcoded absolute paths — use `process.cwd()` or env vars
 - Periodically regenerate lockfile: `rm -rf node_modules package-lock.json && npm install`
-- **不主动发布**：未经用户明确要求，不执行 `git tag` 和 `git push --tags`
+- **不主动发布**：未经用户明确要求，不执行 `npm run release`
