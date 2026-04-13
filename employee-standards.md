@@ -75,6 +75,6 @@ E2E 工作流前提（由用户确保，非 AI 操作）：
 
 **6. E2E 测试**：`/opsx:e2e <change-name>` 生成 Playwright 测试 → `/browse` 探索真实 DOM → Healer 自动修复 → `/qa` 真实浏览器验证。E2E 通过后进入发布环节。
 
-**7. 发布**：`/ship` 或 `/land-and-deploy`
+**7. 发布**：`/ship`、`/land-and-deploy` 或 `/canary`。内部项目可能直接部署，无需走 PR 机制。
 
 **8. 迭代回顾**：`/retro`
