@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scripts/bump-docs.js`: auto-updates version badge in `docs/index.html` on release
 - `npm run release` now runs bump-docs.js before build/publish
 
-## [0.3.5] - 2026-04-14
+## [0.3.6] - 2026-04-14
 
 ### Added
 
