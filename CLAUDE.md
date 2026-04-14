@@ -56,6 +56,7 @@ Before each `npm run release` (bumps version, builds, pushes, publishes):
 - [ ] `npm run build && npm pack && tar tf openspec-playwright-*.tgz | grep scripts` succeeds (verifies `scripts/bump-docs.js` is included)
 - [ ] `git status` is clean (no uncommitted changes)
 - [ ] `git log --oneline` shows expected changes
+- [ ] Check `npm view openspec-playwright version` — this is the latest version on npm. Use `npm version patch` (or `minor`/`major`) to increment appropriately. **Never run `npm version` without checking first.** If npm already has the version about to be published, either bump higher or unpublish the conflicting version first.
 
 **`npm run release` does:**
 1. `npm version patch` — bumps version in `package.json` + creates git commit
