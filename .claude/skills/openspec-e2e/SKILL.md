@@ -32,9 +32,63 @@ Two modes, same pipeline:
 | Change | `/opsx:e2e <name>` | OpenSpec specs           | `changes/<name>/<name>.spec.ts` |
 | All    | `/opsx:e2e all`    | sitemap + homepage crawl | `pages/*.ts` (Page Objects)     |
 
-Both modes update `app-knowledge.md` and `app-exploration.md`. All `.spec.ts` files run together as regression suite.
+Both modes update `app-knowledge.md` and `app-exploration.md`. Spec files are independent per change — `openspec-pw run <name>` runs only `changes/<name>/<name>.spec.ts`.
+
+> **⚠️ Full regression is opt-in only.** Default: `openspec-pw run <name>` → one spec file. Do NOT run `npx playwright test` (no file), `--only-changed`, or any command that executes multiple `.spec.ts` files unless the user explicitly requests it. This includes running the same command twice across different changes to simulate regression.
 
 > **Role mapping**: Planner (Step 4–5) → test-plan.md; Generator (Step 6) → `.spec.ts` + Page Objects; Healer (Step 9) → repairs failures via MCP.
+
+## Setup / Teardown
+
+Playwright supports two approaches for global lifecycle hooks. **openspec-playwright uses project dependencies** (the recommended approach) for full feature support.
+
+### Comparison
+
+| Feature | Project Dependencies | globalSetup/globalTeardown |
+|---------|---------------------|---------------------------|
+| HTML report visibility | ✅ Shown as project | ❌ Not shown |
+| Trace recording | ✅ Full support | ❌ Not supported |
+| Playwright fixtures | ✅ Fully supported | ❌ Not supported |
+| Browser via fixture | ✅ Automatic | ❌ Manual launch |
+
+### Current Implementation
+
+**Setup project** (enabled by default):
+- `tests/playwright/auth.setup.ts` — authenticates once, saves session to `./playwright/.auth/user.json`
+- All test projects depend on setup via `dependencies: ['setup']`
+
+**Teardown project** (optional, disabled by default):
+- `tests/playwright/global.teardown.ts` — runs AFTER all tests complete
+- Use for: database cleanup, uploaded file removal, cache invalidation
+- Enable by uncommenting in `playwright.config.ts`
+
+### When to Enable Teardown
+
+Enable teardown when your tests create persistent data that should be cleaned up:
+
+| Scenario | Action |
+|----------|--------|
+| Tests create database records | ✅ Enable teardown, add DB cleanup |
+| Tests upload files | ✅ Enable teardown, add file cleanup |
+| Tests only read data | ❌ No teardown needed |
+| Tests use ephemeral/isolated environments | ❌ No teardown needed |
+
+### Enabling Teardown
+
+1. Copy template: `cp templates/global.teardown.ts tests/playwright/global.teardown.ts`
+2. Customize cleanup logic in the file
+3. Uncomment in `playwright.config.ts`:
+   ```typescript
+   projects: [
+     { name: 'setup', testMatch: /.*\.setup\.ts/ },
+     { name: 'teardown', testMatch: /global\.teardown\.ts/ }, // Uncomment
+     {
+       name: 'chromium',
+       // ...
+       teardown: 'teardown', // Uncomment
+     },
+   ],
+   ```
 
 ## Testing principles
 

@@ -149,7 +149,7 @@ Edit `tests/playwright/credentials.yaml`:
 
 ```
 Templates (in npm package, installed to .claude/skills/openspec-e2e/templates/)
-  └── test-plan.md, report.md, playwright.config.ts, e2e-test.ts, app-exploration.md
+  └── test-plan.md, report.md, playwright.config.ts, e2e-test.ts, global.teardown.ts, app-exploration.md
 
 CLI (openspec-pw)
   ├── init       → Installs commands, skill & templates to .claude/
@@ -166,10 +166,11 @@ Claude Code (/opsx:e2e)
   └── @playwright/mcp                 → Healer Agent tools
 
 Test Assets (tests/playwright/)
-  ├── seed.spec.ts       → Env validation
-  ├── auth.setup.ts      → Session recording
-  ├── credentials.yaml   → Test users
-  └── app-knowledge.md   → Project-level selector patterns (cross-change)
+  ├── seed.spec.ts         → Env validation
+  ├── auth.setup.ts        → Session recording
+  ├── global.teardown.ts   → Post-test cleanup (optional)
+  ├── credentials.yaml     → Test users
+  └── app-knowledge.md     → Project-level selector patterns (cross-change)
 
 Exploration (openspec/changes/<name>/specs/playwright/)
   ├── app-exploration.md → This change's routes + verified selectors

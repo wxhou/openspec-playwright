@@ -143,7 +143,7 @@ export async function init(options) {
     console.log(chalk.gray("  E2E tests through a three-agent pipeline:"));
     console.log(chalk.gray("  Planner → Generator → Healer\n"));
 }
-async function generateSeedTest(projectRoot, force) {
+export async function generateSeedTest(projectRoot, force) {
     const testsDir = join(projectRoot, "tests", "playwright");
     mkdirSync(testsDir, { recursive: true });
     const seedPath = join(testsDir, "seed.spec.ts");
@@ -177,7 +177,7 @@ async function generateSeedTest(projectRoot, force) {
     }
     console.log(chalk.gray("  (Customize BASE_URL and credentials for your app)"));
 }
-async function generateAppKnowledge(projectRoot) {
+export async function generateAppKnowledge(projectRoot) {
     const src = join(TEMPLATE_DIR, "app-knowledge.md");
     const dest = join(projectRoot, "tests", "playwright", "app-knowledge.md");
     if (existsSync(dest)) {
@@ -189,7 +189,7 @@ async function generateAppKnowledge(projectRoot) {
         console.log(chalk.green("  ✓ Generated: tests/playwright/app-knowledge.md"));
     }
 }
-async function generateSharedPages(projectRoot) {
+export async function generateSharedPages(projectRoot) {
     const pagesDir = join(projectRoot, "tests", "playwright", "pages");
     mkdirSync(pagesDir, { recursive: true });
     const basePageSrc = join(TEMPLATE_DIR, "pages", "BasePage.ts");
@@ -204,7 +204,7 @@ async function generateSharedPages(projectRoot) {
     }
 }
 // Install SKILL reference templates (format guides for LLM to read)
-function installSkillTemplates(projectRoot) {
+export function installSkillTemplates(projectRoot) {
     const SKILL_DIR = join(projectRoot, ".claude", "skills", "openspec-e2e");
     const templatesDir = join(SKILL_DIR, "templates");
     mkdirSync(templatesDir, { recursive: true });
@@ -218,7 +218,7 @@ function installSkillTemplates(projectRoot) {
     for (const file of SKILL_TEMPLATE_FILES) {
         const src = join(TEMPLATE_DIR, file);
         const dest = join(templatesDir, file);
-        if (existsSync(src)) {
+        if (existsSync(src) && !existsSync(dest)) {
             writeFileSync(dest, readFileSync(src));
         }
     }

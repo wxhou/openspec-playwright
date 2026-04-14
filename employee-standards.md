@@ -51,7 +51,7 @@ E2E 工作流前提（由用户确保，非 AI 操作）：
 ```
  1. 探索与提案
  2. 产品与架构评审（按需触发）
- 3. 设计审查
+ 3. 设计审查 → /plan-design-review + /frontend-design
  4. 实现 → /opsx:apply
  5. 自审 → /opsx:verify
  6. E2E 测试 → /opsx:e2e <change-name> → /browse 探索 + /qa 验证
@@ -68,6 +68,7 @@ E2E 工作流前提（由用户确保，非 AI 操作）：
 - `/plan-eng-review`：架构影响（新增服务、API 契约变更、数据模型重构）时
 
 **3. 设计审查**：在实现前进行设计评审，确保方案合理。评审通过后开始实现。
+- `/plan-design-review`：UI/UX 方案审查，评分各设计维度，确保用户体验达标
 
 **4. 实现**：执行 `/opsx:apply` 进行实现 → `lint + typecheck` 通过才算成功。
 

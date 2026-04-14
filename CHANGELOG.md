@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.7] - 2026-04-14
+
+### Added
+
+- `templates/global.teardown.ts`: Post-test cleanup template for database/file/cache/cache cleanup with project dependencies pattern (Playwright recommended approach)
+- SKILL.md: New "Setup / Teardown" section with comparison table, implementation guidance, and teardown enablement instructions
+- `playwright.config.ts`: Pre-configured teardown project (commented, ready to enable)
+- README.md: Test Assets tree updated to include `global.teardown.ts`
+
+### Fixed
+
+- `employee-standards.md`: Removed reference to non-existent `/frontend-design` skill
+- SKILL.md: Architecture section — clarified spec files are independent per change; added explicit opt-in warning for full regression
+- SKILL.md: Title "Global Setup/Teardown" renamed to "Setup / Teardown" for accuracy
+- `templates/playwright.config.ts`: Streamlined teardown comment block
+
+### Changed
+
+- `src/commands/init.ts`: `generateSeedTest`, `generateAppKnowledge`, `generateSharedPages`, `installSkillTemplates` now exported for use by other commands
+
 ## [0.3.6] - 2026-04-14
 
 ### Added

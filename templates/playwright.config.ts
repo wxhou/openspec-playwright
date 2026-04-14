@@ -90,9 +90,11 @@ export default defineConfig({
     reuseExistingServer: true,
   },
 
-  // Setup project for authentication (configured by openspec-pw run)
+  // Setup project (configured by openspec-pw run)
+  // Teardown project (optional): uncomment the two lines below + create tests/playwright/global.teardown.ts
   projects: [
     { name: 'setup', testMatch: /.*\.setup\.ts/ },
+    // { name: 'teardown', testMatch: /global\.teardown\.ts/ }, // Uncomment + create file
     {
       name: 'chromium',
       use: {
@@ -100,6 +102,7 @@ export default defineConfig({
         storageState: './playwright/.auth/user.json',
       },
       dependencies: ['setup'],
+      // teardown: 'teardown', // Uncomment when teardown project is enabled
     },
   ],
 });

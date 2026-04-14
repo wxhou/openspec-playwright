@@ -158,7 +158,7 @@ export async function update(options) {
     }
 }
 // Sync SKILL reference templates from extracted tarball to project
-function syncSkillTemplates(tmpDir, projectRoot) {
+export function syncSkillTemplates(tmpDir, projectRoot) {
     if (!existsSync(join(projectRoot, ".claude")))
         return;
     const SKILL_DIR = join(projectRoot, ".claude", "skills", "openspec-e2e");
@@ -233,13 +233,14 @@ function syncProjectTemplates(tmpDir, projectRoot) {
  * Extracts api + users array from existing file, injects into latest template.
  * Falls back to warning if template structure changed significantly.
  */
-function syncCredentials(tmpDir, projectRoot) {
+export function syncCredentials(tmpDir, projectRoot) {
     const credsSrc = join(tmpDir, "templates", "credentials.yaml");
     const credsDest = join(projectRoot, "tests", "playwright", "credentials.yaml");
     if (!existsSync(credsSrc))
         return;
     const latest = readFileSync(credsSrc, "utf-8");
     if (!existsSync(credsDest)) {
+        mkdirSync(join(projectRoot, "tests", "playwright"), { recursive: true });
         writeFileSync(credsDest, latest);
         console.log(chalk.green("  ✓ Generated: tests/playwright/credentials.yaml"));
         return;
@@ -253,23 +254,15 @@ function syncCredentials(tmpDir, projectRoot) {
     console.log(chalk.gray(`  - Backed up: tests/playwright/credentials.yaml → credentials.yaml.bak`));
     // Extract user data from existing file
     const users = [];
-    const userBlockMatch = existing.match(/^users:\s*\n([\s\S]*?)(?=\n\w|\n$)/m);
-    if (userBlockMatch) {
-        const userEntries = userBlockMatch[1].match(/^\s+- name:\s*(\S+)[\s\S]*?username:\s*(.+?)[\s\S]*?password:\s*(.+?)(?:\n|$)/gm);
-        if (userEntries) {
-            for (const entry of userEntries) {
-                const nameMatch = entry.match(/^- name:\s*(\S+)/);
-                const userMatch = entry.match(/username:\s*(.+?)[\n#]/);
-                const passMatch = entry.match(/password:\s*(.+?)(?:\n|$)/);
-                if (nameMatch && userMatch && passMatch) {
-                    users.push({
-                        name: nameMatch[1],
-                        username: userMatch[1].trim(),
-                        password: passMatch[1].trim(),
-                    });
-                }
-            }
-        }
+    // Match user entries directly without block matching (more robust)
+    const regex = /^  - name:\s*(\S+)\n    username:\s*(.+?)\n    password:\s*(.+?)(?:\n|$)/gm;
+    let match;
+    while ((match = regex.exec(existing)) !== null) {
+        users.push({
+            name: match[1],
+            username: match[2].trim(),
+            password: match[3].trim(),
+        });
     }
     // Extract api field from existing
     const apiMatch = existing.match(/^api:\s*(.+?)(?:\n|$)/m);

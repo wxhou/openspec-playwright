@@ -44,7 +44,7 @@ export async function run(changeName, options) {
     // not "a OR b". For OR semantics, run two separate commands.
     const escapeGrep = (s) => s.replace(/[.*+?()[\]{}|\\^$]/g, "\\$&");
     if (options.grep && options.smoke) {
-        // Run tests matching BOTH smoke tag AND the grep pattern
+        // Match tests containing both @smoke AND the grep pattern (order-flexible: @smoke or pattern may appear first)
         const eg = escapeGrep(options.grep);
         args.push("--grep", `@smoke.*${eg}|${eg}.*@smoke`);
     }
