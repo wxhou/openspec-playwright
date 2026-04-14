@@ -91,6 +91,16 @@ Persists selector repairs across sessions. Prevents the same selector from being
 
 ---
 
+## Assertion Fixes (Healer memory)
+
+Persists assertion repairs (typos, spec drift) across sessions.
+
+| Date | Test | Old Assertion | New Assertion | Reason |
+|------|------|-------------|-------------|--------|
+| | | | | |
+
+---
+
 ## Changelog
 
 | Date | Change | By |
@@ -99,4 +109,4 @@ Persists selector repairs across sessions. Prevents the same selector from being
 
 ---
 
-> **Updating this file**: After each E2E exploration (Step 4), extract new shared patterns and update this file. Generator (Step 6) reads this before writing tests. After Healer repairs (Step 9), append the fix here.
+> **Updating this file**: After each E2E exploration (Step 4), extract new shared patterns and update this file. Generator (Step 6) reads this before writing tests. After Healer repairs (Step 9): append selector fixes to **Selector Fixes** table, append assertion fixes to **Assertion Fixes** section.

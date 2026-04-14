@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires openspec CLI, Playwright (with browsers installed), /browse (gstack, for exploration), and @playwright/mcp (globally installed via `claude mcp add playwright npx @playwright/mcp@latest`, for test execution + Healer).
 metadata:
   author: openspec-playwright
-  version: "2.24"
+  version: "2.25"
 ---
 
 ## Input
@@ -147,7 +147,7 @@ expect((await post.json()).likeCount).toBeGreaterThan(0); // verify persistence
 **Decision table — route discovery fallback:**
 
 | Situation | Action |
-| — | — |
+| --- | --- |
 | `sitemap.xml` returns 200 with URLs | Parse all URLs → extract pathname |
 | `sitemap.xml` returns 404/5xx | Skip → use link extraction |
 | Link extraction finds 0 links | Fall back to common paths |
@@ -174,7 +174,7 @@ expect((await post.json()).likeCount).toBeGreaterThan(0); // verify persistence
 **Confidence — decision table:**
 
 | Confidence | Condition | Action |
-| — | — | — |
+| --- | --- | --- |
 | High | Multiple markers AND context indicators | Auto-proceed |
 | Medium | Single marker, context unclear | Proceed + note in output |
 | Low | No markers found | Skip auth, test as guest |
@@ -339,6 +339,8 @@ Record findings in `app-exploration.md` → **Special Elements Detected** table.
 
 Output: `openspec/changes/<name>/specs/playwright/app-exploration.md`
 
+**"all" mode** (no change context): Output to `<root>/app-exploration.md` instead. The `<root>/` version also serves as the INPUT file read by `openspec-pw explore` (which updates only the Status column).
+
 Key fields per route:
 
 - **URL**: `${BASE_URL}<path>`
@@ -379,16 +381,17 @@ This prevents redundant exploration on every `/opsx:e2e` run.
 
 #### 4.6. Update app-knowledge.md
 
-After writing `app-exploration.md`, extract **project-level shared knowledge** and append to `tests/playwright/app-knowledge.md`:
+After writing `app-exploration.md`, extract **project-level shared knowledge** and append to `tests/playwright/app-knowledge.md`. **Auto-de-duplicate**: before adding any row, check if the same key already exists — if so, skip.
 
-| Section                  | What to extract                                                           |
-| ------------------------ | ------------------------------------------------------------------------- |
-| Architecture             | Monolith or separated? Backend port? Restart command?                     |
-| Credential Format        | Login endpoint, username format (email vs username)                       |
-| Common Selector Patterns | New patterns discovered that apply across routes                          |
-| SPA Routing              | SPA framework, routing behavior                                           |
-| Project Conventions      | BASE_URL, auth method, multi-user roles                                   |
-| Selector Fixes           | Healed selectors (see Step 9) — route, old → new selector, reason, date |
+| Section | What to extract | De-duplication key |
+| ------- | --------------- | ----------------- |
+| Architecture | Monolith or separated? Backend port? Restart command? | **Section-level**: update existing rows instead of adding duplicates |
+| Credential Format | Login endpoint, username format (email vs username) | **Field-level**: `Field` column (username, password, login endpoint) |
+| Common Selector Patterns | New patterns discovered that apply across routes | **Element + Selector**: skip if same Element + Selector already exists |
+| SPA Routing | SPA framework, routing behavior | **Section-level**: update existing instead of appending |
+| Project Conventions | BASE_URL, auth method, multi-user roles | **Convention column**: skip if same convention already exists |
+| Selector Fixes | Healed selectors (see Step 9 Phase 2-7) — route, old → new selector, reason, date | **Route + Old Selector**: skip if same key exists |
+| Assertion Fixes | Healed assertions (see Step 9 Phase 2-7) — test, old → new assertion, reason, date | **Test + Old Assertion**: skip if same key exists |
 
 Append only new/changed items — preserve existing content.
 
@@ -414,7 +417,7 @@ Ready to generate Page Objects for: <page-name>Page.ts, <page-name>Page.ts, ...
 Reply **yes** to proceed, or tell me to exclude routes or adjust strategies.
 ```
 
-**Change mode — prerequisite**: If `openspec/changes/<name>/specs/playwright/app-exploration.md` does not exist → **STOP**. Run Step 4 (explore application) before generating tests. Without real DOM data from exploration, selectors are guesses and tests will be fragile.
+**Change mode — prerequisite**: If `openspec/changes/<name>/specs/playwright/app-exploration.md` does not exist → **STOP**. Run Step 4 (explore application) before generating tests. Without real DOM data from exploration, selectors are guesses and tests will be fragile. **All mode**: if `<root>/app-exploration.md` does not exist → same STOP.
 
 **Change mode**: Create `openspec/changes/<name>/specs/playwright/test-plan.md`.
 
@@ -467,7 +470,7 @@ If the user requests changes → update test-plan.md → re-display summary → 
 
 **"all" mode**: Build and expand Page Objects for future Change tests.
 
-**Prerequisite** (change mode only): If `app-exploration.md` does not exist → **STOP**. Run Step 4 first. For **all mode**, exploration is embedded dynamically in Step 6 — no pre-existing app-exploration.md is required.
+**Prerequisite** (change mode only): If `openspec/changes/<name>/specs/playwright/app-exploration.md` does not exist → **STOP**. Run Step 4 first. For **all mode**, exploration is embedded dynamically in Step 6 — no pre-existing app-exploration.md is required.
 
 **Page Object pattern** — read before writing any page file:
 
@@ -493,7 +496,7 @@ test('login', async ({ page }) => {
 **Decision table — Page Object file handling**:
 
 | Situation | Action |
-| — | — |
+| --- | --- |
 | `pages/<Route>Page.ts` does not exist | Create from LoginPage pattern |
 | File exists with some getters | Extend — add missing, preserve existing |
 | File exists but uses inline locators | Rewrite with Page Object pattern, keep selector strings |
@@ -599,7 +602,7 @@ expect(box.width).toBeGreaterThan(0);
 
 Read `tests/playwright/pages/BasePage.ts` for shared utilities:
 - `goto(path)` — navigation with configurable `waitUntil`
-- `byTestId(id)`, `byRole(role, opts)`, `byLabel(label)`, `byText(text)`, `byPlaceholder(text)` — selector helpers in priority order
+- `byRole(role, opts)`, `byLabel(label)`, `byPlaceholder(text)`, `byText(text)`, `byTestId(id)` — selector helpers in priority order (semantic → form → fallback)
 - `click(locator)`, `fill(locator, value)`, `fillAndVerify(locator, value)` — safe interactions; use `fillAndVerify` when the next action depends on the value being committed
 - `waitForToast(text?)`, `waitForLoad(spinnerSelector?)` — wait utilities
 - `reload()` — page reload with hydration
@@ -643,7 +646,7 @@ test('user can login', async ({ page }) => {
 #### 6.2. Selector patterns
 
 | Prefer (robust) | Avoid (fragile) |
-| — | — |
+| --- | --- |
 | `getByRole`, `getByTestId`, `getByLabel` | CSS class (`'.notification-bell'`), CSS ID (`'#avatarBtn'`) |
 | `waitForSelector(targetElement)` | hardcoded `200ms` / `500ms` delays |
 
@@ -723,7 +726,7 @@ If tests fail → use Playwright MCP tools to inspect UI, fix selectors, re-run.
 
 **Before Phase 1 — check accumulated knowledge:**
 
-Read `tests/playwright/app-knowledge.md` → **Selector Fixes** table. If the failing test's selector or route matches a known fix, use it directly (skip Phase 2). If partial match → use as the top candidate in Phase 2 Step 5a. If file does not exist → skip.
+Read `tests/playwright/app-knowledge.md` → **Selector Fixes** table. If the failing test's selector or route matches a known fix, use it directly (skip Phase 2. If partial match → use as the top candidate in Phase 2-5a). If file does not exist → skip.
 
 **Healer — Phase 1: Triage**
 
@@ -733,7 +736,7 @@ When a test fails, classify before attempting repair.
 
 ```
 Collect ALL failing test names + their failure reasons.
-Group by: same route + same action + same error pattern.
+Group by: same route + same action + same Playwright error type (e.g., both "element not found" with the **same** root cause confirmed by browser_console_messages showing no JS error and browser_network_requests showing no 4xx/5xx). If root cause differs (e.g., element A missing vs element B in different section), treat as **separate** groups.
 If ≥2 tests fall into the same group:
   → Pause individual healing
   → Navigate to that route + perform the action manually
@@ -743,16 +746,19 @@ If ≥2 tests fall into the same group:
       → Classify all tests in this group as App Bug
       → Skip all → record 1 App Bug in registry (not N bugs)
       → Skip the rest of individual Triage for this group
-  → If no console/network error but all still fail:
-      → Likely a shared state issue → RAFT
-      → Skip all → note RAFT in report
+  → If timeout errors:
+      → Retry one isolated: `npx playwright test --grep "<first-test-name>"` [--project <role>]
+      → If isolated passes → **RAFT** (shared state coupling) → skip all → note RAFT in report
+      → If isolated still fails → individual **Flaky** (each test independently flaky) → proceed with individual Triage for this group
+  → If no console/network error and no timeout, but all still fail:
+      → Likely a shared state issue → **RAFT** → skip all → note RAFT in report
 Proceed with individual Triage only for tests NOT in a batch failure group.
 ```
 
 **After Batch Detection, individual Triage:**
 
 | Failure Type | Signal | Classification | Action |
-| — | — | — | — |
+| --- | --- | --- | --- |
 | **Network/Backend** | `net::ERR`, 4xx/5xx in console/network | **App Bug** | `test.skip()` + record in `app-bug-registry.md` |
 | **JS Runtime Error** | Console error (non-network) | **App Bug** | `test.skip()` + record in `app-bug-registry.md` |
 | **Auth Expired** | Redirected to login mid-test | **Flaky** | Re-run auth.setup → re-run |
@@ -760,7 +766,7 @@ Proceed with individual Triage only for tests NOT in a batch failure group.
 | **Page Refresh Loop** | Excessive console errors (>10) after navigation, page unstable | **App Bug** | `test.skip()` + record in App Bug Registry |
 | **Selector Not Found** | Element not found | **Test Bug** | → Phase 2 Healer |
 | **Assertion Mismatch** | Wrong content/value | **Ambiguous** | → Phase 2 Healer |
-| **Timeout** | waitFor/evaluate timeout | **Flaky** | Retry isolated: `openspec-pw run <name> --grep "<test-name>"` (1×, not counted in heal attempts). If it passes isolated but fails in suite → **RAFT**. If it consistently times out → check framework: React 19 / Next.js App Router: add `page.waitForLoadState('networkidle')`. Vue/Angular/React 18 / Plain JS / jQuery: use `waitForSelector(targetElement)` instead of timeout tuning. |
+| **Timeout** | waitFor/evaluate timeout | **Flaky** | Retry isolated: `npx playwright test --grep "<test-name>"` (1×, not counted in heal attempts). If it passes isolated but fails in suite → **RAFT**. If it consistently times out → check framework: React 19 / Next.js App Router: add `page.waitForLoadState('networkidle')`. Vue/Angular/React 18 / Plain JS / jQuery: use `waitForSelector(targetElement)` instead of timeout tuning. |
 | **Same test fails in suite, passes isolated** | — | **RAFT** | `test.skip()` in suite, note RAFT in report |
 
 - **App Bug** → skip immediately (no healing needed) → record in App Bug Registry
@@ -798,7 +804,7 @@ For every App Bug classified in Phase 1, record it in `openspec/reports/app-bug-
 
 After Triage classifies failure as "Test Bug" or "Ambiguous":
 
-**Step 0 — Batch diagnosis** (no Playwright, fast):
+**Phase 2-0 — Batch diagnosis** (no Playwright, fast):
 For ALL Phase 2 failures in this run, do this simultaneously:
 1. Read the failing test spec file(s) to understand what each test verifies
 2. Read `app-knowledge.md` for any previous fixes or selector patterns
@@ -810,7 +816,6 @@ For ALL Phase 2 failures in this run, do this simultaneously:
    ASSERTION: "<what the test expects>"
    EXPECTED_BEHAVIOR: <from spec, one line>
    KNOWN_FIX: <yes/no — from app-knowledge.md Selector Fixes table>
-   SELECTOR_CANDIDATES: <list from app-knowledge.md patterns if available>
    ```
 5. Classify each test:
    - `ready-to-fix` — known fix exists, or selector pattern is clear
@@ -820,14 +825,22 @@ For ALL Phase 2 failures in this run, do this simultaneously:
 
 **Skip remaining steps for `needs-phase3` tests** — go directly to Phase 3.
 
-**For `needs-more-diagnosis` tests** — go to Step 1 (navigate + snapshot) for each individually.
+**For `needs-assertion-fix` tests** — go to Phase 2-1 (navigate + snapshot → assertion fix).
 
-**Step 1** (for `needs-assertion-fix` or `needs-more-diagnosis`): Navigate to the failing page → `browser_snapshot` → **EXPLICIT COMPARISON**:
+**For `ready-to-fix` tests** — go to Phase 2-5 (selector repair).
+
+**For `needs-more-diagnosis` tests** — go to Phase 2-1 (navigate + snapshot) for each individually.
+
+**Phase 2-1** (for `needs-assertion-fix` or `needs-more-diagnosis`): Navigate to the failing page → `browser_snapshot` → **EXPLICIT COMPARISON**:
    ```
    ASSERTION: "<what the test expects>"
    ACTUAL:   "<what the snapshot shows>"
    MATCH:    <yes/no>
    ```
+   - **If MATCH=yes** → apply the assertion fix → go to **Phase 2-6**
+   - **If MATCH=no**:
+     - Safe to fix without Phase 3 → apply the fix → go to **Phase 2-6**
+     - "Never fix without Phase 3" conditions met → **Phase 3** immediately
 
 **Assertion modification guard — never skip Phase 3 unless ALL conditions are met:**
 - The test has **never passed with the current assertion** (newly generated test, or this is the first time this assertion fails)
@@ -837,7 +850,7 @@ For ALL Phase 2 failures in this run, do this simultaneously:
 **If ANY condition is uncertain → Phase 3 immediately.** Do NOT modify the assertion.
 
 **Safe to fix without Phase 3:**
-- Typo in assertion (e.g., "Subm\"it" vs "Submit" in the expected text)
+- Typo in assertion (e.g., "Subm it" vs "Submit" in the expected text)
 - Selector was correct but the element was moved to a different location (same text, different selector)
 - Explicit spec drift confirmed by reading the spec (e.g., spec says "button says Submit" but test says "button says Submit Form")
 
@@ -846,11 +859,13 @@ For ALL Phase 2 failures in this run, do this simultaneously:
 - Data values differ (e.g., expected "¥1000" but got "¥999" → **Phase 3**, could be rounding, discount, or calculation bug)
 - Missing elements after interaction (e.g., "after creating order, success message should appear" → no message → **Phase 3**)
 
-**Step 5** (for `ready-to-fix` with selector issue): Generate candidate list from snapshot:
+**Phase 2-5** (for `ready-to-fix` with selector issue): Generate candidate list from snapshot:
 
-   **5a. Extract candidates** — identify the target element from the failing test's assertion, then from the snapshot list all selectors for that element.
+   **Phase 2-5a. Extract candidates** — identify the target element from the failing test's assertion.
 
-   First check `app-knowledge.md` → **Common Selector Patterns** for project-specific conventions.
+   If `KNOWN_FIX=yes` from Phase 2-0 diagnosis → read the **New Selector** from `app-knowledge.md` → **Selector Fixes** table (same Route + Old Selector row) → apply directly → go to **Phase 2-6** (no need to re-generate candidates from snapshot).
+
+   Otherwise → list all selectors for the target element from the snapshot, **and** check `app-knowledge.md` → **Common Selector Patterns** for project-specific conventions.
 
    ```
    Target: <element from failing assertion, e.g. "button with text 'Submit'">
@@ -865,21 +880,39 @@ For ALL Phase 2 failures in this run, do this simultaneously:
 
    Stability: `getByRole` > `getByText`/`getByLabel` > `locator('#id')` > `locator('.class')` > `locator('nth-child')`. Upgrade stability if `app-knowledge.md` → **Common Selector Patterns** explicitly lists the selector as preferred for this project.
 
-   **5b. Select top candidate** — pick the highest-stability candidate that matches the target. Output: `SELECTED: <selector> — reason: <why this one>`.
+   **Phase 2-5b. Select top candidate** — pick the highest-stability candidate that matches the target. Output: `SELECTED: <selector> — reason: <why this one>`. Then → go to **Phase 2-6**.
 
-**Step 6** — **Apply ALL fixes, then run sequential isolated**:
-1. Apply all prepared fixes to all Phase 2 tests in this run
-2. Run: `npx playwright test --workers=1 --grep "<test1|test2|test3|...>"` (all Phase 2 tests as a single combined grep)
-3. `--workers=1` ensures true isolated execution — no data races, no shared state pollution
-4. Each test result is independent — even if one fails, others proceed cleanly
-5. Report per-test result (pass/fail/error) and update heal counters accordingly
+**Phase 2-6** — **Fix and verify incrementally (per test)**:
+1. For each test needing a fix, apply the fix to the `.spec.ts` file
+2. Run: `npx playwright test --grep "<test-name>"` to verify that specific test
+3. If passed → Phase 2-7 (log to app-knowledge.md), then move to next test
+4. If failed → analyze the new failure type:
+   - **Assertion-related** (wrong value/content) → return to **Phase 2-1** for that test
+   - **Selector-related** (element not found, wrong element) → return to **Phase 2-5** for that test (re-diagnose selector, not Phase 2-1)
+   - **Timeout-related** → treat as Flaky → retry isolated once: `npx playwright test --grep "<test-name>"` [--project <role>]
+     - If isolated passes → **Phase 2-7** (healed), then move to next test
+     - If isolated still fails → apply framework fix (React 19 / Next.js: `page.waitForLoadState('networkidle')`; Vue/Angular/React 18 / Plain JS: `waitForSelector(targetElement)`) → retry → if passes → **Phase 2-7** (healed) → move to next test; if still fails → `test.skip()` in `.spec.ts` + note in report → move to next test (not counted in heal attempts)
+   The heal counter does NOT reset for any path.
+5. Repeat until all Phase 2 tests are healed.
 
-**Step 7** — If healed → append to `app-knowledge.md` → **Selector Fixes** table (route, old → new selector, reason, date)
+> **Why --grep instead of --only-changed**: Healer fixing is incremental — you fix one test, verify it, adjust if needed, then move to the next. `--only-changed` is **file-level**: it runs ALL tests in `.spec.ts` files that have uncommitted source changes, not individual tests. This wastes time in an iterative fix cycle (re-running already-passed tests in the same file). Use `--grep` for targeted verification. Reserve `--only-changed` for the pre-commit guard.
+
+> **Pre-commit guard — `--only-changed`** (after all Phase 2 tests are healed): `npx playwright test --only-changed` runs all tests in changed `.spec.ts` files (comparing against HEAD by default, or `--only-changed=main` against a branch). Playwright also analyzes source file dependencies — if `src/components/Button.ts` changed, any `.spec.ts` that imports it will run. CI still runs the full suite as complete regression.
+
+**Phase 2-7** — If healed → append to `app-knowledge.md` (auto-de-duplicate):
+
+**Selector Fixes** — Before appending, read the existing **Selector Fixes** table. **Skip if** the same Route + Old Selector key already has a row (same route + same old selector = duplicate). If the Route + Old Selector exists but with a different New Selector → this is a new symptom of the same root cause → add a new row (different date, updated new selector).
+
+**Assertion Fixes** — Before appending, read the existing **Assertion Fixes** table. **Skip if** the same Test + Old Assertion key already has a row. If the same test had a previous fix with a different old → new → add a new row (the assertion has drifted further).
+
+If a new row is added, update the `Last updated` timestamp in the file header.
+
+This log feeds the **Auto-Heal Log** in the Phase 10 report.
 
 **Element Missing handling (when browser_snapshot shows element not found):**
 
 | Situation | Check | Action |
-| — | — | — |
+| --- | --- | --- |
 | JS error in console after action | `browser_console_messages` | **App Bug** → Phase 1 → App Bug classification |
 | Auth redirected mid-action | URL changed to `/login` | **Flaky** → re-run with fresh auth |
 | SPA route didn't update | URL is correct but element missing | Wait for SPA hydration → `page.waitForLoadState('networkidle')` or `waitForSelector(target)` |
@@ -920,17 +953,17 @@ Wait for user input before proceeding.
 | **(a)** Fix the app to match the spec | Fix the app code | Re-run: `openspec-pw run <change-name>` to verify fix |
 | **(b)** Update the spec to match the app | Edit the spec file | Then update the test assertion (→ option c), or regenerate the affected part of the test |
 | **(c)** Update the test assertion | Fix the assertion in `tests/playwright/changes/<name>/<name>.spec.ts` | Re-run: `openspec-pw run <change-name>` to verify |
-| **(d)** Skip with `test.skip()` | Add `test.skip()` to the test | Note in `app-knowledge.md` → `Selector Fixes` table with reason "human escalation — skipped pending resolution" |
+| **(d)** Skip with `test.skip()` | Add `test.skip()` to the test | Note in `app-knowledge.md` → `Assertion Fixes` with reason "human escalation — skipped pending resolution" |
 
-**Stuck in escalation loop**: If 3 consecutive Phase 3 escalations result in no progress (test still failing), STOP and ask: "This test has been escalated 3 times without resolution. Are you sure the root cause is still the same, or has something changed?"
+**Stuck in escalation loop** (see also: "Global attempt guard" above — tracked **per test**, independent heal counter): If 3 consecutive Phase 3 escalations for the same test result in no progress, STOP and ask: "This test has been escalated 3 times without resolution. Are you sure the root cause is still the same, or has something changed?"
 
 After the issue is resolved, re-run tests:
 ```
 openspec-pw run <change-name>
 ```
-`/opsx:e2e <change-name>` re-runs the full 11-step workflow — unnecessary after Phase 3. The test file and auth context are already correct. Use `openspec-pw run` to verify fixes directly.
+`/opsx:e2e <change-name>` re-runs the full 10-step workflow — unnecessary after Phase 3. The test file and auth context are already correct. Use `openspec-pw run` to verify fixes directly.
 
-### 10. False Pass Detection + RAFT Detection + App Bug Accumulation
+### 10. False Pass Detection + RAFT Detection + App Bug Accumulation + Report results
 
 Run after test suite completes (even if all pass).
 
@@ -942,7 +975,7 @@ Run after test suite completes (even if all pass).
 
 **RAFT detection** (Resource-Affected Flaky Test):
 
-- Full suite: test fails → run isolated: `openspec-pw run <name> --grep "<test-name>"` → if it passes in isolation but fails in suite → **RAFT**
+- Full suite: test fails → run isolated: `npx playwright test --grep "<test-name>"` [--project <role>] → if it passes in isolation but fails in suite → **RAFT**
 - This is **NOT** a test bug or app bug. Mark as RAFT, add `test.skip()` in suite, note in report
 - RAFTs are infrastructure coupling issues (CPU/memory/I/O contention), not fixable by changing test or app
 
@@ -953,23 +986,19 @@ Run after test suite completes (even if all pass).
 3. If ≥ 3 active App Bugs → add "⚠️ App Bug accumulation: N bugs unresolved" to report summary. **Do NOT suppress or hide this warning.** The test suite may report "all passed" (skipped ≠ failed), but N broken features is not a passing system.
 4. Check for **App Bugs that became "resolved"** (passing on re-run) → this is the signal that bugs were fixed. Update `app-bug-registry.md` accordingly, and remove `test.skip()` from those tests so they re-enter the regression suite.
 
-### 11. Report results
+**Report results** — compile from these sources (the auto-generated `playwright-e2e-<name>-<timestamp>.md` provides the Summary table; populate the sections below manually from Phase 1–3 output):
 
-Read report at `openspec/reports/playwright-e2e-<name>-<timestamp>.md`. Present:
-
-- **Summary table** with failure type breakdown (App Bugs, Test Bugs/healed, Flaky-RAFT, Human Escalations)
-- **App Bug Summary**: Table of all active App Bugs from `app-bug-registry.md` — test name, route, signal, first detected. If ≥ 3 active → display "⚠️ App Bug accumulation warning" prominently.
+- **Summary table** with failure type breakdown (App Bugs, Test Bugs/healed, Flaky-RAFT, Human Escalations) ← from `openspec/reports/playwright-e2e-<name>-<timestamp>.md`
+- **App Bug Summary**: Table of all active App Bugs — test name, route, signal, first detected. If ≥ 3 active → display "⚠️ App Bug accumulation warning" prominently. ← from `openspec/reports/app-bug-registry.md`
 - **Conditional "All Pass" conclusion**:
   - ✅ **"All tests passed"** — only if 0 active App Bugs and 0 skipped tests
   - ⚠️ **"All tests passed (N skipped)"** — if skipped tests exist but no active App Bugs
   - ⚠️ **"All tests passed (N skipped, M App Bugs unresolved)"** — if active App Bugs exist
-- Failure Classification table (test, type, action, healed?)
-- Auto-heal log (assertion vs actual comparison, fix applied, result)
-- RAFT Summary (if any detected)
-- Human Escalations (if any, with user decision)
-- Recommendations with `file:line` references
-
-Generate report based on the structure described in Step 11.
+- **Failure Classification table**: (test, type, action, healed?) ← compile from Phase 1 Triage + Phase 2-0 classification output
+- **Auto-heal log**: (assertion vs actual comparison, fix applied, result) ← compile from Phase 2-1/2-5 console output + `app-knowledge.md` Selector Fixes table
+- **RAFT Summary** (if any): ← compile from RAFT detection notes during Phase 1
+- **Human Escalations** (if any, with user decision): ← from Phase 3 decision output
+- **Recommendations** with `file:line` references
 
 **Update tasks.md**:
 - If 0 active App Bugs → find E2E-related items, append `✅ Verified via Playwright E2E (<timestamp>)`.
@@ -977,27 +1006,28 @@ Generate report based on the structure described in Step 11.
 
 ## Graceful Degradation
 
-**When these critical failures occur → STOP immediately:**
+| Scenario | Classification | Action | Workflow Status |
+| ------- | -------------- | ------ | --------------- |
+| No specs / app-exploration.md missing (change mode) | Blocker | **STOP** — check path: `openspec/changes/<name>/specs/playwright/app-exploration.md` (change) or `<root>/app-exploration.md` (all mode) | Stops entirely |
+| JS errors or HTTP 5xx during exploration | Blocker | **STOP** — user fixes app → re-run `/opsx:e2e <name>` from Step 4 | Stops entirely |
+| Redirect loop / page refresh loop during exploration | App Bug | Skip route → record in App Bug Registry → re-run after fix | Continues (other routes) |
+| File already exists (app-exploration, test-plan, app-all.spec.ts, Page Objects) | Idempotency | Read and use — never regenerate | Continues |
+| Test fails (network/backend) | App Bug | `test.skip()` + record in `app-bug-registry.md` | Continues (workflow level — no STOP) |
+| Test fails (selector/assertion) | Test Bug/Ambiguous | Healer Phase 1→2 (≤3 attempts) | Continues |
+| RAFT detected (suite fail, isolated pass) | Flaky | `test.skip()` in suite, note RAFT in report | Continues |
+| Phase 3 escalation | Human needed | **STOP** + present 4 options → wait for user decision | Stops entirely |
+| False pass detected | Coverage Gap | Add "⚠️ Coverage Gap" to report | Continues |
+| App Bug skip accumulation (≥3 active App Bugs) | Warning | Add "⚠️ App Bug accumulation: N bugs unresolved" to report. Do not suppress. | Continues |
 
-| Scenario | Behavior |
-| ------- | ------- |
-| No specs / app-exploration.md missing (change mode) | **STOP** |
-| JS errors or HTTP 5xx during exploration | **STOP** → user fixes app → re-run `/opsx:e2e <name>` to re-explore from Step 4 |
-| Redirect loop / page refresh loop during exploration | **App Bug** — **STOP** → check auth.setup.ts first (common cause). If auth is valid → app middleware/cookie bug → mark route skipped, record in App Bug Registry. Re-run exploration after fix. |
-| File already exists (app-exploration, test-plan, app-all.spec.ts, Page Objects) | Read and use — never regenerate |
-| Test fails (network/backend) | **App Bug** — `test.skip()` + record in `app-bug-registry.md` |
-| Test fails (selector/assertion) | **Test Bug/Ambiguous** — Healer Phase 1→2 (≤3 attempts) |
-| RAFT detected (suite fail, isolated pass) | **Flaky** — `test.skip()` in suite, note RAFT in report |
-| Phase 3 escalation | **Human needed** — STOP + ask user |
-| False pass detected | Add "⚠️ Coverage Gap" to report |
-| App Bug skip accumulation (≥3 active App Bugs) | **Warning** — add "⚠️ App Bug accumulation: N bugs unresolved" to report summary. Do not suppress. |
+**"STOP"** = workflow halts and waits for user input (true stop).
+**"Continues"** = workflow proceeds to next step (test-level skip, no user wait).
 
 ## Guardrails
 
 **Decision table:**
 
 | Rule | Why |
-| — | — |
+| --- | --- |
 | Read specs as source of truth | Generated tests must match requirements |
 | Step 4 before Step 6 | Real DOM data → accurate selectors |
 | Never contradict specs | E2E validates implementation, not design |
@@ -1009,6 +1039,7 @@ Generate report based on the structure described in Step 11.
 
 > `tests/playwright/` — spec files, Page Objects, auth, credentials, app-knowledge.md
 > `openspec/changes/<name>/specs/playwright/` — app-exploration.md, test-plan.md (change mode)
+> `<root>/` — app-exploration.md (change mode: INPUT for `openspec-pw explore`; all mode: detailed output)
 > `openspec/reports/` — test reports, app-bug-registry.md
 
 **Never write to:** any other directory
