@@ -32,16 +32,8 @@ export class BasePage {
   // ─── Selector helpers — use in priority order ───────────────────────────────
 
   /**
-   * Best: data-testid survives style changes and text refactors.
-   * Use when the dev team adds data-testid to elements.
-   */
-  byTestId(id: string): Locator {
-    return this.page.getByTestId(id);
-  }
-
-  /**
-   * Good: semantic role selectors survive DOM restructuring.
-   * Use for buttons, links, form fields, dialogs.
+   * Best: semantic role selectors survive DOM restructuring.
+   * Use for buttons, links, form fields, dialogs. (Playwright official recommended priority.)
    */
   byRole(role: Parameters<typeof this.page.getByRole>[0], options?: { name?: string | RegExp; exact?: boolean }): Locator {
     return this.page.getByRole(role, options);
@@ -56,18 +48,27 @@ export class BasePage {
   }
 
   /**
-   * Okay: text selectors are visible to users but may break on copy changes.
-   * Use for assertions, not interactions.
+   * Good: placeholder text is stable for form inputs.
+   */
+  byPlaceholder(text: string | RegExp, options?: { exact?: boolean }): Locator {
+    return this.page.getByPlaceholder(text, options);
+  }
+
+  /**
+   * Okay: visible text — may break on copy changes.
+   * Use for assertions and links more than interactions.
    */
   byText(text: string | RegExp, options?: { exact?: boolean }): Locator {
     return this.page.getByText(text, options);
   }
 
   /**
-   * Fallback: placeholder text. Stable for form inputs.
+   * Fallback: data-testid survives style changes and text refactors,
+   * but requires the dev team to add `data-testid` attributes.
+   * Use when semantic selectors are unavailable.
    */
-  byPlaceholder(text: string | RegExp, options?: { exact?: boolean }): Locator {
-    return this.page.getByPlaceholder(text, options);
+  byTestId(id: string): Locator {
+    return this.page.getByTestId(id);
   }
 
   // ─── Safe interactions ──────────────────────────────────────────────────────

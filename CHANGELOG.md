@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.4] - 2026-04-13
+
+### Fixed
+
+- `src/commands/editors.ts`: `installProjectClaudeMd` now replaces content inside OPENSPEC:START/END markers on every run (previously skipped if markers existed, leaving stale content forever)
+- `openspec-pw update`: now syncs employee-grade standards to project CLAUDE.md alongside skill/commands/templates
+- SKILL.md: removed space between `/` and command name in step tags
+- Added `*.tgz` to `.gitignore`; removed stale tgz artifacts from repo root
+
+### Added
+
+- `scripts/bump-docs.js`: auto-updates version badge in `docs/index.html` on release
+- `npm run release` now runs bump-docs.js before build/publish
+
+## [0.3.5] - 2026-04-14
+
+### Added
+
+- SKILL.md v2.25: Complete Healer workflow redesign — Phase 1 Triage → Phase 2 Repair → Phase 3 Escalate replaces the original decision table
+  - Phase 2 restructured into sub-steps: Phase 2-0 (batch diagnosis, no browser), Phase 2-1 (assertion fix with explicit EXPECTED vs ACTUAL comparison), Phase 2-5 (selector repair with stability ranking), Phase 2-5a/2-5b, Phase 2-6 (incremental per-test verify + targeted `--grep`), Phase 2-7 (logging with auto-de-duplicate)
+  - **Phase 2-6 loop deadlock fixed**: failure type now routes to correct sub-step (assertion → Phase 2-1, selector → Phase 2-5, timeout → Flaky retry)
+  - **Batch Detection**: multiple failing tests with same root cause now share one App Bug entry (not N bugs)
+  - **Batch Detection Timeout handling**: now retry one isolated before labeling RAFT
+  - **KNOWN_FIX shortcut**: Phase 2-0 diagnosis with `KNOWN_FIX=yes` jumps directly to Phase 2-6 using Selector Fixes table entry
+  - **"same error pattern" rule**: Batch Detection now requires same root cause (console/network confirmed), not just same error type
+  - **Phase 3 decision tree**: explicit 4-option (a/b/c/d) with per-choice actions and re-run instructions
+  - **Global attempt guard**: per-test independent heal counter (≤3), no reset on Flaky retry
+  - **Auto-de-duplicate** in Step 4.6 and Phase 2-7: composite keys prevent duplicate rows across multiple change runs
+  - Graceful Degradation table: 4-column (Scenario / Classification / Action / Workflow Status)
+
+### Fixed
+
+- `src/commands/run.ts`: `--grep` + `--smoke` combined now correctly produces order-flexible AND pattern (all regex chars escaped)
+- `templates/app-knowledge.md`: Added **Assertion Fixes** table; assertion modification guidance
+- `templates/pages/BasePage.ts`: Timing fixes for React 19 concurrent mode
+- `templates/playwright.config.ts`: storageState path now correctly resolves relative to cwd=projectRoot
+- SKILL.md markdown: 7 instances of `| — |` fixed to `| --- |`
+- SKILL.md selector priority corrected: `getByRole` > `getByLabel` > `getByPlaceholder` > `getByText` > `getByTestId`
+
 ## [0.3.3] - 2026-04-13
 
 ### Fixed

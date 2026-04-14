@@ -87,7 +87,7 @@ export async function run(changeName: string, options: RunOptions) {
   const escapeGrep = (s: string) =>
     s.replace(/[.*+?()[\]{}|\\^$]/g, "\\$&");
   if (options.grep && options.smoke) {
-    // Run tests matching BOTH smoke tag AND the grep pattern
+    // Match tests containing both @smoke AND the grep pattern (order-flexible: @smoke or pattern may appear first)
     const eg = escapeGrep(options.grep);
     args.push("--grep", `@smoke.*${eg}|${eg}.*@smoke`);
   } else if (options.grep) {
