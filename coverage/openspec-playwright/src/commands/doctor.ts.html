@@ -25,14 +25,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/56</span>
+                <span class='fraction'>0/51</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/33</span>
+                <span class='fraction'>0/25</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/54</span>
+                <span class='fraction'>0/49</span>
             </div>
         
             
@@ -229,12 +229,7 @@
 <a name='L164'></a><a href='#L164'>164</a>
 <a name='L165'></a><a href='#L165'>165</a>
 <a name='L166'></a><a href='#L166'>166</a>
-<a name='L167'></a><a href='#L167'>167</a>
-<a name='L168'></a><a href='#L168'>168</a>
-<a name='L169'></a><a href='#L169'>169</a>
-<a name='L170'></a><a href='#L170'>170</a>
-<a name='L171'></a><a href='#L171'>171</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L167'></a><a href='#L167'>167</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -322,14 +317,11 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -403,9 +395,8 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { existsSync, readFileSync } from "fs";
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { existsSync } from "fs";
 import { join } from "path";
-import { homedir } from "os";
 import { execSync } from "child_process";
 import chalk from "chalk";
 &nbsp;
@@ -488,21 +479,18 @@ export async function <span class="fstat-no" title="function not covered" >docto
     });
   }
 &nbsp;
-  // Playwright MCP
-  const homeDir<span class="cstat-no" title="statement not covered" > = homedir();</span>
-  const claudeJsonPath<span class="cstat-no" title="statement not covered" > = join(homeDir, ".claude.json");</span>
+  // Playwright MCP — use `claude mcp list` as source of truth (platform-independent)
   let mcpInstalled = <span class="cstat-no" title="statement not covered" >false;</span>
-<span class="cstat-no" title="statement not covered" >  if (existsSync(claudeJsonPath)) {</span>
-<span class="cstat-no" title="statement not covered" >    try {</span>
-      const claudeJson = <span class="cstat-no" title="statement not covered" >JSON.parse(readFileSync(claudeJsonPath, "utf-8"));</span>
-      const globalMcp = <span class="cstat-no" title="statement not covered" >claudeJson?.mcpServers ?? {};</span>
-      const localMcp = <span class="cstat-no" title="statement not covered" >claudeJson?.projects?.[projectRoot]?.mcpServers ?? {};</span>
-<span class="cstat-no" title="statement not covered" >      if (globalMcp["playwright"] || localMcp["playwright"]) {</span>
-<span class="cstat-no" title="statement not covered" >        mcpInstalled = true;</span>
-      }
-    } catch {
-      // .claude.json missing or malformed — MCP not configured
+<span class="cstat-no" title="statement not covered" >  try {</span>
+    const output<span class="cstat-no" title="statement not covered" > = execSync("claude mcp list", {</span>
+      encoding: "utf-8",
+      timeout: 10000,
+    });
+<span class="cstat-no" title="statement not covered" >    if (output.includes("playwright")) {</span>
+<span class="cstat-no" title="statement not covered" >      mcpInstalled = true;</span>
     }
+  } catch {
+    // claude CLI not available or failed — MCP not configured
   }
 <span class="cstat-no" title="statement not covered" >  checks.push({</span>
     category: "Playwright MCP",
@@ -580,7 +568,7 @@ export async function <span class="fstat-no" title="function not covered" >docto
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T02:33:35.158Z
+                at 2026-04-13T06:59:58.791Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>
