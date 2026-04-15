@@ -8,6 +8,8 @@
 
 本规范适用于 OpenSpec + openspec-playwright 项目（Claude Code 作为开发工具）。
 
+**项目规范**：动手前读 `openspec/config.yaml`（技术栈、结构、约定、约束等），无内容则忽略。
+
 E2E 工作流前提（由用户确保，非 AI 操作）：
 - gstack：`git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup`（提供 `/browse` 探索 + `/qa` 浏览器验证）
 - OpenSpec CLI：`npm install -g @fission-ai/openspec && openspec init`（提供变更管理能力）
