@@ -1,6 +1,6 @@
 ---
 name: openspec-e2e
-description: Run Playwright E2E verification for an OpenSpec change. Use when the user wants to validate that the implementation works end-to-end by running Playwright tests generated from the specs.
+description: "Run Playwright E2E verification. ONLY invoke when user explicitly says '/opsx:e2e' or 'run E2E tests'. Do NOT auto-trigger from explore/propose/apply/verify/continue stages — E2E is a separate workflow requiring explicit user request."
 license: MIT
 compatibility: Requires openspec CLI, Playwright (with browsers installed), /browse (gstack, for exploration), and @playwright/mcp (globally installed via `claude mcp add playwright npx @playwright/mcp@latest`, for test execution + Healer).
 metadata:
