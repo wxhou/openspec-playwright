@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.15] - 2026-04-16
+
+### Fixed
+
+- `bin/openspec-pw`: Restore caller's working directory after node exits — `openspec-pw init --seed` now works correctly from user project directories
+- `src/index.ts`: Read `OPENSPE_PW_CWD` env var and `chdir()` at startup to restore original CWD
+
+## [0.3.14] - 2026-04-16
+
+### Fixed
+
+- `openspec-pw update`: Sync `openspec-playwright` in `devDependencies` when running from a project that has it as a local dependency
+
+## [0.3.13] - 2026-04-16
+
+### Changed
+
+- `employee-standards.md` Section 2: Integrated LLM coding best practices — think before acting, goal-verification loops, refuse "good enough" code
+
+## [0.3.12] - 2026-04-16
+
+### Fixed
+
+- `bin/openspec-pw`: Resolve symlinks to find real script location for global installs
+
+## [0.3.11] - 2026-04-16
+
+### Changed
+
+- `bin/openspec-pw`: Correct CLI bin entry point to shell wrapper
+
 ## [0.3.10] - 2026-04-16
 
 ### Added
