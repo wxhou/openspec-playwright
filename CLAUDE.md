@@ -32,6 +32,8 @@ npm run typecheck         # TypeScript type-check
 - **CI runs on every push to `main` and every PR** — lint, typecheck, build, tests
 - **Release runs on tag push (`v*`)** — verify job must pass before publish job runs
 - Always merge to `main` via PR so CI gates the code before it reaches `main`
+- **Version lock**: Only publish the exact version explicitly requested by the user. Never bump `package.json`, create a new tag, or run `npm version patch/minor/major` unless the user has named that target version.
+- If the requested version already exists in npm or the release job fails on publish, do not invent a new version number on your own. Stop and report the blocker unless the user explicitly approves a new version.
 
 ## Code × Docs Sync Rule
 
@@ -48,7 +50,7 @@ npm run typecheck         # TypeScript type-check
 
 ## Release Checklist
 
-Before each `npm run release` (bumps version, builds, pushes, publishes):
+Before each release action, confirm the target version has already been explicitly chosen by the user and the local `package.json`/tag match it:
 
 - [ ] `npm run lint` passes
 - [ ] `npm run typecheck` passes
@@ -56,7 +58,7 @@ Before each `npm run release` (bumps version, builds, pushes, publishes):
 - [ ] `npm run build && npm pack && tar tf openspec-playwright-*.tgz | grep scripts` succeeds (verifies `scripts/bump-docs.js` is included)
 - [ ] `git status` is clean (no uncommitted changes)
 - [ ] `git log --oneline` shows expected changes
-- [ ] Check `npm view openspec-playwright version` — this is the latest version on npm. Use `npm version patch` (or `minor`/`major`) to increment appropriately. **Never run `npm version` without checking first.** If npm already has the version about to be published, either bump higher or unpublish the conflicting version first.
+- [ ] Check `npm view openspec-playwright version` to verify the target version is not already published. **Do not change the version number to work around a conflict.** If the requested version already exists or publish fails, wait for explicit user instruction before taking any versioning action.
 
 **`npm run release` does:**
 1. `npm version patch` — bumps version in `package.json` + creates git commit
@@ -64,6 +66,8 @@ Before each `npm run release` (bumps version, builds, pushes, publishes):
 3. `npm run build` — compiles TypeScript
 4. `git add docs/index.html && git push` — pushes docs update
 5. `git push --tags && npm publish` — pushes tags + publishes to npm
+
+**Important**: Do not use `npm run release` when the version must remain fixed. This project may only publish the version the user explicitly asked for; automatic patch bumps are forbidden unless the user requests a new version.
 
 **Key rules:**
 - CI workflow must NEVER modify git history (no amend, no force-push)

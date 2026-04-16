@@ -5,9 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.9] - 2026-04-16
+## [0.3.10] - 2026-04-16
 
 ### Added
+
+- Re-release of the vision-check feature set under the corrected version number after npm publish conflict
 
 - `openspec-pw vision-check` command: Analyze screenshots for layout anomalies using Ollama VLM (Vision Language Model)
   - `--screenshots <pattern>` — Glob pattern or comma-separated list of screenshot paths (required)
