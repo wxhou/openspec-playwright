@@ -2,4 +2,6 @@
 # Resolve symlinks to find real script location, then go up to package root
 REAL="$(readlink -f "$0" 2>/dev/null || echo "$0")"
 DIR="$(cd "$(dirname "$REAL")/.." && pwd)"
-node "$DIR/dist/index.js" "$@"
+# cd to the script's directory so Node's module resolution starts from global node_modules,
+# not from the caller's working directory (which may have a local node_modules shadowing it)
+cd "$DIR" && node dist/index.js "$@"
