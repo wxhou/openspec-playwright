@@ -118,7 +118,7 @@ program
 program
   .command("vision-check")
   .description("Analyze screenshots for layout anomalies using Ollama VLM")
-  .requiredOption(
+  .option(
     "-s, --screenshots <pattern>",
     "Screenshot path(s): glob pattern or comma-separated list",
   )
@@ -147,6 +147,26 @@ program
   .option(
     "--json",
     "Output results as JSON",
+  )
+  .option(
+    "--viewport <views>",
+    "Capture at multiple viewports: comma-separated presets (mobile,tablet,desktop,wide) or WxH (e.g. 375x667). Requires --url.",
+  )
+  .option(
+    "--url <url>",
+    "URL to capture screenshots from (used with --viewport)",
+  )
+  .option(
+    "--baseline",
+    "Save screenshots as baseline (used with --viewport or --screenshots)",
+  )
+  .option(
+    "--diff",
+    "Compare current screenshots against baseline (requires prior --baseline run)",
+  )
+  .option(
+    "--report <path>",
+    "Generate HTML report at the given path",
   )
   .action(async (opts) => {
     await visionCheck(opts);

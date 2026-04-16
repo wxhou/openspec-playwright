@@ -1,20 +1,24 @@
 /**
  * Vision check command: Analyze screenshots for layout anomalies using Ollama VLM.
  *
- * Usage:
- *   openspec-pw vision-check --screenshots "__screenshots__/*.png"
- *   openspec-pw vision-check --screenshots "shot1.png,shot2.png" --parallel 2
+ * Modes:
+ *   --screenshots "..."        Analyze existing files (single mode)
+ *   --url ... --viewport ...  Capture from URL at multiple viewports
+ *   --baseline                Save as baseline (with --screenshots or --url+viewport)
+ *   --diff                    Compare against baseline
+ *   --report <path>           Generate HTML report
  *
  * Exit codes:
  *   0 = Check completed (with or without anomalies)
  *   1 = Ollama not available (skipped)
  *   2 = Configuration missing or invalid (skipped)
  */
-import { existsSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import { join, basename } from "path";
 import { glob } from "glob";
 import chalk from "chalk";
-import { loadOllamaConfig, checkOllamaHealth, batchAnalyzeScreenshots, } from "../utils/ollama.js";
+import { chromium } from "playwright";
+import { loadOllamaConfig, checkOllamaHealth, batchAnalyzeScreenshots, compareScreenshotDiff, generateHtmlReport, } from "../utils/ollama.js";
 /**
  * Extract route name from screenshot path.
  * e.g., "__screenshots__/dashboard.png" → "/dashboard"
@@ -53,62 +57,91 @@ function filterBySeverity(anomalies, severityFilter) {
     const levels = severityFilter.toLowerCase().split(",").map((s) => s.trim());
     return anomalies.filter((a) => levels.includes(a.severity));
 }
+// ── Viewport presets ───────────────────────────────────────────────────────────
+const VIEWPORT_PRESETS = {
+    mobile: { width: 375, height: 667 },
+    tablet: { width: 768, height: 1024 },
+    desktop: { width: 1280, height: 720 },
+    wide: { width: 1920, height: 1080 },
+};
 /**
- * Append anomalies to app-exploration.md Visual Anomalies section.
+ * Parse viewport string: "mobile,desktop" or "375x667,1280x720"
  */
-function appendToExploration(projectRoot, anomalies) {
-    const explorationPath = join(projectRoot, "tests", "playwright", "app-exploration.md");
-    if (!existsSync(explorationPath)) {
-        console.error(chalk.yellow(`Warning: ${explorationPath} not found, skipping write`));
-        return;
-    }
-    let content = readFileSync(explorationPath, "utf-8");
-    // Find or create Visual Anomalies section
-    const sectionHeader = "## Visual Anomalies";
-    const tableHeader = `| Route | Element | Type | Position | Severity | Description |
-| --- | --- | --- | --- | --- | --- |`;
-    if (!content.includes(sectionHeader)) {
-        // Add section before "## Next Steps" or at the end
-        const nextStepsIndex = content.indexOf("## Next Steps");
-        if (nextStepsIndex !== -1) {
-            content =
-                content.slice(0, nextStepsIndex) +
-                    `${sectionHeader}\n\n${tableHeader}\n\n` +
-                    content.slice(nextStepsIndex);
+function parseViewports(input) {
+    return input.split(",").map((v) => {
+        const name = v.trim().toLowerCase();
+        if (VIEWPORT_PRESETS[name]) {
+            return { name, ...VIEWPORT_PRESETS[name] };
         }
-        else {
-            content += `\n\n${sectionHeader}\n\n${tableHeader}\n`;
+        const parts = name.split("x");
+        if (parts.length === 2) {
+            const w = parseInt(parts[0], 10);
+            const h = parseInt(parts[1], 10);
+            if (w > 0 && h > 0) {
+                return { name: `${w}x${h}`, width: w, height: h };
+            }
         }
-    }
-    // Append new anomalies (de-duplicate by route + element + type)
-    const existingRows = content.match(/\| [^|]+ \| [^|]+ \| [^|]+ \| [^|]+ \| [^|]+ \| [^|]+ \|/g) || [];
-    const existingKeys = new Set(existingRows.map((row) => {
-        const cells = row.split("|").map((c) => c.trim()).filter(Boolean);
-        return `${cells[0]}:${cells[1]}:${cells[2]}`;
-    }));
-    const newRows = [];
-    for (const a of anomalies) {
-        const key = `${a.route}:${a.element}:${a.type}`;
-        if (!existingKeys.has(key)) {
-            newRows.push(`| ${a.route} | ${a.element} | ${a.type} | ${a.position} | ${a.severity} | ${a.description} |`);
-            existingKeys.add(key);
-        }
-    }
-    if (newRows.length > 0) {
-        // Insert after table header
-        const headerIndex = content.indexOf(tableHeader);
-        if (headerIndex !== -1) {
-            const insertPoint = headerIndex + tableHeader.length;
-            content =
-                content.slice(0, insertPoint) +
-                    "\n" +
-                    newRows.join("\n") +
-                    content.slice(insertPoint);
-        }
-        writeFileSync(explorationPath, content, "utf-8");
-        console.log(chalk.green(`  ✓ Appended ${newRows.length} anomalies to app-exploration.md`));
-    }
+        throw new Error(`Invalid viewport: "${v}". Use presets (mobile/tablet/desktop/wide) or WxH (e.g. 375x667)`);
+    });
 }
+// ── Baseline paths ───────────────────────────────────────────────────────────
+const BASELINE_DIR = ".openspec-pw/vision-baseline";
+const DIFF_DIR = ".openspec-pw/vision-diff";
+/**
+ * Capture screenshots from a URL at multiple viewports using Playwright.
+ */
+async function captureFromUrl(url, viewports, outputDir, concurrency = 2) {
+    const results = [];
+    mkdirSync(outputDir, { recursive: true });
+    let browser = null;
+    try {
+        browser = await chromium.launch({ headless: true });
+        for (let i = 0; i < viewports.length; i += concurrency) {
+            const batch = viewports.slice(i, i + concurrency);
+            const batchPromises = batch.map(async (vp) => {
+                // Each viewport gets its own context so viewport size doesn't affect other captures
+                const context = await browser.newContext({
+                    viewport: { width: vp.width, height: vp.height },
+                });
+                const page = await context.newPage();
+                try {
+                    await page.goto(url, { waitUntil: "networkidle", timeout: 30000 });
+                    const filename = `${vp.name}.png`;
+                    const filepath = join(outputDir, filename);
+                    await page.screenshot({ path: filepath, fullPage: true });
+                    return { path: filepath, route: `${vp.name}:${url}`, viewport: vp.name };
+                }
+                finally {
+                    await context.close();
+                }
+            });
+            const batchResults = await Promise.all(batchPromises);
+            results.push(...batchResults);
+        }
+    }
+    finally {
+        if (browser)
+            await browser.close();
+    }
+    return results;
+}
+/**
+ * Copy screenshots to baseline directory.
+ */
+function saveBaseline(screenshots, projectRoot) {
+    const baselineDir = join(projectRoot, BASELINE_DIR);
+    mkdirSync(baselineDir, { recursive: true });
+    for (const s of screenshots) {
+        const name = s.viewport
+            ? `${basename(s.path, ".png")}-baseline.png`
+            : `${basename(s.path, ".png")}-baseline.png`;
+        const dest = join(baselineDir, name);
+        writeFileSync(dest, readFileSync(s.path));
+        console.log(chalk.green(`  ✓ Baseline saved: ${dest}`));
+    }
+    return baselineDir;
+}
+// ── Main command ─────────────────────────────────────────────────────────────
 /**
  * Main vision check command.
  */
@@ -133,18 +166,53 @@ export async function visionCheck(options) {
         }
         process.exit(2);
     }
-    // 2. Dry run: list files only
+    // 2. Parse viewports
+    let viewports = null;
+    if (options.viewport) {
+        viewports = parseViewports(options.viewport);
+    }
+    // 3. Gather screenshots
+    let screenshots = [];
+    if (options.viewport && options.url) {
+        // Multi-viewport capture mode
+        if (!options.json) {
+            console.log(chalk.blue(`\n📷 Capturing at ${viewports.length} viewport(s) from ${options.url}...\n`));
+        }
+        screenshots = await captureFromUrl(options.url, viewports, join(projectRoot, ".openspec-pw/vision-current"));
+    }
+    else {
+        // File-based mode
+        screenshots = await resolveScreenshots(options.screenshots);
+    }
+    if (screenshots.length === 0) {
+        if (options.viewport && !options.url) {
+            console.log(chalk.yellow("Error: --viewport requires --url"));
+        }
+        else {
+            console.log(chalk.yellow("No screenshots found. Provide --screenshots <pattern> or --url <url> --viewport <views>"));
+        }
+        process.exit(1);
+    }
+    // 4. Baseline mode: save and exit
+    if (options.baseline) {
+        const baselineDir = saveBaseline(screenshots, projectRoot);
+        if (!options.json) {
+            console.log(chalk.green(`\n✓ Baseline saved (${screenshots.length} screenshots) in ${baselineDir}`));
+        }
+        return;
+    }
+    // 5. Dry run
     if (options.dryRun) {
-        const screenshots = await resolveScreenshots(options.screenshots);
-        console.log(chalk.blue("\n📷 Screenshots to analyze (dry run):\n"));
+        console.log(chalk.blue("\n📷 Screenshots (dry run):\n"));
         for (const s of screenshots) {
-            console.log(`  ${s.route} → ${s.path}`);
+            const vp = s.viewport ? ` [${s.viewport}]` : "";
+            console.log(`  ${s.route}${vp} → ${s.path}`);
         }
         console.log(chalk.gray(`\nTotal: ${screenshots.length} files`));
         console.log(chalk.gray(`Ollama: ${config.url} (${config.model})`));
         return;
     }
-    // 3. Health check
+    // 6. Health check
     const health = await checkOllamaHealth(config);
     if (!health.ok) {
         const result = {
@@ -163,29 +231,77 @@ export async function visionCheck(options) {
         }
         process.exit(1);
     }
-    // 4. Resolve screenshots
-    const screenshots = await resolveScreenshots(options.screenshots);
-    if (screenshots.length === 0) {
-        console.log(chalk.yellow("No screenshots found matching pattern"));
-        process.exit(0);
-    }
     if (!options.json) {
-        console.log(chalk.blue(`\n🔍 Analyzing ${screenshots.length} screenshots...\n`));
+        const mode = options.diff ? "diff" : "analyze";
+        console.log(chalk.blue(`\n🔍 ${mode === "diff" ? "Pixel diff" : "Analyzing"} ${screenshots.length} screenshot(s)...\n`));
     }
-    // 5. Batch analyze
-    const concurrency = options.parallel || 4;
-    const result = await batchAnalyzeScreenshots(config, screenshots, concurrency);
-    // 6. Filter by severity if specified
+    // 7. Diff mode: compare with baseline
+    const result = {
+        processed: 0,
+        anomalies: [],
+        skipped: [],
+        ollamaUrl: config.url,
+        model: config.model,
+        baselineDir: join(projectRoot, BASELINE_DIR),
+    };
+    if (options.diff) {
+        const baselineDir = join(projectRoot, BASELINE_DIR);
+        const diffDir = join(projectRoot, DIFF_DIR);
+        mkdirSync(diffDir, { recursive: true });
+        for (const s of screenshots) {
+            const baseName = basename(s.path, ".png");
+            const baselinePath = join(baselineDir, `${baseName}-baseline.png`);
+            const diffPath = join(diffDir, `${baseName}-diff.png`);
+            if (!existsSync(baselinePath)) {
+                result.skipped.push(s.path);
+                if (!options.json) {
+                    console.log(chalk.yellow(`  ⚠ No baseline for ${s.route}, skipping diff`));
+                }
+                continue;
+            }
+            try {
+                const { changed, anomalies } = await compareScreenshotDiff(config, baselinePath, s.path, diffPath, s.route);
+                result.processed++;
+                result.anomalies.push(...anomalies.map((a) => ({ ...a, viewport: s.viewport })));
+                if (!options.json) {
+                    if (changed) {
+                        console.log(chalk.yellow(`  ~ ${s.route}${s.viewport ? ` [${s.viewport}]` : ""}: ${anomalies.length} anomaly(ies)`));
+                    }
+                    else {
+                        console.log(chalk.gray(`  ✓ ${s.route}${s.viewport ? ` [${s.viewport}]` : ""}: no changes`));
+                    }
+                }
+            }
+            catch (err) {
+                const error = err;
+                result.skipped.push(s.path);
+                if (!options.json) {
+                    console.error(chalk.red(`  ✗ ${s.route}: ${error.message}`));
+                }
+            }
+        }
+    }
+    else {
+        // Analyze mode: batch analyze screenshots
+        const concurrency = options.parallel || 4;
+        const batchResult = await batchAnalyzeScreenshots(config, screenshots.map((s) => ({ path: s.path, route: s.route })), concurrency);
+        result.processed = batchResult.processed;
+        result.anomalies = batchResult.anomalies.map((a) => ({
+            ...a,
+            viewport: screenshots.find((s) => s.path === a.screenshot)?.viewport,
+        }));
+        result.skipped = batchResult.skipped;
+    }
+    // 8. Filter by severity
     if (options.severity) {
         result.anomalies = filterBySeverity(result.anomalies, options.severity);
     }
-    // 7. Output results
+    // 9. Output
     if (options.json) {
         console.log(JSON.stringify(result, null, 2));
     }
     else {
-        // Text output
-        console.log(chalk.blue("─── Vision Check Results ───\n"));
+        console.log(chalk.blue("─── Results ───\n"));
         console.log(`  Processed: ${result.processed}/${screenshots.length}`);
         console.log(`  Anomalies: ${result.anomalies.length}`);
         if (result.skipped.length > 0) {
@@ -199,7 +315,8 @@ export async function visionCheck(options) {
                     : a.severity === "warning"
                         ? chalk.yellow
                         : chalk.gray;
-                console.log(`  ${severityColor(`[${a.severity}]`)} ${a.route}`);
+                const vp = a.viewport ? ` [${a.viewport}]` : "";
+                console.log(`  ${severityColor(`[${a.severity}]`)} ${a.route}${vp}`);
                 console.log(`    Element: ${a.element}`);
                 console.log(`    Type: ${a.type} (${a.position})`);
                 console.log(`    ${a.description}\n`);
@@ -209,11 +326,14 @@ export async function visionCheck(options) {
             console.log(chalk.green("\n  ✓ No layout anomalies detected\n"));
         }
     }
-    // 8. Append to app-exploration.md if anomalies found
-    if (result.anomalies.length > 0 && !options.json) {
-        appendToExploration(projectRoot, result.anomalies);
+    // 10. HTML report
+    if (options.report) {
+        generateHtmlReport(result, screenshots.map((s) => ({ path: s.path, route: s.route })), options.report, options.diff ? join(projectRoot, DIFF_DIR) : undefined);
+        if (!options.json) {
+            console.log(chalk.green(`  ✓ HTML report: ${options.report}`));
+        }
     }
-    // 9. Write to output file if specified
+    // 11. JSON output file
     if (options.output) {
         writeFileSync(options.output, JSON.stringify(result, null, 2), "utf-8");
         if (!options.json) {

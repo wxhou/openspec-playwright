@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.15] - 2026-04-16
 
+### Added
+
+- `src/utils/ollama.ts`: Vision Check config now reads from `tests/playwright/.env` (highest priority) and environment variables. No longer requires `app-knowledge.md` section.
+- `src/utils/ollama.ts`: Enhanced VISION_PROMPT — adds QA engineer role, 2 new defect types (missing/incorrect), explicit exclusion rules, and clear severity definitions.
+- `openspec-pw vision-check`: Three new capabilities:
+  1. **Multi-viewport**: `--viewport mobile,tablet,desktop --url http://localhost:3000` captures and analyzes at multiple screen sizes
+  2. **Pixel diff + baseline**: `--baseline` saves baseline screenshots; `--diff` compares with baseline using pixelmatch + VLM to detect semantic regressions
+  3. **HTML report**: `--report <path>` generates a self-contained HTML report with embedded screenshots, anomaly summaries, and severity breakdown
+
 ### Fixed
+
+- `src/utils/ollama.ts`: Fixed regex `\z` → `$` — JavaScript `\z` anchor never matches inside a lookahead
 
 - `bin/openspec-pw`: Restore caller's working directory after node exits — `openspec-pw init --seed` now works correctly from user project directories
 - `src/index.ts`: Read `OPENSPE_PW_CWD` env var and `chdir()` at startup to restore original CWD

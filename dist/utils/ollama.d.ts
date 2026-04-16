@@ -1,12 +1,9 @@
 /**
  * Ollama API utilities for vision model integration.
  *
- * Configuration priority (highest to lowest):
- * 1. Function parameters
- * 2. Environment variables (OLLAMA_URL, OLLAMA_VISION_MODEL)
- * 3. app-knowledge.md Vision Check Config section
- *
- * If no configuration is found, vision check is disabled.
+ * Configuration: reads from `.env` in `tests/playwright/` (highest priority),
+ * then falls back to environment variables. If no URL or model is found,
+ * vision check is disabled.
  */
 export interface OllamaConfig {
     url: string;
@@ -17,10 +14,12 @@ export interface VisionAnomaly {
     route: string;
     screenshot: string;
     element: string;
-    type: "obscured" | "crowded" | "overflowed";
+    type: "obscured" | "crowded" | "overflowed" | "missing" | "incorrect";
     position: string;
     severity: "blocking" | "warning" | "minor";
     description: string;
+    viewport?: string;
+    changed?: boolean;
 }
 export interface VisionCheckResult {
     processed: number;
@@ -29,17 +28,23 @@ export interface VisionCheckResult {
     skipReason?: string;
     ollamaUrl: string;
     model: string;
+    baselineDir?: string;
+    currentDir?: string;
 }
 export interface OllamaGenerateResponse {
     response: string;
     done: boolean;
 }
+export interface PixelDiffRegion {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    changedPixels: number;
+}
 /**
- * Load Ollama config with priority:
- * 1. Environment variables (OLLAMA_URL, OLLAMA_VISION_MODEL)
- * 2. app-knowledge.md Vision Check Config section
- *
- * If no configuration is found, returns enabled=false.
+ * Load Ollama config from `.env` in `tests/playwright/` and environment variables.
+ * If no URL or model is configured, vision check is disabled.
  */
 export declare function loadOllamaConfig(projectRoot?: string): OllamaConfig;
 /**
@@ -61,3 +66,19 @@ export declare function batchAnalyzeScreenshots(config: OllamaConfig, screenshot
     path: string;
     route: string;
 }>, concurrency?: number): Promise<VisionCheckResult>;
+/**
+ * Compare two screenshots with pixel diff.
+ * Returns changed regions and optionally saves a diff image.
+ */
+export declare function compareScreenshotDiff(config: OllamaConfig, baselinePath: string, currentPath: string, diffPath: string, route: string): Promise<{
+    changed: boolean;
+    anomalies: VisionAnomaly[];
+}>;
+/**
+ * Generate a self-contained HTML report with embedded screenshots and results.
+ * If diffDir is provided, diff images are shown alongside current screenshots.
+ */
+export declare function generateHtmlReport(result: VisionCheckResult, screenshots: Array<{
+    path: string;
+    route: string;
+}>, outputPath: string, diffDir?: string): void;

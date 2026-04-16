@@ -1,9 +1,12 @@
 /**
  * Vision check command: Analyze screenshots for layout anomalies using Ollama VLM.
  *
- * Usage:
- *   openspec-pw vision-check --screenshots "__screenshots__/*.png"
- *   openspec-pw vision-check --screenshots "shot1.png,shot2.png" --parallel 2
+ * Modes:
+ *   --screenshots "..."        Analyze existing files (single mode)
+ *   --url ... --viewport ...  Capture from URL at multiple viewports
+ *   --baseline                Save as baseline (with --screenshots or --url+viewport)
+ *   --diff                    Compare against baseline
+ *   --report <path>           Generate HTML report
  *
  * Exit codes:
  *   0 = Check completed (with or without anomalies)
@@ -18,6 +21,11 @@ export interface VisionCheckOptions {
     dryRun?: boolean;
     severity?: string;
     json?: boolean;
+    viewport?: string;
+    url?: string;
+    baseline?: boolean;
+    diff?: boolean;
+    report?: string;
 }
 /**
  * Main vision check command.

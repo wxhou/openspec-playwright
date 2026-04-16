@@ -461,9 +461,9 @@ If Ollama with a vision model is available, analyze screenshots for layout anoma
 
 If Vision Check shows `⚠ disabled` or `⚠ not reachable` → skip this step entirely. Vision Check is optional and should not block exploration.
 
-**Configuration** (in order of priority):
-1. Environment variables: `OLLAMA_URL`, `OLLAMA_VISION_MODEL`
-2. `tests/playwright/app-knowledge.md` → **Vision Check Config** section
+**Configuration**:
+- `.env` file in `tests/playwright/` (highest priority): `OLLAMA_URL`, `OLLAMA_VISION_MODEL`, `OLLAMA_VISION_ENABLED`
+- Environment variables: `OLLAMA_URL`, `OLLAMA_VISION_MODEL`
 
 If no configuration is found, vision check is disabled.
 

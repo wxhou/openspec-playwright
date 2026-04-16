@@ -101,22 +101,6 @@ Persists assertion repairs (typos, spec drift) across sessions.
 
 ---
 
-## Vision Check Config
-
-Ollama VLM configuration for layout anomaly detection. See `openspec-pw doctor` for status.
-
-```
-ollama_url: 
-vision_model: 
-vision_enabled: false
-```
-
-> **Note**: Vision check is disabled by default. Configure `ollama_url` and `vision_model` to enable.
-> Environment variables (`OLLAMA_URL`, `OLLAMA_VISION_MODEL`) override these values.
-> Run `openspec-pw vision-check --dry-run` to verify configuration.
-
----
-
 ## Changelog
 
 | Date | Change | By |

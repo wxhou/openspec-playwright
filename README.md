@@ -40,6 +40,7 @@ openspec-pw audit         # Audit tests for orphaned specs and issues
 openspec-pw migrate       # Migrate old test files to new structure
 openspec-pw explore       # Explore routes in parallel with Playwright
 openspec-pw vision-check  # Analyze screenshots for layout anomalies (Ollama VLM)
+                          # Supports: multi-viewport, baseline diff, HTML report
 openspec-pw uninstall     # Remove integration from the project
 ```
 
