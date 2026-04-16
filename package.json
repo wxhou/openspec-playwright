@@ -4,7 +4,7 @@
   "description": "OpenSpec + Playwright E2E verification setup tool for Claude Code",
   "type": "module",
   "bin": {
-    "openspec-pw": "./bin/openspec-pw.js"
+    "openspec-pw": "./bin/openspec-pw"
   },
   "scripts": {
     "build": "tsc",
