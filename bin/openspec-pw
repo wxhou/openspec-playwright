@@ -2,6 +2,7 @@
 # Resolve symlinks to find real script location, then go up to package root
 REAL="$(readlink -f "$0" 2>/dev/null || echo "$0")"
 DIR="$(cd "$(dirname "$REAL")/.." && pwd)"
-# cd to the script's directory so Node's module resolution starts from global node_modules,
-# not from the caller's working directory (which may have a local node_modules shadowing it)
-cd "$DIR" && node dist/index.js "$@"
+# Save caller's CWD before cd so init/git get the correct working directory
+ORIG_CWD="$(pwd)"
+cd "$DIR" && OPENSPE_PW_CWD="$ORIG_CWD" node dist/index.js "$@"
+cd "$ORIG_CWD"

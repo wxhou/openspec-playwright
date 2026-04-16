@@ -1,3 +1,9 @@
+// Restore caller's working directory (passed from shell wrapper via env var).
+// This ensures init/git/file operations use the user's directory, not the global package dir.
+if (process.env.OPENSPE_PW_CWD) {
+  process.chdir(process.env.OPENSPE_PW_CWD);
+}
+
 import { readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
