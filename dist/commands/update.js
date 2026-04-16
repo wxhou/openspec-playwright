@@ -34,6 +34,35 @@ export async function update(options) {
             console.log(chalk.gray("  Run manually: npm install -g openspec-playwright"));
         }
     }
+    // 1b. Sync local devDependency if present
+    const pkgJsonPath = join(projectRoot, "package.json");
+    if (existsSync(pkgJsonPath)) {
+        let devDepVersion;
+        try {
+            const pkg = JSON.parse(readFileSync(pkgJsonPath, "utf-8"));
+            devDepVersion = pkg.devDependencies?.["openspec-playwright"];
+        }
+        catch {
+            // ignore parse errors
+        }
+        if (devDepVersion) {
+            console.log(chalk.blue("─── Syncing devDependency ───"));
+            console.log(chalk.yellow("  ⚠ openspec-playwright found in devDependencies —"));
+            console.log(chalk.gray("    Node module resolution will use local version, not global CLI."));
+            console.log(chalk.gray("    Syncing local devDependency to latest..."));
+            try {
+                execSync("npm install -D openspec-playwright@latest", {
+                    stdio: "inherit",
+                    cwd: projectRoot,
+                });
+                console.log(chalk.green("  ✓ devDependency synced to latest"));
+            }
+            catch {
+                console.log(chalk.yellow("  ⚠ Failed to sync devDependency. Run manually:"));
+                console.log(chalk.gray("    npm install -D openspec-playwright@latest\n"));
+            }
+        }
+    }
     // 2. Update commands for all detected editors
     if (options.skill !== false) {
         console.log(chalk.blue("\n─── Updating Commands & Skill ───"));
