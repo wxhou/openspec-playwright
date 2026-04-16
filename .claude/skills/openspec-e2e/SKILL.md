@@ -449,6 +449,65 @@ After writing `app-exploration.md`, extract **project-level shared knowledge** a
 
 Append only new/changed items — preserve existing content.
 
+### 4.5. Vision Check (Optional, VLM-powered)
+
+If Ollama with a vision model is available, analyze screenshots for layout anomalies before proceeding to test generation. This catches UI issues early — before tests fail.
+
+**Prerequisite**: Run `openspec-pw doctor` to check Vision Check availability:
+```
+─── Vision Check ───
+  ✓ ollama: http://localhost:11434 (qwen2.5-vl)
+```
+
+If Vision Check shows `⚠ disabled` or `⚠ not reachable` → skip this step entirely. Vision Check is optional and should not block exploration.
+
+**Configuration** (in order of priority):
+1. Environment variables: `OLLAMA_URL`, `OLLAMA_VISION_MODEL`
+2. `tests/playwright/app-knowledge.md` → **Vision Check Config** section
+
+If no configuration is found, vision check is disabled.
+
+**Run vision check** after exploration is complete:
+
+```bash
+openspec-pw vision-check --screenshots "__screenshots__/*.png"
+```
+
+**Flags**:
+- `--screenshots <glob>` — Screenshot paths (required)
+- `--parallel <n>` — Concurrent Ollama requests (default: 4)
+- `--severity <levels>` — Filter by severity: `blocking,warning,minor`
+- `--output <path>` — Write JSON results to file
+- `--dry-run` — List screenshots without analyzing
+- `--json` — Output JSON format
+
+**Exit codes**:
+- `0` = Check completed (with or without anomalies)
+- `1` = Ollama not available → skip vision check, continue workflow
+- `2` = Configuration disabled → skip vision check, continue workflow
+
+**Anomaly types detected**:
+
+| Type | Description | Example |
+| --- | --- | --- |
+| `obscured` | Interactive element covered by another element | Submit button hidden behind modal |
+| `crowded` | Elements too close together, hard to distinguish | Form fields with <8px spacing |
+| `overflowed` | Content clipped by container | Truncated text without ellipsis |
+
+**Output handling**:
+
+1. **JSON output** (with `--json`): Parse anomalies array for programmatic use
+2. **Auto-append**: Without `--json`, anomalies are appended to `app-exploration.md` → **Visual Anomalies** table
+3. **Decision table**:
+
+| Anomaly Severity | Action |
+| --- | --- |
+| `blocking` | Flag route with `⚠️ Layout`, consider skipping test generation until fixed |
+| `warning` | Log to Visual Anomalies table, continue test generation |
+| `minor` | Log for reference, no action required |
+
+**Graceful degradation**: If Ollama is unavailable or times out → log warning, skip vision check, continue to Step 5. Vision check should never block the E2E workflow.
+
 #### 4.7. After exploration
 
 Pass `app-exploration.md` to:

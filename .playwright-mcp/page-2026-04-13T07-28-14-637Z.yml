@@ -1,0 +1,415 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e3]:
+      - link "OP openspec-playwright" [ref=e4] [cursor=pointer]:
+        - /url: "#"
+        - generic [ref=e5]: OP
+        - generic [ref=e6]: openspec-playwright
+      - list [ref=e7]:
+        - listitem [ref=e8]:
+          - link "特性" [ref=e9] [cursor=pointer]:
+            - /url: "#features"
+        - listitem [ref=e10]:
+          - link "工作流" [ref=e11] [cursor=pointer]:
+            - /url: "#workflow"
+        - listitem [ref=e12]:
+          - link "快速开始" [ref=e13] [cursor=pointer]:
+            - /url: "#quickstart"
+        - listitem [ref=e14]:
+          - link "GitHub" [ref=e15] [cursor=pointer]:
+            - /url: https://github.com/wxhou/openspec-playwright
+  - generic [ref=e16]:
+    - generic [ref=e17]: AI-Driven E2E Testing
+    - heading "AI 研发闭环， 从规范到测试自动完成" [level=1] [ref=e18]:
+      - text: AI 研发闭环，
+      - emphasis [ref=e19]: 从规范到测试自动完成
+    - paragraph [ref=e20]: OpenSpec Playwright 将 OpenSpec 规范自动转化为 Playwright E2E 测试。 AI 生成测试用例、Healer 自动修复选择器、Claude Code 一键执行。 告别手动维护测试，专注于真正重要的代码。
+    - generic [ref=e21]:
+      - link "快速开始" [ref=e22] [cursor=pointer]:
+        - /url: "#quickstart"
+      - link "GitHub" [ref=e23] [cursor=pointer]:
+        - /url: https://github.com/wxhou/openspec-playwright
+    - generic [ref=e24]:
+      - generic [ref=e25]:
+        - generic [ref=e26]: 测试状态
+        - generic [ref=e27]: 规范路由 — 全部通过
+        - generic [ref=e29]: 选择器 — AI 验证
+        - generic [ref=e31]: Healer — 就绪
+      - generic [ref=e33]: v0.3.3
+  - generic [ref=e35]:
+    - generic [ref=e36]:
+      - generic [ref=e37]: 核心特性
+      - heading "为什么选择 OpenSpec Playwright？" [level=2] [ref=e38]:
+        - text: 为什么选择
+        - text: OpenSpec Playwright？
+      - paragraph [ref=e39]: 专为 OpenSpec 规范驱动开发设计，AI 全流程自动化，测试不再成为交付瓶颈。
+    - generic [ref=e40]:
+      - generic [ref=e41]:
+        - generic [ref=e42]: 规范驱动
+        - generic [ref=e44]: 规范驱动测试生成
+        - generic [ref=e45]: 读取 OpenSpec 规范文档，自动提取路由、表单、验证规则，生成对应 Playwright 测试用例。不再需要手动编写和维护测试。
+      - generic [ref=e46]:
+        - generic [ref=e47]: 规范即文档
+        - generic [ref=e49]: 规范变更，测试即更新
+        - generic [ref=e50]: 测试与 OpenSpec 规范严格对齐。验证通过意味着规范得到实现，规范变更自动驱动测试更新。
+      - generic [ref=e51]:
+        - generic [ref=e52]: 自愈机制
+        - generic [ref=e54]: Healer 自愈
+        - generic [ref=e55]: 选择器失效时 AI 自动诊断并修复。区分测试 Bug 和 App Bug，三阶段修复流程：分类 → 修复 → 升级。
+      - generic [ref=e56]:
+        - generic [ref=e57]: 浏览器探索
+        - generic [ref=e59]: 真实浏览器探索
+        - generic [ref=e60]:
+          - text: 通过 gstack
+          - code [ref=e61]: /browse
+          - text: 遍历每个路由，snapshot + @ref 精确定位元素。Token 高效，状态持久，可视化操作。
+      - generic [ref=e62]:
+        - generic [ref=e63]: 测试报告
+        - generic [ref=e65]: 完整测试报告
+        - generic [ref=e66]: 自动生成 Markdown 报告，包含测试结果、截图、失败分类（App Bug / Test Bug / RAFT）。可追溯、可分享。
+      - generic [ref=e67]:
+        - generic [ref=e68]: Claude Code
+        - generic [ref=e70]: Claude Code 原生集成
+        - generic [ref=e71]:
+          - text: 作为 Claude Code skill 提供，一个
+          - code [ref=e72]: /opsx:e2e <name>
+          - text: 命令完成从规范到报告的全流程。
+  - generic [ref=e74]:
+    - generic [ref=e75]:
+      - generic [ref=e76]: 工作流
+      - heading "9 步端到端闭环" [level=2] [ref=e77]
+      - paragraph [ref=e78]: 严格按顺序执行，每步有明确产出。反馈循环确保问题不过夜。
+    - generic [ref=e79]:
+      - generic [ref=e80]:
+        - generic [ref=e81]:
+          - img [ref=e83]
+          - text: gstack
+        - generic [ref=e86]: git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup
+        - generic [ref=e87]: /browse 探索 + /qa 验证
+      - generic [ref=e88]:
+        - generic [ref=e89]:
+          - img [ref=e91]
+          - text: OpenSpec CLI
+        - generic [ref=e94]: npm install -g @fission-ai/openspec && openspec init
+        - generic [ref=e95]: /opsx:propose、/opsx:apply 等命令
+      - generic [ref=e96]:
+        - generic [ref=e97]:
+          - img [ref=e99]
+          - text: openspec-playwright
+        - generic [ref=e103]: npm install -g openspec-playwright && openspec-pw init
+        - generic [ref=e104]: /opsx:e2e 命令 + 测试模板
+      - generic [ref=e105]:
+        - generic [ref=e106]:
+          - img [ref=e108]
+          - text: Playwright MCP
+        - generic [ref=e111]: claude mcp add playwright npx @playwright/mcp@latest
+        - generic [ref=e112]: 测试执行 + Healer 自愈
+    - generic [ref=e113]:
+      - generic [ref=e114]:
+        - generic [ref=e115]:
+          - generic [ref=e116]: "1"
+          - generic [ref=e117]:
+            - generic [ref=e118]:
+              - generic [ref=e119]: 探索与提案
+              - generic [ref=e120]: 必需
+            - generic [ref=e121]:
+              - text: 现有项目先探索（
+              - code [ref=e122]: /opsx:explore
+              - text: ）再写 proposal；新项目直接生成 proposal + scenarios。方向不明确时可用
+              - code [ref=e123]: /office-hours
+              - text: 做创意验证。
+            - generic [ref=e124]:
+              - generic [ref=e125]: / opsx:explore
+              - generic [ref=e126]: / opsx:propose
+              - generic [ref=e127]: / office-hours
+        - generic [ref=e128]:
+          - generic [ref=e129]: "2"
+          - generic [ref=e130]:
+            - generic [ref=e131]:
+              - generic [ref=e132]: 产品与架构评审
+              - generic [ref=e133]: 按需
+            - generic [ref=e134]:
+              - code [ref=e135]: /plan-ceo-review
+              - text: 、
+              - code [ref=e136]: /plan-eng-review
+              - text: 。战略和架构影响评审。
+            - generic [ref=e137]:
+              - generic [ref=e138]: / plan-ceo-review
+              - generic [ref=e139]: / plan-eng-review
+        - generic [ref=e140]:
+          - generic [ref=e141]: "3"
+          - generic [ref=e142]:
+            - generic [ref=e143]:
+              - generic [ref=e144]: 设计审查
+              - generic [ref=e145]: 必需
+            - generic [ref=e146]: 在实现前进行设计评审，确保方案合理。评审通过后开始实现。
+            - generic [ref=e148]: / plan-design-review
+        - generic [ref=e149]:
+          - generic [ref=e150]: "4"
+          - generic [ref=e151]:
+            - generic [ref=e152]:
+              - generic [ref=e153]: 实现
+              - generic [ref=e154]: 必需
+            - generic [ref=e155]:
+              - text: 执行
+              - code [ref=e156]: /opsx:apply
+              - text: 进行实现 →
+              - code [ref=e157]: lint + typecheck
+              - text: 通过才算成功。
+            - generic [ref=e159]: / opsx:apply
+        - generic [ref=e160]:
+          - generic [ref=e161]: "5"
+          - generic [ref=e162]:
+            - generic [ref=e163]:
+              - generic [ref=e164]: 自审
+              - generic [ref=e165]: 必需
+            - generic [ref=e166]:
+              - code [ref=e167]: /opsx:verify
+              - code [ref=e168]: /design-review
+              - code [ref=e169]: /review
+              - text: 自审实现代码，确保质量。设计审查后执行两步式 CSS 审计：1) grep 提取间距值对比基准；2) 检查 margin hack（margin 和 > 基准 2 倍 → 改为 gap/grid 控制）。
+            - generic [ref=e170]:
+              - generic [ref=e171]: / opsx:verify
+              - generic [ref=e172]: / design-review
+              - generic [ref=e173]: / review
+              - generic [ref=e174]: / CSS审计
+        - generic [ref=e175]:
+          - generic [ref=e176]: "6"
+          - generic [ref=e177]:
+            - generic [ref=e178]:
+              - generic [ref=e179]: E2E 测试生成与执行
+              - generic [ref=e180]: 必需
+            - generic [ref=e181]:
+              - code [ref=e182]: /opsx:e2e
+              - text: 生成测试 →
+              - code [ref=e183]: /browse
+              - text: 探索 DOM → Healer 修复 →
+              - code [ref=e184]: /qa
+              - text: 真实浏览器验证。
+            - generic [ref=e185]:
+              - generic [ref=e186]: / opsx:e2e
+              - generic [ref=e187]: / browse
+              - generic [ref=e188]: / qa
+              - generic [ref=e189]: Playwright MCP
+        - generic [ref=e190]:
+          - generic [ref=e191]: "7"
+          - generic [ref=e192]:
+            - generic [ref=e193]:
+              - generic [ref=e194]: 验证通过后归档
+              - generic [ref=e195]: 必需
+            - generic [ref=e196]:
+              - text: 永久归档，更新
+              - code [ref=e197]: specs/
+              - text: 。
+            - generic [ref=e199]: / opsx:archive
+        - generic [ref=e200]:
+          - generic [ref=e201]: "8"
+          - generic [ref=e202]:
+            - generic [ref=e203]:
+              - generic [ref=e204]: 发布
+              - generic [ref=e205]: 必需
+            - generic [ref=e206]:
+              - code [ref=e207]: /ship
+              - text: 、
+              - code [ref=e208]: /land-and-deploy
+              - text: 或
+              - code [ref=e209]: /canary
+              - text: 。选择合适的发布策略。
+            - generic [ref=e210]:
+              - generic [ref=e211]: / ship
+              - generic [ref=e212]: / land-and-deploy
+              - generic [ref=e213]: / canary
+        - generic [ref=e214]:
+          - generic [ref=e215]: "9"
+          - generic [ref=e216]:
+            - generic [ref=e217]:
+              - generic [ref=e218]: 迭代回顾
+              - generic [ref=e219]: 按需
+            - generic [ref=e220]:
+              - text: 评审本次迭代，总结经验教训。
+              - code [ref=e221]: /retro
+            - generic [ref=e223]: / retro
+      - generic [ref=e224]:
+        - generic [ref=e225]:
+          - generic [ref=e226]: 工作流指标
+          - generic [ref=e227]:
+            - generic [ref=e228]: 总步骤
+            - generic [ref=e229]: "9"
+          - generic [ref=e230]:
+            - generic [ref=e231]: 必需步骤
+            - generic [ref=e232]: "6"
+          - generic [ref=e233]:
+            - generic [ref=e234]: 按需步骤
+            - generic [ref=e235]: "3"
+          - generic [ref=e236]:
+            - generic [ref=e237]: Claude Code 命令
+            - generic [ref=e238]: "7"
+          - generic [ref=e239]:
+            - generic [ref=e240]: gstack skills
+            - generic [ref=e241]: "5"
+        - generic [ref=e242]:
+          - generic [ref=e243]: 反馈循环
+          - generic [ref=e244]:
+            - generic [ref=e245]: App Bug
+            - generic [ref=e246]: → 步骤 4
+          - generic [ref=e247]:
+            - generic [ref=e248]: 架构问题
+            - generic [ref=e249]: → 步骤 2
+          - generic [ref=e250]:
+            - generic [ref=e251]: Proposal 调整
+            - generic [ref=e252]: → 步骤 1
+  - generic [ref=e253]:
+    - generic [ref=e254]:
+      - generic [ref=e255]: 反馈循环
+      - heading "问题不过夜" [level=2] [ref=e256]
+      - paragraph [ref=e257]: 生产中必然发生信号，触发对应回归路径。
+    - generic [ref=e258]:
+      - generic [ref=e259]:
+        - generic [ref=e260]: ✕
+        - generic [ref=e261]:
+          - generic [ref=e262]: 测试失败（App Bug）
+          - generic [ref=e263]:
+            - text: → 回到
+            - strong [ref=e264]: 步骤 4
+            - text: 修复代码 → 重新执行 E2E
+      - generic [ref=e265]:
+        - generic [ref=e266]: △
+        - generic [ref=e267]:
+          - generic [ref=e268]: 发现架构问题
+          - generic [ref=e269]:
+            - text: → 回到
+            - strong [ref=e270]: 步骤 2
+            - text: 重新评审 → 步骤 4 修复
+      - generic [ref=e271]:
+        - generic [ref=e272]: ○
+        - generic [ref=e273]:
+          - generic [ref=e274]: Proposal 需调整
+          - generic [ref=e275]:
+            - text: → 回到
+            - strong [ref=e276]: 步骤 1
+            - text: 重新提案
+      - generic [ref=e277]:
+        - generic [ref=e278]: ◻
+        - generic [ref=e279]:
+          - generic [ref=e280]: 评审不通过
+          - generic [ref=e281]: → 回到对应步骤重新处理
+  - generic [ref=e283]:
+    - generic [ref=e284]:
+      - generic [ref=e285]: 快速开始
+      - heading "5 分钟上手" [level=2] [ref=e286]
+      - paragraph [ref=e287]: 已有 Node.js 环境？按步骤安装，立即体验。
+    - generic [ref=e288]:
+      - generic [ref=e289]:
+        - heading "1 安装步骤" [level=3] [ref=e290]:
+          - generic [ref=e291]: "1"
+          - text: 安装步骤
+        - generic [ref=e292]:
+          - generic [ref=e293]:
+            - generic [ref=e294]: "01"
+            - generic [ref=e295]:
+              - generic [ref=e296]: 安装 CLI
+              - generic [ref=e297]: npm install -g openspec-playwright
+          - generic [ref=e298]:
+            - generic [ref=e299]: "02"
+            - generic [ref=e300]:
+              - generic [ref=e301]: 安装 gstack
+              - generic [ref=e302]: git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup
+          - generic [ref=e303]:
+            - generic [ref=e304]: "03"
+            - generic [ref=e305]:
+              - generic [ref=e306]: 初始化 OpenSpec
+              - generic [ref=e307]: npm install -g @fission-ai/openspec && openspec init
+          - generic [ref=e308]:
+            - generic [ref=e309]: "04"
+            - generic [ref=e310]:
+              - generic [ref=e311]: 安装 Playwright MCP
+              - generic [ref=e312]: claude mcp add playwright npx @playwright/mcp@latest
+          - generic [ref=e313]:
+            - generic [ref=e314]: "05"
+            - generic [ref=e315]:
+              - generic [ref=e316]: 初始化 E2E
+              - generic [ref=e317]: openspec-pw init && npx playwright install --with-deps
+      - generic [ref=e318]:
+        - heading "运行第一个 E2E 测试" [level=3] [ref=e319]
+        - generic [ref=e325]:
+          - generic [ref=e326]: $/opsx:e2e <change-name>
+          - generic [ref=e327]: "# Claude Code 自动完成："
+          - generic [ref=e328]: "# 1. 读取规范 → 2. 检测认证"
+          - generic [ref=e329]: "# 3. 探索 DOM → 4. 生成测试"
+          - generic [ref=e330]: "# 5. 执行测试 → 6. Healer 修复"
+          - generic [ref=e331]: "# 7. 生成报告"
+  - generic [ref=e333]:
+    - generic [ref=e334]:
+      - generic [ref=e335]: 技术栈
+      - heading "AI 执行引擎驱动闭环" [level=2] [ref=e336]
+      - paragraph [ref=e337]: 每个组件都是业界最佳实践，共同支撑 AI 驱动的研发闭环。
+    - generic [ref=e338]:
+      - generic [ref=e339]:
+        - img [ref=e341]
+        - generic [ref=e344]: Claude Code
+        - generic [ref=e345]: AI 执行引擎
+      - generic [ref=e346]:
+        - img [ref=e348]
+        - generic [ref=e354]: Playwright
+        - generic [ref=e355]: 测试框架
+      - generic [ref=e356]:
+        - img [ref=e358]
+        - generic [ref=e362]: gstack /browse
+        - generic [ref=e363]: 浏览器探索
+      - generic [ref=e364]:
+        - img [ref=e366]
+        - generic [ref=e370]: OpenSpec
+        - generic [ref=e371]: 规范驱动
+      - generic [ref=e372]:
+        - img [ref=e374]
+        - generic [ref=e379]: Playwright MCP
+        - generic [ref=e380]: 测试执行
+  - generic [ref=e382]:
+    - generic [ref=e383]:
+      - generic [ref=e384]: 对比
+      - heading "与传统测试方式对比" [level=2] [ref=e385]
+      - paragraph [ref=e386]: 从手动维护到 AI 自动化，测试生产力的本质飞跃。
+    - generic [ref=e387]:
+      - generic [ref=e388]:
+        - generic [ref=e389]: OpenSpec Playwright
+        - generic [ref=e390]:
+          - generic [ref=e391]: ✓
+          - generic [ref=e392]: 规范驱动，变更即测试
+        - generic [ref=e393]:
+          - generic [ref=e394]: ✓
+          - generic [ref=e395]: AI 自动生成测试用例
+        - generic [ref=e396]:
+          - generic [ref=e397]: ✓
+          - generic [ref=e398]: Healer 自动修复选择器
+        - generic [ref=e399]:
+          - generic [ref=e400]: ✓
+          - generic [ref=e401]: 一行命令完成全流程
+        - generic [ref=e402]:
+          - generic [ref=e403]: ✓
+          - generic [ref=e404]: 测试与规范严格对齐
+      - generic [ref=e405]:
+        - generic [ref=e406]: 手动维护 E2E
+        - generic [ref=e407]: — 每次变更手动更新测试
+        - generic [ref=e408]: — 选择器失效靠人工发现
+        - generic [ref=e409]: — 测试覆盖靠经验判断
+        - generic [ref=e410]: — 规范与测试容易脱节
+        - generic [ref=e411]: — 维护成本随项目线性增长
+  - contentinfo [ref=e412]:
+    - generic [ref=e413]:
+      - generic [ref=e414]:
+        - generic [ref=e415]:
+          - generic [ref=e416]: OP
+          - text: openspec-playwright
+        - paragraph [ref=e417]: 自动化 E2E 测试框架，专为 OpenSpec 规范驱动开发设计。
+      - generic [ref=e418]:
+        - link "GitHub" [ref=e419] [cursor=pointer]:
+          - /url: https://github.com/wxhou/openspec-playwright
+        - link "文档" [ref=e420] [cursor=pointer]:
+          - /url: https://github.com/wxhou/openspec-playwright#readme
+        - link "npm" [ref=e421] [cursor=pointer]:
+          - /url: https://www.npmjs.com/package/openspec-playwright
+        - link "gstack" [ref=e422] [cursor=pointer]:
+          - /url: https://github.com/garrytan/gstack
+        - link "OpenSpec" [ref=e423] [cursor=pointer]:
+          - /url: https://github.com/fission-ai/openspec
+    - generic [ref=e424]: MIT License · Built with Claude Code + Playwright + gstack + OpenSpec

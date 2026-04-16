@@ -10,6 +10,7 @@ import { migrate } from "./commands/migrate.js";
 import { uninstall } from "./commands/uninstall.js";
 import { audit } from "./commands/audit.js";
 import { explore } from "./commands/explore.js";
+import { visionCheck } from "./commands/visionCheck.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -106,6 +107,43 @@ program
   )
   .action(async (opts) => {
     await explore(opts);
+  });
+
+program
+  .command("vision-check")
+  .description("Analyze screenshots for layout anomalies using Ollama VLM")
+  .requiredOption(
+    "-s, --screenshots <pattern>",
+    "Screenshot path(s): glob pattern or comma-separated list",
+  )
+  .option(
+    "-c, --config <path>",
+    "Config file path (default: app-knowledge.md)",
+  )
+  .option(
+    "-p, --parallel <n>",
+    "Number of parallel requests to Ollama",
+    (v) => parseInt(v, 10),
+    4,
+  )
+  .option(
+    "-o, --output <path>",
+    "Write JSON results to file",
+  )
+  .option(
+    "--severity <levels>",
+    "Filter by severity: blocking,warning,minor",
+  )
+  .option(
+    "-n, --dry-run",
+    "List screenshots without analyzing",
+  )
+  .option(
+    "--json",
+    "Output results as JSON",
+  )
+  .action(async (opts) => {
+    await visionCheck(opts);
   });
 
 program.parse();

@@ -35,9 +35,11 @@ Claude Code — E2E workflow is driven by SKILL.md using /browse (exploration) +
 ```bash
 openspec-pw init          # Initialize integration (one-time setup)
 openspec-pw update        # Update CLI and commands to latest version
-openspec-pw doctor        # Check prerequisites
+openspec-pw doctor        # Check prerequisites (including Vision Check)
 openspec-pw audit         # Audit tests for orphaned specs and issues
 openspec-pw migrate       # Migrate old test files to new structure
+openspec-pw explore       # Explore routes in parallel with Playwright
+openspec-pw vision-check  # Analyze screenshots for layout anomalies (Ollama VLM)
 openspec-pw uninstall     # Remove integration from the project
 ```
 

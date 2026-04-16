@@ -2,6 +2,7 @@ import { existsSync } from "fs";
 import { join } from "path";
 import { execSync } from "child_process";
 import chalk from "chalk";
+import { loadOllamaConfig, checkOllamaHealth } from "../utils/ollama.js";
 export async function doctor(options = {}) {
     const checks = [];
     const projectRoot = process.cwd();
@@ -105,7 +106,22 @@ export async function doctor(options = {}) {
         ok: hasSeed,
         message: hasSeed ? "found" : "not found (optional)",
     });
-    const allOk = checks.filter((c) => !c.ok && c.category !== "Seed Test").length === 0;
+    // Vision Check (Ollama)
+    const ollamaConfig = loadOllamaConfig(projectRoot);
+    let visionOk = false;
+    let visionMessage = "disabled";
+    if (ollamaConfig.enabled) {
+        const health = await checkOllamaHealth(ollamaConfig);
+        visionOk = health.ok;
+        visionMessage = health.message;
+    }
+    checks.push({
+        category: "Vision Check",
+        name: "ollama",
+        ok: visionOk,
+        message: visionMessage,
+    });
+    const allOk = checks.filter((c) => !c.ok && c.category !== "Seed Test" && c.category !== "Vision Check").length === 0;
     if (options.json) {
         console.log(JSON.stringify({ ok: allOk, checks }, null, 2));
         if (!allOk)
@@ -123,7 +139,7 @@ export async function doctor(options = {}) {
         if (check.ok) {
             console.log(chalk.green(`  ✓ ${check.name}: ${check.message}`));
         }
-        else if (check.category === "Seed Test") {
+        else if (check.category === "Seed Test" || check.category === "Vision Check") {
             console.log(chalk.yellow(`  ⚠ ${check.name}: ${check.message}`));
         }
         else {

@@ -58,6 +58,18 @@ BASE_URL: <from env or seed.spec.ts>
 |-------|-------|-------|
 | | | |
 
+## Visual Anomalies
+
+Auto-populated by `openspec-pw vision-check`. Layout issues detected via Ollama VLM.
+
+| Route | Element | Type | Position | Severity | Description |
+| --- | --- | --- | --- | --- | --- |
+| | | | | | |
+
+> **Type legend**: `obscured` (element covered) | `crowded` (spacing too narrow) | `overflowed` (content clipped)
+>
+> **Severity**: `blocking` (cannot interact) | `warning` (usability issue) | `minor` (cosmetic)
+
 ## Next Steps
 
 After exploration, pass this file to Step 5 (Planner) and Step 6 (Generator).

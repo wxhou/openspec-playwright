@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.9] - 2026-04-16
+
+### Added
+
+- `openspec-pw vision-check` command: Analyze screenshots for layout anomalies using Ollama VLM (Vision Language Model)
+  - `--screenshots <pattern>` — Glob pattern or comma-separated list of screenshot paths (required)
+  - `--parallel <n>` — Concurrent Ollama requests (default: 4)
+  - `--severity <levels>` — Filter by severity: `blocking,warning,minor`
+  - `--output <path>` — Write JSON results to file
+  - `--dry-run` — List screenshots without analyzing
+  - `--json` — Output JSON format
+  - Exit codes: `0` = completed, `1` = Ollama unavailable (skip), `2` = disabled in config (skip)
+- `src/utils/ollama.ts`: Ollama API wrapper with health check, batch analysis, and graceful degradation
+- `openspec-pw doctor`: New "Vision Check" health check item — shows Ollama availability and configured vision model
+- SKILL.md Step 4.5: Vision Check workflow — optional VLM-powered layout anomaly detection after exploration, before test generation
+- `templates/app-exploration.md`: New "Visual Anomalies" section — auto-populated by `vision-check` command with de-duplication
+- `templates/app-knowledge.md`: New "Vision Check Config" section — project-level Ollama configuration (url, model, enabled)
+
+### Changed
+
+- Vision Check configuration supports 2-tier priority: env vars (`OLLAMA_URL`, `OLLAMA_VISION_MODEL`) → `app-knowledge.md`. No config = disabled.
+- Vision Check is optional and non-blocking — Ollama unavailable or disabled simply skips the check, workflow continues
+
+### Dependencies
+
+- Added `glob` package for screenshot path resolution
+
 ## [0.3.8] - 2026-04-15
 
 ### Changed
