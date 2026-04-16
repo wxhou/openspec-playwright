@@ -30,7 +30,7 @@ E2E 工作流前提（由用户确保，非 AI 操作）：
 ## 3. 上下文管理
 **文件读取完整**：超过 500 行的文件，不要假设单次读取覆盖完整内容——根据需要分次读取或编辑前重新读取完整文件。超过 10 条消息后，编辑任何文件前强制重新读取。
 
-**OpenSpec 阶段隔离**：`specs/playwright/`、`tests/playwright/`（seed 除外）和 `test-plan.md` 由 `/opsx:e2e` 显式触发，不由 explore/propose/continue/apply/verify 等阶段自动推断。E2E 工作流是独立的。
+**OpenSpec 阶段隔离**：所有阶段均由用户手动触发，不自动进入下一阶段。`/opsx:explore`、`/opsx:propose`、`/opsx:apply`、`/opsx:verify`、`/opsx:e2e` 均需用户明确调用。禁止在同一阶段内触发其他阶段（如 explore 阶段不能调用 apply，verify 阶段不能调用 e2e）。
 
 **重构前清死代码**：未使用的 import/export/prop/console.log 先删掉，单独提交，再做重构。
 
@@ -53,11 +53,11 @@ E2E 工作流前提（由用户确保，非 AI 操作）：
 ```
  1. 探索与提案
  2. 产品与架构评审（按需触发）
- 3. 设计审查 → /plan-design-review + /frontend-design
+ 3. 设计审查 → /plan-design-review
  4. 实现 → /opsx:apply
  5. 自审 → /opsx:verify
  6. E2E 测试 → /opsx:e2e <change-name> → /browse 探索 + /qa 验证
- 7. 发布 → /ship 或 /land-and-deploy
+ 7. 发布 → 用户手动 /ship 或 /land-and-deploy
  8. 迭代回顾 → /retro
 ```
 
@@ -76,8 +76,8 @@ E2E 工作流前提（由用户确保，非 AI 操作）：
 
 **5. 自审**：`/opsx:verify` 自审实现代码，确保质量。
 
-**6. E2E 测试**：`/opsx:e2e <change-name>` 生成 Playwright 测试 → `/browse` 探索真实 DOM → Healer 自动修复 → `/qa` 真实浏览器验证。E2E 通过后进入发布环节。
+**6. E2E 测试**：`/opsx:e2e <change-name>` 生成 Playwright 测试 → `/browse` 探索真实 DOM → Healer 自动修复 → `/qa` 真实浏览器验证。E2E 通过后，由用户决定发布时机。
 
-**7. 发布**：`/ship`、`/land-and-deploy` 或 `/canary`。内部项目可能直接部署，无需走 PR 机制。
+**7. 发布**：由用户手动触发 `/ship`、`/land-and-deploy` 或 `/canary`。内部项目可能直接部署，无需走 PR 机制。
 
 **8. 迭代回顾**：`/retro`

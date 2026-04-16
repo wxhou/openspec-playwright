@@ -8,4 +8,5 @@
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
 | #5427 | 10:05 AM | ✅ | Committed style fixes aligning SKILL.md with OpenSpec template standard | ~281 |
+| #5413 | 9:56 AM | ✅ | Committed architectural changes to openspec-playwright design doc | ~210 |
 </claude-mem-context>
