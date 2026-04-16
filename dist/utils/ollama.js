@@ -17,7 +17,11 @@ const _require = createRequire(import.meta.url);
  */
 export function loadOllamaConfig(projectRoot = process.cwd()) {
     // Lazy load .env from tests/playwright/ (falls back gracefully if missing)
-    const envPath = join(projectRoot, "tests", "playwright", ".env");
+    // Avoid path duplication if projectRoot is already inside tests/playwright/
+    const normRoot = projectRoot.replace(/[\/\\]+$/, "");
+    const envPath = normRoot.match(/[\/\\]tests[\/\\]playwright$/)
+        ? join(normRoot, ".env") // already inside tests/playwright/
+        : join(normRoot, "tests", "playwright", ".env");
     if (existsSync(envPath)) {
         loadEnv({ path: envPath });
     }
