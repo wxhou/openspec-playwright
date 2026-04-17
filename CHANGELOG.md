@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.18] - 2026-04-17
+
+### Fixed
+
+- `package.json` bin: Changed from `./bin/openspec-pw` (Unix shell) to `./bin/openspec-pw.js` (Node.js) — fixes "The system cannot find the path specified" on Windows
+- `bin/openspec-pw.js`: Added CWD preservation logic (save orig CWD → set env var → chdir to pkg root → restore on exit/SIGINT/SIGTERM) so `openspec-pw init` works correctly from user project directories on Windows
+
 ## [0.3.15] - 2026-04-16
 
 ### Added
