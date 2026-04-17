@@ -65,7 +65,9 @@ Before each release action, confirm the target version has already been explicit
 2. `node scripts/bump-docs.js` — auto-updates `docs/index.html` version badge
 3. `npm run build` — compiles TypeScript
 4. `git add docs/index.html && git push` — pushes docs update
-5. `git push --tags && npm publish` — pushes tags + publishes to npm
+5. `git push --tags` — pushes tags → **CI pipeline handles npm publish**
+
+> ⚠️ **只走 CI 发布，不要手动执行 `npm publish`。** 本地 npm publish 会和 CI publish 冲突（"cannot publish over the previously published versions"）。发布流程：本地 `git push --tags` → CI verify 通过 → CI 自动发布 npm + GitHub Release。
 
 **Important**: Do not use `npm run release` when the version must remain fixed. This project may only publish the version the user explicitly asked for; automatic patch bumps are forbidden unless the user requests a new version.
 
