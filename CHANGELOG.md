@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.19] - 2026-04-19
+
+### Changed
+
+- `employee-standards.md` Section 2: Refined code quality principles — "Surgical Changes" (only modify what's asked, clean up own mess), "Simplicity" (50-line solution in 50 lines, not 200), explicit search rule (Grep + Glob, scope defaults to all source types)
+- `employee-standards.md` Section 5: Strengthened search rule — requires both content search (Grep) and filename search (Glob), scope defaults to all source types, explicit coverage of refactoring scenarios
+
+### Docs
+
+- Clarified release flow: CI handles npm publish, local `npm publish` is forbidden
+
 ## [0.3.18] - 2026-04-17
 
 ### Fixed
