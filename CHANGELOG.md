@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.20] - 2026-04-22
+
+### Changed
+
+- `employee-standards.md` Section 4: Restructured implementation phase with 4 new subsections:
+  - **4.1 变更边界检查**: Before/during/after scope validation against proposal.md
+  - **4.2 任务类型区分**: Build/Verify/Dependent task completion criteria
+  - **4.3 依赖链检查**: Check predecessor status before marking dependent tasks
+  - **4.4 自动化 Gate**: Auto-run lint + typecheck, fail-fast
+  - **4.5 Verify 强制化**: Must pass verify before marking complete
+- Removed redundant "5. 自审" section (covered by 4.5)
+- Renumbered workflow steps (removed old step 5, E2E now step 5)
+
 ## [0.3.19] - 2026-04-19
 
 ### Changed

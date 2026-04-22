@@ -79,12 +79,26 @@ E2E 工作流前提（由用户确保，非 AI 操作）：
 **3. 设计审查**：在实现前进行设计评审，确保方案合理。评审通过后开始实现。
 - `/plan-design-review`：UI/UX 方案审查，评分各设计维度，确保用户体验达标
 
-**4. 实现**：执行 `/opsx:apply` 进行实现 → `lint + typecheck` 通过才算成功。
+**4. 实现**：执行 `/opsx:apply` 进行实现。
 
-**5. 自审**：`/opsx:verify` 自审实现代码，确保质量。
+**4.1 变更边界检查**：
+- 实施前：对照 `changes/<name>/proposal.md` 确认范围
+- 实施中：禁止修改其他 `changes/<name2>/` 目录下的文件
+- 完成后：逐条对照 proposal.md 确认 scope 内的已交付，scope 外的未改动
 
-**6. E2E 测试**：`/opsx:e2e <change-name>` 生成 Playwright 测试 → `/browse` 探索真实 DOM → Healer 自动修复 → `/qa` 真实浏览器验证。E2E 通过后，由用户决定发布时机。
+**4.2 任务类型区分**：
+- **构建任务**：创建文件/代码 → lint + typecheck 通过后可标记
+- **验证任务**：需实际运行 → 必须验证后才能标记
+- **依赖任务**：等前置完成 → 不提前标记
 
-**7. 发布**：由用户手动触发 `/ship`、`/land-and-deploy` 或 `/canary`。内部项目可能直接部署，无需走 PR 机制。
+**4.3 依赖链检查**：标记依赖任务前，检查前置任务状态
 
-**8. 迭代回顾**：`/retro`
+**4.4 自动化 Gate**：lint + typecheck 自动执行，任一失败则停止
+
+**4.5 Verify 强制化**：必须 verify 通过后才能标记完成，禁止跳过
+
+**5. E2E 测试**：`/opsx:e2e <change-name>` 生成 Playwright 测试 → `/browse` 探索真实 DOM → Healer 自动修复 → `/qa` 真实浏览器验证。E2E 通过后，由用户决定发布时机。
+
+**6. 发布**：由用户手动触发 `/ship`、`/land-and-deploy` 或 `/canary`。内部项目可能直接部署，无需走 PR 机制。
+
+**7. 迭代回顾**：`/retro`
