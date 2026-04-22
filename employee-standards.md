@@ -40,8 +40,10 @@ E2E 工作流前提（由用户确保，非 AI 操作）：
 
 **上下文压缩恢复后（Apply 阶段）**：
 1. `git status` — 确认已改动的内容
-2. 重读 `changes/<name>/proposal.md` + `tasks.md` — 确认范围和任务状态
-3. 然后继续实施
+2. 重读 `changes/<name>/proposal.md` + `design.md` + `tasks.md` — 确认范围、设计决策、任务状态
+3. 对照 design.md 检查关键实现（路径、命名、目录结构）
+4. 运行 lint + typecheck 验证
+5. 然后继续实施
 
 **OpenSpec 阶段隔离**：所有阶段均由用户手动触发，不自动进入下一阶段。`/opsx:explore`、`/opsx:propose`、`/opsx:apply`、`/opsx:verify`、`/opsx:e2e` 均需用户明确调用。禁止在同一阶段内触发其他阶段（如 explore 阶段不能调用 apply，verify 阶段不能调用 e2e）。
 
