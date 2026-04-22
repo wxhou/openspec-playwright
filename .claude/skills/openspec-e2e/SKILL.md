@@ -3,9 +3,10 @@ name: openspec-e2e
 description: "Run Playwright E2E verification. ONLY invoke when user explicitly says '/opsx:e2e' or 'run E2E tests'. Do NOT auto-trigger from explore/propose/apply/verify/continue stages — E2E is a separate workflow requiring explicit user request."
 license: MIT
 compatibility: Requires openspec CLI, Playwright (with browsers installed), /browse (gstack, for exploration), and @playwright/mcp (globally installed via `claude mcp add playwright npx @playwright/mcp@latest`, for test execution + Healer).
+scope: This skill is designed for **Node.js + TypeScript + Playwright projects**. For other language ecosystems (Python, Go, Ruby), the workflow concepts apply but tools differ — use language-appropriate E2E frameworks and adjust accordingly.
 metadata:
   author: openspec-playwright
-  version: "2.25"
+  version: "2.26"
 ---
 
 ## Input
@@ -249,7 +250,12 @@ Seed test initializes the `page` context — it runs all fixtures, hooks, and gl
 
 Explore to collect real DOM data before writing test plan. This eliminates blind selector guessing.
 
-**Prerequisites**: seed test pass. BASE_URL must be verified reachable (see 4.1). If auth is required and `auth.setup.ts` already exists → auth is ready. If auth is not yet configured → use the workaround below (Option B for protected routes).
+**Prerequisites**:
+1. **gstack available** — Step 4 uses `$B` commands (browser exploration). If gstack is not available → **STOP**: inform user that browser exploration requires gstack. Ask user to install: `git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup`
+2. seed test pass
+3. BASE_URL must be verified reachable (see 4.1)
+
+If auth is required and `auth.setup.ts` already exists → auth is ready. If auth is not yet configured → use the workaround below (Option B for protected routes).
 
 #### 4.1. Verify BASE_URL + Read app-knowledge.md
 
@@ -806,11 +812,15 @@ If missing → generate a minimal `playwright.config.ts` with webServer, project
 2. `tests/playwright/seed.spec.ts` → extract `BASE_URL` value
 3. Read `vite.config.ts` (or `vite.config.js`) → extract `server.port` + infer protocol (`https` if `server.https`, else `http`)
 4. Read `package.json` → `scripts.dev` or `scripts.start` → extract port from `--port` flag
-5. Fallback: `http://localhost:3000`
+5. **Python projects**: Read `pyproject.toml` or `settings.py` → extract `PORT` or `DEBUG` config
+6. **Go projects**: Read `main.go` or `.env` → extract port from `http.ListenAndServe` or env vars
+7. Fallback: `http://localhost:3000`
 
 **Auto-detect dev command**:
 
 1. `package.json` → scripts in order: `dev` → `start` → `serve` → `preview` → `npm run dev`
+2. **Python projects**: Check for `uvicorn`, `flask run`, `python manage.py runserver`, `fastapi dev`
+3. **Go projects**: Check for `air`, `reflex`, `fresh`, or custom dev scripts
 
 If playwright.config.ts exists → READ first, preserve ALL existing fields, add only missing `webServer` block.
 

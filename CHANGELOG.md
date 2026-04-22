@@ -5,7 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.21] - 2026-04-22
+## [Unreleased]
+
+### Fixed
+
+- `employee-standards.md` Section 2: 静态验证改为语言检测——扫描项目根目录源码文件扩展名检测主语言（.py→ruff+mypy, .ts/.tsx→ESLint+tsc, .go→gofmt+vet），不依赖特定目录名或配置文件
+- `employee-standards.md` Section 3 & 4.4: 统一引用"对应语言 lint + typecheck"，替代写死的 ESLint/tsc
+- `employee-standards.md` Section 5: 新增"禁止脚本改文件"规则——修改源码只能使用内置编辑工具，格式化工具（ruff fmt、prettier）除外
+- `employee-standards.md` Section 5: 搜索规则补充排除目录（node_modules/、vendor/、__pycache__ 等），调试依赖时除外
+- `employee-standards.md` Section 6: E2E 步骤补充注——Healer 需要 Playwright 环境，非 Node.js 项目参考各自语言集成
+- `.claude/skills/openspec-e2e/SKILL.md`: 明确 scope 为 Node.js + TypeScript + Playwright 项目；Step 4 前增加 gstack 可用性检查（不可用则 STOP 并提示安装）；Step 8 BASE_URL 检测扩展支持 Python (pyproject.toml/uvicorn) 和 Go (main.go/.env)
 
 ### Added
 

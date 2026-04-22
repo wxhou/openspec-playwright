@@ -32,7 +32,7 @@ E2E 工作流前提（由用户确保，非 AI 操作）：
 
 **精准改动**：只改必要的，改完清理自己造成的垃圾。匹配现有风格，不改进无关代码。每一行改动都应追溯到用户的请求。
 
-**lint + typecheck 后才能算成功**。动手前查 `package.json` scripts、`Makefile` 等找工具链。工具不存在时，明确告知用户，不得假装成功。
+**lint + typecheck 通过（项目标准工具链）才算成功**。动手前扫描项目根目录源码文件扩展名检测主语言——`.py`→Python（ruff + mypy）、`.ts`/`.tsx`→TypeScript（ESLint + tsc）、`.go`→Go（gofmt + vet），工具不存在时告知用户。
 
 ## 3. 上下文管理
 
@@ -42,7 +42,7 @@ E2E 工作流前提（由用户确保，非 AI 操作）：
 1. `git status` — 确认已改动的内容
 2. 重读 `changes/<name>/proposal.md` + `design.md` + `tasks.md` — 确认范围、设计决策、任务状态
 3. 对照 design.md 检查关键实现（路径、命名、目录结构）
-4. 运行 lint + typecheck 验证
+4. 运行对应语言的 lint + typecheck 验证
 5. 然后继续实施
 
 **OpenSpec 阶段隔离**：所有阶段均由用户手动触发，不自动进入下一阶段。`/opsx:explore`、`/opsx:propose`、`/opsx:apply`、`/opsx:verify`、`/opsx:e2e` 均需用户明确调用。禁止在同一阶段内触发其他阶段（如 explore 阶段不能调用 apply，verify 阶段不能调用 e2e）。
@@ -50,12 +50,14 @@ E2E 工作流前提（由用户确保，非 AI 操作）：
 **重构前清死代码**：未使用的 import/export/prop/console.log 先删掉，单独提交，再做重构。
 
 ## 4. 大规模任务处理
-**200 行以上修改必须走 OpenSpec**：代码改动超过 200 行时，禁止直接修改，必须通过 OpenSpec 工作流（/opsx:propose）。
+**200 行以上修改或显著架构变更必须走 OpenSpec**：代码改动超过 200 行、或涉及新增服务/API 契约/数据模型重构时，禁止直接修改，必须通过 OpenSpec 工作流（/opsx:propose）。
 
 ## 5. 工具限制与编辑安全
-**搜索要全**：用 Grep 搜内容，用 Glob 搜文件名。两者缺一不可。搜项目/工作区时默认包含所有源码类型，搜子目录时按需缩小。重命名时覆盖调用、类型、字符串、`import`、barrel file、测试 mock，不得假设一次覆盖所有情况。
+**搜索要全**：用 Grep 搜内容，用 Glob 搜文件名。两者缺一不可。搜项目/工作区时默认包含所有源码类型，跳过 node_modules/、vendor/、__pycache__ 等依赖目录（调试依赖时除外）；搜子目录时按需缩小。重命名时覆盖调用、类型、字符串、`import`、barrel file、测试 mock，不得假设一次覆盖所有情况。
 
 **编辑要求**：编辑后重新读取文件确认变更正确应用。变更完成后，明确告知用户可能遗漏的区域（动态引用、测试 mock 等），提示人工复查。
+
+**禁止脚本改文件**：修改源码文件只能使用内置编辑工具（Read/Edit/Write），禁止用 sed/awk/node -e/python -c 等管道命令改文件。格式化工具（ruff fmt、prettier）除外。
 
 **不主动推送**：除非用户明确要求，否则不推送代码。
 
@@ -95,17 +97,19 @@ E2E 工作流前提（由用户确保，非 AI 操作）：
 - 完成后：逐条对照 proposal.md 确认 scope 内的已交付，scope 外的未改动
 
 **4.2 任务类型区分**：
-- **构建任务**：创建文件/代码 → lint + typecheck 通过后可标记
+- **构建任务**：创建文件/代码 → 对应语言 lint + typecheck 通过后可标记
 - **验证任务**：需实际运行 → 必须验证后才能标记
 - **依赖任务**：等前置完成 → 不提前标记
 
 **4.3 依赖链检查**：标记依赖任务前，检查前置任务状态
 
-**4.4 自动化 Gate**：lint + typecheck 自动执行，任一失败则停止
+**4.4 自动化 Gate**：对应语言 lint + typecheck 自动执行，任一失败则停止
 
 **4.5 Verify 强制化**：必须 verify 通过后才能标记完成，禁止跳过
 
 **5. E2E 测试**：`/opsx:e2e <change-name>` 生成 Playwright 测试 → `/browse` 探索真实 DOM → Healer 自动修复 → `/qa` 真实浏览器验证。E2E 通过后，由用户决定发布时机。
+
+> 注：Healer 需要 Playwright 环境；非 Node.js 项目请参考各自语言的 OpenSpec 测试集成。
 
 **6. 发布**：由用户手动触发 `/ship`、`/land-and-deploy` 或 `/canary`。内部项目可能直接部署，无需走 PR 机制。
 
