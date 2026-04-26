@@ -95,6 +95,8 @@ program
     .option("--baseline", "Save screenshots as baseline (used with --viewport or --screenshots)")
     .option("--diff", "Compare current screenshots against baseline (requires prior --baseline run)")
     .option("--report <path>", "Generate HTML report at the given path")
+    .option("--threshold <n>", "Pixel diff threshold (0-1, default: 0.1)", parseFloat)
+    .option("--no-cache", "Disable result caching (re-analyze all screenshots)")
     .action(async (opts) => {
     await visionCheck(opts);
 });

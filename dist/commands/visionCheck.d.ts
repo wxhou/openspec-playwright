@@ -26,6 +26,8 @@ export interface VisionCheckOptions {
     baseline?: boolean;
     diff?: boolean;
     report?: string;
+    threshold?: number;
+    noCache?: boolean;
 }
 /**
  * Main vision check command.

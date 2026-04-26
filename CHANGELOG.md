@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `vision-check`: `analyzeScreenshot` API body now uses `effectivePrompt` consistently (was redundantly recomputing `selectVisionPrompt`)
+- `vision-check`: HTML report screenshot path extraction uses `basename()` instead of `split("/").pop()` — fixes Windows compatibility
+- `vision-check`: `screenshotHash` now computed once in `analyzeScreenshot` and passed to cache functions (was reading file 3x)
+- `vision-check`: `DIFF_PROMPT` hardcoded Chinese → now has ZH/EN versions selected by model name (matching `VISION_PROMPT` behavior)
+- `vision-check`: HTML report deduplicates same-name screenshots with sequential suffix; diff file lookup uses original basename (not deduplicated name)
+- `vision-check`: `saveBaseline` viewport mode now includes viewport name in filename (`dashboard-mobile-baseline.png` vs `dashboard-baseline.png`); diff mode matching path updated accordingly
+- `vision-check`: HTML report VLM output (element, description, position) now HTML-escaped to prevent potential XSS
+- `vision-check`: Removed misleading "Auto-resize" comment in dimension mismatch path (code does not resize)
+- `ollama.ts`: Removed unused `PixelDiffRegion` interface
+
+### Added
+
+- `vision-check`: `--threshold` validation (0–1 range, exits with code 2 on invalid)
+- `vision-check`: Pre-flight validation — exits with error if neither `--screenshots` nor `--url + --viewport` is provided
+- `.gitignore`: Added `.openspec-pw/vision-cache/` to prevent cached VLM results from being committed
+
 ## [0.3.23] - 2026-04-22
 
 ### Fixed

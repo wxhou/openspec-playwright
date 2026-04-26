@@ -132,9 +132,10 @@ function saveBaseline(screenshots, projectRoot) {
     const baselineDir = join(projectRoot, BASELINE_DIR);
     mkdirSync(baselineDir, { recursive: true });
     for (const s of screenshots) {
+        const base = basename(s.path, ".png");
         const name = s.viewport
-            ? `${basename(s.path, ".png")}-baseline.png`
-            : `${basename(s.path, ".png")}-baseline.png`;
+            ? `${base}-${s.viewport}-baseline.png`
+            : `${base}-baseline.png`;
         const dest = join(baselineDir, name);
         writeFileSync(dest, readFileSync(s.path));
         console.log(chalk.green(`  ✓ Baseline saved: ${dest}`));
@@ -147,7 +148,17 @@ function saveBaseline(screenshots, projectRoot) {
  */
 export async function visionCheck(options) {
     const projectRoot = process.cwd();
-    // 1. Load configuration
+    // 0. Validate required arguments
+    if (!options.screenshots && !(options.viewport && options.url)) {
+        console.log(chalk.yellow("Error: Provide --screenshots <pattern> or --url <url> --viewport <views>"));
+        process.exit(2);
+    }
+    // 1. Validate threshold
+    if (options.threshold !== undefined && (options.threshold < 0 || options.threshold > 1)) {
+        console.log(chalk.yellow("Error: --threshold must be between 0 and 1"));
+        process.exit(2);
+    }
+    // 2. Load configuration
     const config = loadOllamaConfig(projectRoot);
     if (!config.enabled) {
         const result = {
@@ -166,12 +177,12 @@ export async function visionCheck(options) {
         }
         process.exit(2);
     }
-    // 2. Parse viewports
+    // 3. Parse viewports
     let viewports = null;
     if (options.viewport) {
         viewports = parseViewports(options.viewport);
     }
-    // 3. Gather screenshots
+    // 4. Gather screenshots
     let screenshots = [];
     if (options.viewport && options.url) {
         // Multi-viewport capture mode
@@ -185,15 +196,10 @@ export async function visionCheck(options) {
         screenshots = await resolveScreenshots(options.screenshots);
     }
     if (screenshots.length === 0) {
-        if (options.viewport && !options.url) {
-            console.log(chalk.yellow("Error: --viewport requires --url"));
-        }
-        else {
-            console.log(chalk.yellow("No screenshots found. Provide --screenshots <pattern> or --url <url> --viewport <views>"));
-        }
+        console.log(chalk.yellow("No screenshots found matching the provided pattern"));
         process.exit(1);
     }
-    // 4. Baseline mode: save and exit
+    // 5. Baseline mode: save and exit
     if (options.baseline) {
         const baselineDir = saveBaseline(screenshots, projectRoot);
         if (!options.json) {
@@ -201,7 +207,7 @@ export async function visionCheck(options) {
         }
         return;
     }
-    // 5. Dry run
+    // 6. Dry run
     if (options.dryRun) {
         console.log(chalk.blue("\n📷 Screenshots (dry run):\n"));
         for (const s of screenshots) {
@@ -212,7 +218,7 @@ export async function visionCheck(options) {
         console.log(chalk.gray(`Ollama: ${config.url} (${config.model})`));
         return;
     }
-    // 6. Health check
+    // 7. Health check
     const health = await checkOllamaHealth(config);
     if (!health.ok) {
         const result = {
@@ -235,7 +241,7 @@ export async function visionCheck(options) {
         const mode = options.diff ? "diff" : "analyze";
         console.log(chalk.blue(`\n🔍 ${mode === "diff" ? "Pixel diff" : "Analyzing"} ${screenshots.length} screenshot(s)...\n`));
     }
-    // 7. Diff mode: compare with baseline
+    // 8. Diff mode: compare with baseline
     const result = {
         processed: 0,
         anomalies: [],
@@ -250,7 +256,8 @@ export async function visionCheck(options) {
         mkdirSync(diffDir, { recursive: true });
         for (const s of screenshots) {
             const baseName = basename(s.path, ".png");
-            const baselinePath = join(baselineDir, `${baseName}-baseline.png`);
+            const baselineSuffix = s.viewport ? `-${s.viewport}-baseline` : "-baseline";
+            const baselinePath = join(baselineDir, `${baseName}${baselineSuffix}.png`);
             const diffPath = join(diffDir, `${baseName}-diff.png`);
             if (!existsSync(baselinePath)) {
                 result.skipped.push(s.path);
@@ -260,7 +267,7 @@ export async function visionCheck(options) {
                 continue;
             }
             try {
-                const { changed, anomalies } = await compareScreenshotDiff(config, baselinePath, s.path, diffPath, s.route);
+                const { changed, anomalies } = await compareScreenshotDiff(config, baselinePath, s.path, diffPath, s.route, options.threshold ?? 0.1);
                 result.processed++;
                 result.anomalies.push(...anomalies.map((a) => ({ ...a, viewport: s.viewport })));
                 if (!options.json) {
@@ -284,7 +291,7 @@ export async function visionCheck(options) {
     else {
         // Analyze mode: batch analyze screenshots
         const concurrency = options.parallel || 4;
-        const batchResult = await batchAnalyzeScreenshots(config, screenshots.map((s) => ({ path: s.path, route: s.route })), concurrency);
+        const batchResult = await batchAnalyzeScreenshots(config, screenshots.map((s) => ({ path: s.path, route: s.route })), concurrency, options.noCache);
         result.processed = batchResult.processed;
         result.anomalies = batchResult.anomalies.map((a) => ({
             ...a,
@@ -292,11 +299,11 @@ export async function visionCheck(options) {
         }));
         result.skipped = batchResult.skipped;
     }
-    // 8. Filter by severity
+    // 9. Filter by severity
     if (options.severity) {
         result.anomalies = filterBySeverity(result.anomalies, options.severity);
     }
-    // 9. Output
+    // 10. Output
     if (options.json) {
         console.log(JSON.stringify(result, null, 2));
     }
@@ -326,14 +333,14 @@ export async function visionCheck(options) {
             console.log(chalk.green("\n  ✓ No layout anomalies detected\n"));
         }
     }
-    // 10. HTML report
+    // 11. HTML report
     if (options.report) {
         generateHtmlReport(result, screenshots.map((s) => ({ path: s.path, route: s.route })), options.report, options.diff ? join(projectRoot, DIFF_DIR) : undefined);
         if (!options.json) {
             console.log(chalk.green(`  ✓ HTML report: ${options.report}`));
         }
     }
-    // 11. JSON output file
+    // 12. JSON output file
     if (options.output) {
         writeFileSync(options.output, JSON.stringify(result, null, 2), "utf-8");
         if (!options.json) {

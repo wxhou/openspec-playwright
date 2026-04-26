@@ -35,13 +35,6 @@ export interface OllamaGenerateResponse {
     response: string;
     done: boolean;
 }
-export interface PixelDiffRegion {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    changedPixels: number;
-}
 /**
  * Load Ollama config from `.env` in `tests/playwright/` and environment variables.
  * If no URL or model is configured, vision check is disabled.
@@ -58,26 +51,22 @@ export declare function checkOllamaHealth(config: OllamaConfig): Promise<{
 /**
  * Analyze a single screenshot with the vision model.
  */
-export declare function analyzeScreenshot(config: OllamaConfig, screenshotPath: string, route: string): Promise<VisionAnomaly[]>;
+export declare function analyzeScreenshot(config: OllamaConfig, screenshotPath: string, route: string, prompt?: string, noCache?: boolean): Promise<VisionAnomaly[]>;
 /**
  * Batch analyze multiple screenshots with concurrency control.
  */
 export declare function batchAnalyzeScreenshots(config: OllamaConfig, screenshots: Array<{
     path: string;
     route: string;
-}>, concurrency?: number): Promise<VisionCheckResult>;
+}>, concurrency?: number, noCache?: boolean): Promise<VisionCheckResult>;
 /**
  * Compare two screenshots with pixel diff.
  * Returns changed regions and optionally saves a diff image.
  */
-export declare function compareScreenshotDiff(config: OllamaConfig, baselinePath: string, currentPath: string, diffPath: string, route: string): Promise<{
+export declare function compareScreenshotDiff(config: OllamaConfig, baselinePath: string, currentPath: string, diffPath: string, route: string, threshold?: number): Promise<{
     changed: boolean;
     anomalies: VisionAnomaly[];
 }>;
-/**
- * Generate a self-contained HTML report with embedded screenshots and results.
- * If diffDir is provided, diff images are shown alongside current screenshots.
- */
 export declare function generateHtmlReport(result: VisionCheckResult, screenshots: Array<{
     path: string;
     route: string;

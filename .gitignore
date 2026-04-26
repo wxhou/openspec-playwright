@@ -30,3 +30,6 @@ npm-debug.log*
 
 # Claude Code (auto-generated)
 **/CLAUDE.md
+
+# OpenSpec vision check cache
+.openspec-pw/vision-cache/

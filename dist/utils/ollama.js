@@ -7,8 +7,9 @@
  */
 import { config as loadEnv } from "dotenv";
 import { createRequire } from "module";
-import { existsSync, readFileSync, writeFileSync } from "fs";
-import { join } from "path";
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
+import { join, dirname, basename } from "path";
+import { createHash } from "crypto";
 const _require = createRequire(import.meta.url);
 // ── Config loading ────────────────────────────────────────────────────────────
 /**
@@ -80,7 +81,7 @@ export async function checkOllamaHealth(config) {
     }
 }
 // ── Vision analysis ───────────────────────────────────────────────────────────
-const VISION_PROMPT = [
+const VISION_PROMPT_ZH = [
     "你是专业的UI测试工程师，以普通用户视角审视这张截图。",
     "",
     "【检测目标】用户可感知的功能性UI问题，不包括：",
@@ -108,20 +109,116 @@ const VISION_PROMPT = [
     "",
     '如果一切正常，返回：{"anomalies":[]}',
 ].join("\n");
+const VISION_PROMPT_EN = [
+    "You are a professional UI test engineer reviewing this screenshot from a user's perspective.",
+    "",
+    "Detect user-facing functional UI issues. Exclude:",
+    "- Decorative icon/logo minor offsets",
+    "- CSS hover/transition animation states",
+    "- Browser default styles (scrollbars, context menus)",
+    "- Dynamic ads/recommendations (if interactive, not an issue)",
+    "",
+    "Issue types:",
+    "1. obscured — Interactive element covered/overlapped, cannot click",
+    "2. crowded — Elements too close, text overlap, hard to distinguish",
+    "3. overflowed — Content clipped, key info not visible",
+    "4. missing — Element that should clearly exist is gone",
+    "5. incorrect — Clearly wrong text content or styling",
+    "",
+    "Severity:",
+    "- blocking — Core function unusable (e.g. submit button covered)",
+    "- warning — Affects usability (e.g. important text truncated)",
+    "- minor — Minor visual issue (icon slightly offset)",
+    "",
+    "Position: use screen region: top-left/top/top-right/left/center/right/bottom-left/bottom/bottom-right",
+    "",
+    'Return JSON only, no other text:',
+    '{"anomalies":[]}',
+    "",
+    'If everything looks fine: {"anomalies":[]}',
+].join("\n");
+/** Check if model name indicates a Chinese-language model */
+function isZhModel(model) {
+    const zhModels = ["qwen", "yi", "chatglm", "deepseek", "internvl"];
+    return zhModels.some((m) => model.toLowerCase().includes(m));
+}
+/** Select VISION_PROMPT based on model name (Chinese models → Chinese prompt) */
+function selectVisionPrompt(model) {
+    return isZhModel(model) ? VISION_PROMPT_ZH : VISION_PROMPT_EN;
+}
+/** Select DIFF_PROMPT based on model name */
+function selectDiffPrompt(model) {
+    return isZhModel(model) ? DIFF_PROMPT_ZH : DIFF_PROMPT_EN;
+}
+// ── Retry helper ──────────────────────────────────────────────────────────────
+async function fetchWithRetry(url, options, maxRetries = 3) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 60000);
+            const response = await fetch(url, { ...options, signal: controller.signal });
+            clearTimeout(timeout);
+            if (response.ok || response.status < 500)
+                return response;
+            // 5xx → retry
+        }
+        catch (err) {
+            if (attempt === maxRetries)
+                throw err;
+        }
+        // Exponential backoff: 1s, 2s, 4s
+        await new Promise((r) => setTimeout(r, 1000 * 2 ** (attempt - 1)));
+    }
+    throw new Error(`Ollama API: ${maxRetries} retries exhausted`);
+}
+// ── Result cache ──────────────────────────────────────────────────────────────
+const VISION_CACHE_DIR = ".openspec-pw/vision-cache";
+function screenshotHash(filePath) {
+    const buf = readFileSync(filePath);
+    return createHash("sha256").update(buf).digest("hex").slice(0, 16);
+}
+function getCachedResult(fileHash, model, promptHash) {
+    const cachePath = join(process.cwd(), VISION_CACHE_DIR, `${fileHash}_${model.replace(/[:/]/g, "_")}_${promptHash}.json`);
+    if (existsSync(cachePath)) {
+        try {
+            return JSON.parse(readFileSync(cachePath, "utf-8"));
+        }
+        catch {
+            return null;
+        }
+    }
+    return null;
+}
+function setCachedResult(fileHash, model, promptHash, anomalies) {
+    const cacheDir = join(process.cwd(), VISION_CACHE_DIR);
+    mkdirSync(cacheDir, { recursive: true });
+    const cachePath = join(cacheDir, `${fileHash}_${model.replace(/[:/]/g, "_")}_${promptHash}.json`);
+    writeFileSync(cachePath, JSON.stringify(anomalies), "utf-8");
+}
 /**
  * Analyze a single screenshot with the vision model.
  */
-export async function analyzeScreenshot(config, screenshotPath, route) {
+export async function analyzeScreenshot(config, screenshotPath, route, prompt, noCache) {
     if (!existsSync(screenshotPath)) {
         throw new Error(`Screenshot not found: ${screenshotPath}`);
     }
+    const effectivePrompt = prompt || selectVisionPrompt(config.model);
+    const promptHash = createHash("sha256").update(effectivePrompt).digest("hex").slice(0, 8);
+    const fileHash = screenshotHash(screenshotPath);
+    // Check cache
+    if (!noCache) {
+        const cached = getCachedResult(fileHash, config.model, promptHash);
+        if (cached) {
+            return cached.map((a) => ({ ...a, route, screenshot: screenshotPath }));
+        }
+    }
     const imageBase64 = readFileSync(screenshotPath).toString("base64");
-    const response = await fetch(`${config.url}/api/generate`, {
+    const response = await fetchWithRetry(`${config.url}/api/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             model: config.model,
-            prompt: VISION_PROMPT,
+            prompt: effectivePrompt,
             images: [imageBase64],
             stream: false,
         }),
@@ -140,6 +237,10 @@ export async function analyzeScreenshot(config, screenshotPath, route) {
     try {
         const parsed = JSON.parse(jsonStr.trim());
         const anomalies = parsed.anomalies || [];
+        // Cache result (without route/screenshot to keep cache portable)
+        if (!noCache) {
+            setCachedResult(fileHash, config.model, promptHash, anomalies);
+        }
         // Enrich with route and screenshot path
         return anomalies.map((a) => ({
             ...a,
@@ -156,7 +257,7 @@ export async function analyzeScreenshot(config, screenshotPath, route) {
 /**
  * Batch analyze multiple screenshots with concurrency control.
  */
-export async function batchAnalyzeScreenshots(config, screenshots, concurrency = 4) {
+export async function batchAnalyzeScreenshots(config, screenshots, concurrency = 4, noCache) {
     const result = {
         processed: 0,
         anomalies: [],
@@ -169,7 +270,7 @@ export async function batchAnalyzeScreenshots(config, screenshots, concurrency =
         const batch = screenshots.slice(i, i + concurrency);
         const promises = batch.map(async ({ path, route }) => {
             try {
-                const anomalies = await analyzeScreenshot(config, path, route);
+                const anomalies = await analyzeScreenshot(config, path, route, undefined, noCache);
                 result.processed++;
                 result.anomalies.push(...anomalies);
             }
@@ -184,33 +285,59 @@ export async function batchAnalyzeScreenshots(config, screenshots, concurrency =
     return result;
 }
 // ── Pixel diff ───────────────────────────────────────────────────────────────
-const DIFF_PROMPT = `你是专业的UI回归测试工程师。这张图是像素差异图，红色高亮区域表示与基准版不同。
-
-请分析红色高亮区域，检测：
-1. 哪些变化是真实的UI bug（如元素被遮挡、布局错乱、内容丢失）
-2. 哪些变化是正常的（如动态内容更新、动画状态变化）
-
-【忽略】动态广告/推荐内容、时间戳、数值变化、hover/focus状态、第三方嵌入内容的变化。
-
-【问题类型】
-- obscured：可交互元素被遮挡，无法点击
-- crowded：元素间距错乱、文字重叠
-- overflowed：内容被裁剪，关键信息不可见
-- missing：原有元素消失
-- incorrect：样式/内容明显错误
-
-【严重程度】
-- blocking：核心功能不可用
-- warning：影响使用体验
-- minor：细微视觉回归
-
-返回JSON（不要包含任何其他文字）：
-{"anomalies":[]}`;
+const DIFF_PROMPT_ZH = [
+    "你是专业的UI回归测试工程师。这张图是像素差异图，红色高亮区域表示与基准版不同。",
+    "",
+    "请分析红色高亮区域，检测：",
+    "1. 哪些变化是真实的UI bug（如元素被遮挡、布局错乱、内容丢失）",
+    "2. 哪些变化是正常的（如动态内容更新、动画状态变化）",
+    "",
+    "【忽略】动态广告/推荐内容、时间戳、数值变化、hover/focus状态、第三方嵌入内容的变化。",
+    "",
+    "【问题类型】",
+    "- obscured：可交互元素被遮挡，无法点击",
+    "- crowded：元素间距错乱、文字重叠",
+    "- overflowed：内容被裁剪，关键信息不可见",
+    "- missing：原有元素消失",
+    "- incorrect：样式/内容明显错误",
+    "",
+    "【严重程度】",
+    "- blocking：核心功能不可用",
+    "- warning：影响使用体验",
+    "- minor：细微视觉回归",
+    "",
+    '返回JSON（不要包含任何其他文字）：',
+    '{"anomalies":[]}',
+].join("\n");
+const DIFF_PROMPT_EN = [
+    "You are a professional UI regression test engineer. This image is a pixel diff map where red highlighted areas differ from the baseline.",
+    "",
+    "Analyze the red highlighted areas to determine:",
+    "1. Which changes are real UI bugs (e.g. elements obscured, layout broken, content lost)",
+    "2. Which changes are normal (e.g. dynamic content updates, animation state changes)",
+    "",
+    "Ignore: Dynamic ads/recommendations, timestamps, numerical changes, hover/focus states, third-party embedded content changes.",
+    "",
+    "Issue types:",
+    "- obscured: Interactive element covered, cannot click",
+    "- crowded: Element spacing broken, text overlap",
+    "- overflowed: Content clipped, key info not visible",
+    "- missing: Previously existing element disappeared",
+    "- incorrect: Clearly wrong styling/content",
+    "",
+    "Severity:",
+    "- blocking: Core function unusable",
+    "- warning: Affects usability",
+    "- minor: Minor visual regression",
+    "",
+    'Return JSON only, no other text:',
+    '{"anomalies":[]}',
+].join("\n");
 /**
  * Compare two screenshots with pixel diff.
  * Returns changed regions and optionally saves a diff image.
  */
-export async function compareScreenshotDiff(config, baselinePath, currentPath, diffPath, route) {
+export async function compareScreenshotDiff(config, baselinePath, currentPath, diffPath, route, threshold = 0.1) {
     const pixelmatch = _require("pixelmatch");
     const { PNG } = _require("pngjs");
     if (!existsSync(baselinePath)) {
@@ -222,25 +349,27 @@ export async function compareScreenshotDiff(config, baselinePath, currentPath, d
     const img1 = PNG.sync.read(readFileSync(baselinePath));
     const img2 = PNG.sync.read(readFileSync(currentPath));
     if (img1.width !== img2.width || img1.height !== img2.height) {
-        throw new Error(`Screenshot dimensions mismatch: ${img1.width}x${img1.height} vs ${img2.width}x${img2.height}`);
+        console.warn(`Warning: Dimension mismatch (${img1.width}x${img1.height} vs ${img2.width}x${img2.height}) — skipping pixel diff for ${route}`);
+        return { changed: true, anomalies: [] };
     }
     const diff = new PNG(img1.width, img1.height);
-    const changedPixels = pixelmatch(img1.data, img2.data, diff.data, img1.width, img1.height, { threshold: 0.1 });
+    const changedPixels = pixelmatch(img1.data, img2.data, diff.data, img1.width, img1.height, { threshold });
     const changedRatio = changedPixels / (img1.width * img1.height);
-    // Save diff image
-    writeFileSync(diffPath, PNG.sync.write(diff));
+    // Save diff image + keep buffer for VLM
+    const diffBuf = PNG.sync.write(diff);
+    writeFileSync(diffPath, diffBuf);
     // If no meaningful changes, skip VLM analysis
     if (changedRatio < 0.001) {
         return { changed: false, anomalies: [] };
     }
-    // Analyze diff image with VLM (only diff image to avoid context overflow)
-    const diffB64 = readFileSync(diffPath).toString("base64");
-    const response = await fetch(`${config.url}/api/generate`, {
+    // Analyze diff image with VLM (reuse buffer, no re-read from disk)
+    const diffB64 = diffBuf.toString("base64");
+    const response = await fetchWithRetry(`${config.url}/api/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             model: config.model,
-            prompt: DIFF_PROMPT,
+            prompt: selectDiffPrompt(config.model),
             images: [diffB64],
             stream: false,
         }),
@@ -275,6 +404,9 @@ export async function compareScreenshotDiff(config, baselinePath, currentPath, d
  * Generate a self-contained HTML report with embedded screenshots and results.
  * If diffDir is provided, diff images are shown alongside current screenshots.
  */
+function escapeHtml(str) {
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
 export function generateHtmlReport(result, screenshots, outputPath, diffDir) {
     const timestamp = new Date().toISOString();
     // Group anomalies by severity
@@ -288,18 +420,41 @@ export function generateHtmlReport(result, screenshots, outputPath, diffDir) {
         if (bySeverity[key])
             bySeverity[key].push(a);
     }
-    // Build screenshot cards with base64 images
+    // Build screenshot cards — use relative file paths to keep report size manageable
+    const outputDir = dirname(outputPath);
+    const usedNames = new Set();
     const screenshotCards = screenshots
         .map((s) => {
-        const base64 = readFileSync(s.path).toString("base64");
-        // Check for diff image
-        let diffBase64 = "";
+        // Copy screenshots next to the report for portability
+        const originalBasename = basename(s.path, ".png");
+        let imgName = basename(s.path);
+        // Avoid overwriting same-named files from different directories
+        if (usedNames.has(imgName)) {
+            const ext = imgName.includes(".") ? `.${imgName.split(".").pop()}` : "";
+            const base = ext ? imgName.slice(0, -ext.length) : imgName;
+            let idx = 2;
+            while (usedNames.has(`${base}-${idx}${ext}`))
+                idx++;
+            imgName = `${base}-${idx}${ext}`;
+        }
+        usedNames.add(imgName);
+        const imgDest = join(outputDir, imgName);
+        if (!existsSync(imgDest)) {
+            writeFileSync(imgDest, readFileSync(s.path));
+        }
+        const imgSrc = `./${imgName}`;
+        // Check for diff image — use original basename (not deduplicated imgName)
+        let diffSrc = "";
         let hasDiff = false;
         if (diffDir) {
-            const baseName = s.path.split("/").pop().replace(".png", "");
-            const diffPath = join(diffDir, `${baseName}-diff.png`);
+            const diffName = `${originalBasename}-diff.png`;
+            const diffPath = join(diffDir, diffName);
             if (existsSync(diffPath)) {
-                diffBase64 = readFileSync(diffPath).toString("base64");
+                const diffDest = join(outputDir, diffName);
+                if (!existsSync(diffDest)) {
+                    writeFileSync(diffDest, readFileSync(diffPath));
+                }
+                diffSrc = `./${diffName}`;
                 hasDiff = true;
             }
         }
@@ -314,22 +469,22 @@ ${anomalies
         <div class="anomaly-header">
           <span class="type-badge">${a.type}</span>
           <span class="severity-badge ${a.severity}">${a.severity}</span>
-          ${a.viewport ? `<span class="viewport-badge">${a.viewport}</span>` : ""}
+          ${a.viewport ? `<span class="viewport-badge">${escapeHtml(a.viewport)}</span>` : ""}
           ${a.changed ? `<span class="diff-badge">changed</span>` : ""}
         </div>
         <div class="anomaly-body">
-          <strong>${a.element}</strong>
-          <p>${a.description}</p>
-          <div class="anomaly-meta">${a.position}</div>
+          <strong>${escapeHtml(a.element)}</strong>
+          <p>${escapeHtml(a.description)}</p>
+          <div class="anomaly-meta">${escapeHtml(a.position)}</div>
         </div>
       </div>`)
                 .join("\n")}
     </div>`
             : "";
         const diffSection = hasDiff
-            ? `<div class="card-diff"><div class="diff-label">Diff</div><img src="data:image/png;base64,${diffBase64}" alt="diff" /></div>`
+            ? `<div class="card-diff"><div class="diff-label">Diff</div><img src="${diffSrc}" alt="diff" /></div>`
             : "";
-        const currentSection = `<div class="card-img"><div class="img-label">Current</div><img src="data:image/png;base64,${base64}" alt="${s.route}" /></div>`;
+        const currentSection = `<div class="card-img"><div class="img-label">Current</div><img src="${imgSrc}" alt="${s.route}" /></div>`;
         const comparisonSection = hasDiff
             ? `<div class="card-comparison">${currentSection}${diffSection}</div>`
             : currentSection;
@@ -444,13 +599,13 @@ ${result.anomalies.length > 0
         <div class="anomaly-header">
           <span class="type-badge">${a.type}</span>
           <span class="severity-badge ${a.severity}">${a.severity}</span>
-          ${a.viewport ? `<span class="viewport-badge">${a.viewport}</span>` : ""}
+          ${a.viewport ? `<span class="viewport-badge">${escapeHtml(a.viewport)}</span>` : ""}
           ${a.changed ? `<span class="diff-indicator" title="Pixel diff detected"></span>` : ""}
         </div>
         <div class="anomaly-body">
-          <strong>${a.element}</strong>
-          <p>${a.description}</p>
-          <div class="anomaly-meta">${a.route} · ${a.position}</div>
+          <strong>${escapeHtml(a.element)}</strong>
+          <p>${escapeHtml(a.description)}</p>
+          <div class="anomaly-meta">${escapeHtml(a.route)} · ${escapeHtml(a.position)}</div>
         </div>
       </div>`)
             .join("\n")}
