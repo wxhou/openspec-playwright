@@ -164,6 +164,153 @@ nav {
   height: 64px;
 }
 
+.nav-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 150ms;
+  font-family: var(--font-body);
+}
+
+.nav-copy-btn:hover {
+  background: var(--surface2);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.nav-copy-btn.copied {
+  background: var(--green-light);
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.nav-copy-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ── Language Switch ─────────────────────────── */
+.lang-switch {
+  display: flex;
+  align-items: center;
+  margin: 0 8px;
+}
+
+.lang-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms;
+  font-family: var(--font-body);
+}
+
+.lang-btn:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.lang-btn:last-child {
+  border-radius: 0 4px 4px 0;
+  border-left: none;
+}
+
+.lang-btn:hover {
+  background: var(--surface);
+}
+
+.lang-btn.active {
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
+}
+
+/* ── Claude Config ─────────────────────────── */
+.claude-config-wrapper {
+  max-width: 800px;
+  margin: 0 auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+}
+
+.claude-config-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+}
+
+.claude-config-filename {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.claude-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--accent);
+  border: none;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  transition: all 150ms;
+  font-family: var(--font-body);
+}
+
+.claude-copy-btn:hover {
+  background: var(--accent-dark);
+}
+
+.claude-copy-btn.copied {
+  background: var(--green);
+}
+
+.claude-copy-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.claude-config-content {
+  padding: 24px;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.8;
+  color: var(--text);
+  background: var(--bg);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.claude-config-content code {
+  font-family: inherit;
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+
 .nav-logo {
   display: flex;
   align-items: center;
@@ -1475,10 +1622,18 @@ footer {
       <span class="nav-logo-text">openspec-playwright</span>
     </a>
     <ul class="nav-links">
-      <li><a href="#features"><span class="nav-link-text">特性</span></a></li>
-      <li><a href="#workflow"><span class="nav-link-text">工作流</span></a></li>
-      <li><a href="#quickstart"><span class="nav-link-text">快速开始</span></a></li>
-      <li><a href="https://github.com/wxhou/openspec-playwright" target="_blank" class="nav-cta">GitHub</a></li>
+      <li><a href="#claude-config"><span class="nav-link-text">CLAUDE.md</span></a></li>
+      <li><a href="#features"><span class="nav-link-text features-zh">特性</span><span class="nav-link-text features-en" style="display:none;">Features</span></a></li>
+      <li><a href="#workflow"><span class="nav-link-text workflow-zh">工作流</span><span class="nav-link-text workflow-en" style="display:none;">Workflow</span></a></li>
+      <li><a href="#quickstart"><span class="nav-link-text quickstart-zh">快速开始</span><span class="nav-link-text quickstart-en" style="display:none;">Quick Start</span></a></li>
+      <li class="lang-switch">
+        <button class="lang-btn active" data-lang="zh">中</button>
+        <button class="lang-btn" data-lang="en">EN</button>
+      </li>
+      <li><button class="nav-copy-btn" onclick="copyClaudeMd()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        <span class="copy-text-zh">复制配置</span><span class="copy-text-en" style="display:none;">Copy Config</span>
+      </button></li>
     </ul>
   </div>
 </nav>
@@ -1487,32 +1642,34 @@ footer {
 <section class="hero">
   <div class="hero-eyebrow anim">AI-Driven E2E Testing</div>
   <h1 class="hero-title anim anim-1">
-    AI 研发闭环，<br>
-    <em>从规范到测试自动完成</em>
+    <span class="hero-title-zh">AI 研发闭环，<br><em>从规范到测试自动完成</em></span>
+    <span class="hero-title-en" style="display:none;">AI Development Loop,<br><em>From Spec to Test — Automated</em></span>
   </h1>
   <p class="hero-desc anim anim-2">
-    OpenSpec Playwright 将 OpenSpec 规范自动转化为 Playwright E2E 测试。
-    AI 生成测试用例、Healer 自动修复选择器、Claude Code 一键执行。
-    告别手动维护测试，专注于真正重要的代码。
+    <span class="hero-desc-zh">OpenSpec Playwright 将 OpenSpec 规范自动转化为 Playwright E2E 测试。AI 生成测试用例、Healer 自动修复选择器、Claude Code 一键执行。告别手动维护测试，专注于真正重要的代码。</span>
+    <span class="hero-desc-en" style="display:none;">OpenSpec Playwright transforms OpenSpec specs into Playwright E2E tests automatically. AI generates test cases, Healer auto-fixes selectors, Claude Code executes with one command. Say goodbye to manual test maintenance.</span>
   </p>
   <div class="hero-actions anim anim-3">
-    <a href="#quickstart" class="btn btn-primary">快速开始</a>
+    <a href="#quickstart" class="btn btn-primary"><span class="quickstart-zh">快速开始</span><span class="quickstart-en" style="display:none;">Quick Start</span></a>
     <a href="https://github.com/wxhou/openspec-playwright" target="_blank" class="btn btn-secondary">GitHub</a>
   </div>
   <div class="hero-visual anim anim-2">
     <div class="hero-card">
-      <div class="hero-card-title">测试状态</div>
+      <div class="hero-card-title"><span class="hero-card-title-zh">测试状态</span><span class="hero-card-title-en" style="display:none;">Test Status</span></div>
       <div class="hero-card-line">
         <span class="hero-card-dot dot-green"></span>
-        规范路由 — 全部通过
+        <span class="hero-card-line-1-zh">规范路由 — 全部通过</span>
+        <span class="hero-card-line-1-en" style="display:none;">Spec Routes — All Passed</span>
       </div>
       <div class="hero-card-line">
         <span class="hero-card-dot dot-blue"></span>
-        选择器 — AI 验证
+        <span class="hero-card-line-2-zh">选择器 — AI 验证</span>
+        <span class="hero-card-line-2-en" style="display:none;">Selectors — AI Verified</span>
       </div>
       <div class="hero-card-line">
         <span class="hero-card-dot dot-purple"></span>
-        Healer — 就绪
+        <span class="hero-card-line-3-zh">Healer — 就绪</span>
+        <span class="hero-card-line-3-en" style="display:none;">Healer — Ready</span>
       </div>
     </div>
     <div class="hero-card-badge">v0.3.24</div>
@@ -1521,62 +1678,166 @@ footer {
 
 <div class="divider"></div>
 
+<!-- ── Claude.md Config ── -->
+<section id="claude-config" class="section" style="background: var(--surface); max-width: none; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+  <div class="section-header anim">
+    <div class="section-label">Claude Code</div>
+    <h2 class="section-title">
+      <span class="section-title-zh">CLAUDE.md 一键配置</span>
+      <span class="section-title-en" style="display:none;">CLAUDE.md One-Click Setup</span>
+    </h2>
+    <p class="section-desc">
+      <span class="section-desc-zh">复制以下内容到项目根目录的 CLAUDE.md，快速启用员工级行为规范。</span>
+      <span class="section-desc-en" style="display:none;">Copy to your project's CLAUDE.md to enable employee-grade behavioral guidelines.</span>
+    </p>
+  </div>
+
+  <div class="claude-config-wrapper">
+    <div class="claude-config-header">
+      <span class="claude-config-filename">CLAUDE.md</span>
+      <button class="claude-copy-btn" onclick="copyClaudeMd()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        复制配置
+      </button>
+    </div>
+    <pre class="claude-config-content"><code id="claude-md-content"># 项目规范
+
+## 代码质量
+- 动手前先思考：列出假设，逐条验证。复杂任务多种解释则都列出，更简单方案则提出
+- 每步有可验证的退出条件：多步骤任务先列计划，循环验证直到成功
+- lint + typecheck 通过才算成功。检测主语言——\`.py\`→ruff+mypy、\`.ts\`/\`.tsx\`→ESLint+tsc、\`.go\`→gofmt+vet
+- 只写被要求的东西：不加"灵活"、"可配置"、单次使用的抽象。200行能50行完成则重写
+- 精准改动：只改必要的，改完清理自己造成的垃圾。匹配现有风格，不改进无关代码
+
+## 禁止非通用性改动
+- 假设所有外部数据都有效 → 必须校验类型/范围/null
+- 断言用通用规则，不用具体值（除非明确要求）
+- 禁止魔法数字 → 用常量或枚举，注释说明原因
+- 禁止隐式成功假设 → 异步/外部操作必须处理失败情况
+- 禁止响应结构假设 → 先校验返回结构再访问深层属性
+- 禁止资源泄漏假设 → 文件/连接/cursor 等使用后必须释放
+
+## 上下文管理
+- 超过 500 行文件分次读取或编辑前重新读取完整内容
+- 超过 10 条消息后，编辑任何文件前强制重新读取
+- 上下文压缩恢复后：git status → 确认改动范围与设计一致 → 验证 lint+typecheck → 继续
+
+## 工具限制
+- 搜索要全：Grep 搜内容 + Glob 搜文件名，两者缺一不可。跳过 node_modules/vendor/__pycache__
+- 禁止脚本改文件：用 Read/Edit/Write，格式化工具（prettier/ruff fmt）除外
+- 重命名时覆盖调用、类型、字符串、import、barrel file、测试 mock
+- 禁止推送：除非用户明确要求，否则不执行 git push
+
+## 大规模任务
+- 200+ 行修改或架构变更（新增服务/API 契约/数据模型重构）尽量使用 OpenSpec 工作流</code></pre>
+  </div>
+</section>
+
+<div class="divider"></div>
+
 <!-- ── Features ── -->
 <section id="features">
   <div class="section-header anim">
-    <div class="section-label">核心特性</div>
-    <h2 class="section-title">为什么选择<br>OpenSpec Playwright？</h2>
-    <p class="section-desc">专为 OpenSpec 规范驱动开发设计，AI 全流程自动化，测试不再成为交付瓶颈。</p>
+    <div class="section-label">Core Features</div>
+    <h2 class="section-title">
+      <span class="features-title-zh">为什么选择<br>OpenSpec Playwright？</span>
+      <span class="features-title-en" style="display:none;">Why Choose<br>OpenSpec Playwright?</span>
+    </h2>
+    <p class="section-desc">
+      <span class="features-desc-zh">专为 OpenSpec 规范驱动开发设计，AI 全流程自动化，测试不再成为交付瓶颈。</span>
+      <span class="features-desc-en" style="display:none;">Designed for spec-driven development with OpenSpec. AI-powered automation throughout — tests are no longer a delivery bottleneck.</span>
+    </p>
   </div>
 
   <div class="features-grid">
     <div class="feature-card anim">
       <div class="feature-label fl-blue">
         <span class="feature-label-dot"></span>
-        规范驱动
+        <span class="fl-label-zh">规范驱动</span>
+        <span class="fl-label-en" style="display:none;">Spec-Driven</span>
       </div>
-      <div class="feature-title">规范驱动测试生成</div>
-      <div class="feature-desc">读取 OpenSpec 规范文档，自动提取路由、表单、验证规则，生成对应 Playwright 测试用例。不再需要手动编写和维护测试。</div>
+      <div class="feature-title">
+        <span class="ft-title-zh">规范驱动测试生成</span>
+        <span class="ft-title-en" style="display:none;">Spec-Driven Test Generation</span>
+      </div>
+      <div class="feature-desc">
+        <span class="ft-desc-zh">读取 OpenSpec 规范文档，自动提取路由、表单、验证规则，生成对应 Playwright 测试用例。不再需要手动编写和维护测试。</span>
+        <span class="ft-desc-en" style="display:none;">Reads OpenSpec specs, auto-extracts routes, forms, and validation rules, generates Playwright tests. No more manual test writing and maintenance.</span>
+      </div>
     </div>
     <div class="feature-card anim anim-2">
       <div class="feature-label fl-amber">
         <span class="feature-label-dot"></span>
-        规范即文档
+        <span class="fl-label-zh">规范即文档</span>
+        <span class="fl-label-en" style="display:none;">Specs as Docs</span>
       </div>
-      <div class="feature-title">规范变更，测试即更新</div>
-      <div class="feature-desc">测试与 OpenSpec 规范严格对齐。验证通过意味着规范得到实现，规范变更自动驱动测试更新。</div>
+      <div class="feature-title">
+        <span class="ft-title-zh">规范变更，测试即更新</span>
+        <span class="ft-title-en" style="display:none;">Spec Changes = Test Updates</span>
+      </div>
+      <div class="feature-desc">
+        <span class="ft-desc-zh">测试与 OpenSpec 规范严格对齐。验证通过意味着规范得到实现，规范变更自动驱动测试更新。</span>
+        <span class="ft-desc-en" style="display:none;">Tests strictly aligned with OpenSpec specs. Passing verification means spec is implemented. Spec changes auto-drive test updates.</span>
+      </div>
     </div>
     <div class="feature-card anim anim-1">
       <div class="feature-label fl-purple">
         <span class="feature-label-dot"></span>
-        自愈机制
+        <span class="fl-label-zh">自愈机制</span>
+        <span class="fl-label-en" style="display:none;">Self-Healing</span>
       </div>
-      <div class="feature-title">Healer 自愈</div>
-      <div class="feature-desc">选择器失效时 AI 自动诊断并修复。区分测试 Bug 和 App Bug，三阶段修复流程：分类 → 修复 → 升级。</div>
+      <div class="feature-title">
+        <span class="ft-title-zh">Healer 自愈</span>
+        <span class="ft-title-en" style="display:none;">Healer Auto-Fix</span>
+      </div>
+      <div class="feature-desc">
+        <span class="ft-desc-zh">选择器失效时 AI 自动诊断并修复。区分测试 Bug 和 App Bug，三阶段修复流程：分类 → 修复 → 升级。</span>
+        <span class="ft-desc-en" style="display:none;">AI auto-diagnoses and fixes selector failures. Distinguishes Test Bug vs App Bug with 3-phase repair: Triage → Fix → Escalate.</span>
+      </div>
     </div>
     <div class="feature-card anim anim-2">
       <div class="feature-label fl-pink">
         <span class="feature-label-dot"></span>
-        浏览器探索
+        <span class="fl-label-zh">浏览器探索</span>
+        <span class="fl-label-en" style="display:none;">Browser Exploration</span>
       </div>
-      <div class="feature-title">真实浏览器探索</div>
-      <div class="feature-desc">通过 gstack <code>/browse</code> 遍历每个路由，snapshot + @ref 精确定位元素。Token 高效，状态持久，可视化操作。</div>
+      <div class="feature-title">
+        <span class="ft-title-zh">真实浏览器探索</span>
+        <span class="ft-title-en" style="display:none;">Real Browser Exploration</span>
+      </div>
+      <div class="feature-desc">
+        <span class="ft-desc-zh">通过 gstack <code>/browse</code> 遍历每个路由，snapshot + @ref 精确定位元素。Token 高效，状态持久，可视化操作。</span>
+        <span class="ft-desc-en" style="display:none;">Traverse routes via gstack <code>/browse</code>, snapshot + @ref for precise element targeting. Token-efficient, persistent state, visual operations.</span>
+      </div>
     </div>
     <div class="feature-card anim anim-1">
       <div class="feature-label fl-green">
         <span class="feature-label-dot"></span>
-        测试报告
+        <span class="fl-label-zh">测试报告</span>
+        <span class="fl-label-en" style="display:none;">Test Reports</span>
       </div>
-      <div class="feature-title">完整测试报告</div>
-      <div class="feature-desc">自动生成 Markdown 报告，包含测试结果、截图、失败分类（App Bug / Test Bug / RAFT）。可追溯、可分享。</div>
+      <div class="feature-title">
+        <span class="ft-title-zh">完整测试报告</span>
+        <span class="ft-title-en" style="display:none;">Complete Test Reports</span>
+      </div>
+      <div class="feature-desc">
+        <span class="ft-desc-zh">自动生成 Markdown 报告，包含测试结果、截图、失败分类（App Bug / Test Bug / RAFT）。可追溯、可分享。</span>
+        <span class="ft-desc-en" style="display:none;">Auto-generated Markdown reports with results, screenshots, failure classification (App Bug / Test Bug / RAFT). Traceable and shareable.</span>
+      </div>
     </div>
     <div class="feature-card anim anim-3">
       <div class="feature-label fl-red">
         <span class="feature-label-dot"></span>
         Claude Code
       </div>
-      <div class="feature-title">Claude Code 原生集成</div>
-      <div class="feature-desc">作为 Claude Code skill 提供，一个 <code>/opsx:e2e &lt;name&gt;</code> 命令完成从规范到报告的全流程。</div>
+      <div class="feature-title">
+        <span class="ft-title-zh">Claude Code 原生集成</span>
+        <span class="ft-title-en" style="display:none;">Claude Code Native</span>
+      </div>
+      <div class="feature-desc">
+        <span class="ft-desc-zh">作为 Claude Code skill 提供，一个 <code>/opsx:e2e &lt;name&gt;</code> 命令完成从规范到报告的全流程。</span>
+        <span class="ft-desc-en" style="display:none;">Provided as a Claude Code skill. One <code>/opsx:e2e &lt;name&gt;</code> command completes the full flow from spec to report.</span>
+      </div>
     </div>
   </div>
 </section>
@@ -1586,9 +1847,15 @@ footer {
 <!-- ── Workflow ── -->
 <section class="section" id="workflow">
   <div class="section-header anim">
-    <div class="section-label">工作流</div>
-    <h2 class="section-title">9 步端到端闭环</h2>
-    <p class="section-desc">严格按顺序执行，每步有明确产出。反馈循环确保问题不过夜。</p>
+    <div class="section-label">Workflow</div>
+    <h2 class="section-title">
+      <span class="workflow-title-zh">9 步端到端闭环</span>
+      <span class="workflow-title-en" style="display:none;">9-Step End-to-End Loop</span>
+    </h2>
+    <p class="section-desc">
+      <span class="workflow-desc-zh">严格按顺序执行，每步有明确产出。反馈循环确保问题不过夜。</span>
+      <span class="workflow-desc-en" style="display:none;">Execute strictly in order. Each step has clear deliverables. Feedback loops ensure no issues overnight.</span>
+    </p>
   </div>
 
   <div class="workflow-prereq anim">
@@ -1598,7 +1865,7 @@ footer {
         gstack
       </div>
       <div class="prereq-cmd">git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup</div>
-      <div class="prereq-role">/browse 探索 + /qa 验证</div>
+      <div class="prereq-role"><span class="prereq-role-zh">/browse 探索 + /qa 验证</span><span class="prereq-role-en" style="display:none;">/browse + /qa verification</span></div>
     </div>
     <div class="prereq-card">
       <div class="prereq-card-title">
@@ -1606,7 +1873,7 @@ footer {
         OpenSpec CLI
       </div>
       <div class="prereq-cmd">npm install -g @fission-ai/openspec && openspec init</div>
-      <div class="prereq-role">/opsx:propose、/opsx:apply 等命令</div>
+      <div class="prereq-role"><span class="prereq-role-zh">/opsx:propose、/opsx:apply 等命令</span><span class="prereq-role-en" style="display:none;">/opsx:propose, /opsx:apply, etc.</span></div>
     </div>
     <div class="prereq-card">
       <div class="prereq-card-title">
@@ -1614,7 +1881,7 @@ footer {
         openspec-playwright
       </div>
       <div class="prereq-cmd">npm install -g openspec-playwright && openspec-pw init</div>
-      <div class="prereq-role">/opsx:e2e 命令 + 测试模板</div>
+      <div class="prereq-role"><span class="prereq-role-zh">/opsx:e2e 命令 + 测试模板</span><span class="prereq-role-en" style="display:none;">/opsx:e2e command + test templates</span></div>
     </div>
     <div class="prereq-card">
       <div class="prereq-card-title">
@@ -1622,7 +1889,7 @@ footer {
         Playwright MCP
       </div>
       <div class="prereq-cmd">claude mcp add playwright npx @playwright/mcp@latest</div>
-      <div class="prereq-role">测试执行 + Healer 自愈</div>
+      <div class="prereq-role"><span class="prereq-role-zh">测试执行 + Healer 自愈</span><span class="prereq-role-en" style="display:none;">Test execution + Healer</span></div>
     </div>
   </div>
 
@@ -1632,10 +1899,10 @@ footer {
         <div class="step-num sn-1">1</div>
         <div class="step-content">
           <div class="step-header">
-            <span class="step-name">探索与提案</span>
-            <span class="step-badge badge-required">必需</span>
+            <span class="step-name"><span class="step-name-zh">探索与提案</span><span class="step-name-en" style="display:none;">Explore & Propose</span></span>
+            <span class="step-badge badge-required"><span class="badge-zh">必需</span><span class="badge-en" style="display:none;">Required</span></span>
           </div>
-          <div class="step-desc">现有项目先探索（<code>/opsx:explore</code>）再写 proposal；新项目直接生成 proposal + scenarios。方向不明确时可用 <code>/office-hours</code> 做创意验证。</div>
+          <div class="step-desc"><span class="step-desc-zh">现有项目先探索（<code>/opsx:explore</code>）再写 proposal；新项目直接生成 proposal + scenarios。方向不明确时可用 <code>/office-hours</code> 做创意验证。</span><span class="step-desc-en" style="display:none;">For existing projects: explore first (<code>/opsx:explore</code>), then write proposal. For new projects: generate proposal + scenarios directly. Use <code>/office-hours</code> for creative validation.</span></div>
           <div class="step-tags">
             <span class="step-tag tag-openspec">opsx:explore</span>
             <span class="step-tag tag-openspec">opsx:propose</span>
@@ -1648,10 +1915,10 @@ footer {
         <div class="step-num sn-2">2</div>
         <div class="step-content">
           <div class="step-header">
-            <span class="step-name">产品与架构评审</span>
-            <span class="step-badge badge-optional">按需</span>
+            <span class="step-name"><span class="step-name-zh">产品与架构评审</span><span class="step-name-en" style="display:none;">Product & Architecture Review</span></span>
+            <span class="step-badge badge-optional"><span class="badge-zh">按需</span><span class="badge-en" style="display:none;">On-demand</span></span>
           </div>
-          <div class="step-desc"><code>/plan-ceo-review</code>、<code>/plan-eng-review</code>。战略和架构影响评审。</div>
+          <div class="step-desc"><span class="step-desc-zh"><code>/plan-ceo-review</code>、<code>/plan-eng-review</code>。战略和架构影响评审。</span><span class="step-desc-en" style="display:none;"><code>/plan-ceo-review</code>, <code>/plan-eng-review</code>. Strategic and architecture impact review.</span></div>
           <div class="step-tags">
             <span class="step-tag tag-gstack">plan-ceo-review</span>
             <span class="step-tag tag-gstack">plan-eng-review</span>
@@ -1663,10 +1930,10 @@ footer {
         <div class="step-num sn-3">3</div>
         <div class="step-content">
           <div class="step-header">
-            <span class="step-name">设计审查</span>
-            <span class="step-badge badge-required">必需</span>
+            <span class="step-name"><span class="step-name-zh">设计审查</span><span class="step-name-en" style="display:none;">Design Review</span></span>
+            <span class="step-badge badge-required"><span class="badge-zh">必需</span><span class="badge-en" style="display:none;">Required</span></span>
           </div>
-          <div class="step-desc">在实现前进行设计评审，确保方案合理。评审通过后开始实现。</div>
+          <div class="step-desc"><span class="step-desc-zh">在实现前进行设计评审，确保方案合理。评审通过后开始实现。</span><span class="step-desc-en" style="display:none;">Conduct design review before implementation to ensure solution quality. Start implementation after approval.</span></div>
           <div class="step-tags">
             <span class="step-tag tag-gstack">plan-design-review</span>
           </div>
@@ -1677,10 +1944,10 @@ footer {
         <div class="step-num sn-4">4</div>
         <div class="step-content">
           <div class="step-header">
-            <span class="step-name">实现</span>
-            <span class="step-badge badge-required">必需</span>
+            <span class="step-name"><span class="step-name-zh">实现</span><span class="step-name-en" style="display:none;">Implementation</span></span>
+            <span class="step-badge badge-required"><span class="badge-zh">必需</span><span class="badge-en" style="display:none;">Required</span></span>
           </div>
-          <div class="step-desc">执行 <code>/opsx:apply</code> 进行实现 → <code>lint + typecheck</code> 通过才算成功。</div>
+          <div class="step-desc"><span class="step-desc-zh">执行 <code>/opsx:apply</code> 进行实现 → <code>lint + typecheck</code> 通过才算成功。</span><span class="step-desc-en" style="display:none;">Execute <code>/opsx:apply</code> for implementation → <code>lint + typecheck</code> must pass for success.</span></div>
           <div class="step-tags">
             <span class="step-tag tag-openspec">opsx:apply</span>
           </div>
@@ -1691,15 +1958,15 @@ footer {
         <div class="step-num sn-5">5</div>
         <div class="step-content">
           <div class="step-header">
-            <span class="step-name">自审</span>
-            <span class="step-badge badge-required">必需</span>
+            <span class="step-name"><span class="step-name-zh">自审</span><span class="step-name-en" style="display:none;">Self-Review</span></span>
+            <span class="step-badge badge-required"><span class="badge-zh">必需</span><span class="badge-en" style="display:none;">Required</span></span>
           </div>
-          <div class="step-desc"><code>/opsx:verify</code> <code>/design-review</code> <code>/review</code> 自审实现代码，确保质量。设计审查后执行两步式 CSS 审计：1) grep 提取间距值对比基准；2) 检查 margin hack（margin 和 > 基准 2 倍 → 改为 gap/grid 控制）。</div>
+          <div class="step-desc"><span class="step-desc-zh"><code>/opsx:verify</code> <code>/design-review</code> <code>/review</code> 自审实现代码，确保质量。设计审查后执行两步式 CSS 审计。</span><span class="step-desc-en" style="display:none;"><code>/opsx:verify</code> <code>/design-review</code> <code>/review</code> for self-review. Two-step CSS audit after design review.</span></div>
           <div class="step-tags">
             <span class="step-tag tag-openspec">opsx:verify</span>
             <span class="step-tag tag-gstack">design-review</span>
             <span class="step-tag tag-gstack">review</span>
-            <span class="step-tag tag-tool">CSS审计</span>
+            <span class="step-tag tag-tool">CSS</span>
           </div>
         </div>
       </div>
@@ -1708,10 +1975,10 @@ footer {
         <div class="step-num sn-6">6</div>
         <div class="step-content">
           <div class="step-header">
-            <span class="step-name">E2E 测试生成与执行</span>
-            <span class="step-badge badge-required">必需</span>
+            <span class="step-name"><span class="step-name-zh">E2E 测试生成与执行</span><span class="step-name-en" style="display:none;">E2E Test Generation & Execution</span></span>
+            <span class="step-badge badge-required"><span class="badge-zh">必需</span><span class="badge-en" style="display:none;">Required</span></span>
           </div>
-          <div class="step-desc"><code>/opsx:e2e</code> 生成测试 → <code>/browse</code> 探索 DOM → Healer 修复（批量修复后 <code>--only-changed</code> 一次性验证）→ <code>/qa</code> 真实浏览器验证。</div>
+          <div class="step-desc"><span class="step-desc-zh"><code>/opsx:e2e</code> 生成测试 → <code>/browse</code> 探索 DOM → Healer 修复 → <code>/qa</code> 验证。</span><span class="step-desc-en" style="display:none;"><code>/opsx:e2e</code> generates tests → <code>/browse</code> explores DOM → Healer fixes → <code>/qa</code> verifies.</span></div>
           <div class="step-tags">
             <span class="step-tag tag-openspec">opsx:e2e</span>
             <span class="step-tag tag-gstack">browse</span>
@@ -1725,10 +1992,10 @@ footer {
         <div class="step-num sn-7">7</div>
         <div class="step-content">
           <div class="step-header">
-            <span class="step-name">验证通过后归档</span>
-            <span class="step-badge badge-required">必需</span>
+            <span class="step-name"><span class="step-name-zh">验证通过后归档</span><span class="step-name-en" style="display:none;">Archive After Verification</span></span>
+            <span class="step-badge badge-required"><span class="badge-zh">必需</span><span class="badge-en" style="display:none;">Required</span></span>
           </div>
-          <div class="step-desc">永久归档，更新 <code>specs/</code>。</div>
+          <div class="step-desc"><span class="step-desc-zh">永久归档，更新 <code>specs/</code>。</span><span class="step-desc-en" style="display:none;">Permanent archive, update <code>specs/</code>.</span></div>
           <div class="step-tags">
             <span class="step-tag tag-openspec">opsx:archive</span>
           </div>
@@ -1739,10 +2006,10 @@ footer {
         <div class="step-num sn-8">8</div>
         <div class="step-content">
           <div class="step-header">
-            <span class="step-name">发布</span>
-            <span class="step-badge badge-optional">按需</span>
+            <span class="step-name"><span class="step-name-zh">发布</span><span class="step-name-en" style="display:none;">Release</span></span>
+            <span class="step-badge badge-optional"><span class="badge-zh">按需</span><span class="badge-en" style="display:none;">On-demand</span></span>
           </div>
-          <div class="step-desc"><code>/ship</code>、<code>/land-and-deploy</code> 或 <code>/canary</code>。选择合适的发布策略。</div>
+          <div class="step-desc"><span class="step-desc-zh"><code>/ship</code>、<code>/land-and-deploy</code> 或 <code>/canary</code>。选择合适的发布策略。</span><span class="step-desc-en" style="display:none;"><code>/ship</code>, <code>/land-and-deploy</code>, or <code>/canary</code>. Choose the appropriate release strategy.</span></div>
           <div class="step-tags">
             <span class="step-tag tag-gstack">ship</span>
             <span class="step-tag tag-gstack">land-and-deploy</span>
@@ -1755,10 +2022,10 @@ footer {
         <div class="step-num sn-9">9</div>
         <div class="step-content">
           <div class="step-header">
-            <span class="step-name">迭代回顾</span>
-            <span class="step-badge badge-optional">按需</span>
+            <span class="step-name"><span class="step-name-zh">迭代回顾</span><span class="step-name-en" style="display:none;">Iteration Retrospective</span></span>
+            <span class="step-badge badge-optional"><span class="badge-zh">按需</span><span class="badge-en" style="display:none;">On-demand</span></span>
           </div>
-          <div class="step-desc">评审本次迭代，总结经验教训。<code>/retro</code></div>
+          <div class="step-desc"><span class="step-desc-zh">评审本次迭代，总结经验教训。<code>/retro</code></span><span class="step-desc-en" style="display:none;">Review this iteration, summarize lessons learned.<code>/retro</code></span></div>
           <div class="step-tags">
             <span class="step-tag tag-gstack">retro</span>
           </div>
@@ -1768,21 +2035,21 @@ footer {
 
     <div class="workflow-sidebar">
       <div class="sidebar-card anim anim-3">
-        <div class="sidebar-card-title">工作流指标</div>
+        <div class="sidebar-card-title"><span class="sidebar-title-zh">工作流指标</span><span class="sidebar-title-en" style="display:none;">Workflow Metrics</span></div>
         <div class="sidebar-stat">
-          <span class="sidebar-stat-label">总步骤</span>
+          <span class="sidebar-stat-label"><span class="stat-zh">总步骤</span><span class="stat-en" style="display:none;">Total Steps</span></span>
           <span class="sidebar-stat-value">9</span>
         </div>
         <div class="sidebar-stat">
-          <span class="sidebar-stat-label">必需步骤</span>
+          <span class="sidebar-stat-label"><span class="stat-zh">必需步骤</span><span class="stat-en" style="display:none;">Required</span></span>
           <span class="sidebar-stat-value accent">5</span>
         </div>
         <div class="sidebar-stat">
-          <span class="sidebar-stat-label">按需步骤</span>
+          <span class="sidebar-stat-label"><span class="stat-zh">按需步骤</span><span class="stat-en" style="display:none;">On-demand</span></span>
           <span class="sidebar-stat-value">4</span>
         </div>
         <div class="sidebar-stat">
-          <span class="sidebar-stat-label">Claude Code 命令</span>
+          <span class="sidebar-stat-label"><span class="stat-zh">Claude Code 命令</span><span class="stat-en" style="display:none;">Claude Code Commands</span></span>
           <span class="sidebar-stat-value">7</span>
         </div>
         <div class="sidebar-stat">
@@ -1791,18 +2058,18 @@ footer {
         </div>
       </div>
       <div class="sidebar-card anim anim-4">
-        <div class="sidebar-card-title">反馈循环</div>
+        <div class="sidebar-card-title"><span class="sidebar-title-zh">反馈循环</span><span class="sidebar-title-en" style="display:none;">Feedback Loop</span></div>
         <div class="sidebar-stat">
           <span class="sidebar-stat-label">App Bug</span>
-          <span class="sidebar-stat-value">→ 步骤 4</span>
+          <span class="sidebar-stat-value">→ <span class="stat-step-zh">步骤</span><span class="stat-step-en" style="display:none;">Step</span> 4</span>
         </div>
         <div class="sidebar-stat">
-          <span class="sidebar-stat-label">架构问题</span>
-          <span class="sidebar-stat-value">→ 步骤 2</span>
+          <span class="sidebar-stat-label"><span class="stat-label-zh">架构问题</span><span class="stat-label-en" style="display:none;">Architecture Issue</span></span>
+          <span class="sidebar-stat-value">→ <span class="stat-step-zh">步骤</span><span class="stat-step-en" style="display:none;">Step</span> 2</span>
         </div>
         <div class="sidebar-stat">
-          <span class="sidebar-stat-label">Proposal 调整</span>
-          <span class="sidebar-stat-value">→ 步骤 1</span>
+          <span class="sidebar-stat-label"><span class="stat-label-zh">Proposal 调整</span><span class="stat-label-en" style="display:none;">Proposal Adjustment</span></span>
+          <span class="sidebar-stat-value">→ <span class="stat-step-zh">步骤</span><span class="stat-step-en" style="display:none;">Step</span> 1</span>
         </div>
       </div>
     </div>
@@ -1812,38 +2079,38 @@ footer {
 <!-- ── Feedback ── -->
 <section id="feedback">
   <div class="section-header anim">
-    <div class="section-label">反馈循环</div>
-    <h2 class="section-title">问题不过夜</h2>
-    <p class="section-desc">生产中必然发生信号，触发对应回归路径。</p>
+    <div class="section-label"><span class="fb-label-zh">反馈循环</span><span class="fb-label-en" style="display:none;">Feedback Loop</span></div>
+    <h2 class="section-title"><span class="fb-title-zh">问题不过夜</span><span class="fb-title-en" style="display:none;">No Issues Overnight</span></h2>
+    <p class="section-desc"><span class="fb-desc-zh">生产中必然发生信号，触发对应回归路径。</span><span class="fb-desc-en" style="display:none;">Signals in production trigger corresponding regression paths.</span></p>
   </div>
 
   <div class="feedback-grid">
     <div class="feedback-card anim">
       <div class="feedback-icon red">✕</div>
       <div class="feedback-body">
-        <div class="feedback-title">测试失败（App Bug）</div>
-        <div class="feedback-action">→ 回到 <strong>步骤 4</strong> 修复代码 → 重新执行 E2E</div>
+        <div class="feedback-title"><span class="fb-item-zh">测试失败（App Bug）</span><span class="fb-item-en" style="display:none;">Test Failed (App Bug)</span></div>
+        <div class="feedback-action"><span class="fb-action-zh">→ 回到 <strong>步骤 4</strong> 修复代码 → 重新执行 E2E</span><span class="fb-action-en" style="display:none;">→ Back to <strong>Step 4</strong> to fix code → Re-run E2E</span></div>
       </div>
     </div>
     <div class="feedback-card anim anim-1">
       <div class="feedback-icon yellow">△</div>
       <div class="feedback-body">
-        <div class="feedback-title">发现架构问题</div>
-        <div class="feedback-action">→ 回到 <strong>步骤 2</strong> 重新评审 → 步骤 4 修复</div>
+        <div class="feedback-title"><span class="fb-item-zh">发现架构问题</span><span class="fb-item-en" style="display:none;">Architecture Issue Found</span></div>
+        <div class="feedback-action"><span class="fb-action-zh">→ 回到 <strong>步骤 2</strong> 重新评审 → 步骤 4 修复</span><span class="fb-action-en" style="display:none;">→ Back to <strong>Step 2</strong> for review → Fix in Step 4</span></div>
       </div>
     </div>
     <div class="feedback-card anim anim-2">
       <div class="feedback-icon blue">○</div>
       <div class="feedback-body">
-        <div class="feedback-title">Proposal 需调整</div>
-        <div class="feedback-action">→ 回到 <strong>步骤 1</strong> 重新提案</div>
+        <div class="feedback-title"><span class="fb-item-zh">Proposal 需调整</span><span class="fb-item-en" style="display:none;">Proposal Needs Adjustment</span></div>
+        <div class="feedback-action"><span class="fb-action-zh">→ 回到 <strong>步骤 1</strong> 重新提案</span><span class="fb-action-en" style="display:none;">→ Back to <strong>Step 1</strong> to revise proposal</span></div>
       </div>
     </div>
     <div class="feedback-card anim anim-3">
       <div class="feedback-icon gray">◻</div>
       <div class="feedback-body">
-        <div class="feedback-title">评审不通过</div>
-        <div class="feedback-action">→ 回到对应步骤重新处理</div>
+        <div class="feedback-title"><span class="fb-item-zh">评审不通过</span><span class="fb-item-en" style="display:none;">Review Failed</span></div>
+        <div class="feedback-action"><span class="fb-action-zh">→ 回到对应步骤重新处理</span><span class="fb-action-en" style="display:none;">→ Back to corresponding step</span></div>
       </div>
     </div>
   </div>
@@ -1854,47 +2121,47 @@ footer {
 <!-- ── Quick Start ── -->
 <section class="section" id="quickstart">
   <div class="section-header anim">
-    <div class="section-label">快速开始</div>
-    <h2 class="section-title">5 分钟上手</h2>
-    <p class="section-desc">已有 <a href="https://nodejs.org" target="_blank" rel="noopener">Node.js</a> 环境？按步骤安装，立即体验。</p>
+    <div class="section-label"><span class="qs-label-zh">快速开始</span><span class="qs-label-en" style="display:none;">Quick Start</span></div>
+    <h2 class="section-title"><span class="qs-title-zh">5 分钟上手</span><span class="qs-title-en" style="display:none;">Get Started in 5 Minutes</span></h2>
+    <p class="section-desc"><span class="qs-desc-zh">已有 <a href="https://nodejs.org" target="_blank" rel="noopener">Node.js</a> 环境？按步骤安装，立即体验。</span><span class="qs-desc-en" style="display:none;">Have <a href="https://nodejs.org" target="_blank" rel="noopener">Node.js</a> ready? Follow the steps below to get started.</span></p>
   </div>
 
   <div class="quickstart-grid">
     <div class="quickstart-install anim anim-1">
-      <h3><span>1</span> 安装步骤</h3>
+      <h3><span>1</span> <span class="qs-h3-zh">安装步骤</span><span class="qs-h3-en" style="display:none;">Installation Steps</span></h3>
       <div class="qs-steps">
         <div class="qs-step">
           <div class="qs-num">01</div>
           <div>
-            <div class="qs-label">安装 CLI</div>
+            <div class="qs-label"><span class="qs-step-zh">安装 CLI</span><span class="qs-step-en" style="display:none;">Install CLI</span></div>
             <div class="qs-cmd">npm install -g openspec-playwright</div>
           </div>
         </div>
         <div class="qs-step">
           <div class="qs-num">02</div>
           <div>
-            <div class="qs-label">安装 gstack</div>
+            <div class="qs-label"><span class="qs-step-zh">安装 gstack</span><span class="qs-step-en" style="display:none;">Install gstack</span></div>
             <div class="qs-cmd">git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup</div>
           </div>
         </div>
         <div class="qs-step">
           <div class="qs-num">03</div>
           <div>
-            <div class="qs-label">初始化 OpenSpec</div>
+            <div class="qs-label"><span class="qs-step-zh">初始化 OpenSpec</span><span class="qs-step-en" style="display:none;">Initialize OpenSpec</span></div>
             <div class="qs-cmd">npm install -g @fission-ai/openspec && openspec init</div>
           </div>
         </div>
         <div class="qs-step">
           <div class="qs-num">04</div>
           <div>
-            <div class="qs-label">安装 Playwright MCP</div>
+            <div class="qs-label"><span class="qs-step-zh">安装 Playwright MCP</span><span class="qs-step-en" style="display:none;">Install Playwright MCP</span></div>
             <div class="qs-cmd">claude mcp add playwright npx @playwright/mcp@latest</div>
           </div>
         </div>
         <div class="qs-step">
           <div class="qs-num">05</div>
           <div>
-            <div class="qs-label">初始化 E2E</div>
+            <div class="qs-label"><span class="qs-step-zh">初始化 E2E</span><span class="qs-step-en" style="display:none;">Initialize E2E</span></div>
             <div class="qs-cmd">openspec-pw init && npx playwright install --with-deps</div>
           </div>
         </div>
@@ -1902,7 +2169,7 @@ footer {
     </div>
 
     <div class="quickstart-run anim anim-2">
-      <h3>运行第一个 E2E 测试</h3>
+      <h3><span class="qs-run-title-zh">运行第一个 E2E 测试</span><span class="qs-run-title-en" style="display:none;">Run Your First E2E Test</span></h3>
       <div class="code-terminal">
         <div class="terminal-bar">
           <span class="terminal-dot td-red"></span>
@@ -1911,11 +2178,11 @@ footer {
         </div>
         <div class="terminal-body">
           <div><span class="terminal-prompt">$</span><span class="terminal-cmd">/opsx:e2e</span> <span class="terminal-accent">&lt;change-name&gt;</span></div>
-          <div><span class="terminal-comment"># Claude Code 自动完成：</span></div>
-          <div><span class="terminal-comment"># 1. 读取规范 → 2. 检测认证</span></div>
-          <div><span class="terminal-comment"># 3. 探索 DOM → 4. 生成测试</span></div>
-          <div><span class="terminal-comment"># 5. 执行测试 → 6. Healer 修复</span></div>
-          <div><span class="terminal-comment"># 7. 生成报告</span></div>
+          <div><span class="terminal-comment"># Claude Code automates:</span></div>
+          <div><span class="terminal-comment"># 1. Read specs → 2. Detect auth</span></div>
+          <div><span class="terminal-comment"># 3. Explore DOM → 4. Generate tests</span></div>
+          <div><span class="terminal-comment"># 5. Run tests → 6. Healer fix</span></div>
+          <div><span class="terminal-comment"># 7. Generate report</span></div>
         </div>
       </div>
     </div>
@@ -1927,26 +2194,24 @@ footer {
 <!-- ── Tech Stack ── -->
 <section class="section" id="stack">
   <div class="section-header anim">
-    <div class="section-label">技术栈</div>
-    <h2 class="section-title">AI 执行引擎驱动闭环</h2>
-    <p class="section-desc">每个组件都是业界最佳实践，共同支撑 AI 驱动的研发闭环。</p>
+    <div class="section-label"><span class="stack-label-zh">技术栈</span><span class="stack-label-en" style="display:none;">Tech Stack</span></div>
+    <h2 class="section-title"><span class="stack-title-zh">AI 执行引擎驱动闭环</span><span class="stack-title-en" style="display:none;">AI Execution Engine Powered Loop</span></h2>
+    <p class="section-desc"><span class="stack-desc-zh">每个组件都是业界最佳实践，共同支撑 AI 驱动的研发闭环。</span><span class="stack-desc-en" style="display:none;">Each component is industry best practice, together powering the AI-driven development loop.</span></p>
   </div>
 
   <div class="stack-grid">
     <div class="stack-item anim anim-1">
       <div class="stack-icon si-claude">
-        <!-- Anthropic / Claude Code logo -->
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M12 2L20 20H4L12 2Z" stroke="#d4a574" stroke-width="1.5" stroke-linejoin="round"/>
           <path d="M8 14h8M10 18h4" stroke="#d4a574" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
       </div>
       <div class="stack-name">Claude Code</div>
-      <div class="stack-role">AI 执行引擎</div>
+      <div class="stack-role"><span class="stack-role-zh">AI 执行引擎</span><span class="stack-role-en" style="display:none;">AI Engine</span></div>
     </div>
     <div class="stack-item anim anim-2">
       <div class="stack-icon si-pw">
-        <!-- Playwright logo -->
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M10 4C7.2 4 5 6.2 5 9v6c0 2.8 2.2 5 5 5h4c2.8 0 5-2.2 5-5V9c0-2.8-2.2-5-5-5h-4Z" fill="#2ead73"/>
           <path d="M10 4C7.2 4 5 6.2 5 9v6c0 2.8 2.2 5 5 5" stroke="#2ead73" stroke-width="1.5"/>
@@ -1956,11 +2221,10 @@ footer {
         </svg>
       </div>
       <div class="stack-name">Playwright</div>
-      <div class="stack-role">测试框架</div>
+      <div class="stack-role"><span class="stack-role-zh">测试框架</span><span class="stack-role-en" style="display:none;">Test Framework</span></div>
     </div>
     <div class="stack-item anim anim-3">
       <div class="stack-icon si-gstack">
-        <!-- gstack logo — magnifier + gear -->
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="10" cy="10" r="6" stroke="#e85d04" stroke-width="1.5"/>
           <path d="M14 14l4.5 4.5" stroke="#e85d04" stroke-width="2" stroke-linecap="round"/>
@@ -1968,11 +2232,10 @@ footer {
         </svg>
       </div>
       <div class="stack-name">gstack /browse</div>
-      <div class="stack-role">浏览器探索</div>
+      <div class="stack-role"><span class="stack-role-zh">浏览器探索</span><span class="stack-role-en" style="display:none;">Browser Exploration</span></div>
     </div>
     <div class="stack-item anim anim-4">
       <div class="stack-icon si-openspec">
-        <!-- OpenSpec logo — document with checkmark -->
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <rect x="5" y="3" width="14" height="18" rx="2" stroke="#3b82f6" stroke-width="1.5"/>
           <path d="M8 7h8M8 11h8M8 15h5" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round"/>
@@ -1980,11 +2243,10 @@ footer {
         </svg>
       </div>
       <div class="stack-name">OpenSpec</div>
-      <div class="stack-role">规范驱动</div>
+      <div class="stack-role"><span class="stack-role-zh">规范驱动</span><span class="stack-role-en" style="display:none;">Spec-Driven</span></div>
     </div>
     <div class="stack-item anim anim-5">
       <div class="stack-icon si-mcp">
-        <!-- Playwright MCP — plug icon -->
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M12 2v4M7 6l2-2M17 6l-2-2" stroke="#7c3aed" stroke-width="1.5" stroke-linecap="round"/>
           <rect x="6" y="6" width="12" height="10" rx="2" fill="#7c3aed"/>
@@ -1993,7 +2255,7 @@ footer {
         </svg>
       </div>
       <div class="stack-name">Playwright MCP</div>
-      <div class="stack-role">测试执行</div>
+      <div class="stack-role"><span class="stack-role-zh">测试执行</span><span class="stack-role-en" style="display:none;">Test Execution</span></div>
     </div>
   </div>
 </section>
@@ -2003,9 +2265,9 @@ footer {
 <!-- ── Comparison ── -->
 <section id="comparison">
   <div class="section-header anim">
-    <div class="section-label">对比</div>
-    <h2 class="section-title">与传统测试方式对比</h2>
-    <p class="section-desc">从手动维护到 AI 自动化，测试生产力的本质飞跃。</p>
+    <div class="section-label"><span class="cmp-label-zh">对比</span><span class="cmp-label-en" style="display:none;">Comparison</span></div>
+    <h2 class="section-title"><span class="cmp-title-zh">与传统测试方式对比</span><span class="cmp-title-en" style="display:none;">vs. Traditional Testing</span></h2>
+    <p class="section-desc"><span class="cmp-desc-zh">从手动维护到 AI 自动化，测试生产力的本质飞跃。</span><span class="cmp-desc-en" style="display:none;">A quantum leap in test productivity from manual maintenance to AI automation.</span></p>
   </div>
 
   <div class="comparison-grid">
@@ -2013,32 +2275,32 @@ footer {
       <div class="comparison-title">OpenSpec Playwright</div>
       <div class="comparison-item">
         <span class="check-icon">✓</span>
-        <span>规范驱动，变更即测试</span>
+        <span><span class="cmp-item-zh">规范驱动，变更即测试</span><span class="cmp-item-en" style="display:none;">Spec-driven, changes = tests</span></span>
       </div>
       <div class="comparison-item">
         <span class="check-icon">✓</span>
-        <span>AI 自动生成测试用例</span>
+        <span><span class="cmp-item-zh">AI 自动生成测试用例</span><span class="cmp-item-en" style="display:none;">AI auto-generates test cases</span></span>
       </div>
       <div class="comparison-item">
         <span class="check-icon">✓</span>
-        <span>Healer 自动修复选择器</span>
+        <span><span class="cmp-item-zh">Healer 自动修复选择器</span><span class="cmp-item-en" style="display:none;">Healer auto-fixes selectors</span></span>
       </div>
       <div class="comparison-item">
         <span class="check-icon">✓</span>
-        <span>一行命令完成全流程</span>
+        <span><span class="cmp-item-zh">一行命令完成全流程</span><span class="cmp-item-en" style="display:none;">One command for full workflow</span></span>
       </div>
       <div class="comparison-item">
         <span class="check-icon">✓</span>
-        <span>测试与规范严格对齐</span>
+        <span><span class="cmp-item-zh">测试与规范严格对齐</span><span class="cmp-item-en" style="display:none;">Tests strictly aligned with specs</span></span>
       </div>
     </div>
     <div class="comparison-card legacy anim anim-2">
-      <div class="comparison-title">手动维护 E2E</div>
-      <div class="comparison-item legacy-item">每次变更手动更新测试</div>
-      <div class="comparison-item legacy-item">选择器失效靠人工发现</div>
-      <div class="comparison-item legacy-item">测试覆盖靠经验判断</div>
-      <div class="comparison-item legacy-item">规范与测试容易脱节</div>
-      <div class="comparison-item legacy-item">维护成本随项目线性增长</div>
+      <div class="comparison-title"><span class="cmp-legacy-zh">手动维护 E2E</span><span class="cmp-legacy-en" style="display:none;">Manual E2E Maintenance</span></div>
+      <div class="comparison-item legacy-item"><span class="cmp-legacy-item-zh">每次变更手动更新测试</span><span class="cmp-legacy-item-en" style="display:none;">Manually update tests for each change</span></div>
+      <div class="comparison-item legacy-item"><span class="cmp-legacy-item-zh">选择器失效靠人工发现</span><span class="cmp-legacy-item-en" style="display:none;">Selector failures found manually</span></div>
+      <div class="comparison-item legacy-item"><span class="cmp-legacy-item-zh">测试覆盖靠经验判断</span><span class="cmp-legacy-item-en" style="display:none;">Test coverage judged by experience</span></div>
+      <div class="comparison-item legacy-item"><span class="cmp-legacy-item-zh">规范与测试容易脱节</span><span class="cmp-legacy-item-en" style="display:none;">Specs and tests easily drift apart</span></div>
+      <div class="comparison-item legacy-item"><span class="cmp-legacy-item-zh">维护成本随项目线性增长</span><span class="cmp-legacy-item-en" style="display:none;">Maintenance cost grows linearly</span></div>
     </div>
   </div>
 </section>
@@ -2051,11 +2313,11 @@ footer {
         <div class="footer-brand-mark">OP</div>
         openspec-playwright
       </div>
-      <p class="footer-desc">自动化 E2E 测试框架，专为 OpenSpec 规范驱动开发设计。</p>
+      <p class="footer-desc"><span class="footer-desc-zh">自动化 E2E 测试框架，专为 OpenSpec 规范驱动开发设计。</span><span class="footer-desc-en" style="display:none;">Automated E2E testing framework, designed for OpenSpec spec-driven development.</span></p>
     </div>
     <div class="footer-links">
       <a href="https://github.com/wxhou/openspec-playwright" target="_blank">GitHub</a>
-      <a href="https://github.com/wxhou/openspec-playwright#readme" target="_blank">文档</a>
+      <a href="https://github.com/wxhou/openspec-playwright#readme" target="_blank"><span class="footer-link-zh">文档</span><span class="footer-link-en" style="display:none;">Docs</span></a>
       <a href="https://www.npmjs.com/package/openspec-playwright" target="_blank">npm</a>
       <a href="https://github.com/garrytan/gstack" target="_blank">gstack</a>
       <a href="https://github.com/fission-ai/openspec" target="_blank">OpenSpec</a>
@@ -2065,6 +2327,120 @@ footer {
     MIT License · Built with Claude Code + Playwright + gstack + OpenSpec
   </div>
 </footer>
+
+<script>
+const CLAUDE_MD_ZH = `# 项目规范
+
+## 代码质量
+- 动手前先思考：列出假设，逐条验证。复杂任务多种解释则都列出，更简单方案则提出
+- 每步有可验证的退出条件：多步骤任务先列计划（\`1. [Step] → verify: [check]\`），循环验证直到成功
+- lint + typecheck 通过才算成功。动手前扫描项目根目录源码文件扩展名检测主语言——\`.py\`→ruff+mypy、\`.ts\`/\`.tsx\`→ESLint+tsc、\`.go\`→gofmt+vet
+- 只写被要求的东西：不加"灵活"、"可配置"、单次使用的抽象。200行能50行完成则重写
+- 精准改动：只改必要的，改完清理自己造成的垃圾。匹配现有风格，不改进无关代码
+
+## 禁止非通用性改动
+- 假设所有外部数据都有效 → 必须校验类型/范围/null
+- 断言用通用规则，不用具体值（除非明确要求）
+- 禁止魔法数字 → 用常量或枚举，注释说明原因
+- 禁止隐式成功假设 → 异步/外部操作必须处理失败情况
+- 禁止响应结构假设 → 先校验返回结构再访问深层属性
+- 禁止资源泄漏假设 → 文件/连接/cursor 等使用后必须释放
+
+## 上下文管理
+- 超过 500 行文件分次读取或编辑前重新读取完整内容
+- 超过 10 条消息后，编辑任何文件前强制重新读取
+- 上下文压缩恢复后：git status → 确认改动范围与设计一致 → 验证 lint+typecheck → 继续
+
+## 工具限制
+- 搜索要全：Grep 搜内容 + Glob 搜文件名，两者缺一不可。跳过 node_modules/vendor/__pycache__
+- 禁止脚本改文件：用 Read/Edit/Write，格式化工具（prettier/ruff fmt）除外
+- 重命名时覆盖调用、类型、字符串、import、barrel file、测试 mock
+- 禁止推送：除非用户明确要求，否则不执行 git push
+
+## 大规模任务
+- 200+ 行修改或架构变更（新增服务/API 契约/数据模型重构）尽量使用 OpenSpec 工作流`;
+
+const CLAUDE_MD_EN = `# Project Guidelines
+
+## Code Quality
+- Think before coding: List assumptions, verify each one. If multiple interpretations exist, present them all; suggest simpler approaches if available
+- Every step needs verifiable exit criteria: Plan multi-step tasks (\`1. [Step] → verify: [check]\`), loop until verified
+- lint + typecheck must pass. Detect project language by file extensions — \`.py\`→ruff+mypy, \`.ts\`/\`.tsx\`→ESLint+tsc, \`.go\`→gofmt+vet
+- Write only what's requested: No "flexibility", "configurability", or single-use abstractions. Rewrite if 200 lines can be 50
+- Surgical changes: Touch only what's necessary, clean up only your own mess. Match existing style, don't improve unrelated code
+
+## No Non-Generic Changes
+- Assume external data is valid → Must validate type/range/null
+- Use generic assertions, not specific values (unless explicitly requested)
+- No magic numbers → Use constants or enums with comments explaining why
+- No implicit success assumptions → Async/external operations must handle failures
+- No response structure assumptions → Validate structure before accessing deep properties
+- No resource leak assumptions → Files/connections/cursors must be released after use
+
+## Context Management
+- Files over 500 lines: Re-read fully before editing
+- After 10+ messages: Force re-read any file before editing
+- After context compression: git status → confirm scope aligns with design → verify lint+typecheck → continue
+
+## Tool Constraints
+- Search comprehensively: Grep for content + Glob for filenames. Both required. Skip node_modules/vendor/__pycache__
+- No script-based file edits: Use Read/Edit/Write tools only. Formatters (prettier/ruff fmt) excluded
+- Renaming must cover: calls, types, strings, imports, barrel files, test mocks
+- No push: Don't execute git push unless explicitly requested
+
+## Large-Scale Tasks
+- 200+ line changes or architecture changes (new services/API contracts/data model refactors): prefer using OpenSpec workflow`;
+
+let currentLang = 'zh';
+
+function setLanguage(lang) {
+  currentLang = lang;
+
+  // Update language buttons
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.lang === lang);
+  });
+
+  const isZh = lang === 'zh';
+
+  // Hide all zh/en elements first
+  document.querySelectorAll('[class*="-zh"], [class*="-en"]').forEach(el => {
+    if (el.classList.contains('lang-btn')) return;
+    if (el.className.includes('-zh')) {
+      el.style.display = isZh ? '' : 'none';
+    } else if (el.className.includes('-en')) {
+      el.style.display = isZh ? 'none' : '';
+    }
+  });
+
+  // Update content
+  document.getElementById('claude-md-content').textContent = isZh ? CLAUDE_MD_ZH : CLAUDE_MD_EN;
+}
+
+function copyClaudeMd() {
+  const content = currentLang === 'zh' ? CLAUDE_MD_ZH : CLAUDE_MD_EN;
+  navigator.clipboard.writeText(content).then(() => {
+    document.querySelectorAll('.nav-copy-btn, .claude-copy-btn').forEach(btn => {
+      const originalHTML = btn.innerHTML;
+      btn.classList.add('copied');
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg><span>' + (currentLang === 'zh' ? '已复制!' : 'Copied!') + '</span>';
+      setTimeout(() => {
+        btn.classList.remove('copied');
+        btn.innerHTML = originalHTML;
+      }, 2000);
+    });
+  }).catch(err => {
+    console.error('Copy failed:', err);
+  });
+}
+
+// Initialize language switch buttons
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
+  });
+});
+</script>
 
 </body>
 </html>
