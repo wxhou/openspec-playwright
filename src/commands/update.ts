@@ -13,12 +13,10 @@ import { tmpdir } from "os";
 import { promisify } from "util";
 import chalk from "chalk";
 import * as tar from "tar";
-import { installProjectClaudeMd } from "./editors.js";
-import { syncMcpTools } from "./mcpSync.js";
 import {
+  installProjectClaudeMd,
   hasClaudeCode,
   installForClaudeCode,
-  installSkill,
 } from "./editors.js";
 
 export interface UpdateOptions {
@@ -142,17 +140,11 @@ export async function update(options: UpdateOptions) {
       }
 
       const hasClaude = hasClaudeCode(projectRoot);
-      // Install command and SKILL.md for Claude Code
+      // Install command for Claude Code
       if (hasClaude && body) {
         installForClaudeCode(body, projectRoot);
       } else if (!hasClaude) {
         console.log(chalk.gray("  - .claude not found, skipping command installation"));
-      }
-
-      // Install SKILL.md for Claude Code (only if .claude exists)
-      if (hasClaude && existsSync(skillSrc)) {
-        const skillContent = readFileSync(skillSrc, "utf-8");
-        installSkill(projectRoot, skillContent);
       }
 
       // Sync SKILL reference templates
@@ -169,7 +161,7 @@ export async function update(options: UpdateOptions) {
       }
 
       rmSync(tmpDir, { recursive: true, force: true });
-      console.log(chalk.green("  ✓ Commands, skill & templates updated to latest"));
+      console.log(chalk.green("  ✓ Commands & templates updated to latest"));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.log(chalk.yellow(`  ⚠ Failed to update from npm: ${msg}`));
@@ -227,23 +219,6 @@ export async function update(options: UpdateOptions) {
         );
       }
     }
-  }
-
-  // 3. Sync Healer tools (Claude Code only)
-  if (
-    existsSync(
-      join(projectRoot, ".claude", "skills", "openspec-e2e", "SKILL.md"),
-    )
-  ) {
-    console.log(chalk.blue("\n─── Syncing Healer Tools ───"));
-    const skillDest = join(
-      projectRoot,
-      ".claude",
-      "skills",
-      "openspec-e2e",
-      "SKILL.md",
-    );
-    await syncMcpTools(skillDest, true);
   }
 
   // Summary

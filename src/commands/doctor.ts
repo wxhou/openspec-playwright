@@ -103,17 +103,6 @@ export async function doctor(options: DoctorOptions = {}) {
     message: mcpInstalled ? "installed" : "not configured",
   });
 
-  // Skill
-  const hasSkill = existsSync(
-    join(projectRoot, ".claude", "skills", "openspec-e2e", "SKILL.md"),
-  );
-  checks.push({
-    category: "Claude Code Skill",
-    name: "skill",
-    ok: hasSkill,
-    message: hasSkill ? "installed" : "not installed",
-  });
-
   // Seed test
   const hasSeed = existsSync(
     join(projectRoot, "tests", "playwright", "seed.spec.ts"),
