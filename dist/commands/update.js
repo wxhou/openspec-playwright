@@ -5,9 +5,7 @@ import { tmpdir } from "os";
 import { promisify } from "util";
 import chalk from "chalk";
 import * as tar from "tar";
-import { installProjectClaudeMd } from "./editors.js";
-import { syncMcpTools } from "./mcpSync.js";
-import { hasClaudeCode, installForClaudeCode, installSkill, } from "./editors.js";
+import { installProjectClaudeMd, hasClaudeCode, installForClaudeCode, } from "./editors.js";
 export async function update(options) {
     console.log(chalk.blue("\n🔄 Updating OpenSpec + Playwright E2E\n"));
     const projectRoot = process.cwd();
@@ -90,17 +88,12 @@ export async function update(options) {
                 body = skillContent.replace(/^---\n[\s\S]*?\n---\n*/, "");
             }
             const hasClaude = hasClaudeCode(projectRoot);
-            // Install command and SKILL.md for Claude Code
+            // Install command for Claude Code
             if (hasClaude && body) {
                 installForClaudeCode(body, projectRoot);
             }
             else if (!hasClaude) {
                 console.log(chalk.gray("  - .claude not found, skipping command installation"));
-            }
-            // Install SKILL.md for Claude Code (only if .claude exists)
-            if (hasClaude && existsSync(skillSrc)) {
-                const skillContent = readFileSync(skillSrc, "utf-8");
-                installSkill(projectRoot, skillContent);
             }
             // Sync SKILL reference templates
             syncSkillTemplates(tmpDir, projectRoot);
@@ -113,7 +106,7 @@ export async function update(options) {
                 installProjectClaudeMd(projectRoot, standards);
             }
             rmSync(tmpDir, { recursive: true, force: true });
-            console.log(chalk.green("  ✓ Commands, skill & templates updated to latest"));
+            console.log(chalk.green("  ✓ Commands & templates updated to latest"));
         }
         catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
@@ -167,12 +160,6 @@ export async function update(options) {
                 console.log(chalk.gray("  (Restart Claude Code to activate the MCP server)"));
             }
         }
-    }
-    // 3. Sync Healer tools (Claude Code only)
-    if (existsSync(join(projectRoot, ".claude", "skills", "openspec-e2e", "SKILL.md"))) {
-        console.log(chalk.blue("\n─── Syncing Healer Tools ───"));
-        const skillDest = join(projectRoot, ".claude", "skills", "openspec-e2e", "SKILL.md");
-        await syncMcpTools(skillDest, true);
     }
     // Summary
     console.log(chalk.blue("\n─── Summary ───"));

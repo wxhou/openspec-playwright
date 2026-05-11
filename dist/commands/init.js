@@ -4,8 +4,7 @@ import { join } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { readFile } from "fs/promises";
-import { syncMcpTools } from "./mcpSync.js";
-import { hasClaudeCode, installForClaudeCode, installSkill, installProjectClaudeMd, readEmployeeStandards, } from "./editors.js";
+import { hasClaudeCode, installForClaudeCode, installProjectClaudeMd, readEmployeeStandards, } from "./editors.js";
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
 const SKILL_SRC = fileURLToPath(new URL("../../.claude/skills/openspec-e2e/SKILL.md", import.meta.url));
 const EMPLOYEE_STANDARDS_SRC = fileURLToPath(new URL("../../employee-standards.md", import.meta.url));
@@ -80,29 +79,18 @@ export async function init(options) {
             }
         }
     }
-    // 4. Install E2E command and SKILL.md for Claude Code
+    // 4. Install E2E command for Claude Code
     console.log(chalk.blue("\n─── Installing E2E Commands ───"));
     const skillContent = await readFile(SKILL_SRC, "utf-8");
     const body = extractSkillBody(skillContent);
     if (hasClaudeCode(projectRoot)) {
         installForClaudeCode(body, projectRoot);
-        installSkill(projectRoot, skillContent);
         installSkillTemplates(projectRoot);
     }
     else {
         console.log(chalk.yellow("  ⚠ Claude Code not detected (.claude/ not found)."));
         console.log(chalk.gray("  Run openspec-pw init from a Claude Code project to install commands.\n"));
         return;
-    }
-    // 5. Sync Healer tools with latest @playwright/mcp (Claude Code only)
-    if (existsSync(join(projectRoot, ".claude"))) {
-        console.log(chalk.blue("\n─── Syncing Healer Tools ───"));
-        const skillDest = join(projectRoot, ".claude", "skills", "openspec-e2e", "SKILL.md");
-        await syncMcpTools(skillDest, true);
-    }
-    else {
-        console.log(chalk.blue("\n─── Syncing Healer Tools ───"));
-        console.log(chalk.gray("  - Claude Code not detected, skipping MCP sync"));
     }
     // 6. Generate seed test
     if (options.seed !== false) {
