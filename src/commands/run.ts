@@ -385,7 +385,7 @@ function generateReport(
   lines.push(
     "## Failure Classification",
     "",
-    "_(Populated by Healer after Phase 1/2/3 — see SKILL.md Step 9)_",
+    "_(Populated by Healer after Phase 1/2/3 — see e2e-command.md Step 9)_",
     "",
     "| Test | Failure Type | Action | Healed? |",
     "|------|-------------|--------|---------|",
@@ -393,7 +393,7 @@ function generateReport(
     "",
     "## Auto-Heal Log",
     "",
-    "_(Populated by Healer — see SKILL.md Step 9 Phase 2)_",
+    "_(Populated by Healer — see e2e-command.md Step 9 Phase 2)_",
     "",
     "## RAFT Summary",
     "",
@@ -409,7 +409,7 @@ function generateReport(
   if (results.failed > 0) {
     lines.push(
       "Review failed tests above.",
-      "For Healer guidance: see SKILL.md Step 9 — Phase 1 Triage → Phase 2 Repair → Phase 3 Escalate.",
+      "For Healer guidance: see e2e-command.md Step 9 — Phase 1 Triage → Phase 2 Repair → Phase 3 Escalate.",
       "For full interactive reports: `npx playwright show-report`",
       "",
     );

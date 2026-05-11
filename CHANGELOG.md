@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - `.claude/skills/openspec-e2e/` directory — no longer shipped or installed
+- `src/commands/mcpSync.ts` — dead code (SKILL.md sync, never called after removal)
 - Related test cases for removed functions
 
 ## [0.3.24] - 2026-04-22

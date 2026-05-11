@@ -57,7 +57,6 @@ const distExists = existsSync(distDir);
     const { run } = await import("../dist/commands/run.js");
     const { uninstall } = await import("../dist/commands/uninstall.js");
     const { update } = await import("../dist/commands/update.js");
-    const { syncMcpTools } = await import("../dist/commands/mcpSync.js");
     const {
       hasClaudeCode,
       installForClaudeCode,
@@ -70,7 +69,6 @@ const distExists = existsSync(distDir);
     expect(typeof run).toBe("function");
     expect(typeof uninstall).toBe("function");
     expect(typeof update).toBe("function");
-    expect(typeof syncMcpTools).toBe("function");
     expect(typeof hasClaudeCode).toBe("function");
     expect(typeof installForClaudeCode).toBe("function");
     expect(typeof buildCommandMeta).toBe("function");
@@ -156,7 +154,6 @@ const CRITICAL_PACKAGE_FILES = [
   "dist/commands/run.js",
   "dist/commands/doctor.js",
   "dist/commands/update.js",
-  "dist/commands/mcpSync.js",
   "dist/commands/editors.js",
   ".claude/commands/opsx/CLAUDE.md",
   "employee-standards.md",

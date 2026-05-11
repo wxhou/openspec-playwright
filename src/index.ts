@@ -49,9 +49,9 @@ program
 
 program
   .command("update")
-  .description("Update the CLI tool and skill to the latest version")
+  .description("Update the CLI tool and commands to the latest version")
   .option("--no-cli", "skip CLI update")
-  .option("--no-skill", "skip skill/command update")
+  .option("--no-skill", "skip command update")
   .action(update);
 
 program

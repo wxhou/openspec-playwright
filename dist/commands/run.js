@@ -242,10 +242,10 @@ function generateReport(changeName, timestamp, results, options) {
         }
         lines.push("");
     }
-    lines.push("## Failure Classification", "", "_(Populated by Healer after Phase 1/2/3 — see SKILL.md Step 9)_", "", "| Test | Failure Type | Action | Healed? |", "|------|-------------|--------|---------|", "| ... | ... | ... | ... |", "", "## Auto-Heal Log", "", "_(Populated by Healer — see SKILL.md Step 9 Phase 2)_", "", "## RAFT Summary", "", "_(If RAFTs detected: mark with test.skip() in suite, investigate infrastructure coupling)_", "", "## Human Escalations", "", "_(If Phase 3 escalations: present 4 options to user, wait for decision)_", "");
+    lines.push("## Failure Classification", "", "_(Populated by Healer after Phase 1/2/3 — see e2e-command.md Step 9)_", "", "| Test | Failure Type | Action | Healed? |", "|------|-------------|--------|---------|", "| ... | ... | ... | ... |", "", "## Auto-Heal Log", "", "_(Populated by Healer — see e2e-command.md Step 9 Phase 2)_", "", "## RAFT Summary", "", "_(If RAFTs detected: mark with test.skip() in suite, investigate infrastructure coupling)_", "", "## Human Escalations", "", "_(If Phase 3 escalations: present 4 options to user, wait for decision)_", "");
     lines.push("## Recommendations", "");
     if (results.failed > 0) {
-        lines.push("Review failed tests above.", "For Healer guidance: see SKILL.md Step 9 — Phase 1 Triage → Phase 2 Repair → Phase 3 Escalate.", "For full interactive reports: `npx playwright show-report`", "");
+        lines.push("Review failed tests above.", "For Healer guidance: see e2e-command.md Step 9 — Phase 1 Triage → Phase 2 Repair → Phase 3 Escalate.", "For full interactive reports: `npx playwright show-report`", "");
     }
     else {
         lines.push("All tests passed. No action needed.", "");
