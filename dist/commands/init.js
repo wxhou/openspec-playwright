@@ -6,12 +6,8 @@ import chalk from "chalk";
 import { readFile } from "fs/promises";
 import { hasClaudeCode, installForClaudeCode, installProjectClaudeMd, readEmployeeStandards, } from "./editors.js";
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
-const SKILL_SRC = fileURLToPath(new URL("../../.claude/skills/openspec-e2e/SKILL.md", import.meta.url));
+const E2E_COMMAND_SRC = fileURLToPath(new URL("../../templates/e2e-command.md", import.meta.url));
 const EMPLOYEE_STANDARDS_SRC = fileURLToPath(new URL("../../employee-standards.md", import.meta.url));
-/** Strip YAML frontmatter from SKILL.md to get the body content */
-function extractSkillBody(content) {
-    return content.replace(/^---\n[\s\S]*?\n---\n*/, "");
-}
 export async function init(options) {
     console.log(chalk.blue("\n🔧 OpenSpec + Playwright E2E Setup\n"));
     const projectRoot = process.cwd();
@@ -81,11 +77,9 @@ export async function init(options) {
     }
     // 4. Install E2E command for Claude Code
     console.log(chalk.blue("\n─── Installing E2E Commands ───"));
-    const skillContent = await readFile(SKILL_SRC, "utf-8");
-    const body = extractSkillBody(skillContent);
+    const body = await readFile(E2E_COMMAND_SRC, "utf-8");
     if (hasClaudeCode(projectRoot)) {
         installForClaudeCode(body, projectRoot);
-        installSkillTemplates(projectRoot);
     }
     else {
         console.log(chalk.yellow("  ⚠ Claude Code not detected (.claude/ not found)."));
@@ -189,26 +183,6 @@ export async function generateSharedPages(projectRoot) {
         writeFileSync(basePageDest, readFileSync(basePageSrc));
         console.log(chalk.green("  ✓ Generated: tests/playwright/pages/BasePage.ts"));
         console.log(chalk.gray("  (Extend BasePage to create page objects: pages/LoginPage.ts, etc.)"));
-    }
-}
-// Install SKILL reference templates (format guides for LLM to read)
-export function installSkillTemplates(projectRoot) {
-    const SKILL_DIR = join(projectRoot, ".claude", "skills", "openspec-e2e");
-    const templatesDir = join(SKILL_DIR, "templates");
-    mkdirSync(templatesDir, { recursive: true });
-    const SKILL_TEMPLATE_FILES = [
-        "app-exploration.md",
-        "test-plan.md",
-        "playwright.config.ts",
-        "report.md",
-        "e2e-test.ts",
-    ];
-    for (const file of SKILL_TEMPLATE_FILES) {
-        const src = join(TEMPLATE_DIR, file);
-        const dest = join(templatesDir, file);
-        if (existsSync(src) && !existsSync(dest)) {
-            writeFileSync(dest, readFileSync(src));
-        }
     }
 }
 function execCmd(cmd, name, silent = false) {

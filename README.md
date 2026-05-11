@@ -20,7 +20,7 @@ openspec-pw init          # Install Playwright E2E integration
 
 ## Supported AI Coding Assistants
 
-Claude Code — E2E workflow is driven by SKILL.md using /browse (exploration) + Playwright MCP (test execution).
+Claude Code — E2E workflow is driven by `/opsx:e2e` command using /browse (exploration) + Playwright MCP (test execution).
 
 ## Usage
 
@@ -88,9 +88,8 @@ openspec-pw uninstall     # Remove integration from the project
 ## What `openspec-pw init` Does
 
 1. Detects Claude Code in the project
-2. Installs E2E command (`/opsx:e2e`) and SKILL.md
-3. Syncs Healer tools from latest `@playwright/mcp`
-4. Generates `tests/playwright/seed.spec.ts`, `auth.setup.ts`, `credentials.yaml`, `app-knowledge.md`
+2. Installs E2E command (`/opsx:e2e`) for Claude Code
+3. Generates `tests/playwright/seed.spec.ts`, `auth.setup.ts`, `credentials.yaml`, `app-knowledge.md`
 
 > **Note**: After running `openspec-pw init`, manually install Playwright browsers: `npx playwright install --with-deps`
 
@@ -151,12 +150,12 @@ Edit `tests/playwright/credentials.yaml`:
 ## Architecture
 
 ```
-Templates (in npm package, installed to .claude/skills/openspec-e2e/templates/)
-  └── test-plan.md, report.md, playwright.config.ts, e2e-test.ts, global.teardown.ts, app-exploration.md
+Templates (in npm package, installed to tests/playwright/)
+  └── seed.spec.ts, auth.setup.ts, credentials.yaml, app-knowledge.md, pages/BasePage.ts
 
 CLI (openspec-pw)
-  ├── init       → Installs commands, skill & templates to .claude/
-  ├── update     → Syncs commands, skill & templates from npm
+  ├── init       → Installs commands & templates
+  ├── update     → Syncs commands & templates from npm
   ├── run        → Executes E2E tests with server lifecycle
   ├── migrate    → Migrates old test files to new structure
   ├── audit      → Audits tests for orphaned specs and issues
@@ -164,8 +163,7 @@ CLI (openspec-pw)
   └── uninstall  → Removes integration from the project
 
 Claude Code (/opsx:e2e)
-  ├── .claude/commands/opsx/e2e.md    → Command file
-  ├── .claude/skills/openspec-e2e/   → SKILL.md + templates
+  ├── .claude/commands/opsx/e2e.md    → Command file (installed from templates/e2e-command.md)
   └── @playwright/mcp                 → Healer Agent tools
 
 Test Assets (tests/playwright/)

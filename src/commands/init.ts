@@ -12,17 +12,12 @@ import {
 } from "./editors.js";
 
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
-const SKILL_SRC = fileURLToPath(
-  new URL("../../.claude/skills/openspec-e2e/SKILL.md", import.meta.url),
+const E2E_COMMAND_SRC = fileURLToPath(
+  new URL("../../templates/e2e-command.md", import.meta.url),
 );
 const EMPLOYEE_STANDARDS_SRC = fileURLToPath(
   new URL("../../employee-standards.md", import.meta.url),
 );
-
-/** Strip YAML frontmatter from SKILL.md to get the body content */
-function extractSkillBody(content: string): string {
-  return content.replace(/^---\n[\s\S]*?\n---\n*/, "");
-}
 
 export interface InitOptions {
   change?: string;
@@ -124,11 +119,9 @@ export async function init(options: InitOptions) {
 
   // 4. Install E2E command for Claude Code
   console.log(chalk.blue("\n─── Installing E2E Commands ───"));
-  const skillContent = await readFile(SKILL_SRC, "utf-8");
-  const body = extractSkillBody(skillContent);
+  const body = await readFile(E2E_COMMAND_SRC, "utf-8");
   if (hasClaudeCode(projectRoot)) {
     installForClaudeCode(body, projectRoot);
-    installSkillTemplates(projectRoot);
   } else {
     console.log(
       chalk.yellow("  ⚠ Claude Code not detected (.claude/ not found)."),
@@ -297,34 +290,6 @@ export async function generateSharedPages(projectRoot: string) {
         "  (Extend BasePage to create page objects: pages/LoginPage.ts, etc.)",
       ),
     );
-  }
-}
-
-// Install SKILL reference templates (format guides for LLM to read)
-export function installSkillTemplates(projectRoot: string) {
-  const SKILL_DIR = join(
-    projectRoot,
-    ".claude",
-    "skills",
-    "openspec-e2e",
-  );
-  const templatesDir = join(SKILL_DIR, "templates");
-  mkdirSync(templatesDir, { recursive: true });
-
-  const SKILL_TEMPLATE_FILES = [
-    "app-exploration.md",
-    "test-plan.md",
-    "playwright.config.ts",
-    "report.md",
-    "e2e-test.ts",
-  ];
-
-  for (const file of SKILL_TEMPLATE_FILES) {
-    const src = join(TEMPLATE_DIR, file);
-    const dest = join(templatesDir, file);
-    if (existsSync(src) && !existsSync(dest)) {
-      writeFileSync(dest, readFileSync(src));
-    }
   }
 }
 

@@ -68,7 +68,7 @@ export function hasClaudeCode(projectRoot: string): boolean {
 
 // ─── Install helpers ───────────────────────────────────────────────────────
 
-/** Install command files and SKILL.md for Claude Code */
+/** Install command files for Claude Code */
 export function installForClaudeCode(
   body: string,
   projectRoot: string,
@@ -79,14 +79,6 @@ export function installForClaudeCode(
   mkdirSync(dirname(absPath), { recursive: true });
   writeFileSync(absPath, formatClaudeCommand(meta));
   console.log(chalk.green(`  ✓ claude: ${relPath}`));
-}
-
-/** Install SKILL.md for Claude Code */
-export function installSkill(projectRoot: string, skillContent: string): void {
-  const skillDir = join(projectRoot, ".claude", "skills", "openspec-e2e");
-  mkdirSync(skillDir, { recursive: true });
-  writeFileSync(join(skillDir, "SKILL.md"), skillContent);
-  console.log(chalk.green(`  ✓ claude: .claude/skills/openspec-e2e/SKILL.md`));
 }
 
 /** Install project-level CLAUDE.md with employee-grade standards + OpenSpec context */

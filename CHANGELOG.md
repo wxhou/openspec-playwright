@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Migrated E2E command content from `.claude/skills/openspec-e2e/SKILL.md` to `templates/e2e-command.md` — `init` and `update` now read from the template instead of the deleted SKILL file
+- Removed `installSkillTemplates`, `syncSkillTemplates`, `installSkill`, `extractSkillBody` — all SKILL-related dead code
+- `update`: command content now read from `templates/e2e-command.md` in tarball instead of SKILL.md
+- `update`: init detection now checks `.claude/commands/opsx/e2e.md` instead of SKILL.md
+- `uninstall`: legacy skill directory removal labeled as backward-compat cleanup
+
+### Removed
+
+- `.claude/skills/openspec-e2e/` directory — no longer shipped or installed
+- Related test cases for removed functions
+
 ## [0.3.24] - 2026-04-22
 
 ### Fixed

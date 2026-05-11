@@ -31,11 +31,11 @@ export async function update(options: UpdateOptions) {
   const projectRoot = process.cwd();
 
   // Check if init has been run
-  const hasSkill = existsSync(
-    join(projectRoot, ".claude", "skills", "openspec-e2e", "SKILL.md"),
+  const hasCommand = existsSync(
+    join(projectRoot, ".claude", "commands", "opsx", "e2e.md"),
   );
   const hasOpenSpec = existsSync(join(projectRoot, "openspec"));
-  if (!hasSkill && !hasOpenSpec) {
+  if (!hasCommand && !hasOpenSpec) {
     console.log(chalk.yellow("  ⚠ OpenSpec + Playwright E2E not initialized."));
     console.log(
       chalk.gray('  Run "openspec-pw init" first to set up the integration.\n'),
@@ -106,7 +106,7 @@ export async function update(options: UpdateOptions) {
 
   // 2. Update commands for all detected editors
   if (options.skill !== false) {
-    console.log(chalk.blue("\n─── Updating Commands & Skill ───"));
+    console.log(chalk.blue("\n─── Updating Commands ───"));
     try {
       const tmpDir = join(tmpdir(), "openspec-e2e-update");
       rmSync(tmpDir, { recursive: true, force: true });
@@ -131,12 +131,11 @@ export async function update(options: UpdateOptions) {
       // Extract tarball
       await tar.extract({ file: tarballPath, cwd: tmpDir, strip: 1 });
 
-      // Read SKILL.md body as command content
-      const skillSrc = join(tmpDir, ".claude", "skills", "openspec-e2e", "SKILL.md");
+      // Read e2e command content from template
+      const commandSrc = join(tmpDir, "templates", "e2e-command.md");
       let body = "";
-      if (existsSync(skillSrc)) {
-        const skillContent = readFileSync(skillSrc, "utf-8");
-        body = skillContent.replace(/^---\n[\s\S]*?\n---\n*/, "");
+      if (existsSync(commandSrc)) {
+        body = readFileSync(commandSrc, "utf-8");
       }
 
       const hasClaude = hasClaudeCode(projectRoot);
@@ -146,9 +145,6 @@ export async function update(options: UpdateOptions) {
       } else if (!hasClaude) {
         console.log(chalk.gray("  - .claude not found, skipping command installation"));
       }
-
-      // Sync SKILL reference templates
-      syncSkillTemplates(tmpDir, projectRoot);
 
       // Sync project templates (BasePage.ts, seed.spec.ts)
       syncProjectTemplates(tmpDir, projectRoot);
@@ -226,8 +222,7 @@ export async function update(options: UpdateOptions) {
   console.log(chalk.green("  ✓ Update complete!\n"));
 
   if (existsSync(join(projectRoot, ".claude"))) {
-    console.log(chalk.bold("Restart Claude Code to use the updated skill."));
-    console.log(chalk.gray("  Then run /opsx:e2e <change-name> to verify.\n"));
+    console.log(chalk.bold("Restart Claude Code to use the updated commands."));
   } else {
     console.log(
       chalk.bold(
@@ -240,42 +235,7 @@ export async function update(options: UpdateOptions) {
   }
 }
 
-// Sync SKILL reference templates from extracted tarball to project
-export function syncSkillTemplates(tmpDir: string, projectRoot: string) {
-  if (!existsSync(join(projectRoot, ".claude"))) return;
-
-  const SKILL_DIR = join(
-    projectRoot,
-    ".claude",
-    "skills",
-    "openspec-e2e",
-  );
-  const templatesDir = join(SKILL_DIR, "templates");
-  mkdirSync(templatesDir, { recursive: true });
-
-  const SKILL_TEMPLATE_FILES = [
-    "app-exploration.md",
-    "test-plan.md",
-    "playwright.config.ts",
-    "report.md",
-    "e2e-test.ts",
-  ];
-
-  for (const file of SKILL_TEMPLATE_FILES) {
-    const src = join(tmpDir, "templates", file);
-    const dest = join(templatesDir, file);
-    if (existsSync(src)) {
-      const existing = existsSync(dest) ? readFileSync(dest, "utf-8") : "";
-      const latest = readFileSync(src, "utf-8");
-      if (existing !== latest) {
-        writeFileSync(dest, latest);
-        console.log(chalk.green(`  ✓ Updated: ${file}`));
-      }
-    }
-  }
-}
-
-// Sync project-level templates that SKILL.md depends on
+// Sync project-level templates
 function syncProjectTemplates(tmpDir: string, projectRoot: string) {
   const testsDir = join(projectRoot, "tests", "playwright");
   if (!existsSync(testsDir)) return;

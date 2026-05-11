@@ -18,10 +18,8 @@ export declare function getClaudeCommandPath(id: string): string;
 export declare function buildCommandMeta(body: string): CommandMeta;
 /** Detect if Claude Code is installed */
 export declare function hasClaudeCode(projectRoot: string): boolean;
-/** Install command files and SKILL.md for Claude Code */
+/** Install command files for Claude Code */
 export declare function installForClaudeCode(body: string, projectRoot: string): void;
-/** Install SKILL.md for Claude Code */
-export declare function installSkill(projectRoot: string, skillContent: string): void;
 /** Install project-level CLAUDE.md with employee-grade standards + OpenSpec context */
 export declare function installProjectClaudeMd(projectRoot: string, standardsContent: string): void;
 /** Read the employee-grade standards from a source file */

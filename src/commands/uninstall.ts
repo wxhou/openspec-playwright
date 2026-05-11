@@ -32,14 +32,14 @@ export async function uninstall() {
     console.log(chalk.gray("  - E2E command not found, skipping"));
   }
 
-  // 3. Remove SKILL.md
-  console.log(chalk.blue("\n─── Removing Skill ───"));
+  // 3. Remove legacy skill directory (if present from older versions)
+  console.log(chalk.blue("\n─── Removing Legacy Skill ───"));
   const skillDir = join(projectRoot, ".claude", "skills", "openspec-e2e");
   if (existsSync(skillDir)) {
     rmSync(skillDir, { recursive: true, force: true });
     console.log(chalk.green("  ✓ Removed .claude/skills/openspec-e2e/"));
   } else {
-    console.log(chalk.gray("  - Skill not found, skipping"));
+    console.log(chalk.gray("  - Legacy skill directory not found, skipping"));
   }
 
   // 4. Remove schema

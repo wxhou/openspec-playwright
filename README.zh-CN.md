@@ -30,7 +30,7 @@ openspec-pw init          # 安装 Playwright E2E 集成
 
 ## 支持的 AI 编码助手
 
-Claude Code — E2E 工作流由 SKILL.md 驱动，使用 /browse（探索）+ Playwright MCP（测试执行）。
+Claude Code — E2E 工作流由 `/opsx:e2e` 命令驱动，使用 /browse（探索）+ Playwright MCP（测试执行）。
 
 ## 使用
 
@@ -90,9 +90,8 @@ openspec-pw uninstall     # 移除项目中的集成
 ## `openspec-pw init` 做了什么
 
 1. 检测项目中的 Claude Code
-2. 安装 E2E 命令（`/opsx:e2e`）和 SKILL.md
-3. 从最新 `@playwright/mcp` 同步 Healer 工具
-4. 生成 `tests/playwright/seed.spec.ts`、`auth.setup.ts`、`credentials.yaml`、`app-knowledge.md`
+2. 安装 E2E 命令（`/opsx:e2e`）到 Claude Code
+3. 生成 `tests/playwright/seed.spec.ts`、`auth.setup.ts`、`credentials.yaml`、`app-knowledge.md`
 
 ## 首次配置清单
 
@@ -151,12 +150,12 @@ npx playwright test --project=setup
 ## 架构
 
 ```
-模板（内置于 npm 包，安装到 .claude/skills/openspec-e2e/templates/）
-  └── test-plan.md, report.md, playwright.config.ts, e2e-test.ts, app-exploration.md
+模板（内置于 npm 包，安装到 tests/playwright/）
+  └── seed.spec.ts, auth.setup.ts, credentials.yaml, app-knowledge.md, pages/BasePage.ts
 
 CLI (openspec-pw)
-  ├── init       → 安装命令、skill 和模板到 .claude/
-  ├── update     → 从 npm 同步命令、skill 和模板
+  ├── init       → 安装命令和模板
+  ├── update     → 从 npm 同步命令和模板
   ├── run        → 执行 E2E 测试并管理服务器生命周期
   ├── migrate    → 迁移旧测试文件到新目录结构
   ├── audit      → 检查测试文件是否有孤儿文件和配置问题
@@ -164,8 +163,7 @@ CLI (openspec-pw)
   └── uninstall  → 移除项目中的集成
 
 Claude Code (/opsx:e2e)
-  ├── .claude/commands/opsx/e2e.md    → 命令文件
-  ├── .claude/skills/openspec-e2e/   → SKILL.md + 模板
+  ├── .claude/commands/opsx/e2e.md    → 命令文件（从 templates/e2e-command.md 安装）
   └── @playwright/mcp                 → Healer Agent 工具
 
 测试资产 (tests/playwright/)

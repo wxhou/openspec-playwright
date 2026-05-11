@@ -3,57 +3,6 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 
-// ─── extractSkillBody ──────────────────────────────────────────────────────────
-
-describe("extractSkillBody", () => {
-  it("strips YAML frontmatter from SKILL.md content", () => {
-    const content = `---
-name: Test
-version: "1.0"
----
-
-# Body content
-Step 1: do something
-`;
-    const body = extractSkillBody(content);
-    expect(body).toBe("# Body content\nStep 1: do something\n");
-  });
-
-  it("returns full content if no frontmatter", () => {
-    const content = "No frontmatter here";
-    const body = extractSkillBody(content);
-    expect(body).toBe("No frontmatter here");
-  });
-
-  it("handles empty frontmatter values", () => {
-    const content = `---
-foo:
-bar: baz
----
-
-Actual content`;
-    const body = extractSkillBody(content);
-    expect(body).toContain("Actual content");
-    expect(body).not.toContain("foo:");
-  });
-
-  it("handles multiline frontmatter", () => {
-    const content = `---
-name: SKILL
-description: |
-  Multi-line
-  description
-tags:
-  - tag1
-  - tag2
----
-
-Body`;
-    const body = extractSkillBody(content);
-    expect(body).toBe("Body");
-  });
-});
-
 // ─── generateSeedTest ─────────────────────────────────────────────────────────
 
 describe("generateSeedTest", () => {
@@ -179,50 +128,3 @@ describe("generateSharedPages", () => {
     expect(readFileSync(join(pagesDir, "BasePage.ts"), "utf-8")).toBe("custom base page");
   });
 });
-
-// ─── installSkillTemplates ────────────────────────────────────────────────────
-
-describe("installSkillTemplates", () => {
-  const tmpDir = join(tmpdir(), "openspec-pw-skill-templates-" + Date.now());
-
-  beforeEach(() => {
-    mkdirSync(tmpDir, { recursive: true });
-  });
-
-  afterEach(() => {
-    rmSync(tmpDir, { recursive: true, force: true });
-  });
-
-  it("installs all template files to .claude/skills/openspec-e2e/templates", async () => {
-    const { installSkillTemplates } = await import("../../src/commands/init.js");
-    installSkillTemplates(tmpDir);
-
-    const templatesDir = join(tmpDir, ".claude", "skills", "openspec-e2e", "templates");
-    expect(existsSync(templatesDir)).toBe(true);
-
-    // Check at least some template files are created
-    const files = ["app-exploration.md", "test-plan.md", "report.md", "e2e-test.ts"];
-    for (const file of files) {
-      expect(existsSync(join(templatesDir, file))).toBe(true);
-    }
-  });
-
-  it("does not overwrite existing template files", async () => {
-    const { installSkillTemplates } = await import("../../src/commands/init.js");
-    const templatesDir = join(tmpDir, ".claude", "skills", "openspec-e2e", "templates");
-    mkdirSync(templatesDir, { recursive: true });
-
-    // Pre-existing file
-    writeFileSync(join(templatesDir, "app-exploration.md"), "custom content");
-
-    installSkillTemplates(tmpDir);
-
-    // Should preserve custom content
-    expect(readFileSync(join(templatesDir, "app-exploration.md"), "utf-8")).toBe("custom content");
-  });
-});
-
-// Re-export the function being tested
-function extractSkillBody(content: string): string {
-  return content.replace(/^---\n[\s\S]*?\n---\n*/, "");
-}
