@@ -12,7 +12,7 @@
 
 E2E 工作流前提（由用户确保，非 AI 操作）：
 - gstack：`git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup`（提供 `/browse` 探索 + `/qa` 浏览器验证）
-- OpenSpec CLI：`npm install -g @fission-ai/openspec && openspec init`（提供变更管理能力）
+- OpenSpec CLI：`npm install -g @fission-ai/openspec && openspec init`（提供变更管理能力）+ `npx openspec --help` 查看可用命令
 - openspec-playwright：`openspec-pw init`（提供 `/opsx:e2e` 命令）
 - 项目包含 `specs/`、`changes/`、`tests/playwright/` 目录
 
