@@ -2430,7 +2430,8 @@ function setLanguage(lang) {
 
 function copyClaudeMd() {
   const content = currentLang === 'zh' ? CLAUDE_MD_ZH : CLAUDE_MD_EN;
-  navigator.clipboard.writeText(content).then(() => {
+
+  function showCopied() {
     document.querySelectorAll('.nav-copy-btn, .claude-copy-btn').forEach(btn => {
       const originalHTML = btn.innerHTML;
       btn.classList.add('copied');
@@ -2440,9 +2441,28 @@ function copyClaudeMd() {
         btn.innerHTML = originalHTML;
       }, 2000);
     });
-  }).catch(err => {
-    console.error('Copy failed:', err);
-  });
+  }
+
+  function fallbackCopy() {
+    const textarea = document.createElement('textarea');
+    textarea.value = content;
+    textarea.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+      document.execCommand('copy');
+      showCopied();
+    } catch (e) {
+      alert(currentLang === 'zh' ? '复制失败，请手动选择复制' : 'Copy failed, please select and copy manually');
+    }
+    document.body.removeChild(textarea);
+  }
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(content).then(showCopied).catch(fallbackCopy);
+  } else {
+    fallbackCopy();
+  }
 }
 
 // Initialize language switch buttons
