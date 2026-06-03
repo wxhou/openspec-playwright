@@ -16,7 +16,7 @@
     "test:run": "vitest run",
     "test:smoke": "npm run build && vitest run tests/smoke.test.ts",
     "prepublishOnly": "npm run build",
-    "release": "npm version patch && node scripts/bump-docs.js && npm run build && git add docs/index.html && git push && git push --tags"
+    "release": "npm version patch && node scripts/bump-docs.js && npm run build && git add docs/index.html && (git diff --cached --quiet || git commit -m 'docs: bump version badge to v${npm_package_version}') && git push && git push --tags"
   },
   "dependencies": {
     "chalk": "^5.3.0",
