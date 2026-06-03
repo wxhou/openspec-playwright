@@ -45,11 +45,11 @@ Claude Code — E2E 工作流由 `/opsx:e2e` 命令驱动，使用 /browse（探
 ```bash
 openspec-pw init          # 初始化集成（一次性设置）
 openspec-pw update        # 更新 CLI 和命令到最新版本
-openspec-pw doctor        # 检查前置条件（含 Vision Check）
+openspec-pw doctor        # 检查前置条件
 openspec-pw audit         # 检查测试文件是否有孤儿文件和配置问题
 openspec-pw migrate       # 迁移旧测试文件到新目录结构
 openspec-pw explore       # 并行探索路由
-openspec-pw vision-check  # 使用 Ollama VLM 检测布局问题
+openspec-pw run <name>    # 执行指定 change 的 E2E 测试
 openspec-pw uninstall     # 移除项目中的集成
 ```
 
@@ -160,6 +160,7 @@ CLI (openspec-pw)
   ├── migrate    → 迁移旧测试文件到新目录结构
   ├── audit      → 检查测试文件是否有孤儿文件和配置问题
   ├── doctor     → 检查前置条件
+  ├── explore    → 并行探索路由
   └── uninstall  → 移除项目中的集成
 
 Claude Code (/opsx:e2e)

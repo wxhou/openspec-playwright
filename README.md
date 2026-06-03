@@ -35,12 +35,11 @@ Claude Code — E2E workflow is driven by `/opsx:e2e` command using /browse (exp
 ```bash
 openspec-pw init          # Initialize integration (one-time setup)
 openspec-pw update        # Update CLI and commands to latest version
-openspec-pw doctor        # Check prerequisites (including Vision Check)
+openspec-pw doctor        # Check prerequisites
 openspec-pw audit         # Audit tests for orphaned specs and issues
 openspec-pw migrate       # Migrate old test files to new structure
 openspec-pw explore       # Explore routes in parallel with Playwright
-openspec-pw vision-check  # Analyze screenshots for layout anomalies (Ollama VLM)
-                          # Supports: multi-viewport, baseline diff, HTML report
+openspec-pw run <name>    # Execute E2E tests for a change
 openspec-pw uninstall     # Remove integration from the project
 ```
 
@@ -160,6 +159,7 @@ CLI (openspec-pw)
   ├── migrate    → Migrates old test files to new structure
   ├── audit      → Audits tests for orphaned specs and issues
   ├── doctor     → Checks prerequisites
+  ├── explore    → Explores routes in parallel with Playwright
   └── uninstall  → Removes integration from the project
 
 Claude Code (/opsx:e2e)
