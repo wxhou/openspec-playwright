@@ -16,20 +16,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `update`: command content now read from `templates/e2e-command.md` in tarball instead of SKILL.md
 - `update`: init detection now checks `.claude/commands/opsx/e2e.md` instead of SKILL.md
 - `uninstall`: legacy skill directory removal labeled as backward-compat cleanup
-- `employee-standards.md`: 重构为 6 节结构（§0–§5），总行数 127 → 81
-  - §0 适用范围（新增节）：项目规范入口 + E2E 工作流前提
-  - §1 代码质量（原 §2）：`lint:fix` 提示从「错误处理指导」并入「每步有可验证的退出条件」
-  - §2 上下文管理（原 §3）：新增「禁止跨 change 改动」子规则；「OpenSpec 阶段隔离」从 3 句压成 1 句
-  - §3 大规模任务处理（原 §4）：200 行门控从「尽量」严格化为「必须」
-  - §4 工具限制与编辑安全（原 §5）：「安全规范」精简为密钥 + 占位符 + 日志 3 条 AI 行为约束
-  - §5 完整生产工作流（原 §6）：8 步流程图压成 1 行链；`/ship → /retro` 改为 `/opsx:archive`
-- `employee-standards.md`: 删除「§1 浏览器操作约束」——Chrome MCP 也是可用浏览器工具，不再硬性指定 gstack
-- `docs/index.html`: 同步网页 CLAUDE.md 一键配置到新版
-  - 删除 `## 错误处理指导` 整段
-  - `## 安全规范` 精简（密钥 + 占位符 + 日志）
-  - `## 代码质量` 补 `lint:fix` 提示
-  - `## 大规模任务` 「尽量使用」→「必须走」+ 加 `(/opsx:propose)`
-  - JS const `CLAUDE_MD_ZH` 同步加 `## 安全规范`（用户实际看到的版本）
+- `employee-standards.md`: restructured into 6 sections (§0–§5), 127 → 81 lines
+  - §0 Applicability (new): project config entry + E2E toolchain prereqs
+  - §1 Code Quality (was §2): folded `lint:fix` tip from "Error Handling" into "every step has verifiable exit criteria"
+  - §2 Context Management (was §3): added "no cross-change edits" sub-rule; condensed "OpenSpec phase isolation" (3 sentences → 1)
+  - §3 Large-Scale Tasks (was §4): tightened 200-line gate from "prefer" to "must"
+  - §4 Tool Constraints & Edit Safety (was §5): condensed "Security" spec to 3 AI-behavior rules (secrets + placeholders + log hygiene)
+  - §5 Production Workflow (was §6): collapsed 8-step diagram to 1-line chain; `/ship → /retro` replaced with `/opsx:archive`
+- `employee-standards.md`: removed "§1 Browser Constraints" — Chrome MCP is also a valid browser tool, no longer mandating gstack
+- `docs/index.html`: synced webpage CLAUDE.md one-click config to new file content
+  - Removed `## 错误处理指导` section
+  - Condensed `## 安全规范` (secrets + placeholders + log hygiene)
+  - Added `lint:fix` hint to `## 代码质量`
+  - `## 大规模任务` "尽量使用" → "必须走" + added `(/opsx:propose)` + "禁止直接修改"
+  - Added `## 安全规范` to JS const `CLAUDE_MD_ZH` (the version users actually see at runtime)
 
 ### Removed
 
