@@ -6,8 +6,9 @@ node_modules/
 *.tgz
 
 # GitHub (workflows tracked, rest ignored)
-.github/
+.github/*
 !.github/workflows/
+!.github/workflows/**
 
 # OS
 .DS_Store
