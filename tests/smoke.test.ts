@@ -155,7 +155,6 @@ const CRITICAL_PACKAGE_FILES = [
   "dist/commands/doctor.js",
   "dist/commands/update.js",
   "dist/commands/editors.js",
-  ".claude/commands/opsx/CLAUDE.md",
   "employee-standards.md",
   "templates/seed.spec.ts",
   "templates/auth.setup.ts",
