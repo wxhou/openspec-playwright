@@ -10,10 +10,10 @@
 
 **项目规范**：动手前读 `openspec/config.yaml`（技术栈、结构、约定、约束等），无内容则忽略。
 
-E2E 工作流前提（由用户确保，非 AI 操作）：
-- gstack：`git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup`（提供 `/browse` 探索 + `/qa` 浏览器验证）
-- OpenSpec CLI：`npm install -g @fission-ai/openspec && openspec init`（提供变更管理能力）+ `npx openspec --help` 查看可用命令
-- openspec-playwright：`openspec-pw init`（提供 `/opsx:e2e` 命令）
+**E2E 工作流前提**（由用户确保，非 AI 操作）：
+- gstack：提供 `/browse` 探索 + `/qa` 浏览器验证（安装见 README）
+- OpenSpec CLI：提供变更管理能力（安装见 README）
+- openspec-playwright：提供 `/opsx:e2e` 命令（安装见 README）
 - 项目包含 `specs/`、`changes/`、`tests/playwright/` 目录
 
 ## 1. 浏览器操作约束
@@ -39,11 +39,16 @@ E2E 工作流前提（由用户确保，非 AI 操作）：
 - 假设所有外部数据都有效 → 必须校验类型/范围/null
 - 处理数据时考虑边界情况（空值、异常值、边界值）
 - 断言用通用规则，不用具体值（除非明确要求）
-- 禁止魔法数字 → 用常量或枚举，注释说明原因
+- 禁止魔法数字 → 用常量或枚举，注释说明原因（例如：`const MAX_RETRIES = 3; // 网络请求最大重试次数`）
 - 禁止隐式成功假设 → 异步/外部操作必须处理失败情况
 - 禁止响应结构假设 → 先校验返回结构再访问深层属性
 - 禁止精度/范围假设 → 计算前确认数值在安全范围内
 - 禁止资源泄漏假设 → 文件/连接/cursor 等使用后必须释放
+
+**错误处理指导**：
+- lint 失败：运行 `npm run lint:fix` 自动修复，手动修复剩余问题
+- typecheck 失败：检查类型定义，修复类型错误
+- 测试失败：检查测试用例，修复实现或测试
 
 ## 3. 上下文管理
 
@@ -61,9 +66,11 @@ E2E 工作流前提（由用户确保，非 AI 操作）：
 **重构前清死代码**：未使用的 import/export/prop/console.log 先删掉，单独提交，再做重构。
 
 ## 4. 大规模任务处理
+
 **200 行以上修改或显著架构变更必须走 OpenSpec**：代码改动超过 200 行、或涉及新增服务/API 契约/数据模型重构时，禁止直接修改，必须通过 OpenSpec 工作流（/opsx:propose）。
 
 ## 5. 工具限制与编辑安全
+
 **搜索要全**：用 Grep 搜内容，用 Glob 搜文件名。两者缺一不可。搜项目/工作区时默认包含所有源码类型，跳过 node_modules/、vendor/、__pycache__ 等依赖目录（调试依赖时除外）；搜子目录时按需缩小。重命名时覆盖调用、类型、字符串、`import`、barrel file、测试 mock，不得假设一次覆盖所有情况。
 
 **编辑要求**：编辑后重新读取文件确认变更正确应用。变更完成后，明确告知用户可能遗漏的区域（动态引用、测试 mock 等），提示人工复查。
@@ -73,6 +80,17 @@ E2E 工作流前提（由用户确保，非 AI 操作）：
 **不主动推送**：除非用户明确要求，否则不推送代码。
 
 **中文回复**：用中文回复用户。
+
+**版本控制规范**：
+- 提交信息格式：`<type>(<scope>): <description>`
+- 类型：feat（新功能）、fix（修复）、refactor（重构）、docs（文档）、test（测试）、chore（构建/工具）
+- 示例：`feat(auth): add login endpoint`、`fix(api): handle null response`
+- 分支策略：feature/xxx（功能分支）、fix/xxx（修复分支）、main（主分支）
+
+**安全规范**：
+- 敏感信息：不提交 API 密钥、密码、token 等敏感信息
+- 依赖安全：定期运行 `npm audit` 或 `yarn audit` 检查依赖漏洞
+- 环境变量：使用 `.env` 文件存储配置，不提交到版本控制
 
 ---
 
@@ -101,22 +119,9 @@ E2E 工作流前提（由用户确保，非 AI 操作）：
 - `/plan-design-review`：UI/UX 方案审查，评分各设计维度，确保用户体验达标
 
 **4. 实现**：执行 `/opsx:apply` 进行实现。
-
-**4.1 变更边界检查**：
-- 实施前：对照 `changes/<name>/proposal.md` 确认范围
-- 实施中：禁止修改其他 `changes/<name2>/` 目录下的文件
-- 完成后：逐条对照 proposal.md 确认 scope 内的已交付，scope 外的未改动
-
-**4.2 任务类型区分**：
-- **构建任务**：创建文件/代码 → 对应语言 lint + typecheck 通过后可标记
-- **验证任务**：需实际运行 → 必须验证后才能标记
-- **依赖任务**：等前置完成 → 不提前标记
-
-**4.3 依赖链检查**：标记依赖任务前，检查前置任务状态
-
-**4.4 自动化 Gate**：对应语言 lint + typecheck 自动执行，任一失败则停止
-
-**4.5 Verify 强制化**：必须 verify 通过后才能标记完成，禁止跳过
+- **变更边界检查**：实施前对照 proposal.md 确认范围，实施中禁止修改其他 changes 目录，完成后逐条对照确认
+- **任务类型区分**：构建任务（lint+typecheck 后标记）、验证任务（实际运行后标记）、依赖任务（等前置完成）
+- **自动化 Gate**：lint + typecheck 自动执行，任一失败则停止
 
 **5. E2E 测试**：`/opsx:e2e <change-name>` 生成 Playwright 测试 → `/browse` 探索真实 DOM → Healer 自动修复 → `/qa` 真实浏览器验证。E2E 通过后，由用户决定发布时机。
 
