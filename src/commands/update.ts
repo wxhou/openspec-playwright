@@ -18,6 +18,7 @@ import {
   hasClaudeCode,
   installForClaudeCode,
 } from "./editors.js";
+import { isPlaywrightMcpInstalled, ensurePlaywrightMcp } from "../shared/index.js";
 
 export interface UpdateOptions {
   cli?: boolean;
@@ -179,29 +180,14 @@ export async function update(options: UpdateOptions) {
   if (options.mcp !== false && existsSync(join(projectRoot, ".claude"))) {
     console.log(chalk.blue("\n─── Installing Playwright MCP ───"));
 
-    // Use `claude mcp list` as source of truth (platform-independent)
-    let mcpInstalled = false;
-    try {
-      const output = execSync("claude mcp list", {
-        encoding: "utf-8",
-        timeout: 10000,
-      });
-      if (output.includes("playwright")) {
-        mcpInstalled = true;
-      }
-    } catch {
-      // claude CLI not available — will try to install
-    }
+    // Use shared utility
+    const mcpInstalled = isPlaywrightMcpInstalled();
 
     if (mcpInstalled) {
       console.log(chalk.green("  ✓ Playwright MCP already installed"));
     } else {
       try {
-        execSync("claude mcp add playwright npx @playwright/mcp@latest", {
-          cwd: projectRoot,
-          stdio: "inherit",
-        });
-        console.log(chalk.green("  ✓ Playwright MCP installed globally"));
+        ensurePlaywrightMcp();
         console.log(chalk.gray("  (Restart Claude Code to activate)"));
       } catch {
         console.log(chalk.yellow("  ⚠ Failed to install Playwright MCP"));

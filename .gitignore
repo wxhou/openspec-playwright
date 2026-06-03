@@ -33,3 +33,4 @@ npm-debug.log*
 
 # OpenSpec vision check cache
 .openspec-pw/vision-cache/
+.gstack/

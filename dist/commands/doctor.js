@@ -2,7 +2,7 @@ import { existsSync } from "fs";
 import { join } from "path";
 import { execSync } from "child_process";
 import chalk from "chalk";
-import { loadOllamaConfig, checkOllamaHealth } from "../utils/ollama.js";
+import { isPlaywrightMcpInstalled } from "../shared/index.js";
 export async function doctor(options = {}) {
     const checks = [];
     const projectRoot = process.cwd();
@@ -70,20 +70,8 @@ export async function doctor(options = {}) {
             message: "not installed",
         });
     }
-    // Playwright MCP — use `claude mcp list` as source of truth (platform-independent)
-    let mcpInstalled = false;
-    try {
-        const output = execSync("claude mcp list", {
-            encoding: "utf-8",
-            timeout: 10000,
-        });
-        if (output.includes("playwright")) {
-            mcpInstalled = true;
-        }
-    }
-    catch {
-        // claude CLI not available or failed — MCP not configured
-    }
+    // Playwright MCP — use shared utility
+    const mcpInstalled = isPlaywrightMcpInstalled();
     checks.push({
         category: "Playwright MCP",
         name: "playwright-mcp",
@@ -98,22 +86,7 @@ export async function doctor(options = {}) {
         ok: hasSeed,
         message: hasSeed ? "found" : "not found (optional)",
     });
-    // Vision Check (Ollama)
-    const ollamaConfig = loadOllamaConfig(projectRoot);
-    let visionOk = false;
-    let visionMessage = "disabled";
-    if (ollamaConfig.enabled) {
-        const health = await checkOllamaHealth(ollamaConfig);
-        visionOk = health.ok;
-        visionMessage = health.message;
-    }
-    checks.push({
-        category: "Vision Check",
-        name: "ollama",
-        ok: visionOk,
-        message: visionMessage,
-    });
-    const allOk = checks.filter((c) => !c.ok && c.category !== "Seed Test" && c.category !== "Vision Check").length === 0;
+    const allOk = checks.filter((c) => !c.ok && c.category !== "Seed Test").length === 0;
     if (options.json) {
         console.log(JSON.stringify({ ok: allOk, checks }, null, 2));
         if (!allOk)

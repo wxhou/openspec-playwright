@@ -1,14 +1,14 @@
 import { existsSync, readFileSync, writeFileSync, rmSync, readdirSync, rmdirSync, } from "fs";
 import { join, dirname } from "path";
-import { execSync } from "child_process";
 import chalk from "chalk";
 import { getClaudeCommandPath } from "./editors.js";
+import { removePlaywrightMcp } from "../shared/index.js";
 export async function uninstall() {
     console.log(chalk.blue("\n🗑️  Uninstalling OpenSpec + Playwright E2E\n"));
     const projectRoot = process.cwd();
-    // 1. Remove Playwright MCP using claude CLI
+    // 1. Remove Playwright MCP using shared utility
     console.log(chalk.blue("─── Removing Playwright MCP ───"));
-    removeMcp();
+    removePlaywrightMcp();
     // 2. Remove E2E command file for Claude Code
     console.log(chalk.blue("\n─── Removing E2E Commands ───"));
     const relPath = getClaudeCommandPath("e2e");
@@ -48,26 +48,6 @@ export async function uninstall() {
     console.log(chalk.blue("\n─── Summary ───"));
     console.log(chalk.green("  ✓ Uninstall complete!\n"));
     console.log(chalk.gray("  Note: Run openspec-pw doctor to verify clean removal.\n"));
-}
-function removeMcp() {
-    try {
-        execSync("claude mcp remove playwright", {
-            encoding: "utf-8",
-            stdio: "pipe",
-        });
-        console.log(chalk.green("  ✓ Removed playwright MCP"));
-        console.log(chalk.gray("    Restart Claude Code to complete removal"));
-    }
-    catch (err) {
-        const e = err;
-        if (e.stderr?.includes("not found") || e.stderr?.includes("does not exist")) {
-            console.log(chalk.gray("  - Playwright MCP not found, skipping"));
-        }
-        else {
-            console.log(chalk.yellow(`  ⚠ Failed to remove playwright MCP: ${e.stderr || (err instanceof Error ? err.message : String(err))}`));
-            console.log(chalk.gray("    Run manually: claude mcp remove playwright"));
-        }
-    }
 }
 function cleanupEmptyDirs(dir, stopAt) {
     while (dir !== stopAt && dir.length > stopAt.length) {

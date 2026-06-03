@@ -1,15 +1,8 @@
 import { existsSync, mkdirSync, readdirSync, renameSync, } from "fs";
 import { join } from "path";
 import chalk from "chalk";
-const SHARED_FILES = new Set([
-    "seed.spec.ts",
-    "app-all.spec.ts",
-    "auth.setup.ts",
-    "credentials.yaml",
-    "app-knowledge.md",
-    "playwright.config.ts",
-    "mcp-tools.md",
-]);
+import { SHARED_FILE_NAMES } from "../shared/index.js";
+const SHARED_FILES = SHARED_FILE_NAMES;
 export async function migrate(options) {
     const projectRoot = process.cwd();
     const testsDir = join(projectRoot, "tests", "playwright");

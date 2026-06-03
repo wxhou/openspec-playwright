@@ -1,4 +1,4 @@
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import chalk from "chalk";
@@ -6,6 +6,12 @@ const REPORTS_DIR = "openspec/reports";
 export async function run(changeName, options) {
     console.log(chalk.blue(`\n🔍 OpenSpec Playwright E2E: ${changeName}\n`));
     const projectRoot = process.cwd();
+    // Validate changeName to prevent path traversal
+    if (changeName !== "all" && (changeName.includes("/") || changeName.includes("\\") || changeName.includes(".."))) {
+        console.log(chalk.red(`  ✗ Invalid change name: ${changeName}`));
+        console.log(chalk.gray("  Change name cannot contain path separators or '..'.\n"));
+        process.exit(1);
+    }
     // 1. Verify test file exists
     const testFileName = changeName === "all"
         ? "app-all.spec.ts"
@@ -65,11 +71,11 @@ export async function run(changeName, options) {
     }
     let testOutput = "";
     try {
-        const result = execSync(args.join(" "), {
+        const result = execFileSync(args[0], args.slice(1), {
             cwd: projectRoot,
             encoding: "utf-8",
             stdio: ["pipe", "pipe", "pipe"],
-            timeout: (options.timeout ?? 300) * 1000,
+            timeout: (options.timeout ?? Number(process.env.OPENSPEC_TIMEOUT) ?? 300) * 1000,
         });
         testOutput = result;
     }

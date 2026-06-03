@@ -1,4 +1,4 @@
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import {
   existsSync,
   readdirSync,
@@ -6,6 +6,7 @@ import {
 } from "fs";
 import { join } from "path";
 import chalk from "chalk";
+import { SHARED_FILE_NAMES, TIMEOUT } from "../shared/index.js";
 
 interface AuditResult {
   fileName: string;
@@ -29,7 +30,7 @@ export async function audit() {
   const results: AuditResult[] = [];
 
   // 1. Get sitemap routes
-  const sitemapRoutes = await getSitemapRoutes(projectRoot);
+  const sitemapRoutes = await getSitemapRoutes();
   const allRoutes = sitemapRoutes ?? [];
 
   // 2. Get OpenSpec change names
@@ -39,15 +40,7 @@ export async function audit() {
   const specFiles = collectSpecFiles(testsDir);
 
   // 4. Audit each spec file
-  const SHARED_FILES = new Set([
-    "seed.spec.ts",
-    "app-all.spec.ts",
-    "auth.setup.ts",
-    "credentials.yaml",
-    "app-knowledge.md",
-    "playwright.config.ts",
-    "mcp-tools.md",
-  ]);
+  const SHARED_FILES = SHARED_FILE_NAMES;
 
   for (const file of specFiles) {
     const relPath = file.replace(testsDir + "/", "");
@@ -178,25 +171,25 @@ export async function audit() {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-async function getSitemapRoutes(projectRoot: string): Promise<string[] | null> {
+async function getSitemapRoutes(): Promise<string[] | null> {
   try {
     const baseUrl = process.env.BASE_URL || "http://localhost:3000";
-    const result = execSync(`curl -s "${baseUrl}/sitemap.xml" | grep -oP '(?<=<loc>)[^<]+' | head -50`, {
-      cwd: projectRoot,
-      encoding: "utf-8",
-      timeout: 10000,
-    });
-    const urls = result
-      .split("\n")
-      .filter(Boolean)
-      .map((u) => {
-        try {
-          return new URL(u).pathname;
-        } catch {
-          return null;
-        }
-      })
-      .filter(Boolean) as string[];
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT.OPENSPEC_LIST);
+    const response = await fetch(`${baseUrl}/sitemap.xml`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) return null;
+    
+    const text = await response.text();
+    const urlRegex = /<loc>([^<]+)<\/loc>/g;
+    const urls: string[] = [];
+    let match;
+    while ((match = urlRegex.exec(text)) !== null && urls.length < 50) {
+      try {
+        urls.push(new URL(match[1]).pathname);
+      } catch {}
+    }
     return [...new Set(urls)];
   } catch {
     return null;
@@ -205,10 +198,10 @@ async function getSitemapRoutes(projectRoot: string): Promise<string[] | null> {
 
 async function getChangeNames(projectRoot: string): Promise<string[]> {
   try {
-    const result = execSync("npx openspec list --json", {
+    const result = execFileSync("npx", ["openspec", "list", "--json"], {
       cwd: projectRoot,
       encoding: "utf-8",
-      timeout: 30000,
+      timeout: TIMEOUT.OPENSPEC_LIST,
     });
     const data = JSON.parse(result);
     return Array.isArray(data)

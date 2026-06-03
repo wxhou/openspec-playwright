@@ -1,77 +1,15 @@
 import { chromium } from "playwright";
 import chalk from "chalk";
-import { existsSync, cpSync, renameSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, readFileSync, writeFileSync, renameSync } from "fs";
 import { join } from "path";
 // ── File utilities ────────────────────────────────────────────────────────────────
 /**
- * Atomic write: backup original, write new content, revert on failure.
- * Uses cpSync + rename for atomicity (POSIX rename is atomic on success).
+ * Atomic write: write to temp file, then rename (POSIX rename is atomic).
  */
 function atomicWrite(filePath, content) {
-    const backupPath = `${filePath}.bak`;
-    cpSync(filePath, backupPath, { force: true });
-    try {
-        writeFileSync(filePath, content, "utf-8");
-    }
-    catch (err) {
-        cpSync(backupPath, filePath, { force: true });
-        throw err;
-    }
-}
-const LOCK_TTL_MS = 30 * 60 * 1000; // 30 minutes
-/**
- * Acquire a lock file. Stale locks (>30min) are auto-removed.
- * Returns false if already locked by a live process.
- */
-function acquireLock(lockPath) {
-    // Check for stale lock from crashed process
-    if (existsSync(lockPath)) {
-        try {
-            const content = readFileSync(lockPath, "utf-8");
-            const [pidStr, tsStr] = content.split(":");
-            const ts = parseInt(tsStr, 10);
-            if (!isNaN(ts) && Date.now() - ts > LOCK_TTL_MS) {
-                // Stale: remove and retry
-                renameSync(lockPath, `${lockPath}.stale`);
-            }
-            else {
-                // Check if process is still alive
-                if (pidStr) {
-                    try {
-                        process.kill(parseInt(pidStr, 10), 0);
-                        return false; // Process alive, lock held
-                    }
-                    catch {
-                        // Process dead, stale lock
-                        renameSync(lockPath, `${lockPath}.stale`);
-                    }
-                }
-            }
-        }
-        catch {
-            // Can't read lock, try to remove it
-            try {
-                renameSync(lockPath, `${lockPath}.stale`);
-            }
-            catch { /* ignore */ }
-        }
-    }
-    try {
-        writeFileSync(lockPath, `${process.pid}:${Date.now()}`, { flag: "wx" });
-        return true;
-    }
-    catch {
-        return false;
-    }
-}
-function releaseLock(lockPath) {
-    try {
-        if (existsSync(lockPath))
-            renameSync(lockPath, `${lockPath}.released`);
-    }
-    catch {
-        // ignore — lock release is best-effort
-    }
+    const tmpPath = `${filePath}.tmp`;
+    writeFileSync(tmpPath, content, "utf-8");
+    renameSync(tmpPath, filePath);
 }
 // ── Parsing ────────────────────────────────────────────────────────────────────
 function parseExplorationFile(content) {
@@ -301,66 +239,54 @@ export async function explore(options) {
         console.log(chalk.gray(`\n  (dry run — no browsers launched)\n`));
         return;
     }
-    // 1b. Acquire lock to prevent concurrent runs from overwriting each other
-    const lockPath = join(projectRoot, ".explore.lock");
-    if (!acquireLock(lockPath)) {
-        console.log(chalk.red(`  ERROR: Another explore process is running.\n` +
-            `  Remove ${lockPath} if no other process is active.\n`));
-        process.exit(1);
-    }
-    try {
-        // 2. Split routes into chunks
-        const chunks = chunkRoutes(paths, numWorkers);
-        const nonEmptyChunks = chunks
-            .map((c, i) => ({ chunk: c, id: i }))
-            .filter((x) => x.chunk.length > 0);
-        console.log(chalk.blue(`─── Exploring ${paths.length} routes with ${nonEmptyChunks.length} workers ───\n`));
-        // 3. Launch workers concurrently
-        const workerPromises = nonEmptyChunks.map(({ chunk, id }) => runWorker(id, chunk, baseUrl));
-        const settled = await Promise.allSettled(workerPromises);
-        // 4. Merge results
-        const allResults = [];
-        for (const result of settled) {
-            if (result.status === "fulfilled") {
-                allResults.push(...result.value);
-            }
-        }
-        // 5. Sort results to match original route order
-        const pathOrder = new Map(paths.map((p, i) => [p, i]));
-        allResults.sort((a, b) => (pathOrder.get(a.path) ?? 0) - (pathOrder.get(b.path) ?? 0));
-        // 6. Write updated app-exploration.md (atomic)
-        let updatedContent = updateExplorationFile(parsed, allResults);
-        updatedContent = appendFailureSection(updatedContent, allResults);
-        atomicWrite(explorationPath, updatedContent);
-        // 7. Print summary
-        const durationMs = Date.now() - startTime;
-        const durationSec = (durationMs / 1000).toFixed(1);
-        const okCount = allResults.filter((r) => r.status === "ok").length;
-        const authCount = allResults.filter((r) => r.status === "auth-required").length;
-        const errorCount = allResults.filter((r) => r.status === "error").length;
-        const totalCount = allResults.length;
-        console.log(chalk.blue("\n─── Summary ───"));
-        console.log(`  Routes explored: ${totalCount}  ` +
-            chalk.green(`ok ${okCount}`) +
-            (authCount > 0
-                ? `  ${chalk.yellow(`auth-required ${authCount}`)}`
-                : "") +
-            "  " +
-            (errorCount > 0
-                ? chalk.red(`error ${errorCount}`)
-                : chalk.gray(`error ${errorCount}`)) +
-            `  Duration: ${durationSec}s`);
-        console.log(chalk.blue("\n─── Updated ───"));
-        console.log(chalk.green(`  ${explorationPath}\n`));
-        if (errorCount > 0) {
-            console.log(chalk.red(`Exploration completed with ${errorCount} error(s).\n`));
-        }
-        else {
-            console.log(chalk.green("Exploration completed successfully.\n"));
+    // 2. Split routes into chunks
+    const chunks = chunkRoutes(paths, numWorkers);
+    const nonEmptyChunks = chunks
+        .map((c, i) => ({ chunk: c, id: i }))
+        .filter((x) => x.chunk.length > 0);
+    console.log(chalk.blue(`─── Exploring ${paths.length} routes with ${nonEmptyChunks.length} workers ───\n`));
+    // 3. Launch workers concurrently
+    const workerPromises = nonEmptyChunks.map(({ chunk, id }) => runWorker(id, chunk, baseUrl));
+    const settled = await Promise.allSettled(workerPromises);
+    // 4. Merge results
+    const allResults = [];
+    for (const result of settled) {
+        if (result.status === "fulfilled") {
+            allResults.push(...result.value);
         }
     }
-    finally {
-        releaseLock(lockPath);
+    // 5. Sort results to match original route order
+    const pathOrder = new Map(paths.map((p, i) => [p, i]));
+    allResults.sort((a, b) => (pathOrder.get(a.path) ?? 0) - (pathOrder.get(b.path) ?? 0));
+    // 6. Write updated app-exploration.md (atomic)
+    let updatedContent = updateExplorationFile(parsed, allResults);
+    updatedContent = appendFailureSection(updatedContent, allResults);
+    atomicWrite(explorationPath, updatedContent);
+    // 7. Print summary
+    const durationMs = Date.now() - startTime;
+    const durationSec = (durationMs / 1000).toFixed(1);
+    const okCount = allResults.filter((r) => r.status === "ok").length;
+    const authCount = allResults.filter((r) => r.status === "auth-required").length;
+    const errorCount = allResults.filter((r) => r.status === "error").length;
+    const totalCount = allResults.length;
+    console.log(chalk.blue("\n─── Summary ───"));
+    console.log(`  Routes explored: ${totalCount}  ` +
+        chalk.green(`ok ${okCount}`) +
+        (authCount > 0
+            ? `  ${chalk.yellow(`auth-required ${authCount}`)}`
+            : "") +
+        "  " +
+        (errorCount > 0
+            ? chalk.red(`error ${errorCount}`)
+            : chalk.gray(`error ${errorCount}`)) +
+        `  Duration: ${durationSec}s`);
+    console.log(chalk.blue("\n─── Updated ───"));
+    console.log(chalk.green(`  ${explorationPath}\n`));
+    if (errorCount > 0) {
+        console.log(chalk.red(`Exploration completed with ${errorCount} error(s).\n`));
+    }
+    else {
+        console.log(chalk.green("Exploration completed successfully.\n"));
     }
 }
 //# sourceMappingURL=explore.js.map

@@ -15,7 +15,6 @@ import { migrate } from "./commands/migrate.js";
 import { uninstall } from "./commands/uninstall.js";
 import { audit } from "./commands/audit.js";
 import { explore } from "./commands/explore.js";
-import { visionCheck } from "./commands/visionCheck.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, "../package.json"), "utf-8"));
 const program = new Command();
@@ -79,26 +78,6 @@ program
     .option("-n, --dry-run", "Show what would be explored without running")
     .action(async (opts) => {
     await explore(opts);
-});
-program
-    .command("vision-check")
-    .description("Analyze screenshots for layout anomalies using Ollama VLM")
-    .option("-s, --screenshots <pattern>", "Screenshot path(s): glob pattern or comma-separated list")
-    .option("-c, --config <path>", "Config file path (default: app-knowledge.md)")
-    .option("-p, --parallel <n>", "Number of parallel requests to Ollama", (v) => parseInt(v, 10), 4)
-    .option("-o, --output <path>", "Write JSON results to file")
-    .option("--severity <levels>", "Filter by severity: blocking,warning,minor")
-    .option("-n, --dry-run", "List screenshots without analyzing")
-    .option("--json", "Output results as JSON")
-    .option("--viewport <views>", "Capture at multiple viewports: comma-separated presets (mobile,tablet,desktop,wide) or WxH (e.g. 375x667). Requires --url.")
-    .option("--url <url>", "URL to capture screenshots from (used with --viewport)")
-    .option("--baseline", "Save screenshots as baseline (used with --viewport or --screenshots)")
-    .option("--diff", "Compare current screenshots against baseline (requires prior --baseline run)")
-    .option("--report <path>", "Generate HTML report at the given path")
-    .option("--threshold <n>", "Pixel diff threshold (0-1, default: 0.1)", parseFloat)
-    .option("--no-cache", "Disable result caching (re-analyze all screenshots)")
-    .action(async (opts) => {
-    await visionCheck(opts);
 });
 program.parse();
 //# sourceMappingURL=index.js.map

@@ -6,16 +6,9 @@ import {
 } from "fs";
 import { join } from "path";
 import chalk from "chalk";
+import { SHARED_FILE_NAMES } from "../shared/index.js";
 
-const SHARED_FILES = new Set([
-  "seed.spec.ts",
-  "app-all.spec.ts",
-  "auth.setup.ts",
-  "credentials.yaml",
-  "app-knowledge.md",
-  "playwright.config.ts",
-  "mcp-tools.md",
-]);
+const SHARED_FILES = SHARED_FILE_NAMES;
 
 export interface MigrateOptions {
   dryRun?: boolean;

@@ -5,6 +5,7 @@ import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { readFile } from "fs/promises";
 import { hasClaudeCode, installForClaudeCode, installProjectClaudeMd, readEmployeeStandards, } from "./editors.js";
+import { isPlaywrightMcpInstalled, ensurePlaywrightMcp } from "../shared/index.js";
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
 const E2E_COMMAND_SRC = fileURLToPath(new URL("../../templates/e2e-command.md", import.meta.url));
 const EMPLOYEE_STANDARDS_SRC = fileURLToPath(new URL("../../employee-standards.md", import.meta.url));
@@ -35,31 +36,14 @@ export async function init(options) {
     // 3. Install Playwright MCP (global)
     if (options.mcp !== false) {
         console.log(chalk.blue("\n─── Installing Playwright MCP ───"));
-        // Check using `claude mcp list` as source of truth (platform-independent)
-        let mcpInstalled = false;
-        try {
-            const output = execSync("claude mcp list", {
-                encoding: "utf-8",
-                timeout: 10000,
-            });
-            if (output.includes("playwright")) {
-                mcpInstalled = true;
-            }
-        }
-        catch {
-            // claude CLI not available — will try to install
-        }
+        // Check using shared utility
+        const mcpInstalled = isPlaywrightMcpInstalled();
         if (mcpInstalled) {
             console.log(chalk.green("  ✓ Playwright MCP already installed"));
         }
         else {
             try {
-                execSync("claude mcp add playwright npx @playwright/mcp@latest", {
-                    cwd: projectRoot,
-                    stdio: "pipe",
-                    encoding: "utf-8",
-                });
-                console.log(chalk.green("  ✓ Playwright MCP installed globally"));
+                ensurePlaywrightMcp();
                 console.log(chalk.gray("  (Restart Claude Code to activate)"));
             }
             catch (err) {
