@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.30] - 2026-06-04
+
 ### Changed
 
 - Migrated E2E command content from `.claude/skills/openspec-e2e/SKILL.md` to `templates/e2e-command.md` — `init` and `update` now read from the template instead of the deleted SKILL file
@@ -14,6 +16,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `update`: command content now read from `templates/e2e-command.md` in tarball instead of SKILL.md
 - `update`: init detection now checks `.claude/commands/opsx/e2e.md` instead of SKILL.md
 - `uninstall`: legacy skill directory removal labeled as backward-compat cleanup
+- `employee-standards.md`: 重构为 6 节结构（§0–§5），总行数 127 → 81
+  - §0 适用范围（新增节）：项目规范入口 + E2E 工作流前提
+  - §1 代码质量（原 §2）：`lint:fix` 提示从「错误处理指导」并入「每步有可验证的退出条件」
+  - §2 上下文管理（原 §3）：新增「禁止跨 change 改动」子规则；「OpenSpec 阶段隔离」从 3 句压成 1 句
+  - §3 大规模任务处理（原 §4）：200 行门控从「尽量」严格化为「必须」
+  - §4 工具限制与编辑安全（原 §5）：「安全规范」精简为密钥 + 占位符 + 日志 3 条 AI 行为约束
+  - §5 完整生产工作流（原 §6）：8 步流程图压成 1 行链；`/ship → /retro` 改为 `/opsx:archive`
+- `employee-standards.md`: 删除「§1 浏览器操作约束」——Chrome MCP 也是可用浏览器工具，不再硬性指定 gstack
+- `docs/index.html`: 同步网页 CLAUDE.md 一键配置到新版
+  - 删除 `## 错误处理指导` 整段
+  - `## 安全规范` 精简（密钥 + 占位符 + 日志）
+  - `## 代码质量` 补 `lint:fix` 提示
+  - `## 大规模任务` 「尽量使用」→「必须走」+ 加 `(/opsx:propose)`
+  - JS const `CLAUDE_MD_ZH` 同步加 `## 安全规范`（用户实际看到的版本）
 
 ### Removed
 
