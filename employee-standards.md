@@ -81,12 +81,6 @@
 
 **中文回复**：用中文回复用户。
 
-**版本控制规范**：
-- 提交信息格式：`<type>(<scope>): <description>`
-- 类型：feat（新功能）、fix（修复）、refactor（重构）、docs（文档）、test（测试）、chore（构建/工具）
-- 示例：`feat(auth): add login endpoint`、`fix(api): handle null response`
-- 分支策略：feature/xxx（功能分支）、fix/xxx（修复分支）、main（主分支）
-
 **安全规范**：
 - 敏感信息：不提交 API 密钥、密码、token 等敏感信息
 - 依赖安全：定期运行 `npm audit` 或 `yarn audit` 检查依赖漏洞
