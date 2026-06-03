@@ -30,6 +30,9 @@ npm-debug.log*
 
 # Claude Code (auto-generated)
 **/CLAUDE.md
+.claude/
+.omo/
+.playwright-mcp/
 
 # OpenSpec vision check cache
 .openspec-pw/vision-cache/
