@@ -5,6 +5,9 @@ node_modules/
 # dist/ is committed for npm install-from-git compatibility
 *.tgz
 
+# Test coverage (vitest --coverage output)
+coverage/
+
 # GitHub (workflows tracked, rest ignored)
 .github/*
 !.github/workflows/
