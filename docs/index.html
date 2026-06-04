@@ -1131,7 +1131,7 @@ nav {
   gap: 8px;
 }
 
-.quickstart-install h3 span {
+.quickstart-install h3 > span:first-child {
   width: 22px;
   height: 22px;
   background: var(--accent);
@@ -1141,6 +1141,7 @@ nav {
   justify-content: center;
   color: white;
   font-size: 0.7rem;
+  flex-shrink: 0;
 }
 
 .qs-steps {
