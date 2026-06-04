@@ -1702,6 +1702,11 @@ footer {
     </div>
     <pre class="claude-config-content"><code id="claude-md-content"># 项目规范
 
+## 适用范围
+- 本规范适用于 OpenSpec + openspec-playwright 项目（Claude Code 作为开发工具）
+- 项目规范：动手前读 `openspec/config.yaml`（技术栈、结构、约定、约束等），无内容则忽略
+- E2E 工作流前提：工具链（gstack / OpenSpec CLI / openspec-playwright）由用户安装并维护，AI 不做安装操作
+
 ## 代码质量
 - 动手前先思考：列出假设，逐条验证。复杂任务多种解释则都列出，更简单方案则提出
 - 每步有可验证的退出条件：多步骤任务先列计划，循环验证直到成功。lint 失败时优先运行 `npm run lint:fix`
@@ -2340,6 +2345,11 @@ footer {
 <script>
 const CLAUDE_MD_ZH = `# 项目规范
 
+## 适用范围
+- 本规范适用于 OpenSpec + openspec-playwright 项目（Claude Code 作为开发工具）
+- 项目规范：动手前读 \`openspec/config.yaml\`（技术栈、结构、约定、约束等），无内容则忽略
+- E2E 工作流前提：工具链（gstack / OpenSpec CLI / openspec-playwright）由用户安装并维护，AI 不做安装操作
+
 ## 代码质量
 - 动手前先思考：列出假设，逐条验证。复杂任务多种解释则都列出，更简单方案则提出
 - 每步有可验证的退出条件：多步骤任务先列计划（\`1. [Step] → verify: [check]\`），循环验证直到成功。lint 失败时优先运行 \`npm run lint:fix\`
@@ -2379,6 +2389,11 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 调试日志不打印凭据/密钥/token`;
 
 const CLAUDE_MD_EN = `# Project Guidelines
+
+## Applicability
+- This guideline applies to OpenSpec + openspec-playwright projects (Claude Code as dev tool)
+- Project conventions: Read \`openspec/config.yaml\` first (tech stack, structure, conventions, constraints, etc.); ignore if absent
+- E2E workflow prerequisite: Tooling (gstack / OpenSpec CLI / openspec-playwright) is installed and maintained by the user; AI does not perform installation
 
 ## Code Quality
 - Think before coding: List assumptions, verify each one. If multiple interpretations exist, present them all; suggest simpler approaches if available
