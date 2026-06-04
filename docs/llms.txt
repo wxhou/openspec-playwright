@@ -1,0 +1,46 @@
+# OpenSpec Playwright
+
+> OpenSpec + Playwright E2E verification setup tool for Claude Code.
+
+A setup tool that integrates OpenSpec's spec-driven development with Playwright's three-agent test pipeline for automated E2E verification.
+
+## Docs
+
+- [Project homepage](https://wxhou.github.io/openspec-playwright/): Full project site with feature overview, workflow, and quickstart.
+- [README](https://github.com/wxhou/openspec-playwright/blob/main/README.md): English documentation.
+- [README.zh-CN](https://github.com/wxhou/openspec-playwright/blob/main/README.zh-CN.md): Chinese documentation.
+- [CHANGELOG](https://github.com/wxhou/openspec-playwright/blob/main/CHANGELOG.md): Version history and release notes.
+
+## Install
+
+```
+npm install -g openspec-playwright
+```
+
+## Quick Start
+
+```
+# In your project directory
+openspec init
+openspec-pw init
+npx playwright install --with-deps
+
+# In Claude Code
+/opsx:e2e <change-name>
+```
+
+## CLI Commands
+
+- `openspec-pw init` — Initialize integration (one-time setup)
+- `openspec-pw update` — Update CLI and commands to latest version
+- `openspec-pw doctor` — Check prerequisites
+- `openspec-pw audit` — Audit tests for orphaned specs and issues
+- `openspec-pw migrate` — Migrate old test files to new structure
+- `openspec-pw explore` — Explore routes in parallel with Playwright
+- `openspec-pw run <name>` — Execute E2E tests for a change
+- `openspec-pw uninstall` — Remove integration from the project
+
+## Links
+
+- [npm package](https://www.npmjs.com/package/openspec-playwright)
+- [GitHub repository](https://github.com/wxhou/openspec-playwright)
