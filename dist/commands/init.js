@@ -71,15 +71,11 @@ export async function init(options) {
         return;
     }
     // 6. Generate seed test
-    if (options.seed !== false) {
-        console.log(chalk.blue("\n─── Generating Seed Test ───"));
-        await generateSeedTest(projectRoot, options.seed === true);
-    }
+    console.log(chalk.blue("\n─── Generating Seed Test ───"));
+    await generateSeedTest(projectRoot, options.seed === true);
     // 6b. Generate shared pages directory
-    if (options.seed !== false) {
-        console.log(chalk.blue("\n─── Generating Shared Pages ───"));
-        await generateSharedPages(projectRoot);
-    }
+    console.log(chalk.blue("\n─── Generating Shared Pages ───"));
+    await generateSharedPages(projectRoot);
     // 7. Generate app-knowledge.md
     console.log(chalk.blue("\n─── Generating App Knowledge ───"));
     await generateAppKnowledge(projectRoot);
