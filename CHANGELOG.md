@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `openspec-pw init`: removed the `--no-seed` option. The default behavior (skip seed generation if `tests/playwright/seed.spec.ts` already exists) already covers the use case. To refresh a stale seed, run `openspec-pw init --seed`; to skip seed entirely, delete the existing `seed.spec.ts` and re-run `init`. Two remaining options: `--seed` (force overwrite) and the implicit "skip if exists" default. ⚠️ Minor breaking change — any script passing `--no-seed` will see "unknown option" and fail.
+
 ## [0.3.31] - 2026-06-04
 
 ### Fixed

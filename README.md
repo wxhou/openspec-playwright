@@ -33,7 +33,7 @@ Claude Code — E2E workflow is driven by `/opsx:e2e` command using /browse (exp
 ### CLI Commands
 
 ```bash
-openspec-pw init          # Initialize integration (one-time setup)
+openspec-pw init          # Initialize integration (one-time setup; add --seed to overwrite existing seed.spec.ts)
 openspec-pw update        # Update CLI and commands to latest version
 openspec-pw doctor        # Check prerequisites
 openspec-pw audit         # Audit tests for orphaned specs and issues
