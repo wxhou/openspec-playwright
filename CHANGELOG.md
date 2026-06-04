@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.31] - 2026-06-04
+
+### Fixed
+
+- `docs/index.html`: "1 安装步骤" h3 was not rendering its title — `.quickstart-install h3 span` selector was too broad and leaked the 22×22 red-badge styles onto the title text spans. Tightened the selector to `:first-child` so only the numeric badge gets the badge styles.
+- `docs/index.html`: `CLAUDE.md 一键配置` section header was pinned to the left edge while every other section's header sat centered. The `#claude-config` section used inline `max-width: none` so its background stripe could span the viewport, which also stretched the inner section header to full width. Added `#claude-config .section-header { max-width: 1160px; margin: 0 auto }` to re-center the header without affecting the background stripe.
+- `docs/`: stale `openspec-pw vision-check` removed from CLI lists in `README.md` and `README.zh-CN.md` (the command was deleted from `src/index.ts`); `openspec-pw run <name>` added to the CLI list (was only mentioned in the Architecture section); `explore` added to the Architecture CLI tree; `doctor` description tightened.
+- `package.json`: `release` script now commits the `docs/index.html` badge update after `bump-docs.js` — previously it was just `git add`, never `git commit`, so the live page badge never advanced after release.
+- `.gitignore`: replaced `.github/` + bare `!.github/workflows/` with `.github/*` + `!.github/workflows/**` so workflow files are properly un-ignored; `.github/workflows/ci.yml` is now tracked.
+
+### Changed
+
+- `docs/index.html`: a11y + SEO pass — adjusted color tokens (`--accent #e85d04 → #9a3412`, `--muted #78716c → #57534e`, `--green #16a34a → #15803d`, `--accent-dark #c2410c → #7c2d12`, `--step6 #dc2626 → #b91c1c`; `.terminal-comment rgba(255,255,255,0.35) → #a8a8a8`; `.tag-*` inline colors updated) to fix 60+ color-contrast violations; wrapped page sections in `<main>...</main>`; added `docs/robots.txt` and `docs/llms.txt` (H1 + section format, llmstxt.org). **Lighthouse snapshot 90/100/80/50 → 100/100/100/100**.
+- `docs/index.html`: hero floating card changed from "Test Status" placeholder to a "Today's E2E" dashboard with 4 KPI lines (test cases / AI verified / Healer fixed / failures).
+- `docs/index.html`: quickstart terminal replaced 5-line comment block with the actual install + run command sequence (npm install → openspec init && openspec-pw init → playwright install → /opsx:e2e), with a `.terminal-divider` between sections.
+- `docs/index.html`: GitHub button gained the octocat SVG icon (16×16), balancing the primary "Quick Start" CTA next to it.
+- `docs/index.html`: spacing pass — `.hero-title` `line-height: 1.0 → 1.08`; `.stack-item` `gap 10 → 14px`, `padding 28 → 32px`; `.step-header` `margin-bottom 10 → 14px`; `.step-tags` `margin-top 10 → 14px`.
+- `docs/index.html`: synced the `动手前读 openspec/config.yaml` rule from `employee-standards.md` §0 into the webpage's CLAUDE.md one-click config template (both `CLAUDE_MD_ZH` and `CLAUDE_MD_EN`).
+- `.github/workflows/`: added `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'` to opt into Node 24 action runtime ahead of the 2026-06-16 Node 20 deprecation.
+
 ## [0.3.30] - 2026-06-04
 
 ### Changed
