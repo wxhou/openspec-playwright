@@ -7,16 +7,21 @@
 ## 安装
 
 ```bash
-npm install -g openspec-playwright
+npm install -g openspec-playwright@latest
 ```
 
 ## 前置条件
 
+**必需：**
+
 1. **Node.js >= 20**
 2. **Claude Code** 且项目中有 `.claude/` 目录
-3. **gstack**（用于探索 + 浏览器 QA）：`git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup`
-4. **OpenSpec** 已初始化: `npm install -g @fission-ai/openspec && openspec init`
-5. **Playwright MCP**（用于测试执行 + Healer）：`claude mcp add playwright npx @playwright/mcp@latest`
+3. **OpenSpec** 已初始化：`npm install -g @fission-ai/openspec@latest && openspec init`
+4. **Playwright MCP**（用于测试执行 + Healer）：`claude mcp add playwright npx @playwright/mcp@latest`
+
+**可选** — `openspec-pw explore` 和 Playwright MCP 自带浏览器探索能力；只有想要 `/browse` 短命令时才需要装 gstack：
+
+- **gstack**：`git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup`（需要 [Bun](https://bun.sh)）
 
 ## 初始化
 
@@ -64,7 +69,7 @@ openspec-pw uninstall     # 移除项目中的集成
   │
   ├── 3. 验证环境 → 运行 seed.spec.ts
   │
-  ├── 4. 探索应用 → /browse 探索真实 DOM
+  ├── 4. 探索应用 → 浏览器探索（gstack `/browse` / Playwright MCP / `openspec-pw explore`）
   │       ├─ 读取 app-knowledge.md（项目级知识）
   │       ├─ 从 specs 提取路由
   │       ├─ 遍历每个路由 → snapshot → screenshot
@@ -99,16 +104,21 @@ openspec-pw uninstall     # 移除项目中的集成
 
 | 步骤 | 命令 | 失败时快速修复 |
 |------|------|----------------|
-| 1. 安装 CLI | `npm install -g openspec-playwright` | 检查 Node.js 版本 `node -v`（需 >= 20） |
-| 2. 安装 gstack | `git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup` | 需要 Bun：`curl -fsSL https://bun.sh/install \| bash` |
-| 3. 安装 OpenSpec | `npm install -g @fission-ai/openspec && openspec init` | `npm cache clean -f && npm install -g @fission-ai/openspec` |
-| 4. 初始化 E2E | `openspec-pw init` | 运行 `openspec-pw doctor` 查看具体缺失项 |
-| 5. 安装 Playwright MCP | `claude mcp add playwright npx @playwright/mcp@latest` | `claude mcp list` 确认安装成功 |
-| 6. 安装浏览器 | `npx playwright install --with-deps` | macOS 可能需先运行 `xcode-select --install` |
-| 7. 启动开发服务器 | `npm run dev`（在另一个终端） | 确认端口，配置 `BASE_URL` |
-| 8. 验证环境 | `npx playwright test tests/playwright/seed.spec.ts` | 检查 `playwright.config.ts` 中的 `webServer` 配置 |
-| 9. 配置认证（如需要） | 见下方"认证配置" | `npx playwright test --project=setup` 调试 |
-| 10. 运行第一个 E2E | `/opsx:e2e <change-name>` | 查看 `openspec/reports/` 中的报告 |
+| 1. 安装 CLI | `npm install -g openspec-playwright@latest` | 检查 Node.js 版本 `node -v`（需 >= 20） |
+| 2. 安装 OpenSpec | `npm install -g @fission-ai/openspec@latest && openspec init` | `npm cache clean -f && npm install -g @fission-ai/openspec@latest` |
+| 3. 初始化 E2E | `openspec-pw init` | 运行 `openspec-pw doctor` 查看具体缺失项 |
+| 4. 安装 Playwright MCP | `claude mcp add playwright npx @playwright/mcp@latest` | `claude mcp list` 确认安装成功 |
+| 5. 安装浏览器 | `npx playwright install --with-deps` | macOS 可能需先运行 `xcode-select --install` |
+| 6. 启动开发服务器 | `npm run dev`（在另一个终端） | 确认端口，配置 `BASE_URL` |
+| 7. 验证环境 | `npx playwright test tests/playwright/seed.spec.ts` | 检查 `playwright.config.ts` 中的 `webServer` 配置 |
+| 8. 配置认证（如需要） | 见下方"认证配置" | `npx playwright test --project=setup` 调试 |
+| 9. 运行第一个 E2E | `/opsx:e2e <change-name>` | 查看 `openspec/reports/` 中的报告 |
+
+**可选 — 仅当需要单浏览器 `/browse` 工作流时：**
+
+| 步骤 | 命令 | 失败时快速修复 |
+|------|------|----------------|
+| A. 安装 gstack | `git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup` | 需要 Bun：`curl -fsSL https://bun.sh/install \| bash` |
 
 ## 认证配置
 

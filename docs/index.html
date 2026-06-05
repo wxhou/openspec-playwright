@@ -1851,8 +1851,8 @@ footer {
         <span class="ft-title-en" style="display:none;">Real Browser Exploration</span>
       </div>
       <div class="feature-desc">
-        <span class="ft-desc-zh">通过 gstack <code>/browse</code> 遍历每个路由，snapshot + @ref 精确定位元素。Token 高效，状态持久，可视化操作。</span>
-        <span class="ft-desc-en" style="display:none;">Traverse routes via gstack <code>/browse</code>, snapshot + @ref for precise element targeting. Token-efficient, persistent state, visual operations.</span>
+        <span class="ft-desc-zh">通过浏览器工具遍历每个路由（gstack <code>/browse</code> / Playwright MCP / <code>openspec-pw explore</code>），snapshot + @ref 精确定位元素。Token 高效，状态持久，可视化操作。</span>
+        <span class="ft-desc-en" style="display:none;">Traverse routes via a browser tool (gstack <code>/browse</code>, Playwright MCP, or <code>openspec-pw explore</code>), snapshot + @ref for precise element targeting. Token-efficient, persistent state, visual operations.</span>
       </div>
     </div>
     <div class="feature-card anim anim-1">
@@ -1907,17 +1907,17 @@ footer {
     <div class="prereq-card">
       <div class="prereq-card-title">
         <span class="prereq-icon"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="6" stroke="#e85d04" stroke-width="1.5"/><path d="M14 14l4.5 4.5" stroke="#e85d04" stroke-width="2" stroke-linecap="round"/></svg></span>
-        gstack
+        gstack（可选）
       </div>
       <div class="prereq-cmd">git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup</div>
-      <div class="prereq-role"><span class="prereq-role-zh">/browse 探索 + /qa 验证</span><span class="prereq-role-en" style="display:none;">/browse + /qa verification</span></div>
+      <div class="prereq-role"><span class="prereq-role-zh">仅当需要 <code>/browse</code> 短命令时安装（<code>openspec-pw explore</code> / Playwright MCP 也能做）</span><span class="prereq-role-en" style="display:none;">Only if you want the <code>/browse</code> slash command (<code>openspec-pw explore</code> / Playwright MCP can do the same)</span></div>
     </div>
     <div class="prereq-card">
       <div class="prereq-card-title">
         <span class="prereq-icon"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="3" width="14" height="18" rx="2" stroke="#3b82f6" stroke-width="1.5"/><path d="M8 7h8M8 11h8M8 15h5" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round"/></svg></span>
         OpenSpec CLI
       </div>
-      <div class="prereq-cmd">npm install -g @fission-ai/openspec && openspec init</div>
+      <div class="prereq-cmd">npm install -g @fission-ai/openspec@latest && openspec init</div>
       <div class="prereq-role"><span class="prereq-role-zh">/opsx:propose、/opsx:apply 等命令</span><span class="prereq-role-en" style="display:none;">/opsx:propose, /opsx:apply, etc.</span></div>
     </div>
     <div class="prereq-card">
@@ -1925,7 +1925,7 @@ footer {
         <span class="prereq-icon"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2v4M7 6l2-2M17 6l-2-2" stroke="#2ead73" stroke-width="1.5" stroke-linecap="round"/><rect x="6" y="6" width="12" height="10" rx="2" fill="#2ead73"/><path d="M9 16v2a3 3 0 006 0v-2" stroke="#2ead73" stroke-width="1.5"/></svg></span>
         openspec-playwright
       </div>
-      <div class="prereq-cmd">npm install -g openspec-playwright && openspec-pw init</div>
+      <div class="prereq-cmd">npm install -g openspec-playwright@latest && openspec-pw init</div>
       <div class="prereq-role"><span class="prereq-role-zh">/opsx:e2e 命令 + 测试模板</span><span class="prereq-role-en" style="display:none;">/opsx:e2e command + test templates</span></div>
     </div>
     <div class="prereq-card">
@@ -2023,7 +2023,7 @@ footer {
             <span class="step-name"><span class="step-name-zh">E2E 测试生成与执行</span><span class="step-name-en" style="display:none;">E2E Test Generation & Execution</span></span>
             <span class="step-badge badge-required"><span class="badge-zh">必需</span><span class="badge-en" style="display:none;">Required</span></span>
           </div>
-          <div class="step-desc"><span class="step-desc-zh"><code>/opsx:e2e</code> 生成测试 → <code>/browse</code> 探索 DOM → Healer 修复 → <code>/qa</code> 验证。</span><span class="step-desc-en" style="display:none;"><code>/opsx:e2e</code> generates tests → <code>/browse</code> explores DOM → Healer fixes → <code>/qa</code> verifies.</span></div>
+          <div class="step-desc"><span class="step-desc-zh"><code>/opsx:e2e</code> 生成测试 → 浏览器探索 → Healer 修复 → <code>/qa</code> 验证。</span><span class="step-desc-en" style="display:none;"><code>/opsx:e2e</code> generates tests → browser exploration → Healer fixes → <code>/qa</code> verifies.</span></div>
           <div class="step-tags">
             <span class="step-tag tag-openspec">opsx:e2e</span>
             <span class="step-tag tag-gstack">browse</span>
@@ -2179,38 +2179,36 @@ footer {
           <div class="qs-num">01</div>
           <div>
             <div class="qs-label"><span class="qs-step-zh">安装 CLI</span><span class="qs-step-en" style="display:none;">Install CLI</span></div>
-            <div class="qs-cmd">npm install -g openspec-playwright</div>
+            <div class="qs-cmd">npm install -g openspec-playwright@latest</div>
           </div>
         </div>
         <div class="qs-step">
           <div class="qs-num">02</div>
           <div>
-            <div class="qs-label"><span class="qs-step-zh">安装 gstack</span><span class="qs-step-en" style="display:none;">Install gstack</span></div>
-            <div class="qs-cmd">git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup</div>
+            <div class="qs-label"><span class="qs-step-zh">初始化 OpenSpec</span><span class="qs-step-en" style="display:none;">Initialize OpenSpec</span></div>
+            <div class="qs-cmd">npm install -g @fission-ai/openspec@latest && openspec init</div>
           </div>
         </div>
         <div class="qs-step">
           <div class="qs-num">03</div>
-          <div>
-            <div class="qs-label"><span class="qs-step-zh">初始化 OpenSpec</span><span class="qs-step-en" style="display:none;">Initialize OpenSpec</span></div>
-            <div class="qs-cmd">npm install -g @fission-ai/openspec && openspec init</div>
-          </div>
-        </div>
-        <div class="qs-step">
-          <div class="qs-num">04</div>
           <div>
             <div class="qs-label"><span class="qs-step-zh">安装 Playwright MCP</span><span class="qs-step-en" style="display:none;">Install Playwright MCP</span></div>
             <div class="qs-cmd">claude mcp add playwright npx @playwright/mcp@latest</div>
           </div>
         </div>
         <div class="qs-step">
-          <div class="qs-num">05</div>
+          <div class="qs-num">04</div>
           <div>
             <div class="qs-label"><span class="qs-step-zh">初始化 E2E</span><span class="qs-step-en" style="display:none;">Initialize E2E</span></div>
             <div class="qs-cmd">openspec-pw init && npx playwright install --with-deps</div>
           </div>
         </div>
       </div>
+      <p style="margin-top: 20px; font-size: 0.85rem; color: var(--muted);">
+        <span class="qs-optional-zh">可选：</span><span class="qs-optional-en" style="display:none;">Optional:</span>
+        <code>openspec-pw explore</code> 和 Playwright MCP 自带浏览器探索能力；想要 <code>/browse</code> 短命令时再装 gstack：
+        <code style="display: block; margin-top: 6px;">git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup</code>
+      </p>
     </div>
 
     <div class="quickstart-run anim anim-2">
@@ -2222,7 +2220,7 @@ footer {
           <span class="terminal-dot td-green"></span>
         </div>
         <div class="terminal-body">
-          <div><span class="terminal-prompt">$</span><span class="terminal-cmd">npm</span> install -g openspec-playwright</div>
+          <div><span class="terminal-prompt">$</span><span class="terminal-cmd">npm</span> install -g openspec-playwright@latest</div>
           <div><span class="terminal-prompt">$</span><span class="terminal-cmd">openspec</span> init &amp;&amp; <span class="terminal-cmd">openspec-pw</span> init</div>
           <div><span class="terminal-prompt">$</span><span class="terminal-cmd">npx</span> playwright install --with-deps</div>
           <div class="terminal-divider"></div>
@@ -2279,8 +2277,8 @@ footer {
           <path d="M8 9h4M10 7v4" stroke="#e85d04" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
       </div>
-      <div class="stack-name">gstack /browse</div>
-      <div class="stack-role"><span class="stack-role-zh">浏览器探索</span><span class="stack-role-en" style="display:none;">Browser Exploration</span></div>
+      <div class="stack-name">Browser Tool</div>
+      <div class="stack-role"><span class="stack-role-zh">浏览器探索（gstack / Playwright MCP / <code>openspec-pw explore</code>）</span><span class="stack-role-en" style="display:none;">Browser exploration (gstack / Playwright MCP / <code>openspec-pw explore</code>)</span></div>
     </div>
     <div class="stack-item anim anim-4">
       <div class="stack-icon si-openspec">

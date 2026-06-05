@@ -128,3 +128,25 @@ describe("generateSharedPages", () => {
     expect(readFileSync(join(pagesDir, "BasePage.ts"), "utf-8")).toBe("custom base page");
   });
 });
+
+// ─── npx detection: execFile migration ────────────────────────────────────
+// Guards the Windows-safe form of `npx openspec --version`.
+
+describe("init.ts: npx detection uses execFile (no shell)", () => {
+  it("uses execFileSync with arg array, not a shell string", async () => {
+    const { readFileSync } = await import("fs");
+    const { fileURLToPath } = await import("url");
+    const { join } = await import("path");
+    const src = readFileSync(
+      join(
+        fileURLToPath(import.meta.url),
+        "../../src/commands/init.ts",
+      ),
+      "utf-8",
+    );
+    // Old form: `npx openspec --version 2>/dev/null || echo "not found"`
+    expect(src).not.toMatch(/npx openspec --version 2>\/dev\/null \|\| echo/);
+    // New form: execFile with arg array
+    expect(src).toMatch(/execFileSync\([^)]*"npx"[^)]*\["openspec",\s*"--version"\]/);
+  });
+});

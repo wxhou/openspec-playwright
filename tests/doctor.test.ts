@@ -134,3 +134,25 @@ describe("doctor check logic", () => {
     }
   });
 });
+
+// ─── npx detection: execFile migration ────────────────────────────────────
+// Guards the Windows-safe form of `npx playwright --version`.
+
+describe("doctor.ts: npx detection uses execFile (no shell)", () => {
+  it("uses execFileSync with arg array, not a shell string", async () => {
+    const { readFileSync } = await import("fs");
+    const { fileURLToPath } = await import("url");
+    const { join } = await import("path");
+    const src = readFileSync(
+      join(
+        fileURLToPath(import.meta.url),
+        "../../src/commands/doctor.ts",
+      ),
+      "utf-8",
+    );
+    // Old form: `npx playwright --version` as shell string
+    expect(src).not.toMatch(/execSync\([^)]*"npx playwright --version"/);
+    // New form: execFile with arg array
+    expect(src).toMatch(/execFileSync\([^)]*"npx"[^)]*\["playwright",\s*"--version"\]/);
+  });
+});

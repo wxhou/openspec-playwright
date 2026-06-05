@@ -7,7 +7,7 @@ A setup tool that integrates OpenSpec's spec-driven development with Playwright'
 ## Install
 
 ```bash
-npm install -g openspec-playwright
+npm install -g openspec-playwright@latest
 ```
 
 ## Setup
@@ -20,7 +20,7 @@ openspec-pw init          # Install Playwright E2E integration
 
 ## Supported AI Coding Assistants
 
-Claude Code — E2E workflow is driven by `/opsx:e2e` command using /browse (exploration) + Playwright MCP (test execution).
+Claude Code — E2E workflow is driven by `/opsx:e2e` command using a browser exploration tool (gstack `/browse`, Playwright MCP, or `openspec-pw explore`) + Playwright MCP (test execution).
 
 ## Usage
 
@@ -54,7 +54,7 @@ openspec-pw uninstall     # Remove integration from the project
   │
   ├── 3. Validate env → run seed.spec.ts
   │
-  ├── 4. Explore app → /browse explores real DOM
+  ├── 4. Explore app → browser exploration (gstack `/browse` / Playwright MCP / `openspec-pw explore`)
   │       ├─ Read app-knowledge.md (project-level knowledge)
   │       ├─ Extract routes from specs
   │       ├─ Navigate each route → snapshot → screenshot
@@ -78,11 +78,16 @@ openspec-pw uninstall     # Remove integration from the project
 
 ## Prerequisites
 
+**Required:**
+
 1. **Node.js >= 20**
 2. **Claude Code** with `.claude/` directory
-3. **gstack** (for exploration + browser QA): `git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup`
-4. **OpenSpec** initialized: `npm install -g @fission-ai/openspec && openspec init`
-5. **Playwright MCP** (for test execution + Healer): `claude mcp add playwright npx @playwright/mcp@latest`
+3. **OpenSpec** initialized: `npm install -g @fission-ai/openspec@latest && openspec init`
+4. **Playwright MCP** (for test execution + Healer): `claude mcp add playwright npx @playwright/mcp@latest`
+
+**Optional** — `openspec-pw explore` and Playwright MCP can do browser exploration out of the box; install gstack only if you want the `/browse` slash command:
+
+- **gstack**: `git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup` (requires [Bun](https://bun.sh))
 
 ## What `openspec-pw init` Does
 
@@ -98,16 +103,21 @@ Run through these steps in order when using the E2E workflow for the first time:
 
 | Step | Command | If it fails |
 |------|---------|-------------|
-| 1. Install CLI | `npm install -g openspec-playwright` | Check Node.js version `node -v` (needs >= 20) |
-| 2. Install gstack | `git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup` | Requires Bun: `curl -fsSL https://bun.sh/install | bash` |
-| 3. Install OpenSpec | `npm install -g @fission-ai/openspec && openspec init` | `npm cache clean -f && npm install -g @fission-ai/openspec` |
-| 4. Initialize E2E | `openspec-pw init` | Run `openspec-pw doctor` to see what's missing |
-| 5. Install Playwright MCP | `claude mcp add playwright npx @playwright/mcp@latest` | `claude mcp list` to confirm installation |
-| 6. Install browsers | `npx playwright install --with-deps` | macOS may need `xcode-select --install` first |
-| 7. Start dev server | `npm run dev` (in a separate terminal) | Confirm port, set `BASE_URL` if non-standard |
-| 8. Validate env | `npx playwright test tests/playwright/seed.spec.ts` | Check `webServer` in `playwright.config.ts` |
-| 9. Configure auth (if needed) | See "Authentication" below | Debug with `npx playwright test --project=setup` |
-| 10. Run first E2E | `/opsx:e2e <change-name>` | Check `openspec/reports/` for the report |
+| 1. Install CLI | `npm install -g openspec-playwright@latest` | Check Node.js version `node -v` (needs >= 20) |
+| 2. Install OpenSpec | `npm install -g @fission-ai/openspec@latest && openspec init` | `npm cache clean -f && npm install -g @fission-ai/openspec@latest` |
+| 3. Initialize E2E | `openspec-pw init` | Run `openspec-pw doctor` to see what's missing |
+| 4. Install Playwright MCP | `claude mcp add playwright npx @playwright/mcp@latest` | `claude mcp list` to confirm installation |
+| 5. Install browsers | `npx playwright install --with-deps` | macOS may need `xcode-select --install` first |
+| 6. Start dev server | `npm run dev` (in a separate terminal) | Confirm port, set `BASE_URL` if non-standard |
+| 7. Validate env | `npx playwright test tests/playwright/seed.spec.ts` | Check `webServer` in `playwright.config.ts` |
+| 8. Configure auth (if needed) | See "Authentication" below | Debug with `npx playwright test --project=setup` |
+| 9. Run first E2E | `/opsx:e2e <change-name>` | Check `openspec/reports/` for the report |
+
+**Optional — only if you want the single-browser `/browse` workflow:**
+
+| Step | Command | If it fails |
+|------|---------|-------------|
+| A. Install gstack | `git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup` | Requires Bun: `curl -fsSL https://bun.sh/install \| bash` |
 
 ## Authentication
 

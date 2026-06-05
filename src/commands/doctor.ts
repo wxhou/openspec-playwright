@@ -1,6 +1,6 @@
 import { existsSync } from "fs";
 import { join } from "path";
-import { execSync } from "child_process";
+import { execFileSync, execSync } from "child_process";
 import chalk from "chalk";
 import { isPlaywrightMcpInstalled } from "../shared/index.js";
 
@@ -65,7 +65,7 @@ export async function doctor(options: DoctorOptions = {}) {
 
   // Playwright browsers
   try {
-    const pw = execSync("npx playwright --version", {
+    const pw = execFileSync("npx", ["playwright", "--version"], {
       encoding: "utf-8",
     }).trim();
     checks.push({

@@ -29,6 +29,8 @@ Both modes update `app-knowledge.md` and `app-exploration.md`. Spec files are in
 
 > **Role mapping**: Planner (Step 4–5) → test-plan.md; Generator (Step 6) → `.spec.ts` + Page Objects; Healer (Step 9) → repairs failures via MCP.
 
+**Browser exploration is tool-agnostic**: gstack (`/browse`), Playwright MCP (`browser_navigate` / `browser_snapshot` / etc.), and `openspec-pw explore --parallel N` all work — pick whichever is installed. Playwright MCP is always required (Healer uses it), so reuse it for exploration if you don't have gstack.
+
 ## Setup / Teardown
 
 Playwright supports two approaches for global lifecycle hooks. **openspec-playwright uses project dependencies** (the recommended approach) for full feature support.
@@ -174,8 +176,8 @@ expect((await post.json()).likeCount).toBeGreaterThan(0); // verify persistence
 - Announce: "Mode: full app exploration + Page Object discovery"
 - **Goal**: Discover new routes, extract selectors, and build `pages/*.ts` Page Objects — accumulated asset for future Change tests
 - **Route discovery** (in order):
-  1. **sitemap.xml**: `$B goto ${BASE_URL}/sitemap.xml` → parse URLs
-  2. **Link extraction**: Navigate to `${BASE_URL}/` → `$B js` extracts all `<a href>`:
+  1. **sitemap.xml**: navigate to `${BASE_URL}/sitemap.xml` → parse URLs
+  2. **Link extraction**: Navigate to `${BASE_URL}/` → evaluate JS to extract all `<a href>`:
      ```javascript
      // Extract all internal links from current page
      () => {
@@ -232,16 +234,14 @@ Run the seed test before generating tests:
 npx playwright test tests/playwright/seed.spec.ts --project=chromium
 ```
 
-Seed test initializes the `page` context — it runs all fixtures, hooks, and globalSetup. Not just a smoke check: it also validates that auth setup, BASE_URL, and Playwright are fully functional.
+This targets a single file with a specific project — it does NOT run the full suite (see note above). Seed test initializes the `page` context — it runs all fixtures, hooks, and globalSetup. Not just a smoke check: it also validates that auth setup, BASE_URL, and Playwright are fully functional.
 
 **If seed test fails**: Stop and report. Fix the environment before proceeding.
 
 ### 4. Explore application
 
-Explore to collect real DOM data before writing test plan. This eliminates blind selector guessing.
-
 **Prerequisites**:
-1. **gstack available** — Step 4 uses `$B` commands (browser exploration). If gstack is not available → **STOP**: inform user that browser exploration requires gstack. Ask user to install: `git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup`
+1. At least one browser exploration tool installed (gstack / Playwright MCP / `openspec-pw explore`).
 2. seed test pass
 3. BASE_URL must be verified reachable (see 4.1)
 
@@ -249,28 +249,24 @@ If auth is required and `auth.setup.ts` already exists → auth is ready. If aut
 
 #### 4.1. Verify BASE_URL + Read app-knowledge.md
 
-1. **Verify BASE_URL**: `$B goto <BASE_URL>` → if HTTP 5xx → **STOP: backend error. Fix app first.**
+1. **Verify BASE_URL**: navigate to `<BASE_URL>` → if HTTP 5xx → **STOP: backend error. Fix app first.**
 2. **Read app-knowledge.md**: known risks, project conventions
 3. **Routes** (from Step 1): use already-discovered routes — no need to re-extract
 
-#### 4.2. Explore each route via /browse
+#### 4.2. Explore each route
 
-For each route:
+For each route: navigate → check console for errors → snapshot DOM → screenshot.
 
-```
-$B goto <url> → $B console → $B snapshot → $B screenshot
-```
+#### Alternative: parallel exploration (via `openspec-pw explore`)
 
-#### Parallel Exploration (via `openspec-pw explore`)
-
-For apps with many routes (>=5), use the dedicated CLI command for true parallel exploration:
+If you have ≥5 routes, skip 4.2 and use the dedicated CLI for genuine parallel exploration:
 
 ```bash
 openspec-pw explore --parallel 4    # 4 independent Chromium workers
 openspec-pw explore --dry-run       # preview chunk assignment first
 ```
 
-**Why**: `$B` uses a single shared Chromium instance with one active page — `Promise.allSettled` on `$B` commands serializes execution and causes navigation state conflicts. `openspec-pw explore` launches N independent browser processes, each with its own Chromium context, for genuine parallelism.
+**Why**: a single shared browser instance with one active page causes `Promise.allSettled` on navigation/snapshot commands to serialize execution and create navigation state conflicts. `openspec-pw explore` launches N independent browser processes, each with its own Chromium context, for genuine parallelism.
 
 **After parallel exploration completes**, read the updated `app-exploration.md` to continue with Step 4.3.
 
@@ -288,14 +284,14 @@ openspec-pw explore --dry-run       # preview chunk assignment first
 
 ```
 // 1. Initial capture
-$B goto <url>
-$B wait --networkidle    // wait for SPA hydration
-$B js "window.location.href"    // url1
-$B wait 2000
+navigate <url>
+wait for network-idle           // wait for SPA hydration
+evaluate "window.location.href"  // url1
+wait 2000ms
 
 // 2. Observe stability
-$B js "window.location.href"    // url2
-$B console --errors
+evaluate "window.location.href"  // url2
+check console for errors
 
 // 3. Detect
 if (url1 !== url2) {
@@ -310,12 +306,12 @@ if (console errors/warnings > 10) {
 }
 ```
 
-**Network monitoring**: After navigating, use `$B network` to check for failed API calls. Failed requests (status ≥ 400) on a route indicate an API/backend issue — record in `app-exploration.md` for reference.
+**Network monitoring**: After navigating, check network requests for failed API calls. Failed requests (status ≥ 400) on a route indicate an API/backend issue — record in `app-exploration.md` for reference.
 
 **For guest routes** (no auth):
 
 ```
-$B goto <url>
+navigate <url>
 ```
 
 **For protected routes** (auth required):
@@ -323,7 +319,7 @@ $B goto <url>
 ```
 // Option A: use existing storageState (recommended)
 // Option B: navigate to /login first, fill form, then navigate to target
-// Option C: $B cookie to set auth cookies directly
+// Option C: set auth cookies directly via document.cookie
 ```
 
 **If credentials are not yet available**:
@@ -341,7 +337,7 @@ Wait for page stability:
 
 #### 4.3. Parse the snapshot
 
-From `$B snapshot` output, extract **interactive elements** for each route:
+From the DOM snapshot output, extract **interactive elements** for each route:
 
 | Element type         | What to capture                      | Selector priority                                          |
 | -------------------- | ------------------------------------ | ---------------------------------------------------------- |
@@ -355,7 +351,7 @@ From `$B snapshot` output, extract **interactive elements** for each route:
 
 #### 4.3.1. Detect special elements
 
-From `$B snapshot` + `$B js`, identify these special elements per route:
+From the DOM snapshot and JS evaluation, identify these special elements per route:
 
 **Special element detection matrix:**
 
@@ -372,9 +368,9 @@ From `$B snapshot` + `$B js`, identify these special elements per route:
 | Drag-and-drop | drag events in JS | Simulate DnD via coordinate clicks | Low |
 | Date picker | specific `data-testid` or class patterns | Click triggers → evaluate value | Low (skip unless specs mention) |
 | Infinite scroll | Dynamic row insertion | Count elements before/after scroll | Low (skip unless specs mention dynamic lists/pagination) |
-| WebSocket / SSE | No DOM signal | Check `$B console --errors` for WS events | Low (check only if app uses real-time features) |
+| WebSocket / SSE | No DOM signal | Check page console for WS events | Low (check only if app uses real-time features) |
 
-**For each detected special element, capture via `$B js` with targeted DOM queries:**
+**For each detected special element, capture via JS evaluation with targeted DOM queries:**
 - Canvas: `getContext('webgl2'/'webgl'/'2d')`, `width`, `height`
 - Iframe: `src` attribute → use `frameLocator` in tests
 - CAPTCHA: `.g-recaptcha`, `.h-captcha`, `[data-sitekey]`, canvas+slider detection
@@ -788,7 +784,7 @@ Auth required. To set up:
 
 **Idempotency**: If `auth.setup.ts` already exists → verify format, update only if stale.
 
-**Post-auth re-exploration**: If Step 4 skipped protected routes due to missing auth, re-run exploration for those routes now that auth is configured. Navigate to each protected route with auth context → `$B snapshot` → update `app-exploration.md`. Selectors verified now are better than guesses used during test generation.
+**Post-auth re-exploration**: If Step 4 skipped protected routes due to missing auth, re-run exploration for those routes now that auth is configured. Navigate to each protected route with auth context → snapshot DOM → update `app-exploration.md`. Selectors verified now are better than guesses used during test generation.
 
 ### 8. Configure playwright.config.ts
 
@@ -817,8 +813,25 @@ If playwright.config.ts exists → READ first, preserve ALL existing fields, add
 ### 9. Execute tests
 
 ```bash
-openspec-pw run <name> [--project <role>] [--headed] [--update-snapshots]
+openspec-pw run <name> [options]
 ```
+
+**Available options** (from `src/index.ts:55-72`):
+
+| Option | Description |
+| --- | --- |
+| `-p, --project <name>` | Playwright project to run (e.g., user, admin) |
+| `-t, --timeout <seconds>` | Test timeout in seconds (default: 300) |
+| `--json` | Output results as JSON |
+| `-g, --grep <pattern>` | Run only tests matching pattern |
+| `--smoke` | Run only smoke tests (equivalent to `--grep @smoke`) |
+| `-w, --workers <n>` | Number of parallel workers |
+| `--app-bugs <n>` | Number of app bugs (skipped tests) |
+| `--healed <n>` | Number of test bugs healed by Healer |
+| `--raft <n>` | Number of RAFTs detected |
+| `--escalated <n>` | Number of human escalations |
+| `--headed` | Show browser during test run (default: headless) |
+| `--update-snapshots` | Update screenshot baselines before running tests |
 
 The CLI handles: server lifecycle, port mismatch, report generation.
 
@@ -1088,7 +1101,7 @@ Run after test suite completes (even if all pass).
 
 **RAFT detection** (Resource-Affected Flaky Test):
 
-- Full suite: test fails → run isolated: `npx playwright test --grep "<test-name>"` [--project <role>] → if it passes in isolation but fails in suite → **RAFT**
+- If you already ran the suite and a test failed: re-run that test in isolation with `npx playwright test --grep "<test-name>"` [--project <role>] → if it passes in isolation but fails in suite → **RAFT**
 - This is **NOT** a test bug or app bug. Mark as RAFT, add `test.skip()` in suite, note in report
 - RAFTs are infrastructure coupling issues (CPU/memory/I/O contention), not fixable by changing test or app
 
