@@ -1281,7 +1281,7 @@ nav {
   justify-content: center;
   gap: 12px;
   margin-top: 48px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .stack-item {
@@ -1293,7 +1293,9 @@ nav {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
-  min-width: 160px;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 200px;
   transition: border-color 200ms, transform 200ms;
 }
 
@@ -1581,8 +1583,8 @@ footer {
     gap: 8px;
   }
   .stack-item {
-    min-width: 140px;
-    padding: 20px 16px;
+    padding: 20px 12px;
+    max-width: none;
   }
   #features {
     padding: 48px 0;
