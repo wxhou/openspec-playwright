@@ -1,12 +1,14 @@
-import { execSync, exec } from "child_process";
-import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync, statSync, } from "fs";
+import { execFile } from "node:child_process";
+import { createRequire } from "node:module";
 import { join } from "path";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync, statSync, } from "fs";
 import { tmpdir } from "os";
 import { promisify } from "util";
 import chalk from "chalk";
 import * as tar from "tar";
 import { installProjectClaudeMd, hasClaudeCode, installForClaudeCode, } from "./editors.js";
 import { isPlaywrightMcpInstalled, ensurePlaywrightMcp } from "../shared/index.js";
+const execFileAsync = promisify(execFile);
 export async function update(options) {
     console.log(chalk.blue("\n🔄 Updating OpenSpec + Playwright E2E\n"));
     const projectRoot = process.cwd();
@@ -22,15 +24,13 @@ export async function update(options) {
     if (options.cli !== false) {
         console.log(chalk.blue("─── Updating CLI ───"));
         try {
-            execSync("npm install -g openspec-playwright", {
-                stdio: "inherit",
-                cwd: projectRoot,
-            });
+            await execFileAsync("npm", ["install", "-g", "openspec-playwright@latest"], { timeout: 120000, cwd: projectRoot, stdio: "inherit" });
             console.log(chalk.green("  ✓ CLI updated via npm"));
         }
-        catch {
-            console.log(chalk.yellow("  ⚠ Failed to update CLI via npm"));
-            console.log(chalk.gray("  Run manually: npm install -g openspec-playwright"));
+        catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.log(chalk.yellow(`  ⚠ Failed to update CLI via npm: ${msg}`));
+            console.log(chalk.gray("  Run manually: npm install -g openspec-playwright@latest"));
         }
     }
     // 1b. Sync local devDependency if present
@@ -50,15 +50,13 @@ export async function update(options) {
             console.log(chalk.gray("    Node module resolution will use local version, not global CLI."));
             console.log(chalk.gray("    Syncing local devDependency to latest..."));
             try {
-                execSync("npm install -D openspec-playwright@latest", {
-                    stdio: "inherit",
-                    cwd: projectRoot,
-                });
+                await execFileAsync("npm", ["install", "-D", "openspec-playwright@latest"], { timeout: 120000, cwd: projectRoot, stdio: "inherit" });
                 console.log(chalk.green("  ✓ devDependency synced to latest"));
             }
-            catch {
-                console.log(chalk.yellow("  ⚠ Failed to sync devDependency. Run manually:"));
-                console.log(chalk.gray("    npm install -D openspec-playwright@latest\n"));
+            catch (err) {
+                const msg = err instanceof Error ? err.message : String(err);
+                console.log(chalk.yellow(`  ⚠ Failed to sync devDependency: ${msg}`));
+                console.log(chalk.gray("    Run manually: npm install -D openspec-playwright@latest\n"));
             }
         }
     }
@@ -69,8 +67,10 @@ export async function update(options) {
             const tmpDir = join(tmpdir(), "openspec-e2e-update");
             rmSync(tmpDir, { recursive: true, force: true });
             mkdirSync(tmpDir, { recursive: true });
-            const execAsync = promisify(exec);
-            await execAsync(`npm pack openspec-playwright --pack-destination ${tmpDir}`, { timeout: 30000 });
+            // Use execFile (no shell) so Windows paths with spaces (OneDrive,
+            // CJK user names) are passed verbatim instead of being tokenized
+            // by cmd.exe. Also avoids shell injection in the tmpDir path.
+            await execFileAsync("npm", ["pack", "openspec-playwright", "--pack-destination", tmpDir], { timeout: 30000 });
             // Find the latest tarball by mtime
             const tgzFiles = readdirSync(tmpDir)
                 .filter((f) => f.startsWith("openspec-playwright-") && f.endsWith(".tgz"))
@@ -111,15 +111,13 @@ export async function update(options) {
             console.log(chalk.yellow(`  ⚠ Failed to update from npm: ${msg}`));
             console.log(chalk.gray("  Trying npm install to pull latest version..."));
             try {
-                execSync("npm install -g openspec-playwright", {
-                    stdio: "inherit",
-                    cwd: projectRoot,
-                });
+                await execFileAsync("npm", ["install", "-g", "openspec-playwright@latest"], { timeout: 120000, cwd: projectRoot, stdio: "inherit" });
                 console.log(chalk.green("  ✓ Updated via npm install"));
             }
-            catch {
-                console.log(chalk.red("  ✗ Failed to update. Run manually:"));
-                console.log(chalk.gray("    npm install -g openspec-playwright"));
+            catch (err2) {
+                const msg2 = err2 instanceof Error ? err2.message : String(err2);
+                console.log(chalk.red(`  ✗ Failed to update: ${msg2}`));
+                console.log(chalk.gray("    Run manually: npm install -g openspec-playwright@latest"));
             }
         }
     }
@@ -145,14 +143,60 @@ export async function update(options) {
     }
     // Summary
     console.log(chalk.blue("\n─── Summary ───"));
-    console.log(chalk.green("  ✓ Update complete!\n"));
+    console.log(chalk.green("  ✓ Update complete!"));
+    // Self-check: detect when the actually-resolved package version
+    // (by Node module resolution from this CLI script) differs from
+    // the latest published version. The most common cause is a
+    // devDependency in the user's package.json shadowing the global
+    // CLI binary. See Node module resolution rules.
+    await checkVersionShadow();
     if (existsSync(join(projectRoot, ".claude"))) {
-        console.log(chalk.bold("Restart Claude Code to use the updated commands."));
+        console.log(chalk.bold("\nRestart Claude Code to use the updated commands."));
     }
     else {
-        console.log(chalk.bold("Restart your AI coding assistant to use the updated commands."));
+        console.log(chalk.bold("\nRestart your AI coding assistant to use the updated commands."));
         console.log(chalk.gray("  Then run openspec-pw run <change-name> to verify.\n"));
     }
+}
+/**
+ * Self-check: print warning if Node module resolution is loading
+ * a different `openspec-playwright` version than the one just
+ * installed. The most common cause is a devDependency in the
+ * current project's package.json shadowing the global CLI binary
+ * (Node module resolution prefers local node_modules over global).
+ */
+async function checkVersionShadow() {
+    let resolvedVersion;
+    let resolvedPath;
+    try {
+        const require = createRequire(import.meta.url);
+        const pkgPath = require.resolve("openspec-playwright/package.json");
+        resolvedPath = pkgPath;
+        const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
+        resolvedVersion = pkg.version;
+    }
+    catch {
+        // openspec-playwright not in module path — nothing to check
+        return;
+    }
+    if (!resolvedVersion)
+        return;
+    let publishedVersion;
+    try {
+        const { stdout } = await execFileAsync("npm", ["view", "openspec-playwright", "version"], { timeout: 30000 });
+        publishedVersion = stdout.trim();
+    }
+    catch {
+        // offline / npm registry unavailable — skip silently
+        return;
+    }
+    if (!publishedVersion || resolvedVersion === publishedVersion)
+        return;
+    console.log(chalk.yellow(`\n  ⚠ Version mismatch: loaded ${resolvedVersion}, latest ${publishedVersion}`));
+    console.log(chalk.gray(`    This update script resolved from: ${resolvedPath.replace(/[\\/]package\.json$/, "")}`));
+    console.log(chalk.gray("    A devDependency in this project's package.json is shadowing the global CLI binary."));
+    console.log(chalk.gray("    Fix: upgrade or remove it with: npm uninstall openspec-playwright"));
+    console.log(chalk.gray("         then re-run: openspec-pw update (or: npm install -D openspec-playwright@latest)"));
 }
 // Sync project-level templates
 function syncProjectTemplates(tmpDir, projectRoot) {
