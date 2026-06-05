@@ -1,4 +1,4 @@
-import { execSync } from "child_process";
+import { execFileSync, execSync } from "child_process";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
 import { fileURLToPath } from "url";
@@ -16,7 +16,16 @@ export async function init(options) {
     console.log(chalk.blue("─── Prerequisites ───"));
     const hasNode = execCmd("node --version", "Node.js", true);
     const hasNpm = execCmd("npm --version", "npm", true);
-    execCmd('npx openspec --version 2>/dev/null || echo "not found"', "OpenSpec", true);
+    // Use execFile (no shell) so Windows paths in tmp dirs / node modules
+    // are passed verbatim and `2>/dev/null` / `||` bash-isms don't reach cmd.exe.
+    // Equivalent of: `npx openspec --version || echo "not found"`
+    try {
+        execFileSync("npx", ["openspec", "--version"], { encoding: "utf-8", stdio: "pipe" });
+        console.log(chalk.green("  ✓ OpenSpec found"));
+    }
+    catch {
+        console.log(chalk.gray("  - OpenSpec not found (run: npm install -g @fission-ai/openspec@latest)"));
+    }
     if (!hasNode || !hasNpm) {
         console.log(chalk.red("  ✗ Node.js/npm is required"));
         process.exit(1);
@@ -25,7 +34,7 @@ export async function init(options) {
     // 2. Check OpenSpec
     if (!existsSync(join(projectRoot, "openspec"))) {
         console.log(chalk.yellow("\n⚠ OpenSpec not initialized. Run these commands first:"));
-        console.log(chalk.gray("  npm install -g @fission-ai/openspec"));
+        console.log(chalk.gray("  npm install -g @fission-ai/openspec@latest"));
         console.log(chalk.gray("  openspec init"));
         console.log(chalk.gray("  openspec config profile core"));
         console.log(chalk.gray("  openspec update\n"));
