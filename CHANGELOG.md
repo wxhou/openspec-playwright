@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `src/commands/update.ts`: cross-platform `update` command fixes for Windows + devDep-shadow scenarios. Three issues were stacked:
+
+  1. `npm pack --pack-destination ${tmpDir}` used shell string interpolation. On Windows with paths containing spaces (OneDrive, CJK user names), cmd.exe tokenized the path incorrectly. Replaced with `execFile("npm", ["pack", "openspec-playwright", "--pack-destination", tmpDir])` so the path is passed verbatim.
+  2. `npm install -g` and `npm install -D` calls used `execSync` with a shell string. Migrated to `execFile` with arg arrays for the same reason.
+  3. Three `catch {}` blocks silently dropped `err` so users saw only "Failed to update" with no clue why. Now every catch binds `err` and prints `err.message` so the actual npm stderr reaches the user.
+
+  Also added a `checkVersionShadow` self-check that runs at the end of `update()`. It compares the package version Node actually loaded (via `createRequire(import.meta.url).resolve("openspec-playwright/package.json")`) against the latest published version. If they differ — most commonly because a `devDependencies` entry in the user's `package.json` is shadowing the global CLI binary (Node module resolution prefers local `node_modules` over global) — it prints a clear warning with the resolved path and the fix (`npm uninstall openspec-playwright` then re-run update, or `npm install -D openspec-playwright@latest`).
+
 ### Changed
 
 - `openspec-pw init`: removed the `--no-seed` option. The default behavior (skip seed generation if `tests/playwright/seed.spec.ts` already exists) already covers the use case. To refresh a stale seed, run `openspec-pw init --seed`; to skip seed entirely, delete the existing `seed.spec.ts` and re-run `init`. Two remaining options: `--seed` (force overwrite) and the implicit "skip if exists" default. ⚠️ Minor breaking change — any script passing `--no-seed` will see "unknown option" and fail.

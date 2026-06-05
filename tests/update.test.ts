@@ -186,3 +186,51 @@ users:
     expect(apiMatch![1].includes("CHANGE_ME")).toBe(true);
   });
 });
+
+// ─── execFile migration ────────────────────────────────────────────────────
+// Verifies the npm/install and npm/pack calls in update.ts use execFile
+// (no shell) and accept the exact same args used at runtime.
+
+describe("update.ts: npm spawn calls (execFile, no shell)", () => {
+  it("calls npm with install -g openspec-playwright@latest (not a shell string)", async () => {
+    // Read the source and confirm: no execSync string interpolation,
+    // execFile used with explicit args array.
+    const src = readFileSync(
+      new URL("../src/commands/update.ts", import.meta.url).pathname,
+      "utf-8",
+    );
+
+    // No `execSync("npm install -g ...` strings remain
+    expect(src).not.toMatch(/execSync\(\s*["']npm install -g openspec/);
+    // No `execAsync(` / `promisify(exec)` for npm commands
+    expect(src).not.toMatch(/promisify\(exec\)/);
+    // execFile is used for npm (allow any whitespace/newlines)
+    expect(src).toMatch(/execFileAsync\s*\(\s*"npm"/);
+  });
+
+  it("npm pack uses args array (safe for Windows paths with spaces)", async () => {
+    const src = readFileSync(
+      new URL("../src/commands/update.ts", import.meta.url).pathname,
+      "utf-8",
+    );
+    // The old form: `npm pack openspec-playwright --pack-destination ${tmpDir}`
+    expect(src).not.toMatch(/npm pack openspec-playwright --pack-destination \$\{/);
+    // The new form: execFile with arg array
+    expect(src).toMatch(/\["pack",\s*"openspec-playwright",\s*"--pack-destination",\s*tmpDir\]/);
+  });
+
+  it("catch blocks print err.message so users see real errors", async () => {
+    const src = readFileSync(
+      new URL("../src/commands/update.ts", import.meta.url).pathname,
+      "utf-8",
+    );
+    // New form: `catch (err)` that uses err.message
+    const errCatches = (
+      src.match(/catch\s*\(\s*err[^)]*\)\s*\{[\s\S]{0,200}err\.message/g) || []
+    ).length;
+
+    // At least 3 err.message uses (one per npm call site: cli update,
+    // devDep sync, retry install).
+    expect(errCatches).toBeGreaterThanOrEqual(3);
+  });
+});
