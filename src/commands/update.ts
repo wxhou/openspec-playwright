@@ -41,6 +41,11 @@ const execFileAsync = promisify(execFile) as (
   options?: ExecFileOpts,
 ) => Promise<{ stdout: string; stderr: string }>;
 
+// Get npm command - use npm.cmd on Windows, npm on Unix
+function getNpmCommand(): string {
+  return process.platform === "win32" ? "npm.cmd" : "npm";
+}
+
 export interface UpdateOptions {
   cli?: boolean;
   skill?: boolean;
@@ -70,7 +75,7 @@ export async function update(options: UpdateOptions) {
     console.log(chalk.blue("─── Updating CLI ───"));
     try {
       await execFileAsync(
-        "npm",
+        getNpmCommand(),
         ["install", "-g", "openspec-playwright@latest"],
         { timeout: 120000, cwd: projectRoot, stdio: "inherit" },
       );
@@ -113,7 +118,7 @@ export async function update(options: UpdateOptions) {
       );
       try {
         await execFileAsync(
-          "npm",
+          getNpmCommand(),
           ["install", "-D", "openspec-playwright@latest"],
           { timeout: 120000, cwd: projectRoot, stdio: "inherit" },
         );
@@ -142,7 +147,7 @@ export async function update(options: UpdateOptions) {
       // CJK user names) are passed verbatim instead of being tokenized
       // by cmd.exe. Also avoids shell injection in the tmpDir path.
       await execFileAsync(
-        "npm",
+        getNpmCommand(),
         ["pack", "openspec-playwright", "--pack-destination", tmpDir],
         { timeout: 30000 },
       );
@@ -193,7 +198,7 @@ export async function update(options: UpdateOptions) {
       console.log(chalk.gray("  Trying npm install to pull latest version..."));
       try {
         await execFileAsync(
-          "npm",
+          getNpmCommand(),
           ["install", "-g", "openspec-playwright@latest"],
           { timeout: 120000, cwd: projectRoot, stdio: "inherit" },
         );
@@ -283,7 +288,7 @@ async function checkVersionShadow(): Promise<void> {
   let publishedVersion: string | undefined;
   try {
     const { stdout } = await execFileAsync(
-      "npm",
+      getNpmCommand(),
       ["view", "openspec-playwright", "version"],
       { timeout: 30000 },
     );
@@ -458,4 +463,3 @@ export function syncCredentials(tmpDir: string, projectRoot: string) {
     chalk.green("  ✓ Updated: tests/playwright/credentials.yaml (preserved user data)"),
   );
 }
-
