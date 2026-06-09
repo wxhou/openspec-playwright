@@ -2,7 +2,7 @@ import { existsSync } from "fs";
 import { join } from "path";
 import { execFileSync, execSync } from "child_process";
 import chalk from "chalk";
-import { isPlaywrightMcpInstalled } from "../shared/index.js";
+import { isPlaywrightMcpInstalled, cmd } from "../shared/index.js";
 export async function doctor(options = {}) {
     const checks = [];
     const projectRoot = process.cwd();
@@ -52,7 +52,7 @@ export async function doctor(options = {}) {
     });
     // Playwright browsers
     try {
-        const pw = execFileSync("npx", ["playwright", "--version"], {
+        const pw = execFileSync(cmd("npx"), ["playwright", "--version"], {
             encoding: "utf-8",
         }).trim();
         checks.push({

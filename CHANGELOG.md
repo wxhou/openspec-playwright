@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Windows: `spawn npm ENOENT` in `update`, `init`, `doctor`, `audit`, `run`, `mcp` commands.** On Windows, `npm`/`npx`/`claude` are `.cmd` batch files — not bare executables. Node's `execFile()` (without `shell: true`) only looks for exact executable names and fails because there is no `npm` binary, only `npm.cmd`. Added a cross-platform `cmd()` helper in `src/shared/platform.ts` that appends `.cmd` on Windows (`process.platform === "win32"`), and replaced all 12 `execFile`/`execFileSync` calls across 6 files to use it.
+
+
+### Fixed
+
 - `src/commands/update.ts`: cross-platform `update` command fixes for Windows + devDep-shadow scenarios. Three issues were stacked:
 
   1. `npm pack --pack-destination ${tmpDir}` used shell string interpolation. On Windows with paths containing spaces (OneDrive, CJK user names), cmd.exe tokenized the path incorrectly. Replaced with `execFile("npm", ["pack", "openspec-playwright", "--pack-destination", tmpDir])` so the path is passed verbatim.

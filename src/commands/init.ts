@@ -10,7 +10,7 @@ import {
   installProjectClaudeMd,
   readEmployeeStandards,
 } from "./editors.js";
-import { isPlaywrightMcpInstalled, ensurePlaywrightMcp } from "../shared/index.js";
+import { isPlaywrightMcpInstalled, ensurePlaywrightMcp, cmd } from "../shared/index.js";
 
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
 const E2E_COMMAND_SRC = fileURLToPath(
@@ -40,7 +40,7 @@ export async function init(options: InitOptions) {
   // are passed verbatim and `2>/dev/null` / `||` bash-isms don't reach cmd.exe.
   // Equivalent of: `npx openspec --version || echo "not found"`
   try {
-    execFileSync("npx", ["openspec", "--version"], { encoding: "utf-8", stdio: "pipe" });
+    execFileSync(cmd("npx"), ["openspec", "--version"], { encoding: "utf-8", stdio: "pipe" });
     console.log(chalk.green("  ✓ OpenSpec found"));
   } catch {
     console.log(chalk.gray("  - OpenSpec not found (run: npm install -g @fission-ai/openspec@latest)"));

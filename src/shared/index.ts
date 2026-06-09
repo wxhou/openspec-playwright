@@ -4,3 +4,4 @@ export {
   ensurePlaywrightMcp,
   removePlaywrightMcp,
 } from "./mcp.js";
+export { cmd } from "./platform.js";

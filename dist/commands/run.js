@@ -2,6 +2,7 @@ import { execFileSync } from "child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import chalk from "chalk";
+import { cmd } from "../shared/index.js";
 const REPORTS_DIR = "openspec/reports";
 export async function run(changeName, options) {
     console.log(chalk.blue(`\n🔍 OpenSpec Playwright E2E: ${changeName}\n`));
@@ -38,7 +39,8 @@ export async function run(changeName, options) {
     const testResultsDir = join(projectRoot, "test-results");
     const jsonReportPath = join(testResultsDir, "results.json");
     const args = [
-        "npx", "playwright", "test", testFile,
+        cmd("npx"),
+        "playwright", "test", testFile,
         "--reporter=json",
         "--output=" + testResultsDir,
     ];

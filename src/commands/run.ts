@@ -2,6 +2,7 @@ import { execFileSync } from "child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import chalk from "chalk";
+import { cmd } from "../shared/index.js";
 
 export interface RunOptions {
   project?: string;
@@ -81,7 +82,8 @@ export async function run(changeName: string, options: RunOptions) {
   const jsonReportPath = join(testResultsDir, "results.json");
 
   const args = [
-    "npx", "playwright", "test", testFile,
+    cmd("npx"),
+"playwright", "test", testFile,
     "--reporter=json",
     "--output=" + testResultsDir,
   ];

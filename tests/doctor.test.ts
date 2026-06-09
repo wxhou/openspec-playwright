@@ -139,7 +139,7 @@ describe("doctor check logic", () => {
 // Guards the Windows-safe form of `npx playwright --version`.
 
 describe("doctor.ts: npx detection uses execFile (no shell)", () => {
-  it("uses execFileSync with arg array, not a shell string", async () => {
+  it("uses execFileSync with cmd() for cross-platform support", async () => {
     const { readFileSync } = await import("fs");
     const { fileURLToPath } = await import("url");
     const { join } = await import("path");
@@ -152,7 +152,7 @@ describe("doctor.ts: npx detection uses execFile (no shell)", () => {
     );
     // Old form: `npx playwright --version` as shell string
     expect(src).not.toMatch(/execSync\([^)]*"npx playwright --version"/);
-    // New form: execFile with arg array
-    expect(src).toMatch(/execFileSync\([^)]*"npx"[^)]*\["playwright",\s*"--version"\]/);
+    // Windows-safe form: execFileSync(cmd("npx"), ["playwright", "--version"])
+    expect(src).toMatch(/execFileSync\(cmd\("npx"\),\s*\["playwright",\s*"--version"\]/);
   });
 });

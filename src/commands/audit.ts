@@ -6,7 +6,7 @@ import {
 } from "fs";
 import { join } from "path";
 import chalk from "chalk";
-import { SHARED_FILE_NAMES, TIMEOUT } from "../shared/index.js";
+import { SHARED_FILE_NAMES, TIMEOUT, cmd } from "../shared/index.js";
 
 interface AuditResult {
   fileName: string;
@@ -198,7 +198,7 @@ async function getSitemapRoutes(): Promise<string[] | null> {
 
 async function getChangeNames(projectRoot: string): Promise<string[]> {
   try {
-    const result = execFileSync("npx", ["openspec", "list", "--json"], {
+    const result = execFileSync(cmd("npx"), ["openspec", "list", "--json"], {
       cwd: projectRoot,
       encoding: "utf-8",
       timeout: TIMEOUT.OPENSPEC_LIST,
