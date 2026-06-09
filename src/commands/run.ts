@@ -2,7 +2,7 @@ import { execFileSync } from "child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import chalk from "chalk";
-import { cmd } from "../shared/index.js";
+import { needsShell } from "../shared/index.js";
 
 export interface RunOptions {
   project?: string;
@@ -82,7 +82,7 @@ export async function run(changeName: string, options: RunOptions) {
   const jsonReportPath = join(testResultsDir, "results.json");
 
   const args = [
-    cmd("npx"),
+    "npx",
 "playwright", "test", testFile,
     "--reporter=json",
     "--output=" + testResultsDir,
@@ -117,7 +117,7 @@ export async function run(changeName: string, options: RunOptions) {
   let testOutput = "";
 
   try {
-    const result = execFileSync(args[0], args.slice(1), {
+    const result = execFileSync(args[0], args.slice(1), { shell: needsShell,
       cwd: projectRoot,
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],

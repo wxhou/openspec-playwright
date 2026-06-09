@@ -25,6 +25,7 @@ describe("isPlaywrightMcpInstalled", () => {
       encoding: "utf-8",
       timeout: 10000,
       stdio: ["pipe", "pipe", "pipe"],
+      shell: false,
     });
   });
 

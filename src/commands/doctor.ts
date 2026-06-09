@@ -2,7 +2,7 @@ import { existsSync } from "fs";
 import { join } from "path";
 import { execFileSync, execSync } from "child_process";
 import chalk from "chalk";
-import { isPlaywrightMcpInstalled, cmd } from "../shared/index.js";
+import { isPlaywrightMcpInstalled, needsShell } from "../shared/index.js";
 
 export interface DoctorOptions {
   json?: boolean;
@@ -65,7 +65,7 @@ export async function doctor(options: DoctorOptions = {}) {
 
   // Playwright browsers
   try {
-    const pw = execFileSync(cmd("npx"), ["playwright", "--version"], {
+    const pw = execFileSync("npx", ["playwright", "--version"], { shell: needsShell,
       encoding: "utf-8",
     }).trim();
     checks.push({

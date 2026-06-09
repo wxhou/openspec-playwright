@@ -4,7 +4,7 @@
  */
 import { execFileSync } from "node:child_process";
 import { TIMEOUT } from "./constants.js";
-import { cmd } from "./platform.js";
+import { needsShell } from "./platform.js";
 
 /**
  * Check if Playwright MCP server is installed in Claude Code.
@@ -12,10 +12,11 @@ import { cmd } from "./platform.js";
  */
 export function isPlaywrightMcpInstalled(): boolean {
   try {
-    const output = execFileSync(cmd("claude"), ["mcp", "list"], {
+    const output = execFileSync("claude", ["mcp", "list"], {
       encoding: "utf-8",
       timeout: TIMEOUT.MCP_LIST,
       stdio: ["pipe", "pipe", "pipe"],
+      shell: needsShell,
     });
     return output.includes("playwright");
   } catch {
@@ -36,12 +37,13 @@ export function ensurePlaywrightMcp(): void {
 
   try {
     execFileSync(
-      cmd("claude"),
+      "claude",
       ["mcp", "add", "playwright", "npx", "@playwright/mcp@latest"],
       {
         encoding: "utf-8",
         timeout: TIMEOUT.MCP_LIST,
         stdio: ["pipe", "pipe", "pipe"],
+        shell: needsShell,
       }
     );
     console.log("  ✓ Playwright MCP installed globally");
@@ -63,10 +65,11 @@ export function removePlaywrightMcp(): void {
   }
 
   try {
-    execFileSync(cmd("claude"), ["mcp", "remove", "playwright"], {
+    execFileSync("claude", ["mcp", "remove", "playwright"], {
       encoding: "utf-8",
       timeout: TIMEOUT.MCP_LIST,
       stdio: ["pipe", "pipe", "pipe"],
+      shell: needsShell,
     });
     console.log("  ✓ Playwright MCP removed");
   } catch {

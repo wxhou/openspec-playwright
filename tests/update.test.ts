@@ -204,8 +204,11 @@ describe("update.ts: npm spawn calls (execFile, no shell)", () => {
     expect(src).not.toMatch(/execSync\(\s*["']npm install -g openspec/);
     // No `execAsync(` / `promisify(exec)` for npm commands
     expect(src).not.toMatch(/promisify\(exec\)/);
-    // Windows-safe form: execFileAsync(cmd("npm"), ...)
-    expect(src).toMatch(/execFileAsync\s*\(\s*cmd\("npm"\)/);
+    // Windows-safe form: execFileAsync("npm", ..., { shell: needsShell })
+    expect(src).toMatch(/execFileAsync\s*\(\s*"npm"/);
+    // Every npm call includes shell: needsShell for Windows
+    const npmCallsWithShell = (src.match(/execFileAsync\s*\(\s*"npm"[\s\S]{0,300}shell: needsShell/g) || []).length;
+    expect(npmCallsWithShell).toBeGreaterThanOrEqual(3);
   });
 
   it("npm pack uses args array (safe for Windows paths with spaces)", async () => {

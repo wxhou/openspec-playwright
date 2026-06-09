@@ -1,14 +1,12 @@
 /**
- * Cross-platform command resolution.
+ * Cross-platform command execution helpers.
  *
- * On Windows, `npm`, `npx`, and similar tools are `.cmd` batch files —
- * not bare executables.  Node's `execFile` (without `shell: true`) won't
- * find them without the `.cmd` extension, resulting in `ENOENT` errors.
+ * On Windows, `npm`, `npx`, and `claude` are `.cmd` batch files.
+ * Node's `execFile` needs `shell: true` to find and execute them.
  *
- * Usage:
- *   execFile(cmd("npm"), ["install", ...], opts)
- *   execFile(cmd("npx"), ["playwright", ...], opts)
+ * `shell: true` is safe here because arguments are passed as arrays
+ * (Node properly quotes them), not as interpolated shell strings.
  */
-export function cmd(name: string): string {
-  return process.platform === "win32" ? `${name}.cmd` : name;
-}
+
+/** Whether to set `shell: true` for `execFile` calls (required on Windows). */
+export const needsShell = process.platform === "win32";

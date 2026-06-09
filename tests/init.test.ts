@@ -147,6 +147,6 @@ describe("init.ts: npx detection uses execFile (no shell)", () => {
     // Old form: `npx openspec --version 2>/dev/null || echo "not found"`
     expect(src).not.toMatch(/npx openspec --version 2>\/dev\/null \|\| echo/);
     // Windows-safe form: execFileSync(cmd("npx"), ["openspec", "--version"])
-    expect(src).toMatch(/execFileSync\(cmd\("npx"\),\s*\["openspec",\s*"--version"\]/);
+    expect(src).toMatch(/execFileSync\("npx",\s*\["openspec",\s*"--version"\],\s*\{[^}]*shell: needsShell/);
   });
 });

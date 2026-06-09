@@ -20,7 +20,7 @@ import {
   hasClaudeCode,
   installForClaudeCode,
 } from "./editors.js";
-import { isPlaywrightMcpInstalled, ensurePlaywrightMcp, cmd } from "../shared/index.js";
+import { isPlaywrightMcpInstalled, ensurePlaywrightMcp, needsShell } from "../shared/index.js";
 
 // `execFile` accepts stdio at runtime but the @types/node interface
 // doesn't expose it (the field lives on CommonSpawnOptions, which
@@ -70,9 +70,9 @@ export async function update(options: UpdateOptions) {
     console.log(chalk.blue("─── Updating CLI ───"));
     try {
       await execFileAsync(
-        cmd("npm"),
+        "npm",
         ["install", "-g", "openspec-playwright@latest"],
-        { timeout: 120000, cwd: projectRoot, stdio: "inherit" },
+        { timeout: 120000, cwd: projectRoot, stdio: "inherit", shell: needsShell },
       );
       console.log(chalk.green("  ✓ CLI updated via npm"));
     } catch (err) {
@@ -113,9 +113,9 @@ export async function update(options: UpdateOptions) {
       );
       try {
         await execFileAsync(
-          cmd("npm"),
+          "npm",
           ["install", "-D", "openspec-playwright@latest"],
-          { timeout: 120000, cwd: projectRoot, stdio: "inherit" },
+          { timeout: 120000, cwd: projectRoot, stdio: "inherit", shell: needsShell },
         );
         console.log(chalk.green("  ✓ devDependency synced to latest"));
       } catch (err) {
@@ -138,13 +138,13 @@ export async function update(options: UpdateOptions) {
       rmSync(tmpDir, { recursive: true, force: true });
       mkdirSync(tmpDir, { recursive: true });
 
-      // Use execFile (no shell) so Windows paths with spaces (OneDrive,
-      // CJK user names) are passed verbatim instead of being tokenized
-      // by cmd.exe. Also avoids shell injection in the tmpDir path.
+      // execFile with args array is safe with shell: true — Node quotes
+      // each argument, so paths with spaces (OneDrive, CJK user names)
+      // are passed verbatim to the shell.
       await execFileAsync(
-        cmd("npm"),
+        "npm",
         ["pack", "openspec-playwright", "--pack-destination", tmpDir],
-        { timeout: 30000 },
+        { timeout: 30000, shell: needsShell },
       );
 
       // Find the latest tarball by mtime
@@ -193,9 +193,9 @@ export async function update(options: UpdateOptions) {
       console.log(chalk.gray("  Trying npm install to pull latest version..."));
       try {
         await execFileAsync(
-          cmd("npm"),
+          "npm",
           ["install", "-g", "openspec-playwright@latest"],
-          { timeout: 120000, cwd: projectRoot, stdio: "inherit" },
+          { timeout: 120000, cwd: projectRoot, stdio: "inherit", shell: needsShell },
         );
         console.log(chalk.green("  ✓ Updated via npm install"));
       } catch (err2) {
@@ -283,9 +283,9 @@ async function checkVersionShadow(): Promise<void> {
   let publishedVersion: string | undefined;
   try {
     const { stdout } = await execFileAsync(
-      cmd("npm"),
+      "npm",
       ["view", "openspec-playwright", "version"],
-      { timeout: 30000 },
+      { timeout: 30000, shell: needsShell },
     );
     publishedVersion = stdout.trim();
   } catch {

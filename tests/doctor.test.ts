@@ -153,6 +153,6 @@ describe("doctor.ts: npx detection uses execFile (no shell)", () => {
     // Old form: `npx playwright --version` as shell string
     expect(src).not.toMatch(/execSync\([^)]*"npx playwright --version"/);
     // Windows-safe form: execFileSync(cmd("npx"), ["playwright", "--version"])
-    expect(src).toMatch(/execFileSync\(cmd\("npx"\),\s*\["playwright",\s*"--version"\]/);
+    expect(src).toMatch(/execFileSync\("npx",\s*\["playwright",\s*"--version"\],\s*\{[^}]*shell: needsShell/);
   });
 });

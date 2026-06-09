@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { readFile } from "fs/promises";
 import { hasClaudeCode, installForClaudeCode, installProjectClaudeMd, readEmployeeStandards, } from "./editors.js";
-import { isPlaywrightMcpInstalled, ensurePlaywrightMcp, cmd } from "../shared/index.js";
+import { isPlaywrightMcpInstalled, ensurePlaywrightMcp, needsShell } from "../shared/index.js";
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
 const E2E_COMMAND_SRC = fileURLToPath(new URL("../../templates/e2e-command.md", import.meta.url));
 const EMPLOYEE_STANDARDS_SRC = fileURLToPath(new URL("../../employee-standards.md", import.meta.url));
@@ -20,7 +20,7 @@ export async function init(options) {
     // are passed verbatim and `2>/dev/null` / `||` bash-isms don't reach cmd.exe.
     // Equivalent of: `npx openspec --version || echo "not found"`
     try {
-        execFileSync(cmd("npx"), ["openspec", "--version"], { encoding: "utf-8", stdio: "pipe" });
+        execFileSync("npx", ["openspec", "--version"], { encoding: "utf-8", stdio: "pipe", shell: needsShell });
         console.log(chalk.green("  ✓ OpenSpec found"));
     }
     catch {

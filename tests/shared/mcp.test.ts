@@ -24,6 +24,7 @@ describe("isPlaywrightMcpInstalled", () => {
       encoding: "utf-8",
       timeout: 10000,
       stdio: ["pipe", "pipe", "pipe"],
+      shell: false,
     });
   });
 
@@ -71,6 +72,7 @@ describe("ensurePlaywrightMcp", () => {
         encoding: "utf-8",
         timeout: 10000,
         stdio: ["pipe", "pipe", "pipe"],
+        shell: false,
       }
     );
     expect(consoleSpy).toHaveBeenCalledWith("  ✓ Playwright MCP installed globally");
@@ -105,6 +107,7 @@ describe("removePlaywrightMcp", () => {
       encoding: "utf-8",
       timeout: 10000,
       stdio: ["pipe", "pipe", "pipe"],
+      shell: false,
     });
     expect(consoleSpy).toHaveBeenCalledWith("  ✓ Playwright MCP removed");
     consoleSpy.mockRestore();

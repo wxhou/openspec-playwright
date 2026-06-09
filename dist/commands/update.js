@@ -7,7 +7,7 @@ import { promisify } from "util";
 import chalk from "chalk";
 import * as tar from "tar";
 import { installProjectClaudeMd, hasClaudeCode, installForClaudeCode, } from "./editors.js";
-import { isPlaywrightMcpInstalled, ensurePlaywrightMcp, cmd } from "../shared/index.js";
+import { isPlaywrightMcpInstalled, ensurePlaywrightMcp, needsShell } from "../shared/index.js";
 const execFileAsync = promisify(execFile);
 export async function update(options) {
     console.log(chalk.blue("\n🔄 Updating OpenSpec + Playwright E2E\n"));
@@ -24,7 +24,7 @@ export async function update(options) {
     if (options.cli !== false) {
         console.log(chalk.blue("─── Updating CLI ───"));
         try {
-            await execFileAsync(cmd("npm"), ["install", "-g", "openspec-playwright@latest"], { timeout: 120000, cwd: projectRoot, stdio: "inherit" });
+            await execFileAsync("npm", ["install", "-g", "openspec-playwright@latest"], { timeout: 120000, cwd: projectRoot, stdio: "inherit", shell: needsShell });
             console.log(chalk.green("  ✓ CLI updated via npm"));
         }
         catch (err) {
@@ -50,7 +50,7 @@ export async function update(options) {
             console.log(chalk.gray("    Node module resolution will use local version, not global CLI."));
             console.log(chalk.gray("    Syncing local devDependency to latest..."));
             try {
-                await execFileAsync(cmd("npm"), ["install", "-D", "openspec-playwright@latest"], { timeout: 120000, cwd: projectRoot, stdio: "inherit" });
+                await execFileAsync("npm", ["install", "-D", "openspec-playwright@latest"], { timeout: 120000, cwd: projectRoot, stdio: "inherit", shell: needsShell });
                 console.log(chalk.green("  ✓ devDependency synced to latest"));
             }
             catch (err) {
@@ -67,10 +67,10 @@ export async function update(options) {
             const tmpDir = join(tmpdir(), "openspec-e2e-update");
             rmSync(tmpDir, { recursive: true, force: true });
             mkdirSync(tmpDir, { recursive: true });
-            // Use execFile (no shell) so Windows paths with spaces (OneDrive,
-            // CJK user names) are passed verbatim instead of being tokenized
-            // by cmd.exe. Also avoids shell injection in the tmpDir path.
-            await execFileAsync(cmd("npm"), ["pack", "openspec-playwright", "--pack-destination", tmpDir], { timeout: 30000 });
+            // execFile with args array is safe with shell: true — Node quotes
+            // each argument, so paths with spaces (OneDrive, CJK user names)
+            // are passed verbatim to the shell.
+            await execFileAsync("npm", ["pack", "openspec-playwright", "--pack-destination", tmpDir], { timeout: 30000, shell: needsShell });
             // Find the latest tarball by mtime
             const tgzFiles = readdirSync(tmpDir)
                 .filter((f) => f.startsWith("openspec-playwright-") && f.endsWith(".tgz"))
@@ -111,7 +111,7 @@ export async function update(options) {
             console.log(chalk.yellow(`  ⚠ Failed to update from npm: ${msg}`));
             console.log(chalk.gray("  Trying npm install to pull latest version..."));
             try {
-                await execFileAsync(cmd("npm"), ["install", "-g", "openspec-playwright@latest"], { timeout: 120000, cwd: projectRoot, stdio: "inherit" });
+                await execFileAsync("npm", ["install", "-g", "openspec-playwright@latest"], { timeout: 120000, cwd: projectRoot, stdio: "inherit", shell: needsShell });
                 console.log(chalk.green("  ✓ Updated via npm install"));
             }
             catch (err2) {
@@ -183,7 +183,7 @@ async function checkVersionShadow() {
         return;
     let publishedVersion;
     try {
-        const { stdout } = await execFileAsync(cmd("npm"), ["view", "openspec-playwright", "version"], { timeout: 30000 });
+        const { stdout } = await execFileAsync("npm", ["view", "openspec-playwright", "version"], { timeout: 30000, shell: needsShell });
         publishedVersion = stdout.trim();
     }
     catch {
