@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Windows: `spawn npm ENOENT` in `update`, `init`, `doctor`, `audit`, `run`, `mcp` commands.** On Windows, `npm`/`npx`/`claude` are `.cmd` batch files — not bare executables. Node's `execFile()` (without `shell: true`) only looks for exact executable names and fails because there is no `npm` binary, only `npm.cmd`. Added a cross-platform `cmd()` helper in `src/shared/platform.ts` that appends `.cmd` on Windows (`process.platform === "win32"`), and replaced all 12 `execFile`/`execFileSync` calls across 6 files to use it.
+- **Windows: `spawn npm ENOENT` in `update`, `init`, `doctor`, `audit`, `run`, `mcp` commands.** On Windows, `npm`/`npx`/`claude` are `.cmd` batch files — not bare executables. Node's `execFile()` (without `shell: true`) only looks for exact executable names and fails because there is no `npm` binary, only `npm.cmd`. Added `needsShell` constant in `src/shared/platform.ts` (`true` on `win32`) and added `shell: needsShell` to all 12 `execFile`/`execFileSync` calls across 6 files. v0.3.33 attempted a `.cmd` suffix approach which caused `EINVAL`; `shell: true` is the correct fix because Node properly quotes args-array items, keeping paths with spaces safe.
 
 
 ### Fixed
