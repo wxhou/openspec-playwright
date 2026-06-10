@@ -16,6 +16,7 @@ import { migrate } from "./commands/migrate.js";
 import { uninstall } from "./commands/uninstall.js";
 import { audit } from "./commands/audit.js";
 import { explore } from "./commands/explore.js";
+import { checkForUpdate } from "./shared/version-check.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -37,20 +38,29 @@ program
   .option("-c, --change <name>", "default change name", "default")
   .option("--no-mcp", "skip Playwright MCP configuration")
   .option("--seed", "force regenerate seed.spec.ts (overwrite if exists)")
-  .action(init);
+  .action(async (opts) => {
+    await init(opts);
+    await checkForUpdate(pkg.version);
+  });
 
 program
   .command("doctor")
   .description("Check if all prerequisites are installed")
   .option("--json", "Output results as JSON")
-  .action(doctor);
+  .action(async (opts) => {
+    await doctor(opts);
+    await checkForUpdate(pkg.version);
+  });
 
 program
   .command("update")
   .description("Update the CLI tool and commands to the latest version")
   .option("--no-cli", "skip CLI update")
   .option("--no-skill", "skip command update")
-  .action(update);
+  .action(async (opts) => {
+    await update(opts);
+    // No version check needed after update — user just updated
+  });
 
 program
   .command("run <change-name>")
@@ -70,7 +80,10 @@ program
   .option("--escalated <n>", "Number of human escalations", (v) => parseInt(v, 10), undefined)
   .option("--headed", "Show browser during test run (default: headless)")
   .option("--update-snapshots", "Update screenshot baselines before running tests")
-  .action(run);
+  .action(async (changeName, opts) => {
+    await run(changeName, opts);
+    await checkForUpdate(pkg.version);
+  });
 
 program
   .command("migrate")
@@ -82,19 +95,28 @@ program
     "Show what would be migrated without moving files",
   )
   .option("-f, --force", "Overwrite existing files at the new location")
-  .action(migrate);
+  .action(async (opts) => {
+    await migrate(opts);
+    await checkForUpdate(pkg.version);
+  });
 
 program
   .command("uninstall")
   .description(
     "Remove OpenSpec + Playwright E2E integration from the current project",
   )
-  .action(uninstall);
+  .action(async () => {
+    await uninstall();
+    await checkForUpdate(pkg.version);
+  });
 
 program
   .command("audit")
   .description("Audit test files for orphaned specs, missing auth, sitemap issues")
-  .action(audit);
+  .action(async () => {
+    await audit();
+    await checkForUpdate(pkg.version);
+  });
 
 program
   .command("explore")
@@ -111,6 +133,7 @@ program
   )
   .action(async (opts) => {
     await explore(opts);
+    await checkForUpdate(pkg.version);
   });
 
 program.parse();
