@@ -43,8 +43,11 @@ const distExists = existsSync(distDir);
     expect(dtsFiles.length).toBeGreaterThan(0);
   });
 
-  it("bin/openspec-pw wrapper exists", () => {
-    expect(existsSync(join(ROOT, "bin", "openspec-pw"))).toBe(true);
+  it("bin/openspec-pw.js wrapper exists", () => {
+    expect(existsSync(join(ROOT, "bin", "openspec-pw.js"))).toBe(true);
+  });
+  it("no stray shell wrapper remains", () => {
+    expect(existsSync(join(ROOT, "bin", "openspec-pw"))).toBe(false);
   });
 });
 

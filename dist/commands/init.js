@@ -1,4 +1,4 @@
-import { execFileSync, execSync } from "child_process";
+import { execFileSync } from "child_process";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
 import { fileURLToPath } from "url";
@@ -14,8 +14,8 @@ export async function init(options) {
     const projectRoot = process.cwd();
     // 1. Check prerequisites
     console.log(chalk.blue("─── Prerequisites ───"));
-    const hasNode = execCmd("node --version", "Node.js", true);
-    const hasNpm = execCmd("npm --version", "npm", true);
+    const hasNode = hasCmd("node", ["--version"], "Node.js", true);
+    const hasNpm = hasCmd("npm", ["--version"], "npm", true);
     // Use execFile (no shell) so Windows paths in tmp dirs / node modules
     // are passed verbatim and `2>/dev/null` / `||` bash-isms don't reach cmd.exe.
     // Equivalent of: `npx openspec --version || echo "not found"`
@@ -174,9 +174,9 @@ export async function generateSharedPages(projectRoot) {
         console.log(chalk.gray("  (Extend BasePage to create page objects: pages/LoginPage.ts, etc.)"));
     }
 }
-function execCmd(cmd, name, silent = false) {
+function hasCmd(bin, args, name, silent = false) {
     try {
-        execSync(cmd, { stdio: "pipe" });
+        execFileSync(bin, args, { stdio: "pipe", shell: needsShell });
         if (!silent)
             console.log(chalk.green(`  ✓ ${name} found`));
         return true;

@@ -7,9 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.35] - 2026-06-10
+
+### Added
+
+- **Version update hint**: after each command (except `update`), the CLI checks npm for a newer version once per 24 hours (cached in `~/.openspec-pw-version.json`). Shows a one-line hint when outdated: `💡 A new version of openspec-pw is available: X → Y. Run: npm install -g openspec-playwright@latest`
+
+### Changed
+
+- **Unified `execFile` style**: replaced all remaining `execSync` calls in `doctor.ts` and `init.ts` with `execFileSync` + args array + `shell: needsShell`. All child_process calls now use the same cross-platform pattern.
+
 ### Fixed
 
-- **Windows: `spawn npm ENOENT` in `update`, `init`, `doctor`, `audit`, `run`, `mcp` commands.** On Windows, `npm`/`npx`/`claude` are `.cmd` batch files — not bare executables. Node's `execFile()` (without `shell: true`) only looks for exact executable names and fails because there is no `npm` binary, only `npm.cmd`. Added `needsShell` constant in `src/shared/platform.ts` (`true` on `win32`) and added `shell: needsShell` to all 12 `execFile`/`execFileSync` calls across 6 files. v0.3.33 attempted a `.cmd` suffix approach which caused `EINVAL`; `shell: true` is the correct fix because Node properly quotes args-array items, keeping paths with spaces safe.
+- **Removed redundant `bin/openspec-pw` shell wrapper**: this script caused npm publish warnings (`"bin[openspec-pw]" script name was invalid and removed`). The `.js` wrapper already handles CWD restoration and package root resolution.
+
+## [0.3.34] - 2026-06-09
+
+### Fixed
+
+- **Windows: `spawn EINVAL`** — v0.3.33 attempted a `.cmd` suffix approach (`npm.cmd`) which caused `EINVAL` on Windows. The correct fix is `shell: true` — Node properly quotes args-array items, so paths with spaces are safe. Changed `cmd()` helper to `needsShell` boolean constant.
+
+## [0.3.33] - 2026-06-09
+
+### Fixed
+
+- **Windows: `spawn npm ENOENT`** in `update`, `init`, `doctor`, `audit`, `run`, `mcp` commands. On Windows, `npm`/`npx`/`claude` are `.cmd` batch files — not bare executables. Node's `execFile()` (without `shell: true`) only looks for exact executable names and fails because there is no `npm` binary, only `npm.cmd`. Added cross-platform `needsShell` constant in `src/shared/platform.ts` (`true` on `win32`) and added `shell: needsShell` to all `execFile`/`execFileSync` calls across 6 files.
 
 
 ### Fixed

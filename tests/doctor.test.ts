@@ -138,8 +138,8 @@ describe("doctor check logic", () => {
 // ─── npx detection: execFile migration ────────────────────────────────────
 // Guards the Windows-safe form of `npx playwright --version`.
 
-describe("doctor.ts: npx detection uses execFile (no shell)", () => {
-  it("uses execFileSync with shell: needsShell for cross-platform support", async () => {
+describe("doctor.ts: all child_process calls use execFileSync with shell: needsShell", () => {
+  it("no execSync imports or calls remain", async () => {
     const { readFileSync } = await import("fs");
     const { fileURLToPath } = await import("url");
     const { join } = await import("path");
@@ -150,9 +150,12 @@ describe("doctor.ts: npx detection uses execFile (no shell)", () => {
       ),
       "utf-8",
     );
-    // Old form: `npx playwright --version` as shell string
-    expect(src).not.toMatch(/execSync\([^)]*"npx playwright --version"/);
-    // Windows-safe form: execFileSync("npx", ["playwright", "--version"], { shell: needsShell })
-    expect(src).toMatch(/execFileSync\("npx",\s*\["playwright",\s*"--version"\],\s*\{[^}]*shell: needsShell/);
+    // No execSync import
+    expect(src).not.toMatch(/execSync/);
+    // No shell string calls
+    expect(src).not.toMatch(/execFileSync\([^)]*"[^"]* --/);
+    // All execFileSync calls use shell: needsShell
+    const callsWithShell = (src.match(/execFileSync\s*\(\s*"[^"]+",\s*\[[^\]]+\],\s*\{[^}]*shell: needsShell/g) || []).length;
+    expect(callsWithShell).toBeGreaterThanOrEqual(3);
   });
 });

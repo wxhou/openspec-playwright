@@ -1,6 +1,6 @@
 import { existsSync } from "fs";
 import { join } from "path";
-import { execFileSync, execSync } from "child_process";
+import { execFileSync } from "child_process";
 import chalk from "chalk";
 import { isPlaywrightMcpInstalled, needsShell } from "../shared/index.js";
 
@@ -20,7 +20,10 @@ export async function doctor(options: DoctorOptions = {}) {
 
   // Node.js
   try {
-    const node = execSync("node --version", { encoding: "utf-8" }).trim();
+    const node = execFileSync("node", ["--version"], {
+      encoding: "utf-8",
+      shell: needsShell,
+    }).trim();
     checks.push({
       category: "Node.js",
       name: "node",
@@ -38,7 +41,10 @@ export async function doctor(options: DoctorOptions = {}) {
 
   // npm
   try {
-    const npm = execSync("npm --version", { encoding: "utf-8" }).trim();
+    const npm = execFileSync("npm", ["--version"], {
+      encoding: "utf-8",
+      shell: needsShell,
+    }).trim();
     checks.push({
       category: "npm",
       name: "npm",
@@ -65,8 +71,9 @@ export async function doctor(options: DoctorOptions = {}) {
 
   // Playwright browsers
   try {
-    const pw = execFileSync("npx", ["playwright", "--version"], { shell: needsShell,
+    const pw = execFileSync("npx", ["playwright", "--version"], {
       encoding: "utf-8",
+      shell: needsShell,
     }).trim();
     checks.push({
       category: "Playwright Browsers",

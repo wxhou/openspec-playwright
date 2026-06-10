@@ -4,7 +4,7 @@
   "description": "OpenSpec + Playwright E2E verification setup tool for Claude Code",
   "type": "module",
   "bin": {
-    "openspec-pw": "./bin/openspec-pw.js"
+    "openspec-pw": "bin/openspec-pw.js"
   },
   "scripts": {
     "build": "tsc",
@@ -62,6 +62,6 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/wxhou/openspec-playwright"
+    "url": "git+https://github.com/wxhou/openspec-playwright.git"
   }
 }
