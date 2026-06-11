@@ -9,3 +9,4 @@ export declare function generateSeedTest(projectRoot: string, force: boolean): P
 export declare function generateAppKnowledge(projectRoot: string): Promise<void>;
 export declare function generateSharedPages(projectRoot: string): Promise<void>;
 export declare function generateGithubWorkflow(projectRoot: string): Promise<void>;
+export declare function generatePlaywrightConfig(projectRoot: string): Promise<void>;

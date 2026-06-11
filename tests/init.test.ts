@@ -129,6 +129,33 @@ describe("generateSharedPages", () => {
   });
 });
 
+// ─── generatePlaywrightConfig ───────────────────────────────────────────────
+
+describe("generatePlaywrightConfig", () => {
+  const tmpDir = join(tmpdir(), "openspec-pw-pw-config-" + Date.now());
+
+  beforeEach(() => {
+    mkdirSync(tmpDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("generates playwright.config.ts when it does not exist", async () => {
+    const { generatePlaywrightConfig } = await import("../../src/commands/init.js");
+    await generatePlaywrightConfig(tmpDir);
+    expect(existsSync(join(tmpDir, "playwright.config.ts"))).toBe(true);
+  });
+
+  it("skips when playwright.config.ts already exists", async () => {
+    writeFileSync(join(tmpDir, "playwright.config.ts"), "existing config");
+    const { generatePlaywrightConfig } = await import("../../src/commands/init.js");
+    await generatePlaywrightConfig(tmpDir);
+    expect(readFileSync(join(tmpDir, "playwright.config.ts"), "utf-8")).toBe("existing config");
+  });
+});
+
 // ─── generateGithubWorkflow ─────────────────────────────────────────────────
 
 describe("generateGithubWorkflow", () => {

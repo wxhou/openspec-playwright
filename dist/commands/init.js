@@ -85,6 +85,9 @@ export async function init(options) {
     // 6b. Generate shared pages directory
     console.log(chalk.blue("\n─── Generating Shared Pages ───"));
     await generateSharedPages(projectRoot);
+    // 6c. Generate playwright.config.ts
+    console.log(chalk.blue("\n─── Generating Playwright Config ───"));
+    await generatePlaywrightConfig(projectRoot);
     // 7. Generate app-knowledge.md
     console.log(chalk.blue("\n─── Generating App Knowledge ───"));
     await generateAppKnowledge(projectRoot);
@@ -195,6 +198,22 @@ export async function generateGithubWorkflow(projectRoot) {
     }
     else {
         console.log(chalk.gray("  - CI template not found in package"));
+    }
+}
+export async function generatePlaywrightConfig(projectRoot) {
+    const configSrc = join(TEMPLATE_DIR, "playwright.config.ts");
+    const configDest = join(projectRoot, "playwright.config.ts");
+    if (existsSync(configDest)) {
+        console.log(chalk.gray("  - playwright.config.ts already exists, skipping"));
+        return;
+    }
+    if (existsSync(configSrc)) {
+        writeFileSync(configDest, readFileSync(configSrc));
+        console.log(chalk.green("  ✓ Generated: playwright.config.ts"));
+        console.log(chalk.gray("  Customize webServer command and port for your app."));
+    }
+    else {
+        console.log(chalk.gray("  - Playwright config template not found in package"));
     }
 }
 function hasCmd(bin, args, name, silent = false) {
