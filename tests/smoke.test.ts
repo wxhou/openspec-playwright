@@ -166,6 +166,7 @@ const CRITICAL_PACKAGE_FILES = [
   "templates/e2e-test.ts",
   "templates/e2e-command.md",
   "templates/pages/BasePage.ts",
+  "templates/github-workflow.yml",
 ];
 
 (distExists ? describe : describe.skip)("npm package contents", () => {

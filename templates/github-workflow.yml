@@ -1,0 +1,69 @@
+# OpenSpec + Playwright E2E — CI Template
+# Copy this file to .github/workflows/openspec-pw.yml in your project
+#
+# This workflow runs E2E tests on every push to main and every pull request.
+# It handles: Node setup, Playwright browser install, dev server startup, and test execution.
+#
+# Prerequisites (run these once locally):
+#   npm install -g @fission-ai/openspec@latest
+#   openspec init
+#   openspec config profile core
+#   openspec update
+#   npm install -g openspec-playwright@latest
+#   openspec-pw init
+#   npx playwright install --with-deps
+#
+name: E2E
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Install OpenSpec CLI
+        run: npm install -g @fission-ai/openspec@latest
+
+      - name: Install openspec-pw CLI
+        run: npm install -g openspec-playwright@latest
+
+      - name: Verify setup
+        run: openspec-pw doctor --json
+
+      - name: Run E2E tests
+        run: openspec-pw run all
+        env:
+          E2E_USERNAME: ${{ secrets.E2E_USERNAME }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          BASE_URL: ${{ secrets.BASE_URL || 'http://localhost:3000' }}
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            test-results/
+            openspec/reports/
+          retention-days: 7

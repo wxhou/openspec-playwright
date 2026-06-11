@@ -24,6 +24,7 @@ export interface InitOptions {
   change?: string;
   mcp?: boolean;
   seed?: boolean;
+  ci?: boolean;
 }
 
 export async function init(options: InitOptions) {
@@ -133,6 +134,12 @@ export async function init(options: InitOptions) {
   // 7. Generate app-knowledge.md
   console.log(chalk.blue("\n─── Generating App Knowledge ───"));
   await generateAppKnowledge(projectRoot);
+
+  // 7b. Generate GitHub Actions workflow (if --ci)
+  if (options.ci) {
+    console.log(chalk.blue("\n─── Generating CI Workflow ───"));
+    await generateGithubWorkflow(projectRoot);
+  }
 
   // 8. Install employee-grade CLAUDE.md
   console.log(chalk.blue("\n─── Installing Employee Standards ───"));
@@ -275,6 +282,31 @@ export async function generateSharedPages(projectRoot: string) {
         "  (Extend BasePage to create page objects: pages/LoginPage.ts, etc.)",
       ),
     );
+  }
+}
+
+export async function generateGithubWorkflow(projectRoot: string) {
+  const workflowsDir = join(projectRoot, ".github", "workflows");
+  mkdirSync(workflowsDir, { recursive: true });
+
+  const workflowSrc = join(TEMPLATE_DIR, "github-workflow.yml");
+  const workflowDest = join(workflowsDir, "openspec-pw.yml");
+
+  if (existsSync(workflowDest)) {
+    console.log(chalk.gray("  - .github/workflows/openspec-pw.yml already exists, skipping"));
+    return;
+  }
+
+  if (existsSync(workflowSrc)) {
+    writeFileSync(workflowDest, readFileSync(workflowSrc));
+    console.log(
+      chalk.green("  ✓ Generated: .github/workflows/openspec-pw.yml"),
+    );
+    console.log(
+      chalk.gray("  Set E2E_USERNAME, E2E_PASSWORD, BASE_URL secrets in repo settings."),
+    );
+  } else {
+    console.log(chalk.gray("  - CI template not found in package"));
   }
 }
 

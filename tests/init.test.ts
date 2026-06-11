@@ -129,6 +129,27 @@ describe("generateSharedPages", () => {
   });
 });
 
+// ─── generateGithubWorkflow ─────────────────────────────────────────────────
+
+describe("generateGithubWorkflow", () => {
+  const tmpDir = join(tmpdir(), "openspec-pw-ci-" + Date.now());
+
+  beforeEach(() => {
+    mkdirSync(join(tmpDir, ".github", "workflows"), { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("skips when workflow already exists", async () => {
+    writeFileSync(join(tmpDir, ".github", "workflows", "openspec-pw.yml"), "existing");
+    const { generateGithubWorkflow } = await import("../../src/commands/init.js");
+    await generateGithubWorkflow(tmpDir);
+    expect(readFileSync(join(tmpDir, ".github", "workflows", "openspec-pw.yml"), "utf-8")).toBe("existing");
+  });
+});
+
 // ─── npx detection: execFile migration ────────────────────────────────────
 // Guards the Windows-safe form of `npx openspec --version`.
 
