@@ -13,6 +13,7 @@ describe("doctor check logic", () => {
     npmOk: boolean;
     openspecOk: boolean;
     playwrightOk: boolean;
+    pwTestOk: boolean;
     mcpOk: boolean;
     skillOk: boolean;
     seedOk: boolean;
@@ -23,6 +24,7 @@ describe("doctor check logic", () => {
     checks.push({ category: "npm", name: "npm", ok: opts.npmOk, message: opts.npmOk ? "11.0.0" : "not found" });
     checks.push({ category: "OpenSpec", name: "openspec", ok: opts.openspecOk, message: opts.openspecOk ? "initialized" : "not initialized" });
     checks.push({ category: "Playwright Browsers", name: "playwright", ok: opts.playwrightOk, message: opts.playwrightOk ? "v20.0.0" : "not installed" });
+    checks.push({ category: "Playwright Test", name: "playwright-test", ok: opts.pwTestOk, message: opts.pwTestOk ? "installed" : "not installed" });
     checks.push({ category: "Playwright MCP", name: "playwright-mcp", ok: opts.mcpOk, message: opts.mcpOk ? "installed" : "not configured" });
     checks.push({ category: "Claude Code Skill", name: "skill", ok: opts.skillOk, message: opts.skillOk ? "installed" : "not installed" });
     checks.push({ category: "Seed Test", name: "seed", ok: opts.seedOk, message: opts.seedOk ? "found" : "not found (optional)" });
@@ -34,7 +36,7 @@ describe("doctor check logic", () => {
   it("all checks pass → ok is true", () => {
     const result = buildChecks({
       nodeOk: true, npmOk: true, openspecOk: true,
-      playwrightOk: true, mcpOk: true, skillOk: true, seedOk: true,
+      playwrightOk: true, pwTestOk: true, mcpOk: true, skillOk: true, seedOk: true,
     });
     expect(result.ok).toBe(true);
   });
@@ -42,7 +44,7 @@ describe("doctor check logic", () => {
   it("node fails → ok is false", () => {
     const result = buildChecks({
       nodeOk: false, npmOk: true, openspecOk: true,
-      playwrightOk: true, mcpOk: true, skillOk: true, seedOk: true,
+      playwrightOk: true, pwTestOk: true, mcpOk: true, skillOk: true, seedOk: true,
     });
     expect(result.ok).toBe(false);
   });
@@ -50,7 +52,7 @@ describe("doctor check logic", () => {
   it("npm fails → ok is false", () => {
     const result = buildChecks({
       nodeOk: true, npmOk: false, openspecOk: true,
-      playwrightOk: true, mcpOk: true, skillOk: true, seedOk: true,
+      playwrightOk: true, pwTestOk: true, mcpOk: true, skillOk: true, seedOk: true,
     });
     expect(result.ok).toBe(false);
   });
@@ -58,7 +60,7 @@ describe("doctor check logic", () => {
   it("openspec missing → ok is false", () => {
     const result = buildChecks({
       nodeOk: true, npmOk: true, openspecOk: false,
-      playwrightOk: true, mcpOk: true, skillOk: true, seedOk: true,
+      playwrightOk: true, pwTestOk: true, mcpOk: true, skillOk: true, seedOk: true,
     });
     expect(result.ok).toBe(false);
   });
@@ -66,7 +68,7 @@ describe("doctor check logic", () => {
   it("playwright missing → ok is false", () => {
     const result = buildChecks({
       nodeOk: true, npmOk: true, openspecOk: true,
-      playwrightOk: false, mcpOk: true, skillOk: true, seedOk: true,
+      playwrightOk: false, pwTestOk: true, mcpOk: true, skillOk: true, seedOk: true,
     });
     expect(result.ok).toBe(false);
   });
@@ -74,7 +76,7 @@ describe("doctor check logic", () => {
   it("mcp missing → ok is false", () => {
     const result = buildChecks({
       nodeOk: true, npmOk: true, openspecOk: true,
-      playwrightOk: true, mcpOk: false, skillOk: true, seedOk: true,
+      playwrightOk: true, pwTestOk: true, mcpOk: false, skillOk: true, seedOk: true,
     });
     expect(result.ok).toBe(false);
   });
@@ -82,7 +84,7 @@ describe("doctor check logic", () => {
   it("skill missing → ok is false", () => {
     const result = buildChecks({
       nodeOk: true, npmOk: true, openspecOk: true,
-      playwrightOk: true, mcpOk: true, skillOk: false, seedOk: true,
+      playwrightOk: true, pwTestOk: true, mcpOk: true, skillOk: false, seedOk: true,
     });
     expect(result.ok).toBe(false);
   });
@@ -90,7 +92,7 @@ describe("doctor check logic", () => {
   it("seed missing is optional → ok is still true", () => {
     const result = buildChecks({
       nodeOk: true, npmOk: true, openspecOk: true,
-      playwrightOk: true, mcpOk: true, skillOk: true, seedOk: false,
+      playwrightOk: true, pwTestOk: true, mcpOk: true, skillOk: true, seedOk: false,
     });
     expect(result.ok).toBe(true);
   });
@@ -98,7 +100,7 @@ describe("doctor check logic", () => {
   it("multiple failures → ok is false", () => {
     const result = buildChecks({
       nodeOk: false, npmOk: false, openspecOk: false,
-      playwrightOk: false, mcpOk: false, skillOk: false, seedOk: false,
+      playwrightOk: false, pwTestOk: true, mcpOk: false, skillOk: false, seedOk: false,
     });
     expect(result.ok).toBe(false);
   });
@@ -106,9 +108,9 @@ describe("doctor check logic", () => {
   it("has all 7 check categories", () => {
     const result = buildChecks({
       nodeOk: true, npmOk: true, openspecOk: true,
-      playwrightOk: true, mcpOk: true, skillOk: true, seedOk: true,
+      playwrightOk: true, pwTestOk: true, mcpOk: true, skillOk: true, seedOk: true,
     });
-    expect(result.checks).toHaveLength(7);
+    expect(result.checks).toHaveLength(8);
     const categories = result.checks.map((c) => c.category);
     expect(categories).toContain("Node.js");
     expect(categories).toContain("npm");
@@ -116,13 +118,14 @@ describe("doctor check logic", () => {
     expect(categories).toContain("Playwright Browsers");
     expect(categories).toContain("Playwright MCP");
     expect(categories).toContain("Claude Code Skill");
+    expect(categories).toContain("Playwright Test");
     expect(categories).toContain("Seed Test");
   });
 
   it("every check has ok, message, name, category fields", () => {
     const result = buildChecks({
       nodeOk: true, npmOk: true, openspecOk: true,
-      playwrightOk: true, mcpOk: true, skillOk: true, seedOk: true,
+      playwrightOk: true, pwTestOk: true, mcpOk: true, skillOk: true, seedOk: true,
     });
     for (const check of result.checks) {
       expect(check).toHaveProperty("ok");

@@ -1,4 +1,5 @@
 import { existsSync } from "fs";
+import { createRequire } from "node:module";
 import { join } from "path";
 import { execFileSync } from "child_process";
 import chalk from "chalk";
@@ -77,6 +78,33 @@ export async function doctor(options = {}) {
             message: "not installed",
         });
     }
+    // Playwright Test framework (imported by spec files)
+    let hasPwTest = false;
+    let pwTestMsg = "not installed";
+    try {
+        const require = createRequire(import.meta.url);
+        require.resolve("@playwright/test");
+        hasPwTest = true;
+        pwTestMsg = "installed";
+    }
+    catch {
+        // Try from current project
+        try {
+            const projectRequire = createRequire(join(projectRoot, "package.json"));
+            projectRequire.resolve("@playwright/test");
+            hasPwTest = true;
+            pwTestMsg = "installed (project)";
+        }
+        catch {
+            // not installed
+        }
+    }
+    checks.push({
+        category: "Playwright Test",
+        name: "playwright-test",
+        ok: hasPwTest,
+        message: pwTestMsg,
+    });
     // Playwright MCP — use shared utility
     const mcpInstalled = isPlaywrightMcpInstalled();
     checks.push({
