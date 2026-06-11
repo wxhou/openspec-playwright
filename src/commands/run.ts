@@ -121,7 +121,7 @@ export async function run(changeName: string, options: RunOptions) {
       cwd: projectRoot,
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
-      timeout: (options.timeout ?? Number(process.env.OPENSPEC_TIMEOUT) ?? 300) * 1000,
+      timeout: (options.timeout ?? (process.env.OPENSPEC_TIMEOUT ? Number(process.env.OPENSPEC_TIMEOUT) : undefined) ?? 300) * 1000,
     });
     testOutput = result;
   } catch (err: unknown) {
