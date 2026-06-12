@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **App server auto-detection**: generated `playwright.config.ts` now detects `BASE_URL` from env, package script `--port`, `vite.config.*` `server.port`, `.env*` port variables, and framework defaults (Vite 5173, Astro 4321, Next/Nuxt 3000).
+- **Doctor app diagnostics**: `openspec-pw doctor` now reports detected dev script, detected base URL, and a non-blocking reachability check so `webServer` timeouts are easier to diagnose.
+- **Existing config patch hints**: `openspec-pw init` now prints recommended checks when `playwright.config.ts` already exists instead of silently skipping all config guidance.
+
+### Changed
+
+- `seed.spec.ts` and `pages/BasePage.ts` now use Playwright `use.baseURL` when `BASE_URL` env is unset, so auto-detected ports work without duplicating the URL in every generated test helper.
+
 ## [0.3.35] - 2026-06-10
 
 ### Added

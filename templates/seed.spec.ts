@@ -6,8 +6,8 @@ import { test, expect, Page, ConsoleMessage } from '@playwright/test';
 import { existsSync } from 'fs';
 import { BasePage } from './pages/BasePage';
 
-// Customize these for your application
-const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+// Prefer Playwright config's use.baseURL; env var is still supported for one-off overrides.
+const BASE_URL = process.env.BASE_URL || '/';
 
 /**
  * Page Object Pattern - extends BasePage for shared utilities
@@ -69,7 +69,7 @@ test.describe('Application smoke tests', () => {
 
 test.describe('Environment validation', () => {
   test('BASE_URL responds 200', async ({ page }) => {
-    const res = await page.request.get(`${BASE_URL}/`);
+    const res = await page.request.get(BASE_URL);
     expect(res.status(), `BASE_URL ${BASE_URL} returned ${res.status()}`).toBeLessThan(500);
   });
 

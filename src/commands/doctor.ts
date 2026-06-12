@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import { join } from "path";
 import { execFileSync } from "child_process";
 import chalk from "chalk";
-import { isPlaywrightMcpInstalled, needsShell } from "../shared/index.js";
+import { detectAppServer, isPlaywrightMcpInstalled, needsShell } from "../shared/index.js";
 
 export interface DoctorOptions {
   json?: boolean;
@@ -137,7 +137,33 @@ export async function doctor(options: DoctorOptions = {}) {
     message: hasSeed ? "found" : "not found (optional)",
   });
 
-  const allOk = checks.filter((c) => !c.ok && c.category !== "Seed Test").length === 0;
+  // App server detection (diagnostic only — not a prerequisite)
+  const app = detectAppServer(projectRoot);
+  checks.push({
+    category: "App Server",
+    name: "dev-script",
+    ok: Boolean(app.devCommand),
+    message: app.devCommand
+      ? `${app.devCommand}${app.scriptCommand ? ` (${app.scriptCommand})` : ""}`
+      : "not detected (configure webServer manually)",
+  });
+  checks.push({
+    category: "App Server",
+    name: "base-url",
+    ok: true,
+    message: `${app.baseUrl} (${app.baseUrlSource})`,
+  });
+  const reachable = await checkUrl(app.baseUrl);
+  checks.push({
+    category: "App Server",
+    name: "reachable",
+    ok: reachable.ok,
+    message: reachable.ok
+      ? `responded ${reachable.status ?? "ok"}`
+      : `${reachable.message} (diagnostic only; Playwright webServer may start it)`,
+  });
+
+  const allOk = checks.filter((c) => !c.ok && c.category !== "Seed Test" && c.category !== "App Server").length === 0;
 
   if (options.json) {
     console.log(
@@ -160,7 +186,7 @@ export async function doctor(options: DoctorOptions = {}) {
     }
     if (check.ok) {
       console.log(chalk.green(`  ✓ ${check.name}: ${check.message}`));
-    } else if (check.category === "Seed Test" || check.category === "Vision Check") {
+    } else if (check.category === "Seed Test" || check.category === "App Server" || check.category === "Vision Check") {
       console.log(chalk.yellow(`  ⚠ ${check.name}: ${check.message}`));
     } else {
       console.log(chalk.red(`  ✗ ${check.name}: ${check.message}`));
@@ -175,5 +201,24 @@ export async function doctor(options: DoctorOptions = {}) {
     console.log(chalk.red("  ❌ Some prerequisites are missing\n"));
     console.log(chalk.gray("  Run: openspec-pw init to fix\n"));
     process.exit(1);
+  }
+}
+
+async function checkUrl(url: string): Promise<{ ok: boolean; status?: number; message: string }> {
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      signal: AbortSignal.timeout(2000),
+    });
+    return {
+      ok: res.status < 500,
+      status: res.status,
+      message: `responded ${res.status}`,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "not reachable",
+    };
   }
 }

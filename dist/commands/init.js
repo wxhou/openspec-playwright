@@ -205,6 +205,7 @@ export async function generatePlaywrightConfig(projectRoot) {
     const configDest = join(projectRoot, "playwright.config.ts");
     if (existsSync(configDest)) {
         console.log(chalk.gray("  - playwright.config.ts already exists, skipping"));
+        suggestPlaywrightConfigPatch(configDest);
         return;
     }
     if (existsSync(configSrc)) {
@@ -215,6 +216,29 @@ export async function generatePlaywrightConfig(projectRoot) {
     else {
         console.log(chalk.gray("  - Playwright config template not found in package"));
     }
+}
+function suggestPlaywrightConfigPatch(configPath) {
+    const config = readFileSync(configPath, "utf-8");
+    const suggestions = [];
+    if (!config.includes("webServer")) {
+        suggestions.push("add webServer so Playwright can start/stop your app automatically");
+    }
+    if (!config.includes("tests/playwright") && !config.includes("testDir")) {
+        suggestions.push("set testDir to tests/playwright");
+    }
+    if (!config.includes("storageState")) {
+        suggestions.push("optionally wire storageState from playwright/.auth/user.json for authenticated tests");
+    }
+    if (!config.includes("dependencies") || !config.includes("setup")) {
+        suggestions.push("add a setup project for auth.setup.ts when login is required");
+    }
+    if (suggestions.length === 0)
+        return;
+    console.log(chalk.yellow("  ⚠ Existing config was not modified. Recommended checks:"));
+    for (const suggestion of suggestions) {
+        console.log(chalk.gray(`    - ${suggestion}`));
+    }
+    console.log(chalk.gray("    Compare with: openspec-pw init in a temporary project, or copy from templates/playwright.config.ts"));
 }
 function hasCmd(bin, args, name, silent = false) {
     try {

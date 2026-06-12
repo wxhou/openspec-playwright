@@ -35,7 +35,7 @@ Claude Code — E2E workflow is driven by `/opsx:e2e` command using a browser ex
 ```bash
 openspec-pw init          # Initialize integration (one-time setup; add --seed to overwrite existing seed.spec.ts)
 openspec-pw update        # Update CLI and commands to latest version
-openspec-pw doctor        # Check prerequisites
+openspec-pw doctor        # Check prerequisites + app server diagnostics
 openspec-pw audit         # Audit tests for orphaned specs and issues
 openspec-pw migrate       # Migrate old test files to new structure
 openspec-pw explore       # Explore routes in parallel with Playwright
@@ -94,6 +94,7 @@ openspec-pw uninstall     # Remove integration from the project
 1. Detects Claude Code in the project
 2. Installs E2E command (`/opsx:e2e`) for Claude Code
 3. Generates `tests/playwright/seed.spec.ts`, `auth.setup.ts`, `credentials.yaml`, `app-knowledge.md`
+4. Generates `playwright.config.ts` with automatic dev script and port detection (Vite/Next/Nuxt/Astro, `.env`, and `--port`)
 
 > **Note**: After running `openspec-pw init`, manually install Playwright browsers: `npx playwright install --with-deps`
 
@@ -119,6 +120,28 @@ Run through these steps in order when using the E2E workflow for the first time:
 |------|---------|-------------|
 | A. Install gstack | `git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup` | Requires Bun: `curl -fsSL https://bun.sh/install \| bash` |
 
+## App Server Detection
+
+Generated `playwright.config.ts` automatically detects the app URL in this order:
+
+1. `BASE_URL` environment variable
+2. port flags in `package.json` scripts, e.g. `vite --port 5125`
+3. `vite.config.*` `server.port`
+4. `.env.local`, `.env.development`, `.env` (`PLAYWRIGHT_PORT`, `E2E_PORT`, `VITE_PORT`, `PORT`)
+5. framework defaults: Vite `5173`, Astro `4321`, Next/Nuxt `3000`
+6. fallback: `http://localhost:3000`
+
+Run `openspec-pw doctor` to see the detected dev script and base URL:
+
+```text
+─── App Server ───
+  ✓ dev-script: npm run dev:all
+  ✓ base-url: http://localhost:5125 (vite.config.ts)
+  ⚠ reachable: fetch failed (diagnostic only; Playwright webServer may start it)
+```
+
+If your project already has `playwright.config.ts`, `openspec-pw init` will not overwrite it. It prints patch hints for missing `webServer`, `testDir`, `storageState`, and setup-project wiring.
+
 ## Authentication
 
 If your app requires login, set up credentials once, then all tests run authenticated automatically.
@@ -127,7 +150,9 @@ If your app requires login, set up credentials once, then all tests run authenti
 # 1. Edit credentials
 vim tests/playwright/credentials.yaml
 
-# 2. Set environment variables
+# 2. Enable auth and set environment variables
+export E2E_AUTH_REQUIRED=true
+export E2E_AUTH_METHOD=api # or ui
 export E2E_USERNAME=your-email@example.com
 export E2E_PASSWORD=your-password
 

@@ -4,7 +4,7 @@
 
 import { Page, Locator, expect } from '@playwright/test';
 
-const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+const BASE_URL = process.env.BASE_URL;
 
 export class BasePage {
   protected page: Page;
@@ -23,7 +23,7 @@ export class BasePage {
     path: string,
     options?: { waitUntil?: 'domcontentloaded' | 'load' | 'networkidle' | 'commit' },
   ) {
-    const url = path.startsWith('http') ? path : `${BASE_URL}${path}`;
+    const url = path.startsWith('http') || !BASE_URL ? path : new URL(path, BASE_URL).toString();
     await this.page.goto(url, {
       waitUntil: options?.waitUntil ?? 'domcontentloaded',
     });

@@ -211,7 +211,10 @@ describe("template regressions", () => {
 
   it("playwright.config.ts keeps BASE_URL env precedence over seed default", () => {
     const config = readFileSync(join(process.cwd(), "templates", "playwright.config.ts"), "utf-8");
-    expect(config).toContain("if (!process.env.BASE_URL && existsSync(seedSpec))");
+    expect(config).toContain("let baseUrl = process.env.BASE_URL");
+    expect(config).toContain("if (!baseUrl && existsSync(seedSpec))");
+    // Guard against relative seed defaults like '/' being used as a raw base URL
+    expect(config).toContain("candidate.startsWith('http://') || candidate.startsWith('https://')");
   });
 
   it("playwright.config.ts runs npm script names, not raw script bodies", () => {
@@ -225,5 +228,14 @@ describe("template regressions", () => {
     expect(auth).toContain("const authRequired = process.env.E2E_AUTH_REQUIRED === 'true'");
     expect(auth).toContain("setup.skip(!authRequired || authMethod !== 'api'");
     expect(auth).toContain("setup.skip(!authRequired || authMethod !== 'ui'");
+  });
+
+  it("seed and BasePage use Playwright baseURL when BASE_URL env is unset", () => {
+    const seed = readFileSync(join(process.cwd(), "templates", "seed.spec.ts"), "utf-8");
+    const basePage = readFileSync(join(process.cwd(), "templates", "pages", "BasePage.ts"), "utf-8");
+    expect(seed).toContain("const BASE_URL = process.env.BASE_URL || '/'");
+    expect(seed).toContain("page.request.get(BASE_URL)");
+    expect(basePage).toContain("const BASE_URL = process.env.BASE_URL;");
+    expect(basePage).toContain("path.startsWith('http') || !BASE_URL ? path");
   });
 });
