@@ -5,9 +5,16 @@
 import { execFileSync } from "node:child_process";
 import { TIMEOUT } from "./constants.js";
 import { needsShell } from "./platform.js";
+function outputIncludesPlaywright(output) {
+    return String(output ?? "").includes("playwright");
+}
 /**
  * Check if Playwright MCP server is installed in Claude Code.
  * Returns true if "playwright" appears in `claude mcp list` output.
+ *
+ * Note: `claude mcp list` may exit non-zero if another MCP server is
+ * pending approval or unhealthy, while still printing the list. In that
+ * case, read stdout/stderr from the thrown error before returning false.
  */
 export function isPlaywrightMcpInstalled() {
     try {
@@ -17,11 +24,11 @@ export function isPlaywrightMcpInstalled() {
             stdio: ["pipe", "pipe", "pipe"],
             shell: needsShell,
         });
-        return output.includes("playwright");
+        return outputIncludesPlaywright(output);
     }
-    catch {
-        // claude CLI not available or failed
-        return false;
+    catch (err) {
+        const e = err;
+        return outputIncludesPlaywright(e.stdout) || outputIncludesPlaywright(e.stderr);
     }
 }
 /**

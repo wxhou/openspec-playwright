@@ -44,6 +44,42 @@ describe("isPlaywrightMcpInstalled", () => {
     vi.mocked(execFileSync).mockReturnValue("");
     expect(isPlaywrightMcpInstalled()).toBe(false);
   });
+
+  it("returns true when claude exits non-zero but stdout contains playwright", () => {
+    vi.mocked(execFileSync).mockImplementation(() => {
+      const err = new Error("some MCP is unhealthy") as Error & { stdout: string };
+      err.stdout = "playwright: npx @playwright/mcp@latest\nother: broken-mcp\n";
+      throw err;
+    });
+    expect(isPlaywrightMcpInstalled()).toBe(true);
+  });
+
+  it("returns true when claude exits non-zero and stderr contains playwright", () => {
+    vi.mocked(execFileSync).mockImplementation(() => {
+      const err = new Error("some MCP is unhealthy") as Error & { stderr: string };
+      err.stderr = "playwright: npx @playwright/mcp@latest\n";
+      throw err;
+    });
+    expect(isPlaywrightMcpInstalled()).toBe(true);
+  });
+
+  it("returns false when claude exits non-zero and neither stdout/stderr has playwright", () => {
+    vi.mocked(execFileSync).mockImplementation(() => {
+      const err = new Error("claude not found") as Error & { stdout: string };
+      err.stdout = "other-mcp: some-command\n";
+      throw err;
+    });
+    expect(isPlaywrightMcpInstalled()).toBe(false);
+  });
+
+  it("returns false when claude exits non-zero with no output", () => {
+    vi.mocked(execFileSync).mockImplementation(() => {
+      const err = new Error("claude not found") as Error & { stdout: string };
+      err.stdout = "";
+      throw err;
+    });
+    expect(isPlaywrightMcpInstalled()).toBe(false);
+  });
 });
 
 describe("ensurePlaywrightMcp", () => {

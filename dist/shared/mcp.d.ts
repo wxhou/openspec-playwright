@@ -1,6 +1,10 @@
 /**
  * Check if Playwright MCP server is installed in Claude Code.
  * Returns true if "playwright" appears in `claude mcp list` output.
+ *
+ * Note: `claude mcp list` may exit non-zero if another MCP server is
+ * pending approval or unhealthy, while still printing the list. In that
+ * case, read stdout/stderr from the thrown error before returning false.
  */
 export declare function isPlaywrightMcpInstalled(): boolean;
 /**
