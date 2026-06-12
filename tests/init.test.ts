@@ -198,3 +198,32 @@ describe("init.ts: npx detection uses execFile (no shell)", () => {
     expect(src).toMatch(/execFileSync\("npx",\s*\["openspec",\s*"--version"\],\s*\{[^}]*shell: needsShell/);
   });
 });
+
+// ─── Template regressions from real-project smoke tests ─────────────────────
+
+describe("template regressions", () => {
+  it("seed.spec.ts does not call test.afterEach inside a test", () => {
+    const seed = readFileSync(join(process.cwd(), "templates", "seed.spec.ts"), "utf-8");
+    expect(seed).not.toContain("test.afterEach(() => page.off");
+    expect(seed).toContain("finally {");
+    expect(seed).toContain("page.off('console', handler)");
+  });
+
+  it("playwright.config.ts keeps BASE_URL env precedence over seed default", () => {
+    const config = readFileSync(join(process.cwd(), "templates", "playwright.config.ts"), "utf-8");
+    expect(config).toContain("if (!process.env.BASE_URL && existsSync(seedSpec))");
+  });
+
+  it("playwright.config.ts runs npm script names, not raw script bodies", () => {
+    const config = readFileSync(join(process.cwd(), "templates", "playwright.config.ts"), "utf-8");
+    expect(config).toContain("const scriptName = scripts['dev:all']");
+    expect(config).toContain("devCmd = `npm run ${scriptName}`");
+  });
+
+  it("auth.setup.ts skips auth by default when E2E_AUTH_REQUIRED is not true", () => {
+    const auth = readFileSync(join(process.cwd(), "templates", "auth.setup.ts"), "utf-8");
+    expect(auth).toContain("const authRequired = process.env.E2E_AUTH_REQUIRED === 'true'");
+    expect(auth).toContain("setup.skip(!authRequired || authMethod !== 'api'");
+    expect(auth).toContain("setup.skip(!authRequired || authMethod !== 'ui'");
+  });
+});

@@ -41,13 +41,13 @@ function findNpmRoot(projectRoot: string, maxDepth = 5): string {
   return search(projectRoot, 0) ?? projectRoot;
 }
 
-const projectRoot = findProjectRoot(__dirname);
+const projectRoot = findProjectRoot(process.cwd());
 const npmRoot = findNpmRoot(projectRoot);
 
 // ─── BASE_URL: prefer env, then seed.spec.ts, then default ───
 const seedSpec = join(projectRoot, 'tests', 'playwright', 'seed.spec.ts');
 let baseUrl = process.env.BASE_URL || 'http://localhost:3000';
-if (existsSync(seedSpec)) {
+if (!process.env.BASE_URL && existsSync(seedSpec)) {
   const content = readFileSync(seedSpec, 'utf-8');
   const m = content.match(/BASE_URL\s*=\s*process\.env\.BASE_URL\s*\|\|\s*['"]([^'"]+)['"]/);
   if (m) baseUrl = m[1];
@@ -59,12 +59,26 @@ const npmPkg = join(npmRoot, 'package.json');
 if (existsSync(npmPkg)) {
   const pkg = JSON.parse(readFileSync(npmPkg, 'utf-8'));
   const scripts = pkg.scripts ?? {};
-  devCmd = scripts.dev ?? scripts.start ?? scripts.serve ?? scripts.preview ?? devCmd;
+  const scriptName = scripts['dev:all']
+    ? 'dev:all'
+    : scripts.dev
+      ? 'dev'
+      : scripts.start
+        ? 'start'
+        : scripts.serve
+          ? 'serve'
+          : scripts.preview
+            ? 'preview'
+            : 'dev';
+  devCmd = `npm run ${scriptName}`;
   // Prefix with cd if npmRoot differs from projectRoot
   if (npmRoot !== projectRoot) {
     devCmd = `cd ${npmRoot} && ${devCmd}`;
   }
 }
+
+const authStatePath = join(projectRoot, 'playwright', '.auth', 'user.json');
+const storageState = existsSync(authStatePath) ? authStatePath : undefined;
 
 export default defineConfig({
   testDir: join(projectRoot, 'tests', 'playwright'),
@@ -99,7 +113,7 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        storageState: './playwright/.auth/user.json',
+        storageState,
       },
       dependencies: ['setup'],
       // teardown: 'teardown', // Uncomment when teardown project is enabled
