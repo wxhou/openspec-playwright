@@ -41,3 +41,12 @@ npm-debug.log*
 # OpenSpec vision check cache
 .openspec-pw/vision-cache/
 .gstack/
+
+# OpenCode CLI local install (runtime)
+.opencode/
+
+# Codegraph MCP index (dev tool)
+.codegraph/
+
+# OpenSpec init runtime config
+openspec/config.yaml

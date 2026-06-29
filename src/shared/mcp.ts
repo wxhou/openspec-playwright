@@ -1,87 +1,63 @@
 /**
  * Shared MCP (Model Context Protocol) utilities.
- * Centralizes claude mcp check / install / remove logic.
- */
-import { execFileSync } from "node:child_process";
-import { TIMEOUT } from "./constants.js";
-import { needsShell } from "./platform.js";
-
-function outputIncludesPlaywright(output: unknown): boolean {
-  return String(output ?? "").includes("playwright");
-}
-
-/**
- * Check if Playwright MCP server is installed in Claude Code.
- * Returns true if "playwright" appears in `claude mcp list` output.
  *
- * Note: `claude mcp list` may exit non-zero if another MCP server is
- * pending approval or unhealthy, while still printing the list. In that
- * case, read stdout/stderr from the thrown error before returning false.
+ * Dispatches Playwright MCP install/remove to the right editor adapter.
+ * Each adapter handles its own install mechanism (`claude mcp add` vs
+ * editing `opencode.jsonc`), so this layer just routes the call and
+ * prints status messages.
  */
-export function isPlaywrightMcpInstalled(): boolean {
+import { type EditorAdapter } from "../commands/editors.js";
+
+/** Check if the named MCP server is installed in this editor. */
+export function isMcpInstalled(adapter: EditorAdapter, serverName: string): boolean {
+  return adapter.isMcpInstalled(process.cwd(), serverName);
+}
+
+/** Install an MCP server in this editor. Throws on failure. */
+export function ensureMcp(
+  adapter: EditorAdapter,
+  serverName: string,
+  command: string[],
+): void {
+  if (isMcpInstalled(adapter, serverName)) {
+    console.log(`  ✓ ${adapter.label}: ${serverName} MCP already installed`);
+    return;
+  }
   try {
-    const output = execFileSync("claude", ["mcp", "list"], {
-      encoding: "utf-8",
-      timeout: TIMEOUT.MCP_LIST,
-      stdio: ["pipe", "pipe", "pipe"],
-      shell: needsShell,
-    });
-    return outputIncludesPlaywright(output);
+    adapter.installMcp(process.cwd(), serverName, command);
+    console.log(`  ✓ ${adapter.label}: ${serverName} MCP installed`);
   } catch (err) {
-    const e = err as { stdout?: unknown; stderr?: unknown };
-    return outputIncludesPlaywright(e.stdout) || outputIncludesPlaywright(e.stderr);
+    console.warn(`  ⚠ ${adapter.label}: failed to install ${serverName} MCP`);
+    throw err;
   }
 }
 
-/**
- * Ensure Playwright MCP server is installed globally.
- * Prints status messages. Throws on failure.
- */
-export function ensurePlaywrightMcp(): void {
-  if (isPlaywrightMcpInstalled()) {
-    console.log("  ✓ Playwright MCP already installed");
+/** Remove an MCP server from this editor. Does not throw if missing. */
+export function removeMcp(adapter: EditorAdapter, serverName: string): void {
+  if (!isMcpInstalled(adapter, serverName)) {
+    console.log(`  - ${adapter.label}: ${serverName} MCP not installed (nothing to remove)`);
     return;
   }
-
   try {
-    execFileSync(
-      "claude",
-      ["mcp", "add", "playwright", "npx", "@playwright/mcp@latest"],
-      {
-        encoding: "utf-8",
-        timeout: TIMEOUT.MCP_LIST,
-        stdio: ["pipe", "pipe", "pipe"],
-        shell: needsShell,
-      }
-    );
-    console.log("  ✓ Playwright MCP installed globally");
+    adapter.removeMcp(process.cwd(), serverName);
+    console.log(`  ✓ ${adapter.label}: ${serverName} MCP removed`);
   } catch {
-    console.warn("  ⚠ Failed to install Playwright MCP");
-    console.log("  Run manually: claude mcp add playwright npx @playwright/mcp@latest");
-    throw new Error("MCP installation failed");
+    console.warn(`  ⚠ ${adapter.label}: failed to remove ${serverName} MCP`);
   }
 }
 
-/**
- * Remove Playwright MCP server from Claude Code.
- * Prints status messages. Does not throw if already absent.
- */
-export function removePlaywrightMcp(): void {
-  if (!isPlaywrightMcpInstalled()) {
-    console.log("  ✓ Playwright MCP not installed (nothing to remove)");
-    return;
-  }
+// ─── Playwright MCP conveniences ────────────────────────────────────────
 
-  try {
-    execFileSync("claude", ["mcp", "remove", "playwright"], {
-      encoding: "utf-8",
-      timeout: TIMEOUT.MCP_LIST,
-      stdio: ["pipe", "pipe", "pipe"],
-      shell: needsShell,
-    });
-    console.log("  ✓ Playwright MCP removed");
-  } catch {
-    console.warn("  ⚠ Failed to remove Playwright MCP");
-    console.log("  Run manually: claude mcp remove playwright");
-  }
+const PLAYWRIGHT_MCP_COMMAND = ["npx", "@playwright/mcp@latest"];
+
+export function isPlaywrightMcpInstalled(adapter: EditorAdapter): boolean {
+  return isMcpInstalled(adapter, "playwright");
+}
+
+export function ensurePlaywrightMcp(adapter: EditorAdapter): void {
+  ensureMcp(adapter, "playwright", PLAYWRIGHT_MCP_COMMAND);
+}
+
+export function removePlaywrightMcp(adapter: EditorAdapter): void {
+  removeMcp(adapter, "playwright");
 }

@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import { join } from "path";
 import { execFileSync } from "child_process";
 import chalk from "chalk";
+import { detectAdapters } from "../commands/editors.js";
 import { detectAppServer, isPlaywrightMcpInstalled, needsShell } from "../shared/index.js";
 
 export interface DoctorOptions {
@@ -117,14 +118,26 @@ export async function doctor(options: DoctorOptions = {}) {
     message: pwTestMsg,
   });
 
-  // Playwright MCP — use shared utility
-  const mcpInstalled = isPlaywrightMcpInstalled();
-  checks.push({
-    category: "Playwright MCP",
-    name: "playwright-mcp",
-    ok: mcpInstalled,
-    message: mcpInstalled ? "installed" : "not configured",
-  });
+  // Playwright MCP — check each detected editor adapter
+  const adapters = detectAdapters(projectRoot);
+  if (adapters.length === 0) {
+    checks.push({
+      category: "Playwright MCP",
+      name: "playwright-mcp",
+      ok: false,
+      message: "no editors detected (configure .claude/ or .opencode/)",
+    });
+  } else {
+    for (const adapter of adapters) {
+      const installed = isPlaywrightMcpInstalled(adapter);
+      checks.push({
+        category: "Playwright MCP",
+        name: `playwright-mcp-${adapter.label}`,
+        ok: installed,
+        message: installed ? "installed" : `not configured for ${adapter.label}`,
+      });
+    }
+  }
 
   // Seed test
   const hasSeed = existsSync(

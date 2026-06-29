@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { execSync } from "child_process";
-import { existsSync, readFileSync, readdirSync } from "fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "fs";
+import { tmpdir } from "os";
 import { join } from "path";
 
 const ROOT = join(__dirname, "..");
@@ -62,7 +63,9 @@ const distExists = existsSync(distDir);
     const { update } = await import("../dist/commands/update.js");
     const {
       hasClaudeCode,
-      installForClaudeCode,
+      claudeAdapter,
+      opencodeAdapter,
+      installCommand,
       buildCommandMeta,
       escapeYamlValue,
     } = await import("../dist/commands/editors.js");
@@ -73,9 +76,25 @@ const distExists = existsSync(distDir);
     expect(typeof uninstall).toBe("function");
     expect(typeof update).toBe("function");
     expect(typeof hasClaudeCode).toBe("function");
-    expect(typeof installForClaudeCode).toBe("function");
+    expect(typeof claudeAdapter).toBe("object");
+    expect(typeof opencodeAdapter).toBe("object");
+    expect(typeof installCommand).toBe("function");
     expect(typeof buildCommandMeta).toBe("function");
     expect(typeof escapeYamlValue).toBe("function");
+  });
+
+  it("installCommand writes the command file for each adapter", async () => {
+    const { claudeAdapter, opencodeAdapter, installCommand, buildCommandMeta } =
+      await import("../dist/commands/editors.js");
+    const tmpDir = mkdtempSync(join(tmpdir(), "openspec-pw-smoke-"));
+    try {
+      installCommand(claudeAdapter, buildCommandMeta("hello"), tmpDir);
+      installCommand(opencodeAdapter, buildCommandMeta("hello"), tmpDir);
+      expect(existsSync(join(tmpDir, ".claude", "commands", "opsx", "e2e.md"))).toBe(true);
+      expect(existsSync(join(tmpDir, ".opencode", "commands", "opsx-e2e.md"))).toBe(true);
+    } finally {
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 
   it("hasClaudeCode detects Claude Code in project", async () => {

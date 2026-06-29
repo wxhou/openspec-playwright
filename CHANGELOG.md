@@ -12,10 +12,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **App server auto-detection**: generated `playwright.config.ts` now detects `BASE_URL` from env, package script `--port`, `vite.config.*` `server.port`, `.env*` port variables, and framework defaults (Vite 5173, Astro 4321, Next/Nuxt 3000).
 - **Doctor app diagnostics**: `openspec-pw doctor` now reports detected dev script, detected base URL, and a non-blocking reachability check so `webServer` timeouts are easier to diagnose.
 - **Existing config patch hints**: `openspec-pw init` now prints recommended checks when `playwright.config.ts` already exists instead of silently skipping all config guidance.
+- **OpenCode support** (SST): auto-detected during `init` when `.opencode/` exists; the E2E command is installed as `/opsx-e2e <change-name>` (hyphenated per OpenSpec convention; command body rewritten from `/opsx:` to `/opsx-` during install and stored at `.opencode/commands/opsx-e2e.md`).
+- **EditorAdapter pattern**: multi-editor architecture in `src/commands/editors.ts` with `claudeAdapter` (existing) and `opencodeAdapter` (new) — any future editor only needs a new adapter, no CLI rewiring.
+- **Project rules routing**: `installProjectRules` helper writes employee-grade standards to `CLAUDE.md` (Claude Code, or both editors present) or `AGENTS.md` (OpenCode only), and sets `opencode.jsonc.instructions` so OpenCode picks the file up natively.
 
 ### Changed
 
 - `seed.spec.ts` and `pages/BasePage.ts` now use Playwright `use.baseURL` when `BASE_URL` env is unset, so auto-detected ports work without duplicating the URL in every generated test helper.
+- Internal TypeScript API change: `isPlaywrightMcpInstalled` / `ensurePlaywrightMcp` / `removePlaywrightMcp` now take an `EditorAdapter` first argument. This affects source consumers only; CLI behavior is unchanged.
+
+### Dependencies
+
+- Added `jsonc-parser` for safe `opencode.jsonc` editing (preserves comments and formatting while merging MCP + `instructions` entries).
 
 ## [0.3.35] - 2026-06-10
 
