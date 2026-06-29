@@ -16,9 +16,10 @@ import { promisify } from "util";
 import chalk from "chalk";
 import * as tar from "tar";
 import {
-  installProjectClaudeMd,
-  hasClaudeCode,
-  installForClaudeCode,
+  buildCommandMeta,
+  detectAdapters,
+  installCommand,
+  installProjectRules,
 } from "./editors.js";
 import { isPlaywrightMcpInstalled, ensurePlaywrightMcp, needsShell } from "../shared/index.js";
 
@@ -53,9 +54,9 @@ export async function update(options: UpdateOptions) {
   const projectRoot = process.cwd();
 
   // Check if init has been run
-  const hasCommand = existsSync(
-    join(projectRoot, ".claude", "commands", "opsx", "e2e.md"),
-  );
+  const hasCommand =
+    existsSync(join(projectRoot, ".claude", "commands", "opsx", "e2e.md")) ||
+    existsSync(join(projectRoot, ".opencode", "commands", "opsx-e2e.md"));
   const hasOpenSpec = existsSync(join(projectRoot, "openspec"));
   if (!hasCommand && !hasOpenSpec) {
     console.log(chalk.yellow("  ⚠ OpenSpec + Playwright E2E not initialized."));
@@ -167,12 +168,18 @@ export async function update(options: UpdateOptions) {
         body = readFileSync(commandSrc, "utf-8");
       }
 
-      const hasClaude = hasClaudeCode(projectRoot);
-      // Install command for Claude Code
-      if (hasClaude && body) {
-        installForClaudeCode(body, projectRoot);
-      } else if (!hasClaude) {
-        console.log(chalk.gray("  - .claude not found, skipping command installation"));
+      const detected = detectAdapters(projectRoot);
+      if (detected.length === 0) {
+        console.log(
+          chalk.gray(
+            "  - No supported editor (.claude or .opencode) found, skipping command installation",
+          ),
+        );
+      } else if (body) {
+        const meta = buildCommandMeta(body);
+        for (const adapter of detected) {
+          installCommand(adapter, meta, projectRoot);
+        }
       }
 
       // Sync project templates (BasePage.ts, seed.spec.ts)
@@ -182,7 +189,7 @@ export async function update(options: UpdateOptions) {
       const standardsSrc = join(tmpDir, "employee-standards.md");
       if (existsSync(standardsSrc)) {
         const standards = readFileSync(standardsSrc, "utf-8");
-        installProjectClaudeMd(projectRoot, standards);
+        installProjectRules(projectRoot, standards, detected);
       }
 
       rmSync(tmpDir, { recursive: true, force: true });
@@ -206,29 +213,31 @@ export async function update(options: UpdateOptions) {
     }
   }
 
-  // 2b. Install Playwright MCP if not present (Claude Code only)
-  if (options.mcp !== false && existsSync(join(projectRoot, ".claude"))) {
-    console.log(chalk.blue("\n─── Installing Playwright MCP ───"));
-
-    // Use shared utility
-    const mcpInstalled = isPlaywrightMcpInstalled();
-
-    if (mcpInstalled) {
-      console.log(chalk.green("  ✓ Playwright MCP already installed"));
-    } else {
-      try {
-        ensurePlaywrightMcp();
-        console.log(chalk.gray("  (Restart Claude Code to activate)"));
-      } catch {
-        console.log(chalk.yellow("  ⚠ Failed to install Playwright MCP"));
-        console.log(
-          chalk.gray(
-            "  Run manually: claude mcp add playwright npx @playwright/mcp@latest",
-          ),
-        );
-        console.log(
-          chalk.gray("  (Restart Claude Code to activate the MCP server)"),
-        );
+  // 2b. Install Playwright MCP if not present (per detected editor)
+  if (options.mcp !== false) {
+    const mcpEditors = detectAdapters(projectRoot);
+    if (mcpEditors.length > 0) {
+      console.log(chalk.blue("\n─── Installing Playwright MCP ───"));
+      for (const adapter of mcpEditors) {
+        if (isPlaywrightMcpInstalled(adapter)) {
+          console.log(
+            chalk.green(`  ✓ ${adapter.label}: Playwright MCP already installed`),
+          );
+          continue;
+        }
+        try {
+          ensurePlaywrightMcp(adapter);
+          console.log(chalk.gray(`  (Restart ${adapter.label} to activate)`));
+        } catch {
+          console.log(
+            chalk.yellow(`  ⚠ ${adapter.label}: Failed to install Playwright MCP`),
+          );
+          console.log(
+            chalk.gray(
+              `    Install manually (see ${adapter.label} docs).`,
+            ),
+          );
+        }
       }
     }
   }
@@ -244,16 +253,13 @@ export async function update(options: UpdateOptions) {
   // CLI binary. See Node module resolution rules.
   await checkVersionShadow();
 
-  if (existsSync(join(projectRoot, ".claude"))) {
-    console.log(chalk.bold("\nRestart Claude Code to use the updated commands."));
+  const editorsForHint = detectAdapters(projectRoot);
+  if (editorsForHint.length > 0) {
+    const labels = editorsForHint.map((a) => a.label).join(" + ");
+    console.log(chalk.bold(`\n  Restart ${labels} to use the updated commands.`));
   } else {
     console.log(
-      chalk.bold(
-        "\nRestart your AI coding assistant to use the updated commands.",
-      ),
-    );
-    console.log(
-      chalk.gray("  Then run openspec-pw run <change-name> to verify.\n"),
+      chalk.bold("\n  No supported editor detected — nothing to restart."),
     );
   }
 }

@@ -5,9 +5,10 @@ import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { readFile } from "fs/promises";
 import {
-  hasClaudeCode,
-  installForClaudeCode,
-  installProjectClaudeMd,
+  buildCommandMeta,
+  detectAdapters,
+  installCommand,
+  installProjectRules,
   readEmployeeStandards,
 } from "./editors.js";
 import { isPlaywrightMcpInstalled, ensurePlaywrightMcp, needsShell } from "../shared/index.js";
@@ -67,39 +68,66 @@ export async function init(options: InitOptions) {
   }
   console.log(chalk.green("  ✓ OpenSpec initialized"));
 
-  // 3. Install Playwright MCP (global)
+  // 3. Detect supported editors (.claude/ and/or .opencode/)
+  const detected = detectAdapters(projectRoot);
+  if (detected.length === 0) {
+    console.log(
+      chalk.yellow(
+        "\n  ⚠ No supported editor detected (need .claude/ or .opencode/).",
+      ),
+    );
+    console.log(
+      chalk.gray(
+        "  Run openspec-pw init from a Claude Code or OpenCode project to install commands.\n",
+      ),
+    );
+    return;
+  }
+  console.log(
+    chalk.gray(`  Detected: ${detected.map((a) => a.label).join(", ")}`),
+  );
+
+  // 4. Install Playwright MCP for each detected editor
   if (options.mcp !== false) {
     console.log(chalk.blue("\n─── Installing Playwright MCP ───"));
-
-    // Check using shared utility
-    const mcpInstalled = isPlaywrightMcpInstalled();
-
-    if (mcpInstalled) {
-      console.log(chalk.green("  ✓ Playwright MCP already installed"));
-    } else {
+    for (const adapter of detected) {
+      if (isPlaywrightMcpInstalled(adapter)) {
+        console.log(
+          chalk.green(`  ✓ ${adapter.label}: Playwright MCP already installed`),
+        );
+        continue;
+      }
       try {
-        ensurePlaywrightMcp();
-        console.log(chalk.gray("  (Restart Claude Code to activate)"));
+        ensurePlaywrightMcp(adapter);
+        console.log(chalk.gray(`  (Restart ${adapter.label} to activate)`));
       } catch (err) {
         const e = err as { stderr?: string };
         if (e.stderr?.includes("already exists")) {
           console.log(
-            chalk.green("  ✓ Playwright MCP already installed"),
+            chalk.green(`  ✓ ${adapter.label}: Playwright MCP already installed`),
           );
         } else {
           console.log(
             chalk.yellow(
-              "  ⚠ Failed to run claude mcp add. Run manually:",
+              `  ⚠ ${adapter.label}: failed to install Playwright MCP. Run manually.`,
             ),
           );
+          if (adapter.id === "claude") {
+            console.log(
+              chalk.gray(
+                "    claude mcp add playwright npx @playwright/mcp@latest",
+              ),
+            );
+          } else {
+            console.log(
+              chalk.gray(
+                "    Add `playwright` to mcp in opencode.json / opencode.jsonc",
+              ),
+            );
+          }
           console.log(
             chalk.gray(
-              "    claude mcp add playwright npx @playwright/mcp@latest",
-            ),
-          );
-          console.log(
-            chalk.gray(
-              "    (Restart Claude Code to activate the MCP server)",
+              `    (Restart ${adapter.label} to activate the MCP server)`,
             ),
           );
         }
@@ -107,19 +135,12 @@ export async function init(options: InitOptions) {
     }
   }
 
-  // 4. Install E2E command for Claude Code
+  // 5. Install E2E command for each detected editor
   console.log(chalk.blue("\n─── Installing E2E Commands ───"));
   const body = await readFile(E2E_COMMAND_SRC, "utf-8");
-  if (hasClaudeCode(projectRoot)) {
-    installForClaudeCode(body, projectRoot);
-  } else {
-    console.log(
-      chalk.yellow("  ⚠ Claude Code not detected (.claude/ not found)."),
-    );
-    console.log(
-      chalk.gray("  Run openspec-pw init from a Claude Code project to install commands.\n"),
-    );
-    return;
+  const meta = buildCommandMeta(body);
+  for (const adapter of detected) {
+    installCommand(adapter, meta, projectRoot);
   }
 
 
@@ -149,7 +170,7 @@ export async function init(options: InitOptions) {
   console.log(chalk.blue("\n─── Installing Employee Standards ───"));
   const standards = readEmployeeStandards(EMPLOYEE_STANDARDS_SRC);
   if (standards) {
-    installProjectClaudeMd(projectRoot, standards);
+    installProjectRules(projectRoot, standards, detected);
   }
 
   // 9. Summary
@@ -180,28 +201,30 @@ export async function init(options: InitOptions) {
       "  5. Page objects: extend tests/playwright/pages/BasePage.ts for shared selectors",
     ),
   );
-  const hasClaude = existsSync(join(projectRoot, ".claude"));
-  if (hasClaude) {
+  for (const adapter of detected) {
+    const slashCmd = adapter.id === "claude" ? "/opsx:e2e" : "/opsx-e2e";
     console.log(
-      chalk.gray("  6. In Claude Code, run: /opsx:e2e <change-name>"),
+      chalk.gray(`  • In ${adapter.label}, run: ${slashCmd} <change-name>`),
     );
   }
   console.log(
-    chalk.gray(
-      `  ${hasClaude ? "7." : "6."} Or: openspec-pw run <change-name>`,
-    ),
+    chalk.gray("  • Or: openspec-pw run <change-name>"),
   );
   console.log(
-    chalk.gray(
-      `  ${hasClaude ? "8." : "7."} Or: openspec-pw doctor to verify setup\n`,
+    chalk.gray("  • Or: openspec-pw doctor to verify setup\n"),
+  );
+
+  console.log(
+    chalk.bold(
+      `\n  Restart ${detected.map((a) => a.label).join(" + ")} to use the updated commands.`,
     ),
   );
 
   console.log(chalk.bold("How it works:"));
   console.log(
-    chalk.gray("  /opsx:e2e reads your OpenSpec specs and runs Playwright"),
+    chalk.gray("  /opsx:e2e (Claude) and /opsx-e2e (OpenCode) read your OpenSpec specs"),
   );
-  console.log(chalk.gray("  E2E tests through a three-agent pipeline:"));
+  console.log(chalk.gray("  and run Playwright E2E tests through a three-agent pipeline:"));
   console.log(chalk.gray("  Planner → Generator → Healer\n"));
 }
 

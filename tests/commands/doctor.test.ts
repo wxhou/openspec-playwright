@@ -11,6 +11,7 @@ vi.mock("fs", () => ({
 }));
 
 import { execFileSync } from "child_process";
+import { claudeAdapter } from "../../src/commands/editors.js";
 import { isPlaywrightMcpInstalled } from "../../src/shared/mcp.js";
 
 describe("isPlaywrightMcpInstalled", () => {
@@ -20,7 +21,7 @@ describe("isPlaywrightMcpInstalled", () => {
 
   it("returns true when playwright is in mcp list output", () => {
     vi.mocked(execFileSync).mockReturnValue("playwright: npx @playwright/mcp@latest\n");
-    expect(isPlaywrightMcpInstalled()).toBe(true);
+    expect(isPlaywrightMcpInstalled(claudeAdapter)).toBe(true);
     expect(execFileSync).toHaveBeenCalledWith("claude", ["mcp", "list"], {
       encoding: "utf-8",
       timeout: 10000,
@@ -31,19 +32,19 @@ describe("isPlaywrightMcpInstalled", () => {
 
   it("returns false when playwright is not in mcp list output", () => {
     vi.mocked(execFileSync).mockReturnValue("other-mcp: some-command\n");
-    expect(isPlaywrightMcpInstalled()).toBe(false);
+    expect(isPlaywrightMcpInstalled(claudeAdapter)).toBe(false);
   });
 
   it("returns false when claude CLI fails", () => {
     vi.mocked(execFileSync).mockImplementation(() => {
       throw new Error("claude not found");
     });
-    expect(isPlaywrightMcpInstalled()).toBe(false);
+    expect(isPlaywrightMcpInstalled(claudeAdapter)).toBe(false);
   });
 
   it("returns false when output is empty", () => {
     vi.mocked(execFileSync).mockReturnValue("");
-    expect(isPlaywrightMcpInstalled()).toBe(false);
+    expect(isPlaywrightMcpInstalled(claudeAdapter)).toBe(false);
   });
 });
 

@@ -1,35 +1,43 @@
 import {
   existsSync,
-  readFileSync,
-  writeFileSync,
   rmSync,
   readdirSync,
   rmdirSync,
 } from "fs";
 import { join, dirname } from "path";
 import chalk from "chalk";
-import { getClaudeCommandPath } from "./editors.js";
+import {
+  cleanProjectRules,
+  detectAdapters,
+} from "./editors.js";
 import { removePlaywrightMcp } from "../shared/index.js";
 
 export async function uninstall() {
   console.log(chalk.blue("\n🗑️  Uninstalling OpenSpec + Playwright E2E\n"));
 
   const projectRoot = process.cwd();
+  const detected = detectAdapters(projectRoot);
 
-  // 1. Remove Playwright MCP using shared utility
-  console.log(chalk.blue("─── Removing Playwright MCP ───"));
-  removePlaywrightMcp();
+  // 1. Remove Playwright MCP for each detected editor
+  console.log(chalk.blue("\n─── Removing Playwright MCP ───"));
+  for (const adapter of detected) {
+    removePlaywrightMcp(adapter);
+  }
 
-  // 2. Remove E2E command file for Claude Code
+  // 2. Remove E2E command file for each detected editor
   console.log(chalk.blue("\n─── Removing E2E Commands ───"));
-  const relPath = getClaudeCommandPath("e2e");
-  const absPath = join(projectRoot, relPath);
-  if (existsSync(absPath)) {
-    rmSync(absPath);
-    cleanupEmptyDirs(dirname(absPath), projectRoot);
-    console.log(chalk.green(`  ✓ Removed ${relPath}`));
-  } else {
-    console.log(chalk.gray("  - E2E command not found, skipping"));
+  for (const adapter of detected) {
+    const relPath = adapter.commandFilePath("e2e");
+    const absPath = join(projectRoot, relPath);
+    if (existsSync(absPath)) {
+      rmSync(absPath);
+      cleanupEmptyDirs(dirname(absPath), projectRoot);
+      console.log(chalk.green(`  ✓ ${adapter.label}: ${relPath}`));
+    } else {
+      console.log(
+        chalk.gray(`  - ${adapter.label}: E2E command not found, skipping`),
+      );
+    }
   }
 
   // 3. Remove legacy skill directory (if present from older versions)
@@ -52,9 +60,11 @@ export async function uninstall() {
     console.log(chalk.gray("  - Schema not found, skipping"));
   }
 
-  // 5. Clean CLAUDE.md markers
-  console.log(chalk.blue("\n─── Cleaning CLAUDE.md ───"));
-  cleanClaudeMd(projectRoot);
+  // 5. Clean rules file markers for each detected editor
+  console.log(chalk.blue("\n─── Cleaning Rules Files ───"));
+  for (const adapter of detected) {
+    cleanProjectRules(adapter, projectRoot);
+  }
 
   // Summary
   console.log(chalk.blue("\n─── Summary ───"));
@@ -78,36 +88,4 @@ function cleanupEmptyDirs(dir: string, stopAt: string) {
       break;
     }
   }
-}
-
-function cleanClaudeMd(projectRoot: string) {
-  const dest = join(projectRoot, "CLAUDE.md");
-  if (!existsSync(dest)) {
-    console.log(chalk.gray("  - CLAUDE.md not found, skipping"));
-    return;
-  }
-
-  const existing = readFileSync(dest, "utf-8");
-  const markerStart = "<!-- OPENSPEC:START -->";
-  const markerEnd = "<!-- OPENSPEC:END -->";
-
-  if (!existing.includes(markerStart)) {
-    console.log(chalk.gray("  - No OpenSpec markers found in CLAUDE.md"));
-    return;
-  }
-
-  const updated =
-    existing
-      .split("\n")
-      .filter(
-        (line) =>
-          !line.trim().startsWith(markerStart) &&
-          !line.trim().startsWith(markerEnd),
-      )
-      .join("\n")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim() + "\n";
-
-  writeFileSync(dest, updated);
-  console.log(chalk.green("  ✓ Removed OpenSpec markers from CLAUDE.md"));
 }

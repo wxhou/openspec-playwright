@@ -16,6 +16,7 @@ vi.mock("fs", () => ({
 }));
 
 import { execFileSync } from "child_process";
+import { claudeAdapter } from "../../src/commands/editors.js";
 import { removePlaywrightMcp } from "../../src/shared/mcp.js";
 
 describe("removePlaywrightMcp", () => {
@@ -29,8 +30,8 @@ describe("removePlaywrightMcp", () => {
       .mockReturnValueOnce(""); // mcp remove
 
     const consoleSpy = vi.spyOn(console, "log");
-    removePlaywrightMcp();
-    expect(consoleSpy).toHaveBeenCalledWith("  ✓ Playwright MCP removed");
+    removePlaywrightMcp(claudeAdapter);
+    expect(consoleSpy).toHaveBeenCalledWith("  ✓ claude: playwright MCP removed");
     consoleSpy.mockRestore();
   });
 
@@ -38,8 +39,8 @@ describe("removePlaywrightMcp", () => {
     vi.mocked(execFileSync).mockReturnValue(""); // mcp list returns empty
 
     const consoleSpy = vi.spyOn(console, "log");
-    removePlaywrightMcp();
-    expect(consoleSpy).toHaveBeenCalledWith("  ✓ Playwright MCP not installed (nothing to remove)");
+    removePlaywrightMcp(claudeAdapter);
+    expect(consoleSpy).toHaveBeenCalledWith("  - claude: playwright MCP not installed (nothing to remove)");
     consoleSpy.mockRestore();
   });
 
@@ -51,8 +52,8 @@ describe("removePlaywrightMcp", () => {
       });
 
     const consoleSpy = vi.spyOn(console, "warn");
-    removePlaywrightMcp();
-    expect(consoleSpy).toHaveBeenCalledWith("  ⚠ Failed to remove Playwright MCP");
+    removePlaywrightMcp(claudeAdapter);
+    expect(consoleSpy).toHaveBeenCalledWith("  ⚠ claude: failed to remove playwright MCP");
     consoleSpy.mockRestore();
   });
 });
