@@ -1,4 +1,4 @@
-# Claude Code Employee-Grade Standards
+# AI Coding Assistant Employee-Grade Standards
 
 > 员工级行为规范。
 
@@ -6,7 +6,7 @@
 
 ## 0. 适用范围
 
-本规范适用于 OpenSpec + openspec-playwright 项目（Claude Code 作为开发工具）。
+本规范适用于 OpenSpec + openspec-playwright 项目（使用 AI 编码助手，如 Claude Code 或 OpenCode）。
 
 **项目规范**：动手前读 `openspec/config.yaml`（技术栈、结构、约定、约束等），无内容则忽略。
 
@@ -72,7 +72,7 @@
 
 按需叠加的评审：`/plan-ceo-review`（产品战略）/ `/plan-eng-review`（架构）/ `/plan-design-review`（UX）。
 
-阶段命令即触发器：`/opsx:propose` → `/opsx:apply` → `/opsx:verify` → `/opsx:e2e` → `/opsx:archive`。**所有阶段由用户手动触发，AI 不自动进入下一阶段**（详见 §2 阶段隔离）。
+阶段命令即触发器：`/opsx:propose` → `/opsx:apply` → `/opsx:verify` → e2e 命令（Claude Code 用 `/opsx:e2e`，OpenCode 用 `/opsx-e2e`）→ `/opsx:archive`。**所有阶段由用户手动触发，AI 不自动进入下一阶段**（详见 §2 阶段隔离）。
 
 可用 `npx openspec --help` 查看更多 OpenSpec 命令。
 

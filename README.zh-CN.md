@@ -15,9 +15,11 @@ npm install -g openspec-playwright@latest
 **必需：**
 
 1. **Node.js >= 20**
-2. **Claude Code** 且项目中有 `.claude/` 目录
+2. **Claude Code**（带 `.claude/` 目录）和/或 **OpenCode**（带 `.opencode/` 目录）
 3. **OpenSpec** 已初始化：`npm install -g @fission-ai/openspec@latest && openspec init`
-4. **Playwright MCP**（用于测试执行 + Healer）：`claude mcp add playwright npx @playwright/mcp@latest`
+4. **Playwright MCP**（用于测试执行 + Healer）— `openspec-pw init` 会按检测到的编辑器自动安装：
+   - **Claude Code**：`claude mcp add playwright npx @playwright/mcp@latest`
+   - **OpenCode**：合并到 `opencode.jsonc` 的 `mcp.playwright = { type: "local", command: ["npx", "@playwright/mcp@latest"] }`
 
 **可选** — `openspec-pw explore` 和 Playwright MCP 自带浏览器探索能力；只有想要 `/browse` 短命令时才需要装 gstack：
 
@@ -35,7 +37,9 @@ openspec-pw init          # 安装 Playwright E2E 集成
 
 ## 支持的 AI 编码助手
 
-Claude Code — E2E 工作流由 `/opsx:e2e` 命令驱动，使用 /browse（探索）+ Playwright MCP（测试执行）。
+**Claude Code**（Anthropic）— E2E 工作流由 `/opsx:e2e` 命令驱动，使用 /browse（探索）+ Playwright MCP（测试执行）。
+
+**OpenCode**（SST）— E2E 工作流由 `/opsx-e2e` 命令驱动（按 OpenSpec 惯例使用连字符），使用相同的浏览器探索 + Playwright MCP 技术栈。Playwright MCP 通过 `opencode.jsonc` 的 `mcp.playwright` 配置。
 
 ## 使用
 
@@ -44,6 +48,14 @@ Claude Code — E2E 工作流由 `/opsx:e2e` 命令驱动，使用 /browse（探
 ```bash
 /opsx:e2e <change-name>
 ```
+
+### 在 OpenCode 中
+
+```bash
+/opsx-e2e <change-name>
+```
+
+命令 id 按 OpenSpec 惯例使用连字符；正文在安装时从 `/opsx:` 改写为 `/opsx-`，存储在 `.opencode/commands/opsx-e2e.md`。
 
 ### CLI 命令
 
@@ -61,6 +73,7 @@ openspec-pw uninstall     # 移除项目中的集成
 ## 工作原理
 
 ```
+# 由 /opsx:e2e <change-name>（Claude Code）或 /opsx-e2e <change-name>（OpenCode）触发
 /opsx:e2e <change-name>
   │
   ├── 1. 选择 change → 读取 openspec/changes/<name>/specs/
@@ -94,8 +107,8 @@ openspec-pw uninstall     # 移除项目中的集成
 
 ## `openspec-pw init` 做了什么
 
-1. 检测项目中的 Claude Code
-2. 安装 E2E 命令（`/opsx:e2e`）到 Claude Code
+1. 检测项目中的受支持编辑器（Claude Code 和/或 OpenCode）
+2. 为每个检测到的编辑器安装 E2E 命令（Claude Code 用 `/opsx:e2e`，OpenCode 用 `/opsx-e2e`）
 3. 生成 `tests/playwright/seed.spec.ts`、`auth.setup.ts`、`credentials.yaml`、`app-knowledge.md`
 
 ## 首次配置清单
@@ -107,12 +120,12 @@ openspec-pw uninstall     # 移除项目中的集成
 | 1. 安装 CLI | `npm install -g openspec-playwright@latest` | 检查 Node.js 版本 `node -v`（需 >= 20） |
 | 2. 安装 OpenSpec | `npm install -g @fission-ai/openspec@latest && openspec init` | `npm cache clean -f && npm install -g @fission-ai/openspec@latest` |
 | 3. 初始化 E2E | `openspec-pw init` | 运行 `openspec-pw doctor` 查看具体缺失项 |
-| 4. 安装 Playwright MCP | `claude mcp add playwright npx @playwright/mcp@latest` | `claude mcp list` 确认安装成功 |
+| 4. 安装 Playwright MCP | `claude mcp add playwright npx @playwright/mcp@latest`（Claude），或将 `mcp.playwright` 加入 `opencode.jsonc`（OpenCode） | `claude mcp list`（Claude）/ `cat opencode.jsonc`（OpenCode）确认安装成功 |
 | 5. 安装浏览器 | `npx playwright install --with-deps` | macOS 可能需先运行 `xcode-select --install` |
 | 6. 启动开发服务器 | `npm run dev`（在另一个终端） | 确认端口，配置 `BASE_URL` |
 | 7. 验证环境 | `npx playwright test tests/playwright/seed.spec.ts` | 检查 `playwright.config.ts` 中的 `webServer` 配置 |
 | 8. 配置认证（如需要） | 见下方"认证配置" | `npx playwright test --project=setup` 调试 |
-| 9. 运行第一个 E2E | `/opsx:e2e <change-name>` | 查看 `openspec/reports/` 中的报告 |
+| 9. 运行第一个 E2E | `/opsx:e2e <change-name>`（Claude）或 `/opsx-e2e <change-name>`（OpenCode） | 查看 `openspec/reports/` 中的报告 |
 
 **可选 — 仅当需要单浏览器 `/browse` 工作流时：**
 
@@ -139,7 +152,7 @@ npx playwright test --project=setup
 /opsx:e2e my-feature
 ```
 
-支持 **API 登录**（推荐）和 **UI 登录**（备选）。多用户测试（管理员 vs 普通用户）在 `credentials.yaml` 中添加多个用户，`/opsx:e2e` 会从 specs 自动检测角色。
+支持 **API 登录**（推荐）和 **UI 登录**（备选）。多用户测试（管理员 vs 普通用户）在 `credentials.yaml` 中添加多个用户，运行 `/opsx:e2e`（OpenCode 中用 `/opsx-e2e`）— 会从 specs 自动检测角色。
 
 ## 自定义
 
@@ -173,9 +186,13 @@ CLI (openspec-pw)
   ├── explore    → 并行探索路由
   └── uninstall  → 移除项目中的集成
 
-Claude Code (/opsx:e2e)
-  ├── .claude/commands/opsx/e2e.md    → 命令文件（从 templates/e2e-command.md 安装）
-  └── @playwright/mcp                 → Healer Agent 工具
+编辑器（由 openspec-pw init 自动检测）
+  ├── Claude Code (/opsx:e2e)
+  │   ├── .claude/commands/opsx/e2e.md    → 命令文件（从 templates/e2e-command.md 安装）
+  │   └── @playwright/mcp                 → Healer Agent 工具（通过 `claude mcp add playwright …`）
+  └── OpenCode (/opsx-e2e)
+      ├── .opencode/commands/opsx-e2e.md  → 命令文件（正文由 /opsx: 改写为 /opsx-）
+      └── opencode.jsonc                  → Playwright MCP (mcp.playwright) + 指令路由
 
 测试资产 (tests/playwright/)
   ├── seed.spec.ts       → 环境验证
