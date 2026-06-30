@@ -255,7 +255,7 @@ export async function update(options: UpdateOptions) {
 
   const editorsForHint = detectAdapters(projectRoot);
   if (editorsForHint.length > 0) {
-    const labels = editorsForHint.map((a) => a.label).join(" + ");
+    const labels = editorsForHint.map((a) => a.displayName).join(" + ");
     console.log(chalk.bold(`\n  Restart ${labels} to use the updated commands.`));
   } else {
     console.log(

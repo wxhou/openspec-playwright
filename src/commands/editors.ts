@@ -95,6 +95,8 @@ export interface EditorAdapter {
   id: "claude" | "opencode";
   /** Short label used in log messages. */
   label: string;
+  /** Human-readable name used in user-facing messages. */
+  displayName: string;
   /** True if this editor's config dir is present in the project. */
   detect(projectRoot: string): boolean;
   /** Relative path of the command file inside the project. */
@@ -419,6 +421,7 @@ function claudeMcpOutputIncludes(output: unknown, serverName: string): boolean {
 export const claudeAdapter: EditorAdapter = {
   id: "claude",
   label: "claude",
+  displayName: "Claude Code",
   detect: hasClaudeCode,
   commandFilePath: getClaudeCommandPath,
   formatCommand: formatClaudeCommand,
@@ -462,6 +465,7 @@ export const claudeAdapter: EditorAdapter = {
 export const opencodeAdapter: EditorAdapter = {
   id: "opencode",
   label: "opencode",
+  displayName: "OpenCode",
   detect: hasOpenCode,
   commandFilePath: getOpenCodeCommandPath,
   formatCommand: formatOpenCodeCommand,

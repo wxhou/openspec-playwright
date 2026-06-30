@@ -216,7 +216,7 @@ export async function init(options: InitOptions) {
 
   console.log(
     chalk.bold(
-      `\n  Restart ${detected.map((a) => a.label).join(" + ")} to use the updated commands.`,
+      `\n  Restart ${detected.map((a) => a.displayName).join(" + ")} to use the updated commands.`,
     ),
   );
 

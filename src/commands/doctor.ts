@@ -209,7 +209,14 @@ export async function doctor(options: DoctorOptions = {}) {
   console.log(chalk.blue("\n─── Summary ───"));
   if (allOk) {
     console.log(chalk.green("  ✅ All prerequisites met!\n"));
-    console.log(chalk.gray("  Run: /opsx:e2e <change-name> in Claude Code\n"));
+    const detected = detectAdapters(process.cwd());
+    const hints = detected.length
+      ? detected.map((a) => {
+          const slash = a.id === "claude" ? "/opsx:e2e" : "/opsx-e2e";
+          return `${slash} (in ${a.displayName})`;
+        })
+      : ["/opsx:e2e (in Claude Code) or /opsx-e2e (in OpenCode)"];
+    console.log(chalk.gray(`  Run: ${hints.join("  or  ")} <change-name>\n`));
   } else {
     console.log(chalk.red("  ❌ Some prerequisites are missing\n"));
     console.log(chalk.gray("  Run: openspec-pw init to fix\n"));
