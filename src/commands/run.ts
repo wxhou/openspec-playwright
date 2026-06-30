@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import chalk from "chalk";
 import { needsShell } from "../shared/index.js";
+import { detectAdapters } from "./editors.js";
 
 export interface RunOptions {
   project?: string;
@@ -52,7 +53,13 @@ export async function run(changeName: string, options: RunOptions) {
     console.log(
       chalk.red(`  ✗ Test file not found: ${testFileDisplayPath}`),
     );
-    console.log(chalk.gray("  Run /opsx:e2e first to generate tests.\n"));
+    const detected = detectAdapters(projectRoot);
+    const slashes = detected.length
+      ? detected
+          .map((a) => (a.id === "claude" ? "/opsx:e2e" : "/opsx-e2e"))
+          .join(" or ")
+      : "/opsx:e2e (Claude) or /opsx-e2e (OpenCode)";
+    console.log(chalk.gray(`  Run ${slashes} first to generate tests.\n`));
     process.exit(1);
   }
 
