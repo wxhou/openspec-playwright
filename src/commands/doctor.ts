@@ -26,11 +26,16 @@ export async function doctor(options: DoctorOptions = {}) {
       encoding: "utf-8",
       shell: needsShell,
     }).trim();
+    const majorMatch = node.match(/v?(\d+)\./);
+    const major = majorMatch ? parseInt(majorMatch[1], 10) : 0;
+    const deprecated = major > 0 && major < 22;
     checks.push({
       category: "Node.js",
       name: "node",
       ok: true,
-      message: node,
+      message: deprecated
+        ? `${node}  ⚠  Node < 22 deprecated by GitHub Actions; recommend Node 22+`
+        : node,
     });
   } catch {
     checks.push({

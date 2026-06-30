@@ -30,8 +30,11 @@ export async function audit() {
   const results: AuditResult[] = [];
 
   // 1. Get sitemap routes
-  const sitemapRoutes = await getSitemapRoutes();
-  const allRoutes = sitemapRoutes ?? [];
+  const sitemapResult = await getSitemapRoutes();
+  const allRoutes = sitemapResult.routes;
+  if (sitemapResult.note) {
+    console.log(chalk.gray(`  ℹ ${sitemapResult.note}`));
+  }
 
   // 2. Get OpenSpec change names
   const changeNames = await getChangeNames(projectRoot);
@@ -171,16 +174,25 @@ export async function audit() {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-async function getSitemapRoutes(): Promise<string[] | null> {
+async function getSitemapRoutes(): Promise<{
+  routes: string[];
+  note: string | null;
+}> {
+  const baseUrl = process.env.BASE_URL || "http://localhost:3000";
+  const hasBaseUrl = !!process.env.BASE_URL;
   try {
-    const baseUrl = process.env.BASE_URL || "http://localhost:3000";
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT.OPENSPEC_LIST);
     const response = await fetch(`${baseUrl}/sitemap.xml`, { signal: controller.signal });
     clearTimeout(timeoutId);
-    
-    if (!response.ok) return null;
-    
+
+    if (!response.ok) {
+      return {
+        routes: [],
+        note: `${baseUrl}/sitemap.xml returned ${response.status}; route coverage check skipped`,
+      };
+    }
+
     const text = await response.text();
     const urlRegex = /<loc>([^<]+)<\/loc>/g;
     const urls: string[] = [];
@@ -190,9 +202,15 @@ async function getSitemapRoutes(): Promise<string[] | null> {
         urls.push(new URL(match[1]).pathname);
       } catch {}
     }
-    return [...new Set(urls)];
-  } catch {
-    return null;
+    return { routes: [...new Set(urls)], note: null };
+  } catch (err) {
+    const reason = hasBaseUrl
+      ? `fetch failed: ${(err as Error).message}`
+      : `no BASE_URL set, tried default ${baseUrl}`;
+    return {
+      routes: [],
+      note: `sitemap.xml unreachable; route coverage check skipped (${reason})`,
+    };
   }
 }
 
