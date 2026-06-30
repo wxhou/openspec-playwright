@@ -666,6 +666,8 @@ if (cachedSelectors && cachedSelectors.length > 0) {
 
 **Test coverage — empty states**: For list/detail pages, explore the empty state. If the app shows a "no data" UI when the list is empty, generate a test to verify it. Empty states are often missing from specs but are real user paths.
 
+**Test data fabrication**: never invent user accounts, product lists, or API responses. Follow §6 of the employee standards — explicitly ask the user for test data; use `TODO(user)` markers for approved placeholders; fail loudly rather than fabricate.
+
 **Test coverage — special elements**: Check `app-exploration.md` → **Special Elements Detected** table. For each special element, generate tests using the following strategies:
 - Canvas: screenshot + boundingBox → dimensions > 0, or 2D pixel verification
 - WebGL: screenshot only (no pixel comparison — rendering varies)

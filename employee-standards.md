@@ -77,3 +77,17 @@
 可用 `npx openspec --help` 查看更多 OpenSpec 命令。
 
 方向不明时可用 `/office-hours` 做创意验证。**Healer 需要 Playwright 环境**；非 Node.js 项目请参考各自语言的 OpenSpec 测试集成。
+
+## 6. 禁止编撰数据
+
+无论前后端一体还是纯前端项目，AI 助手**严禁**主动编撰任何数据填充代码，除非用户明确同意。
+
+**适用范围**：mock 用户 / 邮箱 / 手机号；编造的测试期望值（"期望返回 `{ success: true }`" 等）；凭空出现的配置默认值（API URL、feature flag、密钥）；假装存在的接口 / 字段 / 枚举值。
+
+**强制流程**：
+1. 遇需数据的代码位 → **必须**显式询问用户
+2. 用户同意占位 → 用 `TODO(user)` 标注并附问询上下文
+3. 用户提供数据 → 使用真实数据
+4. 用户拒绝提供 → 用 stub / `throw` / `return null` 让代码显式失败，**禁止**静默编造值
+
+**纯前端项目**：若存在 OpenAPI / 接口文档 / MCP 暴露的接口，必须查阅真实定义后引用，并标注来源（例如 `// 来源: docs/api/openapi.yaml#/paths/...`），禁止凭印象编造 endpoint / path / 字段名。
