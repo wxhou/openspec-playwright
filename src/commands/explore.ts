@@ -108,10 +108,34 @@ function appendFailureSection(
   content: string,
   results: RouteResult[],
 ): string {
+  // Remove any existing failure section so re-runs replace, not duplicate.
+  // Matches "## Exploration Failures" up to the next "## " header (or EOF).
+  const lines = content.split("\n");
+  const startIdx = lines.findIndex((l) =>
+    /^## Exploration Failures\s*$/.test(l),
+  );
+  if (startIdx !== -1) {
+    let endIdx = lines.length;
+    for (let i = startIdx + 1; i < lines.length; i++) {
+      if (/^##\s/.test(lines[i])) {
+        endIdx = i;
+        break;
+      }
+    }
+    while (endIdx > startIdx && lines[endIdx - 1].trim() === "") endIdx--;
+    lines.splice(startIdx, endIdx - startIdx);
+  }
+
   const failures = results.filter(
     (r) => r.status === "error" || r.status === "auth-required",
   );
-  if (failures.length === 0) return content;
+  if (failures.length === 0) {
+    // Trim trailing blank lines left by the removed section
+    while (lines.length > 0 && lines[lines.length - 1].trim() === "") {
+      lines.pop();
+    }
+    return lines.length > 0 ? lines.join("\n") + "\n" : "";
+  }
 
   const failureLines: string[] = [
     "",
@@ -131,7 +155,8 @@ function appendFailureSection(
   }
   failureLines.push("");
 
-  return content + failureLines.join("\n");
+  lines.push(...failureLines);
+  return lines.join("\n");
 }
 
 // ── Worker ──────────────────────────────────────────────────────────────────────
