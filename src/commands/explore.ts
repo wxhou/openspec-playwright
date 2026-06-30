@@ -159,7 +159,7 @@ function appendFailureSection(
   return lines.join("\n");
 }
 
-// ── Worker ──────────────────────────────────────────────────────────────────────
+// ── Sequential runner ─────────────────────────────────────────────────────────
 
 async function exploreRoute(
   page: Page,
@@ -246,13 +246,11 @@ async function exploreRoute(
   }
 }
 
-async function runWorker(
-  workerId: number,
+async function runSequential(
   routes: string[],
   baseUrl: string,
 ): Promise<RouteResult[]> {
   const results: RouteResult[] = [];
-
   if (routes.length === 0) return results;
 
   let browser: Browser | undefined;
@@ -276,7 +274,7 @@ async function runWorker(
             : chalk.red("err");
       const pathDisplay =
         route.length > 40 ? route.slice(0, 40) + "..." : route;
-      console.log(`  [worker ${workerId}] ${icon}  ${pathDisplay}`);
+      console.log(`  ${icon}  ${pathDisplay}`);
     }
 
     await context.close();
@@ -289,21 +287,14 @@ async function runWorker(
   return results;
 }
 
-function chunkRoutes(routes: string[], numWorkers: number): string[][] {
-  const chunks: string[][] = Array.from({ length: numWorkers }, () => []);
-  routes.forEach((route, i) => {
-    chunks[i % numWorkers].push(route);
-  });
-  return chunks;
-}
-
 // ── Main ───────────────────────────────────────────────────────────────────────
 
 export async function explore(options: ExploreOptions) {
   const projectRoot = process.cwd();
-  const MAX_WORKERS = 16;
-  const numWorkers = Math.min(options.parallel ?? 4, MAX_WORKERS);
   const startTime = Date.now();
+  // Note: `options.parallel` is accepted for backward compat but ignored —
+  // routes run sequentially in a single browser for predictability.
+  void options.parallel;
 
   // ── Signal handling: clean up on Ctrl+C / SIGTERM ──
   let interrupted = false;
@@ -318,7 +309,7 @@ export async function explore(options: ExploreOptions) {
   process.on("SIGINT", cleanup);
   process.on("SIGTERM", cleanup);
 
-  console.log(chalk.blue(`\nApp Exploration — ${numWorkers} workers\n`));
+  console.log(chalk.blue(`\nApp Exploration (sequential)\n`));
 
   // 1. Read app-exploration.md
   const explorationPath = join(projectRoot, "app-exploration.md");
@@ -350,39 +341,18 @@ export async function explore(options: ExploreOptions) {
 
   console.log(chalk.blue("─── Dry Run ───"));
   if (options.dryRun) {
-    for (let i = 0; i < paths.length; i++) {
-      const chunk = i % numWorkers;
-      console.log(`  worker ${chunk}: ${paths[i]}`);
+    for (const path of paths) {
+      console.log(`  → ${path}`);
     }
     console.log(chalk.gray(`\n  (dry run — no browsers launched)\n`));
     return;
   }
 
-  // 2. Split routes into chunks
-  const chunks = chunkRoutes(paths, numWorkers);
-    const nonEmptyChunks = chunks
-      .map((c, i) => ({ chunk: c, id: i }))
-      .filter((x) => x.chunk.length > 0);
-
-    console.log(
-      chalk.blue(
-        `─── Exploring ${paths.length} routes with ${nonEmptyChunks.length} workers ───\n`,
-      ),
-    );
-
-    // 3. Launch workers concurrently
-    const workerPromises = nonEmptyChunks.map(({ chunk, id }) =>
-      runWorker(id, chunk, baseUrl),
-    );
-    const settled = await Promise.allSettled(workerPromises);
-
-    // 4. Merge results
-    const allResults: RouteResult[] = [];
-    for (const result of settled) {
-      if (result.status === "fulfilled") {
-        allResults.push(...result.value);
-      }
-    }
+  // 2. Single browser, sequential exploration
+  console.log(
+    chalk.blue(`─── Exploring ${paths.length} routes (sequential) ───\n`),
+  );
+  const allResults = await runSequential(paths, baseUrl);
 
     // 5. Sort results to match original route order
     const pathOrder = new Map(paths.map((p, i) => [p, i]));
