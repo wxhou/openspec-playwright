@@ -76,3 +76,35 @@ Before each release action, confirm the target version has already been explicit
 - Tests must not use hardcoded absolute paths — use `process.cwd()` or env vars
 - Periodically regenerate lockfile: `rm -rf node_modules package-lock.json && npm install`
 - **不主动发布**：未经用户明确要求，不执行 `npm run release`
+
+## Commit Message Style
+
+本项目 commit message 走**严谨精炼**风格：
+
+```
+<scope>(<area>): <action> <object>
+
+≤ 4 行：关键变更（不复述 diff）+ 一行影响
+Tests: X/X pass. <gate> clean. No version bump.
+```
+
+硬性要求：
+- Subject 必填 `<scope>(<area>):` 前缀；scope: `feat` `fix` `docs` `chore` `refactor`
+- 动作现在时祈使语气（`extend` `add` `bump`，非 `extended` / `added`）
+- Body 不超 4 行，不复述 diff 内容
+- 禁放 "Same X" 复述 / "per Version Lock rule" 之类项目惯例
+- 禁放 preemptive CTA ("如果要发 vX.Y.Z 你说一声" 这类)
+- Footer 必列已跑过的 CI gate + 版本号变更（`Bump to vX.Y.Z` / `No version bump`）
+
+例：
+
+```
+docs(standards): extend anti-fabrication rule to pure front-end + API docs
+
+§6 covers full-stack and pure front-end. OpenAPI / 接口文档 / MCP endpoints
+must be cited, not invented.
+
+templates/e2e-command.md test-data reminder references §6.
+
+Tests: 197/197 pass. No version bump.
+```
