@@ -5,7 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.45] - 2026-06-30
+
+### Fixed
+- `openspec-pw explore`: `## Exploration Failures` section in `app-exploration.md` is now replaced on re-run instead of duplicated (stale tables on every invocation).
+
+### Changed
+- `openspec-pw doctor`: Node < 22 reports `⚠ Node < 22 deprecated by GitHub Actions; recommend Node 22+` inline.
+- `openspec-pw audit`: when sitemap fetch fails or no `BASE_URL` is set, an explicit note is shown explaining the route coverage check was skipped (previously silent skip).
+- `openspec-pw explore`: dropped the fake "worker N" abstraction; routes now run sequentially in a single browser with honest output. `--parallel` flag is kept for backward compat but ignored.
+
+## [0.3.44] - 2026-06-29
 
 ### Added
 
