@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import chalk from "chalk";
 import { needsShell } from "../shared/index.js";
+import { detectAdapters } from "./editors.js";
 const REPORTS_DIR = "openspec/reports";
 export async function run(changeName, options) {
     console.log(chalk.blue(`\n🔍 OpenSpec Playwright E2E: ${changeName}\n`));
@@ -23,7 +24,13 @@ export async function run(changeName, options) {
             ? `tests/playwright/${testFileName}`
             : `tests/playwright/changes/${changeName}/${testFileName}`;
         console.log(chalk.red(`  ✗ Test file not found: ${testFileDisplayPath}`));
-        console.log(chalk.gray("  Run /opsx:e2e first to generate tests.\n"));
+        const detected = detectAdapters(projectRoot);
+        const slashes = detected.length
+            ? detected
+                .map((a) => (a.id === "claude" ? "/opsx:e2e" : "/opsx-e2e"))
+                .join(" or ")
+            : "/opsx:e2e (Claude) or /opsx-e2e (OpenCode)";
+        console.log(chalk.gray(`  Run ${slashes} first to generate tests.\n`));
         process.exit(1);
     }
     // 2. Setup reports dir

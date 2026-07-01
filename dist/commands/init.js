@@ -125,7 +125,7 @@ export async function init(options) {
     }
     console.log(chalk.gray("  • Or: openspec-pw run <change-name>"));
     console.log(chalk.gray("  • Or: openspec-pw doctor to verify setup\n"));
-    console.log(chalk.bold(`\n  Restart ${detected.map((a) => a.label).join(" + ")} to use the updated commands.`));
+    console.log(chalk.bold(`\n  Restart ${detected.map((a) => a.displayName).join(" + ")} to use the updated commands.`));
     console.log(chalk.bold("How it works:"));
     console.log(chalk.gray("  /opsx:e2e (Claude) and /opsx-e2e (OpenCode) read your OpenSpec specs"));
     console.log(chalk.gray("  and run Playwright E2E tests through a three-agent pipeline:"));

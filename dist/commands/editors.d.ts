@@ -22,6 +22,8 @@ export interface EditorAdapter {
     id: "claude" | "opencode";
     /** Short label used in log messages. */
     label: string;
+    /** Human-readable name used in user-facing messages. */
+    displayName: string;
     /** True if this editor's config dir is present in the project. */
     detect(projectRoot: string): boolean;
     /** Relative path of the command file inside the project. */

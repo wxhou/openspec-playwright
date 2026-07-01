@@ -306,6 +306,7 @@ function claudeMcpOutputIncludes(output, serverName) {
 export const claudeAdapter = {
     id: "claude",
     label: "claude",
+    displayName: "Claude Code",
     detect: hasClaudeCode,
     commandFilePath: getClaudeCommandPath,
     formatCommand: formatClaudeCommand,
@@ -345,6 +346,7 @@ export const claudeAdapter = {
 export const opencodeAdapter = {
     id: "opencode",
     label: "opencode",
+    displayName: "OpenCode",
     detect: hasOpenCode,
     commandFilePath: getOpenCodeCommandPath,
     formatCommand: formatOpenCodeCommand,

@@ -14,11 +14,16 @@ export async function doctor(options = {}) {
             encoding: "utf-8",
             shell: needsShell,
         }).trim();
+        const majorMatch = node.match(/v?(\d+)\./);
+        const major = majorMatch ? parseInt(majorMatch[1], 10) : 0;
+        const deprecated = major > 0 && major < 22;
         checks.push({
             category: "Node.js",
             name: "node",
             ok: true,
-            message: node,
+            message: deprecated
+                ? `${node}  ⚠  Node < 22 deprecated by GitHub Actions; recommend Node 22+`
+                : node,
         });
     }
     catch {
@@ -188,7 +193,14 @@ export async function doctor(options = {}) {
     console.log(chalk.blue("\n─── Summary ───"));
     if (allOk) {
         console.log(chalk.green("  ✅ All prerequisites met!\n"));
-        console.log(chalk.gray("  Run: /opsx:e2e <change-name> in Claude Code\n"));
+        const detected = detectAdapters(process.cwd());
+        const hints = detected.length
+            ? detected.map((a) => {
+                const slash = a.id === "claude" ? "/opsx:e2e" : "/opsx-e2e";
+                return `${slash} (in ${a.displayName})`;
+            })
+            : ["/opsx:e2e (in Claude Code) or /opsx-e2e (in OpenCode)"];
+        console.log(chalk.gray(`  Run: ${hints.join("  or  ")} <change-name>\n`));
     }
     else {
         console.log(chalk.red("  ❌ Some prerequisites are missing\n"));

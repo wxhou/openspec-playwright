@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.46] - 2026-07-01
+
+### Fixed
+
+- `/opsx-e2e` not responding in OpenCode: compressed `e2e-command.md` template from 1173 to 313 lines (75%); the 65KB template exceeded OpenCode's config output size limit, causing the command to register silently but never match. Simplified structure with all decision logic, Healer phases, and guards preserved.
+
 ## [0.3.45] - 2026-06-30
 
 ### Fixed
