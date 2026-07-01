@@ -50,3 +50,6 @@ npm-debug.log*
 
 # OpenSpec init runtime config
 openspec/config.yaml
+opencode.jsonc
+playwright.config.ts
+tests/playwright/
