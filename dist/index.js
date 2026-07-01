@@ -7,15 +7,6 @@ import { readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { Command } from "commander";
-import { init } from "./commands/init.js";
-import { update } from "./commands/update.js";
-import { doctor } from "./commands/doctor.js";
-import { run } from "./commands/run.js";
-import { migrate } from "./commands/migrate.js";
-import { uninstall } from "./commands/uninstall.js";
-import { audit } from "./commands/audit.js";
-import { explore } from "./commands/explore.js";
-import { checkForUpdate } from "./shared/version-check.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, "../package.json"), "utf-8"));
 const program = new Command();
@@ -31,6 +22,8 @@ program
     .option("--seed", "force regenerate seed.spec.ts (overwrite if exists)")
     .option("--ci", "generate GitHub Actions CI workflow")
     .action(async (opts) => {
+    const { init } = await import("./commands/init.js");
+    const { checkForUpdate } = await import("./shared/version-check.js");
     await init(opts);
     await checkForUpdate(pkg.version);
 });
@@ -39,6 +32,8 @@ program
     .description("Check if all prerequisites are installed")
     .option("--json", "Output results as JSON")
     .action(async (opts) => {
+    const { doctor } = await import("./commands/doctor.js");
+    const { checkForUpdate } = await import("./shared/version-check.js");
     await doctor(opts);
     await checkForUpdate(pkg.version);
 });
@@ -48,6 +43,7 @@ program
     .option("--no-cli", "skip CLI update")
     .option("--no-skill", "skip command update")
     .action(async (opts) => {
+    const { update } = await import("./commands/update.js");
     await update(opts);
     // No version check needed after update — user just updated
 });
@@ -67,6 +63,8 @@ program
     .option("--headed", "Show browser during test run (default: headless)")
     .option("--update-snapshots", "Update screenshot baselines before running tests")
     .action(async (changeName, opts) => {
+    const { run } = await import("./commands/run.js");
+    const { checkForUpdate } = await import("./shared/version-check.js");
     await run(changeName, opts);
     await checkForUpdate(pkg.version);
 });
@@ -76,6 +74,8 @@ program
     .option("-n, --dry-run", "Show what would be migrated without moving files")
     .option("-f, --force", "Overwrite existing files at the new location")
     .action(async (opts) => {
+    const { migrate } = await import("./commands/migrate.js");
+    const { checkForUpdate } = await import("./shared/version-check.js");
     await migrate(opts);
     await checkForUpdate(pkg.version);
 });
@@ -83,6 +83,8 @@ program
     .command("uninstall")
     .description("Remove OpenSpec + Playwright E2E integration from the current project")
     .action(async () => {
+    const { uninstall } = await import("./commands/uninstall.js");
+    const { checkForUpdate } = await import("./shared/version-check.js");
     await uninstall();
     await checkForUpdate(pkg.version);
 });
@@ -90,6 +92,8 @@ program
     .command("audit")
     .description("Audit test files for orphaned specs, missing auth, sitemap issues")
     .action(async () => {
+    const { audit } = await import("./commands/audit.js");
+    const { checkForUpdate } = await import("./shared/version-check.js");
     await audit();
     await checkForUpdate(pkg.version);
 });
@@ -99,6 +103,8 @@ program
     .option("-p, --parallel <n>", "Number of parallel workers", (v) => parseInt(v, 10), 4)
     .option("-n, --dry-run", "Show what would be explored without running")
     .action(async (opts) => {
+    const { explore } = await import("./commands/explore.js");
+    const { checkForUpdate } = await import("./shared/version-check.js");
     await explore(opts);
     await checkForUpdate(pkg.version);
 });

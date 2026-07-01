@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `/opsx-e2e` not responding in OpenCode: compressed `e2e-command.md` template from 1173 to 313 lines (75%); the 65KB template exceeded OpenCode's config output size limit, causing the command to register silently but never match. Simplified structure with all decision logic, Healer phases, and guards preserved.
 
+### Performance
+
+- **CLI startup time reduced 93%**: replaced top-level static imports of all 8 command modules with dynamic `import()` in action handlers. `--help` now loads only `commander` (~0.17s vs ~2.3s). Command module loading deferred to first execution — ESM cache ensures no overhead on repeat calls.
+
 ## [0.3.45] - 2026-06-30
 
 ### Fixed
