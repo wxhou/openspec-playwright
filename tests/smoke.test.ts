@@ -58,6 +58,8 @@ const distExists = existsSync(distDir);
   it("compiled commands export expected functions", async () => {
     const { init } = await import("../dist/commands/init.js");
     const { doctor } = await import("../dist/commands/doctor.js");
+    const { coverage } = await import("../dist/commands/coverage.js");
+    const { flake } = await import("../dist/commands/flake.js");
     const { run } = await import("../dist/commands/run.js");
     const { uninstall } = await import("../dist/commands/uninstall.js");
     const { update } = await import("../dist/commands/update.js");
@@ -72,6 +74,8 @@ const distExists = existsSync(distDir);
 
     expect(typeof init).toBe("function");
     expect(typeof doctor).toBe("function");
+    expect(typeof coverage).toBe("function");
+    expect(typeof flake).toBe("function");
     expect(typeof run).toBe("function");
     expect(typeof uninstall).toBe("function");
     expect(typeof update).toBe("function");
@@ -142,6 +146,8 @@ const distExists = existsSync(distDir);
     const { stdout } = runCli("--help");
     expect(stdout).toContain("init");
     expect(stdout).toContain("doctor");
+    expect(stdout).toContain("coverage");
+    expect(stdout).toContain("flake");
     expect(stdout).toContain("update");
     expect(stdout).toContain("run");
     expect(stdout).toContain("uninstall");
@@ -159,6 +165,12 @@ const distExists = existsSync(distDir);
     expect(stdout).toContain("--timeout");
   });
 
+  it("coverage --help shows --json flag and optional change-name", () => {
+    const { stdout } = runCli("coverage --help");
+    expect(stdout).toContain("--json");
+    expect(stdout).toContain("[change-name]");
+  });
+
   it("unknown command exits non-zero", () => {
     const { status } = runCli("nonexistent-cmd-xyz");
     expect(status).not.toBe(0);
@@ -174,6 +186,7 @@ const CRITICAL_PACKAGE_FILES = [
   "dist/index.js",
   "dist/commands/init.js",
   "dist/commands/run.js",
+  "dist/commands/coverage.js",
   "dist/commands/doctor.js",
   "dist/commands/update.js",
   "dist/commands/editors.js",
@@ -192,6 +205,13 @@ const CRITICAL_PACKAGE_FILES = [
   let tarballPath: string;
 
   it("npm pack produces a tarball", () => {
+    // Remove stale tarballs to avoid picking old ones
+    const existing = readdirSync("/tmp/").filter((f) =>
+      f.startsWith("openspec-playwright-") && f.endsWith(".tgz"),
+    );
+    for (const f of existing) {
+      try { rmSync(`/tmp/${f}`); } catch { /* ignore */ }
+    }
     execSync("npm pack --pack-destination /tmp/", { cwd: ROOT });
     const files = readdirSync("/tmp/").filter((f) =>
       f.startsWith("openspec-playwright-") && f.endsWith(".tgz"),

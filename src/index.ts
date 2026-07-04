@@ -124,6 +124,25 @@ program
   });
 
 program
+  .command("coverage [change-name]")
+  .description("Analyze spec–test coverage for OpenSpec changes")
+  .option("--json", "Output results as JSON")
+  .action(async (changeName, opts) => {
+    const { coverage } = await import("./commands/coverage.js");
+    await coverage(changeName, opts);
+  });
+
+program
+  .command("flake [change-name]")
+  .description("Detect static flake patterns in Playwright test files")
+  .option("--json", "Output results as JSON")
+  .option("--gate <severity>", "Exit non-zero if findings meet severity (HIGH|MEDIUM|ALL)")
+  .action(async (changeName, opts) => {
+    const { flake } = await import("./commands/flake.js");
+    await flake(changeName, opts);
+  });
+
+program
   .command("explore")
   .description("Explore routes in parallel with Playwright")
   .option(

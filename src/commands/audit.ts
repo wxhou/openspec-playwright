@@ -222,9 +222,9 @@ async function getChangeNames(projectRoot: string): Promise<string[]> {
       timeout: TIMEOUT.OPENSPEC_LIST,
     });
     const data = JSON.parse(result);
-    return Array.isArray(data)
-      ? data.map((c: { name: string }) => c.name)
-      : Object.keys(data);
+    if (Array.isArray(data)) return data.map((c: { name: string }) => c.name);
+    if (data.changes && Array.isArray(data.changes)) return data.changes.map((c: { name: string }) => c.name);
+    return Object.keys(data);
   } catch {
     return [];
   }

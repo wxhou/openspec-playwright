@@ -167,9 +167,11 @@ async function getChangeNames(projectRoot) {
             timeout: TIMEOUT.OPENSPEC_LIST,
         });
         const data = JSON.parse(result);
-        return Array.isArray(data)
-            ? data.map((c) => c.name)
-            : Object.keys(data);
+        if (Array.isArray(data))
+            return data.map((c) => c.name);
+        if (data.changes && Array.isArray(data.changes))
+            return data.changes.map((c) => c.name);
+        return Object.keys(data);
     }
     catch {
         return [];

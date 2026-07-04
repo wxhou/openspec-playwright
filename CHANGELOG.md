@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`openspec-pw coverage [change-name]`**: New command for spec–test coverage analysis. Analyzes OpenSpec changes against Playwright test files across 5 levels (L1 directory → L5 edit-distance similarity). Reports per-change coverage %, uncovered scenarios, orphaned tests, and recommendations. Supports `--json` output.
+  - `src/commands/coverage.ts` — core analysis (scenario parsing, test case parsing, L1-L5 matching, route extraction, report rendering)
+  - `src/index.ts` — registered as lazy-imported command
+- **`openspec-pw flake [change-name]`**: New command for static flake pattern detection in Playwright test files. Detects 4 patterns: `waitForLoadState('networkidle')` in SPAs, `page.route()` registered after `page.goto()`, `storageState` leakage across isolation boundaries, and conflicting `test.use({ storageState })` scopes. Supports `--json` and `--gate <severity>` (HIGH/MEDIUM/ALL).
+  - `src/commands/flake.ts` — core detection (regex, line-ordering, and heuristic analyzers)
+  - `tests/commands/flake.test.ts` — 25 unit tests covering all detectors and report helpers
+
+### Fixed
+
+- `openspec list --json` returns `{"changes": [...]}` format in openspec v1.4.1; `getChangeNames` in both `audit` and `coverage` commands now handles the wrapped format in addition to the legacy formats
+
 ## [0.3.46] - 2026-07-01
 
 ### Fixed

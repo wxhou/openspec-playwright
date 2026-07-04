@@ -47,6 +47,8 @@ openspec-pw init          # Initialize integration (one-time setup; add --seed t
 openspec-pw update        # Update CLI and commands to latest version
 openspec-pw doctor        # Check prerequisites + app server diagnostics
 openspec-pw audit         # Audit tests for orphaned specs and issues
+openspec-pw coverage      # Analyze spec–test coverage for changes
+openspec-pw flake         # Detect static flake patterns in test files
 openspec-pw migrate       # Migrate old test files to new structure
 openspec-pw explore       # Explore routes in parallel with Playwright
 openspec-pw run <name>    # Execute E2E tests for a change
@@ -206,6 +208,7 @@ CLI (openspec-pw)
   ├── run        → Executes E2E tests with server lifecycle
   ├── migrate    → Migrates old test files to new structure
   ├── audit      → Audits tests for orphaned specs and issues
+  ├── flake      → Detects static flake patterns in test files
   ├── doctor     → Checks prerequisites
   ├── explore    → Explores routes in parallel with Playwright
   └── uninstall  → Removes integration from the project

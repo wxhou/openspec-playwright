@@ -48,8 +48,8 @@ npm-debug.log*
 # Codegraph MCP index (dev tool)
 .codegraph/
 
-# OpenSpec init runtime config
-openspec/config.yaml
+# OpenSpec (project-specific config, changes, specs)
+openspec/
 opencode.jsonc
 playwright.config.ts
 tests/playwright/
