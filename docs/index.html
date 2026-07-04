@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OpenSpec Playwright — AI-Driven E2E Testing for OpenSpec Projects</title>
+<title>OpenSpec Playwright: AI-Driven E2E Testing for OpenSpec Projects</title>
 <meta name="description" content="自动化 E2E 测试框架，专为 OpenSpec 规范驱动开发设计。AI 生成测试、Healer 自愈、Claude Code 一键执行。">
 <meta property="og:title" content="OpenSpec Playwright">
 <meta property="og:description" content="AI-Driven E2E Testing for OpenSpec Projects">
@@ -1668,7 +1668,7 @@ footer {
   <div class="hero-eyebrow anim">AI-Driven E2E Testing</div>
   <h1 class="hero-title anim anim-1">
     <span class="hero-title-zh">AI 研发闭环，<br><em>从规范到测试自动完成</em></span>
-    <span class="hero-title-en" style="display:none;">AI Development Loop,<br><em>From Spec to Test — Automated</em></span>
+    <span class="hero-title-en" style="display:none;">AI Development Loop,<br><em>From Spec to Test, Automated</em></span>
   </h1>
   <p class="hero-desc anim anim-2">
     <span class="hero-desc-zh">OpenSpec Playwright 将 OpenSpec 规范自动转化为 Playwright E2E 测试。AI 生成测试用例、Healer 自动修复选择器、Claude Code 一键执行。告别手动维护测试，专注于真正重要的代码。</span>
@@ -1709,7 +1709,7 @@ footer {
         <span class="hero-card-num">0</span>
       </div>
     </div>
-    <div class="hero-card-badge">v0.3.46</div>
+    <div class="hero-card-badge">v0.3.47</div>
   </div>
 </section>
 
@@ -1743,7 +1743,7 @@ footer {
 ## 代码质量
 - 动手前先思考：列出假设，逐条验证。复杂任务多种解释则都列出，更简单方案则提出
 - 每步有可验证的退出条件：多步骤任务先列计划，循环验证直到成功。lint 失败时优先运行 `npm run lint:fix`
-- lint + typecheck 通过才算成功。检测主语言——\`.py\`→ruff+mypy、\`.ts\`/\`.tsx\`→ESLint+tsc、\`.go\`→gofmt+vet
+- lint + typecheck 通过才算成功。检测主语言：\`.py\` → ruff+mypy、\`.ts\`/\`.tsx\` → ESLint+tsc、\`.go\` → gofmt+vet
 - 只写被要求的东西：不加"灵活"、"可配置"、单次使用的抽象。200行能50行完成则重写
 - 精准改动：只改必要的，改完清理自己造成的垃圾。匹配现有风格，不改进无关代码
 
@@ -1769,6 +1769,11 @@ footer {
 ## 大规模任务
 - 200+ 行修改或架构变更（新增服务/API 契约/数据模型重构）必须走 OpenSpec 工作流（/opsx:propose），禁止直接修改
 
+## 临时文件管理
+- 所有工具（Chrome DevTools MCP、截图、日志、heapdump 等）产生的非源码临时文件必须放项目根目录 `tmp/` 下
+- 平铺，不分子目录，文件名含时间戳（避免覆盖）
+- `tmp/` 中超过 24 小时的文件可以在 commit 前删除
+
 ## 其他
 - 始终用中文回复用户
 - `npx openspec --help` 查看 OpenSpec 可用命令
@@ -1792,7 +1797,7 @@ footer {
     </h2>
     <p class="section-desc">
       <span class="features-desc-zh">专为 OpenSpec 规范驱动开发设计，AI 全流程自动化，测试不再成为交付瓶颈。</span>
-      <span class="features-desc-en" style="display:none;">Designed for spec-driven development with OpenSpec. AI-powered automation throughout — tests are no longer a delivery bottleneck.</span>
+      <span class="features-desc-en" style="display:none;">Designed for spec-driven development with OpenSpec. AI-powered automation throughout, tests are no longer a delivery bottleneck.</span>
     </p>
   </div>
 
@@ -2385,7 +2390,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 ## 代码质量
 - 动手前先思考：列出假设，逐条验证。复杂任务多种解释则都列出，更简单方案则提出
 - 每步有可验证的退出条件：多步骤任务先列计划（\`1. [Step] → verify: [check]\`），循环验证直到成功。lint 失败时优先运行 \`npm run lint:fix\`
-- lint + typecheck 通过才算成功。动手前扫描项目根目录源码文件扩展名检测主语言——\`.py\`→ruff+mypy、\`.ts\`/\`.tsx\`→ESLint+tsc、\`.go\`→gofmt+vet
+- lint + typecheck 通过才算成功。动手前扫描项目根目录源码文件扩展名检测主语言：\`.py\` → ruff+mypy、\`.ts\`/\`.tsx\` → ESLint+tsc、\`.go\` → gofmt+vet
 - 只写被要求的东西：不加"灵活"、"可配置"、单次使用的抽象。200行能50行完成则重写
 - 精准改动：只改必要的，改完清理自己造成的垃圾。匹配现有风格，不改进无关代码
 
@@ -2426,7 +2431,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 ## Code Quality
 - Think before coding: List assumptions, verify each one. If multiple interpretations exist, present them all; suggest simpler approaches if available
 - Every step needs verifiable exit criteria: Plan multi-step tasks (\`1. [Step] → verify: [check]\`), loop until verified
-- lint + typecheck must pass. Detect project language by file extensions — \`.py\`→ruff+mypy, \`.ts\`/\`.tsx\`→ESLint+tsc, \`.go\`→gofmt+vet
+- lint + typecheck must pass. Detect project language by file extensions: \`.py\` → ruff+mypy, \`.ts\`/\`.tsx\` → ESLint+tsc, \`.go\` → gofmt+vet
 - Write only what's requested: No "flexibility", "configurability", or single-use abstractions. Rewrite if 200 lines can be 50
 - Surgical changes: Touch only what's necessary, clean up only your own mess. Match existing style, don't improve unrelated code
 
@@ -2451,6 +2456,11 @@ const CLAUDE_MD_EN = `# Project Guidelines
 
 ## Large-Scale Tasks
 - 200+ line changes or architecture changes (new services/API contracts/data model refactors): prefer using OpenSpec workflow
+
+## Temp File Management
+- All non-source temp files (Chrome DevTools MCP, screenshots, logs, heapdumps, etc.) must go in \`tmp/\` at the project root
+- Flat structure, no subdirectories; filenames include timestamps to avoid overwrites
+- Files in \`tmp/\` older than 24h may be deleted before commit
 
 ## Miscellaneous
 - \`npx openspec --help\` to see available OpenSpec commands`;

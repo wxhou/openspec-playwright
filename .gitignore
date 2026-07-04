@@ -53,3 +53,7 @@ openspec/config.yaml
 opencode.jsonc
 playwright.config.ts
 tests/playwright/
+
+# Temp files from tools (Chrome DevTools MCP, screenshots, logs, etc.)
+tmp/
+!tmp/.gitkeep

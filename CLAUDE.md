@@ -204,4 +204,11 @@ Tests: 197/197 pass. No version bump.
 
 **纯前端项目**：若存在 OpenAPI / 接口文档 / MCP 暴露的接口，必须查阅真实定义后引用，并标注来源（例如 `// 来源: docs/api/openapi.yaml#/paths/...`），禁止凭印象编造 endpoint / path / 字段名。
 
+## 7. 临时文件管理
+
+所有工具（Chrome DevTools MCP、截图、日志、heapdump 等）产生的非源码临时文件必须放项目根目录 `tmp/` 下：
+- 平铺，不分子目录
+- 文件名含时间戳（避免覆盖）
+- `tmp/` 中超过 24 小时的文件可以在 commit 前删除
+
 <!-- OPENSPEC:END -->
