@@ -58,6 +58,8 @@
 
 **搜索要全**：用 Grep 搜内容，用 Glob 搜文件名。两者缺一不可。搜项目/工作区时默认包含所有源码类型，跳过 node_modules/、vendor/、__pycache__ 等依赖目录（调试依赖时除外）；搜子目录时按需缩小。重命名时覆盖调用、类型、字符串、`import`、barrel file、测试 mock，不得假设一次覆盖所有情况。
 
+**联网调研优先 agent-reach**：需要查询/调研/搜索等联网操作时，优先使用 agent-reach skill，避免 WebFetch/WebSearch 直接抓页面导致反爬失败。
+
 **编辑要求**：编辑后重新读取文件确认变更正确应用。变更完成后，明确告知用户可能遗漏的区域（动态引用、测试 mock 等），提示人工复查。
 
 **禁止脚本改文件**：修改源码文件只能使用内置编辑工具（Read/Edit/Write），禁止用 sed/awk/node -e/python -c 等管道命令改文件。格式化工具（ruff fmt、prettier）除外。
@@ -70,13 +72,9 @@
 
 ## 5. 完整生产工作流
 
-按需叠加的评审：`/plan-ceo-review`（产品战略）/ `/plan-eng-review`（架构）/ `/plan-design-review`（UX）。
+**Superpowers（可选增强）**：安装 `/plugin install superpowers@claude-plugins-official` 后，Superpowers 在 propose → apply → verify 阶段提供更严谨的 AI 方法论（对话式 spec 探索、TDD、subagent 并行实现）。Superpowers **不改变 OpenSpec 主流程**，所有阶段仍由用户手动触发。
 
 阶段命令即触发器：`/opsx:propose` → `/opsx:apply` → `/opsx:verify` → e2e 命令（Claude Code 用 `/opsx:e2e`，OpenCode 用 `/opsx-e2e`）→ `/opsx:archive`。**所有阶段由用户手动触发，AI 不自动进入下一阶段**（详见 §2 阶段隔离）。
-
-可用 `npx openspec --help` 查看更多 OpenSpec 命令。
-
-方向不明时可用 `/office-hours` 做创意验证。**Healer 需要 Playwright 环境**；非 Node.js 项目请参考各自语言的 OpenSpec 测试集成。
 
 ## 6. 禁止编撰数据
 

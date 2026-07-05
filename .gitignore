@@ -40,7 +40,6 @@ npm-debug.log*
 
 # OpenSpec vision check cache
 .openspec-pw/vision-cache/
-.gstack/
 
 # OpenCode CLI local install (runtime)
 .opencode/

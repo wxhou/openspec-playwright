@@ -20,7 +20,7 @@ openspec-pw init          # Install Playwright E2E integration
 
 ## Supported AI Coding Assistants
 
-**Claude Code** (Anthropic) — E2E workflow is driven by the `/opsx:e2e` command using a browser exploration tool (gstack `/browse`, Playwright MCP, or `openspec-pw explore`) + Playwright MCP (test execution).
+**Claude Code** (Anthropic) — E2E workflow is driven by the `/opsx:e2e` command using a browser exploration tool (Playwright MCP or `openspec-pw explore`) + Playwright MCP (test execution).
 
 **OpenCode** (SST) — E2E workflow is driven by the `/opsx-e2e` command (hyphenated per OpenSpec convention) using the same browser exploration + Playwright MCP stack. Playwright MCP is configured under `mcp.playwright` in `opencode.jsonc`.
 
@@ -67,7 +67,7 @@ openspec-pw uninstall     # Remove integration from the project
   │
   ├── 3. Validate env → run seed.spec.ts
   │
-  ├── 4. Explore app → browser exploration (gstack `/browse` / Playwright MCP / `openspec-pw explore`)
+  ├── 4. Explore app → browser exploration (Playwright MCP / `openspec-pw explore`)
   │       ├─ Read app-knowledge.md (project-level knowledge)
   │       ├─ Extract routes from specs
   │       ├─ Navigate each route → snapshot → screenshot
@@ -100,9 +100,15 @@ openspec-pw uninstall     # Remove integration from the project
    - **Claude Code**: `claude mcp add playwright npx @playwright/mcp@latest`
    - **OpenCode**: merged into `opencode.jsonc` under `mcp.playwright = { type: "local", command: ["npx", "@playwright/mcp@latest"] }`
 
-**Optional** — `openspec-pw explore` and Playwright MCP can do browser exploration out of the box; install gstack only if you want the `/browse` slash command:
+**Optional** — enhance your AI coding assistant with Superpowers methodology:
 
-- **gstack**: `git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup` (requires [Bun](https://bun.sh))
+- **Superpowers**: a complete development methodology plugin for Claude Code. It enhances the OpenSpec workflow (propose → apply → verify) with conversational spec exploration, TDD discipline, and subagent-driven implementation. Superpowers does **not** replace OpenSpec — the E2E verification pipeline (`/opsx:e2e`, `openspec-pw doctor/explore/run`) remains unchanged.
+  ```bash
+  /plugin install superpowers@claude-plugins-official
+  ```
+  See [github.com/obra/superpowers](https://github.com/obra/superpowers) for details.
+
+Browser exploration is provided out of the box by Playwright MCP and `openspec-pw explore`; no extra browser tool is needed.
 
 ## What `openspec-pw init` Does
 
@@ -129,11 +135,11 @@ Run through these steps in order when using the E2E workflow for the first time:
 | 8. Configure auth (if needed) | See "Authentication" below | Debug with `npx playwright test --project=setup` |
 | 9. Run first E2E | `/opsx:e2e <change-name>` (Claude) or `/opsx-e2e <change-name>` (OpenCode) | Check `openspec/reports/` for the report |
 
-**Optional — only if you want the single-browser `/browse` workflow:**
+**Optional — enhance your AI coding assistant with Superpowers methodology:**
 
 | Step | Command | If it fails |
 |------|---------|-------------|
-| A. Install gstack | `git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup` | Requires Bun: `curl -fsSL https://bun.sh/install \| bash` |
+| A. Install Superpowers | `/plugin install superpowers@claude-plugins-official` | See [github.com/obra/superpowers](https://github.com/obra/superpowers) for alternative install methods |
 
 ## App Server Detection
 

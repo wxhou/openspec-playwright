@@ -24,7 +24,7 @@
 > **Full regression is opt-in only.** `openspec-pw run <name>` → one spec file. Do NOT run `npx playwright test` (no file) or `--only-changed` unless user explicitly requests.
 > **Roles**: Planner (Steps 4–5) → test-plan.md; Generator (Step 6) → `.spec.ts` + Page Objects; Healer (Step 9) → repairs failures via MCP.
 
-Browser exploration is tool-agnostic: gstack (`/browse`), Playwright MCP, or `openspec-pw explore --parallel N`.
+Browser exploration is tool-agnostic: Playwright MCP or `openspec-pw explore --parallel N`.
 
 ## Testing Principles
 

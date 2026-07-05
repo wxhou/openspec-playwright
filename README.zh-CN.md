@@ -21,9 +21,15 @@ npm install -g openspec-playwright@latest
    - **Claude Code**：`claude mcp add playwright npx @playwright/mcp@latest`
    - **OpenCode**：合并到 `opencode.jsonc` 的 `mcp.playwright = { type: "local", command: ["npx", "@playwright/mcp@latest"] }`
 
-**可选** — `openspec-pw explore` 和 Playwright MCP 自带浏览器探索能力；只有想要 `/browse` 短命令时才需要装 gstack：
+**可选** — 用 Superpowers 增强 AI 编码助手的能力：
 
-- **gstack**：`git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup`（需要 [Bun](https://bun.sh)）
+- **Superpowers**：完整的 AI 编码助手开发方法论插件。它在 OpenSpec 工作流（propose → apply → verify）阶段增强 AI 能力：对话式 spec 探索、TDD 纪律、subagent 并行实现。Superpowers **不替换 OpenSpec**，E2E 验证管线（`/opsx:e2e`、`openspec-pw doctor/explore/run` 等）保持不变。
+  ```bash
+  /plugin install superpowers@claude-plugins-official
+  ```
+  详见 [github.com/obra/superpowers](https://github.com/obra/superpowers)
+
+浏览器探索能力由 Playwright MCP 和 `openspec-pw explore` 内置提供，无需额外工具。
 
 ## 初始化
 
@@ -37,7 +43,7 @@ openspec-pw init          # 安装 Playwright E2E 集成
 
 ## 支持的 AI 编码助手
 
-**Claude Code**（Anthropic）— E2E 工作流由 `/opsx:e2e` 命令驱动，使用 /browse（探索）+ Playwright MCP（测试执行）。
+**Claude Code**（Anthropic）— E2E 工作流由 `探索 + 测试执行` 两步组成：Playwright MCP + `openspec-pw explore`。
 
 **OpenCode**（SST）— E2E 工作流由 `/opsx-e2e` 命令驱动（按 OpenSpec 惯例使用连字符），使用相同的浏览器探索 + Playwright MCP 技术栈。Playwright MCP 通过 `opencode.jsonc` 的 `mcp.playwright` 配置。
 
@@ -82,7 +88,7 @@ openspec-pw uninstall     # 移除项目中的集成
   │
   ├── 3. 验证环境 → 运行 seed.spec.ts
   │
-  ├── 4. 探索应用 → 浏览器探索（gstack `/browse` / Playwright MCP / `openspec-pw explore`）
+  ├── 4. 探索应用 → 浏览器探索（Playwright MCP / `openspec-pw explore`）
   │       ├─ 读取 app-knowledge.md（项目级知识）
   │       ├─ 从 specs 提取路由
   │       ├─ 遍历每个路由 → snapshot → screenshot
@@ -127,11 +133,11 @@ openspec-pw uninstall     # 移除项目中的集成
 | 8. 配置认证（如需要） | 见下方"认证配置" | `npx playwright test --project=setup` 调试 |
 | 9. 运行第一个 E2E | `/opsx:e2e <change-name>`（Claude）或 `/opsx-e2e <change-name>`（OpenCode） | 查看 `openspec/reports/` 中的报告 |
 
-**可选 — 仅当需要单浏览器 `/browse` 工作流时：**
+**可选 — 用 Superpowers 增强 AI 编码助手：**
 
 | 步骤 | 命令 | 失败时快速修复 |
 |------|------|----------------|
-| A. 安装 gstack | `git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup` | 需要 Bun：`curl -fsSL https://bun.sh/install \| bash` |
+| A. 安装 Superpowers | `/plugin install superpowers@claude-plugins-official` | 详见 [github.com/obra/superpowers](https://github.com/obra/superpowers) |
 
 ## 认证配置
 
