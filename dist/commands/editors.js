@@ -186,14 +186,14 @@ export function installCommand(adapter, meta, projectRoot) {
  * `<!-- OPENSPEC:START -->` / `<!-- OPENSPEC:END -->` markers so future
  * updates can replace the block without touching the rest of the file.
  */
-export function installProjectClaudeMd(projectRoot, standardsContent, adapter = claudeAdapter) {
+export function installOpenSpecBlock(projectRoot, standardsContent, adapter = claudeAdapter) {
     const dest = adapter.projectRulesPath(projectRoot);
     const fileLabel = basename(dest);
     const markerStart = "<!-- OPENSPEC:START -->";
     const markerEnd = "<!-- OPENSPEC:END -->";
     if (!existsSync(dest)) {
         const projName = projectRoot.split("/").pop() ?? "Project";
-        const content = `# ${projName}\n\n${markerStart}\n\n${standardsContent}\n\n${markerEnd}\n`;
+        const content = `# ${projName}\n\n${markerStart}\n\n${standardsContent.trim()}\n\n${markerEnd}\n`;
         writeFileSync(dest, content);
         console.log(chalk.green(`  ✓ ${fileLabel}: created with employee-grade standards`));
         return;
@@ -222,7 +222,7 @@ export function installProjectClaudeMd(projectRoot, standardsContent, adapter = 
             "\n\n" +
             markerStart +
             "\n\n" +
-            standardsContent +
+            standardsContent.trim() +
             "\n\n" +
             markerEnd +
             "\n";
@@ -234,55 +234,79 @@ export function installProjectClaudeMd(projectRoot, standardsContent, adapter = 
     }
 }
 /**
- * Route the employee-grade standards into the right rules file(s) for the
- * detected editors:
+ * Install a thin CLAUDE.md that imports AGENTS.md.
  *
- *   - 1 editor detected → write to that editor's rules file
- *     (CLAUDE.md for Claude, AGENTS.md for OpenCode)
- *   - 2 editors detected → write CLAUDE.md (OpenCode reads it natively)
- *     and register `CLAUDE.md` in `opencode.json[c].instructions`
- *     so OpenCode treats it as a project rule.
+ * Uses the same OPENSPEC:START/END markers as the full standards block so
+ * `cleanProjectRules` can remove it uniformly. No-ops if bare `@AGENTS.md`
+ * is already present (may have been added by openspec CLI or manually).
+ *
+ * Also handles migration: if CLAUDE.md has an existing OPENSPEC:START block
+ * (old format that wrote standards directly to CLAUDE.md), calling
+ * `installOpenSpecBlock` replaces the content with the `@AGENTS.md` import.
+ */
+export function installClaudeWrapper(projectRoot) {
+    const dest = join(projectRoot, "CLAUDE.md");
+    // No-op if bare @AGENTS.md already present (added by openspec CLI or user)
+    if (existsSync(dest)) {
+        const existing = readFileSync(dest, "utf-8");
+        if (/^@AGENTS\.md\r?$/m.test(existing)) {
+            return;
+        }
+    }
+    // Delegate to installOpenSpecBlock which handles create/update/append
+    // with OPENSPEC:START/END markers. Content is just the import line.
+    // When CLAUDE.md already has OPENSPEC markers (old-format migration),
+    // the existing content between them is replaced with @AGENTS.md.
+    installOpenSpecBlock(projectRoot, "@AGENTS.md\n", claudeAdapter);
+}
+/**
+ * Route employee-grade standards into project rules files.
+ *
+ * AGENTS.md is always the single source of truth, regardless of which
+ * editors are detected. If Claude is in use, a thin CLAUDE.md wrapper
+ * with `@AGENTS.md` import is created so Claude loads AGENTS.md as
+ * its project rules.
  */
 export function installProjectRules(projectRoot, standardsContent, detected) {
     if (detected.length === 0)
         return;
-    if (detected.length === 1) {
-        installProjectClaudeMd(projectRoot, standardsContent, detected[0]);
-        // OpenCode needs explicit registration to read AGENTS.md as a project
-        // rule. Claude reads CLAUDE.md natively, so no instructions entry needed.
-        if (detected[0].id === "opencode" && detected[0].registerInstructions) {
-            const existing = readOpenCodeInstructions(projectRoot);
-            const next = Array.from(new Set([...(existing ?? []), "AGENTS.md"]));
-            detected[0].registerInstructions(projectRoot, next);
-        }
-        return;
+    // AGENTS.md is always the single source of truth
+    installOpenSpecBlock(projectRoot, standardsContent, opencodeAdapter);
+    // Thin CLAUDE.md with @AGENTS.md import if Claude is in use
+    if (detected.some((a) => a.id === "claude")) {
+        installClaudeWrapper(projectRoot);
     }
-    // Both detected: write CLAUDE.md for both, plus explicit instructions
-    installProjectClaudeMd(projectRoot, standardsContent, claudeAdapter);
-    if (opencodeAdapter.registerInstructions) {
+    // Register AGENTS.md in opencode.json for OpenCode
+    if (detected.some((a) => a.id === "opencode") && opencodeAdapter.registerInstructions) {
         const existing = readOpenCodeInstructions(projectRoot);
-        const next = Array.from(new Set([...(existing ?? []), "CLAUDE.md"]));
+        const next = Array.from(new Set([...(existing ?? []), "AGENTS.md"]));
         opencodeAdapter.registerInstructions(projectRoot, next);
     }
 }
-/** Remove the OPENSPEC markers block from a rules file (CLAUDE.md / AGENTS.md). */
+/** Remove all OpenSpec marker blocks from AGENTS.md (always) and CLAUDE.md (for claude adapter). */
 export function cleanProjectRules(adapter, projectRoot) {
-    const dest = adapter.projectRulesPath(projectRoot);
-    const fileLabel = basename(dest);
+    // AGENTS.md always has the employee standards (SSOT)
+    removeMarkersFromFile(join(projectRoot, "AGENTS.md"), "AGENTS.md");
+    // CLAUDE.md may have the wrapper import if Claude is detected
+    if (adapter.id === "claude") {
+        removeMarkersFromFile(adapter.projectRulesPath(projectRoot), basename(adapter.projectRulesPath(projectRoot)));
+    }
+}
+/** Remove OpenSpec marker blocks from a single file. Only edits within markers. */
+function removeMarkersFromFile(dest, fileLabel) {
     if (!existsSync(dest)) {
         console.log(chalk.gray(`  - ${fileLabel} not found, skipping`));
         return;
     }
     const existing = readFileSync(dest, "utf-8");
-    const markerStart = "<!-- OPENSPEC:START -->";
-    if (!existing.includes(markerStart)) {
+    if (!existing.includes("<!-- OPENSPEC:START -->")) {
         console.log(chalk.gray(`  - No OpenSpec markers found in ${fileLabel}`));
         return;
     }
-    const OPENSPEC_BLOCK = /\s*<!-- OPENSPEC:START -->[\s\S]*?<!-- OPENSPEC:END -->\s*/g;
-    let updated = existing.replace(OPENSPEC_BLOCK, "\n\n");
-    // Collapse runs of 3+ blank lines down to 2, trim
-    updated = updated.replace(/\n{3,}/g, "\n\n").trim();
+    // Remove markers and their content, consuming surrounding whitespace.
+    // Then collapse runs of 3+ blank lines to at most 2 for a clean result.
+    let updated = existing.replace(/\s*<!-- OPENSPEC:START -->[\s\S]*?<!-- OPENSPEC:END -->\s*/g, "\n\n").replace(/\n{3,}/g, "\n\n").trim();
+    // Delete empty file rather than leaving a ghost.
     if (updated === "") {
         rmSync(dest);
         console.log(chalk.green(`  ✓ Removed empty ${fileLabel}`));

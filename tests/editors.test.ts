@@ -300,20 +300,28 @@ describe("installProjectRules routing", () => {
     expect(existsSync(join(tmpRoot, "opencode.json"))).toBe(false);
   });
 
-  it("writes CLAUDE.md (only) when only Claude is detected", () => {
+  it("writes AGENTS.md (SSOT) + thin CLAUDE.md when only Claude is detected", () => {
     mkdirSync(join(tmpRoot, ".claude"));
     const detected = detectAdapters(tmpRoot);
     expect(detected.map((a) => a.id)).toEqual(["claude"]);
 
     installProjectRules(tmpRoot, standards, detected);
 
-    expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(true);
-    expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(false);
-    expect(existsSync(join(tmpRoot, "opencode.jsonc"))).toBe(false);
-    expect(existsSync(join(tmpRoot, "opencode.json"))).toBe(false);
-    expect(readFileSync(join(tmpRoot, "CLAUDE.md"), "utf-8")).toContain(
+    // AGENTS.md has the full standards (SSOT).
+    expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(true);
+    expect(readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8")).toContain(
       standards,
     );
+
+    // CLAUDE.md is a thin wrapper with @AGENTS.md import.
+    expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(true);
+    const claudeContent = readFileSync(join(tmpRoot, "CLAUDE.md"), "utf-8");
+    expect(claudeContent).toContain("@AGENTS.md");
+    expect(claudeContent).not.toContain(standards);
+
+    // No opencode config (OpenCode not detected).
+    expect(existsSync(join(tmpRoot, "opencode.jsonc"))).toBe(false);
+    expect(existsSync(join(tmpRoot, "opencode.json"))).toBe(false);
   });
 
   it("writes AGENTS.md (only) when only OpenCode is detected", () => {
@@ -330,7 +338,7 @@ describe("installProjectRules routing", () => {
     );
   });
 
-  it("writes CLAUDE.md + registers it in opencode.json(c) when both are detected", () => {
+  it("writes AGENTS.md as SSOT + thin CLAUDE.md + registers AGENTS.md when both are detected", () => {
     mkdirSync(join(tmpRoot, ".claude"));
     mkdirSync(join(tmpRoot, ".opencode"));
     const detected = detectAdapters(tmpRoot);
@@ -338,19 +346,26 @@ describe("installProjectRules routing", () => {
 
     installProjectRules(tmpRoot, standards, detected);
 
-    // CLAUDE.md written once (serves both editors via OpenCode fallback).
-    expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(true);
-    expect(readFileSync(join(tmpRoot, "CLAUDE.md"), "utf-8")).toContain(
+    // AGENTS.md has the full standards (single source of truth).
+    expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(true);
+    expect(readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8")).toContain(
       standards,
     );
 
-    // opencode.json(c) created with instructions registering CLAUDE.md.
+    // CLAUDE.md is a thin wrapper with @AGENTS.md import.
+    expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(true);
+    const claudeContent = readFileSync(join(tmpRoot, "CLAUDE.md"), "utf-8");
+    expect(claudeContent).toContain("@AGENTS.md");
+    // Standards live in AGENTS.md, not duplicated into CLAUDE.md.
+    expect(claudeContent).not.toContain(standards);
+
+    // opencode.json(c) created with instructions registering AGENTS.md.
     const configPath = existsSync(join(tmpRoot, "opencode.jsonc"))
       ? join(tmpRoot, "opencode.jsonc")
       : join(tmpRoot, "opencode.json");
     expect(existsSync(configPath)).toBe(true);
     const cfg = JSON.parse(readFileSync(configPath, "utf-8"));
-    expect(cfg.instructions).toEqual(["CLAUDE.md"]);
+    expect(cfg.instructions).toEqual(["AGENTS.md"]);
   });
 
   it("2-editor branch merges instructions (preserves user entries, no duplicates)", () => {
@@ -374,8 +389,8 @@ describe("installProjectRules routing", () => {
     const after = JSON.parse(
       readFileSync(join(tmpRoot, "opencode.jsonc"), "utf-8"),
     );
-    // CLAUDE.md added, user entries preserved.
-    expect(after.instructions).toContain("CLAUDE.md");
+    // AGENTS.md added, user entries preserved.
+    expect(after.instructions).toContain("AGENTS.md");
     expect(after.instructions).toContain("docs/RULES.md");
     expect(after.instructions).toContain(".cursor/rules");
     // No duplicates.

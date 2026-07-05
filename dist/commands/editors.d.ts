@@ -57,19 +57,29 @@ export declare function installCommand(adapter: EditorAdapter, meta: CommandMeta
  * `<!-- OPENSPEC:START -->` / `<!-- OPENSPEC:END -->` markers so future
  * updates can replace the block without touching the rest of the file.
  */
-export declare function installProjectClaudeMd(projectRoot: string, standardsContent: string, adapter?: EditorAdapter): void;
+export declare function installOpenSpecBlock(projectRoot: string, standardsContent: string, adapter?: EditorAdapter): void;
 /**
- * Route the employee-grade standards into the right rules file(s) for the
- * detected editors:
+ * Install a thin CLAUDE.md that imports AGENTS.md.
  *
- *   - 1 editor detected → write to that editor's rules file
- *     (CLAUDE.md for Claude, AGENTS.md for OpenCode)
- *   - 2 editors detected → write CLAUDE.md (OpenCode reads it natively)
- *     and register `CLAUDE.md` in `opencode.json[c].instructions`
- *     so OpenCode treats it as a project rule.
+ * Uses the same OPENSPEC:START/END markers as the full standards block so
+ * `cleanProjectRules` can remove it uniformly. No-ops if bare `@AGENTS.md`
+ * is already present (may have been added by openspec CLI or manually).
+ *
+ * Also handles migration: if CLAUDE.md has an existing OPENSPEC:START block
+ * (old format that wrote standards directly to CLAUDE.md), calling
+ * `installOpenSpecBlock` replaces the content with the `@AGENTS.md` import.
+ */
+export declare function installClaudeWrapper(projectRoot: string): void;
+/**
+ * Route employee-grade standards into project rules files.
+ *
+ * AGENTS.md is always the single source of truth, regardless of which
+ * editors are detected. If Claude is in use, a thin CLAUDE.md wrapper
+ * with `@AGENTS.md` import is created so Claude loads AGENTS.md as
+ * its project rules.
  */
 export declare function installProjectRules(projectRoot: string, standardsContent: string, detected: EditorAdapter[]): void;
-/** Remove the OPENSPEC markers block from a rules file (CLAUDE.md / AGENTS.md). */
+/** Remove all OpenSpec marker blocks from AGENTS.md (always) and CLAUDE.md (for claude adapter). */
 export declare function cleanProjectRules(adapter: EditorAdapter, projectRoot: string): void;
 /** Read the employee-grade standards source file (empty string if missing). */
 export declare function readEmployeeStandards(srcPath: string): string;
