@@ -43,23 +43,17 @@ jobs:
 
       - name: Retry on transient failure
         if: steps.deployment.outcome == 'failure'
+        env:
+          ARTIFACT_ID: ${{ steps.deployment.outputs.artifact_id }}
         run: |
-          echo "⚠️ Deploy failed (transient GitHub Pages error, see logs)."
-          echo "🔄 Re-triggering workflow..."
-          gh workflow run "Deploy Docs" --ref main
-        continue-on-error: true
-
-      - name: Retry deploy on failure
-        if: steps.deployment.outcome == 'failure'
-        run: |
+          echo "⚠️ Deploy failed (transient GitHub Pages error). Retrying..."
           for i in 1 2 3; do
-            echo "Deploy attempt $i/3..."
-            sleep 10
+            sleep 15
             if gh api -X POST "repos/${{ github.repository }}/pages/deployments" \
-              -f "artifact_id=${{ steps.deployment.outputs.artifact_id }}" > /dev/null 2>&1; then
-              echo "✅ Deploy succeeded on attempt $i"
+              -f "artifact_id=$ARTIFACT_ID" > /dev/null 2>&1; then
+              echo "✅ Deploy succeeded on retry $i"
               exit 0
             fi
           done
-          echo "❌ Deploy failed after 3 attempts"
-          exit 1
+          echo "❌ Deploy failed after 3 retries, re-triggering workflow..."
+          gh workflow run "Deploy Docs" --ref main
