@@ -15,7 +15,7 @@
 | Test Bugs (healed) | <B> |
 | Flaky/RAFT | <F> |
 | Human Escalations | <H> |
-| Final Status | <PASS|FAIL|SKIPPED> |
+| Final Status | PASS / FAIL / SKIPPED |
 
 ## Failure Classification
 

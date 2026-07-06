@@ -88,6 +88,7 @@ openspec-pw uninstall     # Remove integration from the project
   ├── 10. Healer (if needed) → auto-heals failures via MCP
   │
   └── 11. Report → openspec/reports/playwright-e2e-<name>.md
+```
 
 ## Prerequisites
 
