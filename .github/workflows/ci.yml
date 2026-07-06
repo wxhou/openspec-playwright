@@ -38,5 +38,26 @@ jobs:
       - name: Audit dependencies
         run: npm audit --audit-level=high
 
+      - name: Check file size limits
+        run: |
+          # Enforce a max line count per file to prevent runaway files.
+          # Scans our own source only; skips vendored/cached deps.
+          MAX_LINES=3000
+          violations=$(find . -type f \
+            \( -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.mjs' \
+               -o -name '*.css' -o -name '*.md' -o -name '*.html' \) \
+            -not -path './node_modules/*' \
+            -not -path './.opencode/*' \
+            -not -path './dist/*' \
+            -not -path './.git/*' \
+            | xargs wc -l 2>/dev/null \
+            | awk -v max="$MAX_LINES" '$1 > max && $2 != "total" { printf "%s: %d lines\n", $2, $1 }')
+          if [ -n "$violations" ]; then
+            echo "❌ Files exceeding $MAX_LINES lines:"
+            echo "$violations"
+            exit 1
+          fi
+          echo "✅ All files within $MAX_LINES-line limit"
+
       - name: Test
         run: npm run test:run
