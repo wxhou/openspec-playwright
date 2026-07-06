@@ -55,5 +55,5 @@ jobs:
               exit 0
             fi
           done
-          echo "❌ Deploy failed after 3 retries, re-triggering workflow..."
-          gh workflow run "Deploy Docs" --ref main
+          echo "❌ Deploy failed after 3 retries — not persistent, not transient."
+          exit 1
