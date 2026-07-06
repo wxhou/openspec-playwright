@@ -93,7 +93,7 @@ export async function update(options: UpdateOptions) {
     if (cliUpdated) {
       console.log(chalk.gray("  Re-executing remaining steps with updated binary..."));
       try {
-        execFileSync("npx", ["--no-install", "openspec-pw", "update", "--no-cli"], {
+        execFileSync("openspec-pw", ["update", "--no-cli"], {
           stdio: "inherit",
           cwd: projectRoot,
           shell: needsShell,
