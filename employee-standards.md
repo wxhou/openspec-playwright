@@ -1,100 +1,140 @@
 # AI Coding Assistant Employee-Grade Standards
 
-> 员工级行为规范。
-
 ---
 
 ## 0. 适用范围
 
-本规范适用于 OpenSpec + openspec-playwright 项目（使用 AI 编码助手，如 Claude Code 或 OpenCode）。
+**约定**：动手前先读 `openspec/config.yaml`（技术栈、结构、约定、约束等），无内容则忽略。
 
-**项目规范**：动手前读 `openspec/config.yaml`（技术栈、结构、约定、约束等），无内容则忽略。
+**语言**：用中文回复用户。
 
-## 1. 代码质量（强制执行）
+**优先级决策规则**：🔴 CRITICAL（违反→静默 bug / 安全漏洞，必须修正）→ **停下确认后再执行**｜🟡 IMPORTANT（偏离需说明理由）→ **谨慎执行，偏离说明原因**｜⚪ STANDARD（标准实践，可调整）→ 按标准执行
 
-**动手前先思考**：列出假设，逐条验证。复杂任务如有多种解释则都列出来，如有更简单的方案则提出来，必要时坚持己见。有不清楚的地方则停下来，说出困惑，再提问。
+---
 
-**每步有可验证的退出条件**：多步骤任务先列计划（`1. [Step] → verify: [check]`），动手后循环验证直到成功。lint + typecheck 自动执行，任一失败则停止。lint 失败时优先运行 `npm run lint:fix`。
+## 1. 代码质量
 
-**只写被要求的东西**：不要加"灵活"、"可配置"、单次使用的抽象、没被要求的功能。200行能50行完成则重写。
+> WHY：AI 默认倾向多写、快写、猜写。本节约束将这些倾向转化为可验证的生产代码。
 
-**精准改动**：只改必要的，改完清理自己造成的垃圾。匹配现有风格，不改进无关代码。
+**DO**
+- 🔴 **lint + typecheck 每次编辑后自动执行，通过才算成功**。扫源码扩展名判断主语言：.ts/.tsx→ESLint+tsc、.py→ruff+mypy、.go→gofmt+vet。工具不存在时告知用户，不假装跑过
+- 🟡 动手前列假设 → 逐条验证。有不清→停下来，说出困惑，再提问
+- 🟡 多解释则全列，更简单方案则提出并坚持
+- 🟡 多步任务先列计划（`1. [Step] → verify: [check]`），循环验证直到成功
+- 🟡 lint 失败时优先运行 `npm run lint:fix`
+- 🟡 只写被要求的：不加"灵活"、"可配置"、单次使用抽象、未要求功能。200行能50行则重写
+- 🟡 精准改动：只改必要的，改完清理自己造成的垃圾。匹配现有风格
+- 🟡 代码文件行数上限 1500：超过即违例，必须按职责拆分，不得继续堆叠
+- ⚪ 重构前清理未使用的 import/export/prop/console.log，单独提交再做重构
 
-**代码文件行数上限 1500**：超过 1500 行即违例，必须按职责拆分为多个文件，不得继续堆叠。
+**DO NOT**
+- 不写只适配特定输入值的逻辑 → 上游格式变化即失效
+- 不假设外部数据有效 → 必须校验类型/范围/null，处理空/异常/边界值，防 NPE 和注入
+- 不假设异步/外部操作一定成功 → 网络、磁盘、下游随时可能失败
+- 不假设响应结构一定如预期 → 先校验再访问深层属性，API 升级增减字段不通知你
+- 不假设精度/范围安全 → 计算前确认安全范围，数值溢出和精度损失是隐蔽 bug
+- 不假设资源自动释放 → 文件/连接/cursor 用后必须释放
+- 不写魔法数字 → 用常量或枚举并注释原因
+- 不断言具体值（除非明确要求）→ 脆性断言，换环境即碎
 
-**lint + typecheck 通过（项目标准工具链）才算成功**。动手前扫描项目根目录源码文件扩展名检测主语言——`.py`→Python（ruff + mypy）、`.ts`/`.tsx`→TypeScript（ESLint + tsc）、`.go`→Go（gofmt + vet），工具不存在时告知用户。
+**REQUIRE**
+- linter/typechecker 不存在 → 告知用户并建议安装
+- mock 数据 / fixture → 参见 §6 数据编撰禁令
+- 涉及 API 定义 → 查阅真实 OpenAPI/MCP 定义并标注来源
 
-**禁止非通用性改动**：
-- 不写只适配特定输入值的逻辑
-- 禁止假设外部数据有效 → 必须校验类型/范围/null
-- 处理数据时考虑边界情况（空值、异常值、边界值）
-- 断言用通用规则，不用具体值（除非明确要求）
-- 禁止魔法数字 → 用常量或枚举，注释说明原因（例如：`const MAX_RETRIES = 3; // 网络请求最大重试次数`）
-- 禁止隐式成功假设 → 异步/外部操作必须处理失败情况
-- 禁止响应结构假设 → 先校验返回结构再访问深层属性
-- 禁止精度/范围假设 → 计算前确认数值在安全范围内
-- 禁止资源泄漏假设 → 文件/连接/cursor 等使用后必须释放
+---
 
 ## 2. 上下文管理
 
-**文件读取完整**：超过 500 行的文件，不要假设单次读取覆盖完整内容——根据需要分次读取或编辑前重新读取完整文件。超过 10 条消息后，编辑任何文件前强制重新读取。
+> WHY：AI 上下文窗口有限，压缩恢复时刻丢失状态。本节建立恢复协议。
 
-**上下文压缩恢复后（Apply 阶段）**：
-1. `git status` — 确认已改动的内容
-2. 重读 `changes/<name>/proposal.md` + `design.md` + `tasks.md` — 确认范围、设计决策、任务状态
-3. 对照 design.md 检查关键实现（路径、命名、目录结构）
-4. 运行对应语言的 lint + typecheck 验证
-5. 然后继续实施
+**DO**
+- 🟡 超过 500 行文件：分次读取或编辑前重新读取完整文件
+- 🟡 上下文压缩恢复后：`git status` → 重读 proposal/design/tasks → 对照 design 检查实现 → lint + typecheck → 继续
+- ⚪ 超过 10 条消息后，编辑任何文件前强制重新读取
 
-**OpenSpec 阶段隔离**：每个阶段由用户手动触发，禁止跨阶段跳步（explore 阶段不能调 apply，verify 阶段不能调 e2e）。
+**DO NOT**
+- 禁止跨阶段跳步（explore→apply→verify→e2e 各阶段由用户触发）
+- 禁止跨 change 改动：`/opsx:apply <X>` 期间不改 `changes/<Y>/`
+- 禁止"顺手清理"其他 open change 文件 → 告知用户，由用户决定
 
-**禁止跨 change 改动**：执行 `/opsx:apply <X>` 期间，不得修改 `changes/<Y>/`（X≠Y）下任何文件。看到其它 open change 的"顺手清理"诱惑一律拒绝。
+---
 
-**重构前清死代码**：未使用的 import/export/prop/console.log 先删掉，单独提交，再做重构。
+## 3. 架构 Invariants
 
-## 3. 大规模任务处理
+> **[项目特定]** 以下仅适用于 openspec-playwright 项目结构。WHY：这些约束一违反即产生 review 难发现的 bug。Anthropic 称其为最高杠杆的 agent 代码质量措施。
 
-**200 行以上修改或显著架构变更必须走 OpenSpec**：代码改动超过 200 行、或涉及新增服务/API 契约/数据模型重构时，禁止直接修改，必须通过 OpenSpec 工作流（/opsx:propose）。
+- 🔴 CLI 命令向 `src/index.ts` 注册，`src/commands/` 下按职责分文件
+- 🔴 模板文件放 `templates/`，不与其他源码混放
+- 🟡 OpenSpec change artifacts 放 `changes/<name>/`，遵循命名规范
+- 🟡 E2E 测试生成代码放 `e2e/`（如 `e2e/auth.setup.ts`）
+- 🔴 文档同步规则：改 `src/commands/*.ts`/`src/index.ts` 时必须同步更新 README + CHANGELOG
 
-## 4. 工具限制与编辑安全
+---
 
-**搜索要全**：用 Grep 搜内容，用 Glob 搜文件名。两者缺一不可。搜项目/工作区时默认包含所有源码类型，跳过 node_modules/、vendor/、__pycache__ 等依赖目录（调试依赖时除外）；搜子目录时按需缩小。重命名时覆盖调用、类型、字符串、`import`、barrel file、测试 mock，不得假设一次覆盖所有情况。
+## 4. 工具使用
 
-**联网调研优先 agent-reach**：需要查询/调研/搜索等联网操作时，优先使用 agent-reach skill，避免 WebFetch/WebSearch 直接抓页面导致反爬失败。
+> WHY：工具使用方式直接影响搜索覆盖面和结果准确性。
 
-**编辑要求**：编辑后重新读取文件确认变更正确应用。变更完成后，明确告知用户可能遗漏的区域（动态引用、测试 mock 等），提示人工复查。
+**DO**
+- 🟡 搜索要全：Grep 搜内容 + Glob 搜文件名，两者缺一不可。跳过 node_modules/vendor/__pycache__（调试依赖时除外），搜子目录时按需缩小
+- 🟡 重命名覆盖：调用、类型、字符串、import、barrel file、测试 mock，不得假设一次覆盖
+- ⚪ 联网调研优先 agent-reach skill
+- 🟡 编辑 → 重新读取确认 → lint+typecheck → 任一失败则回退
+- 🟡 变更完成告知用户可能遗漏区域，提示人工复查
 
-**禁止脚本改文件**：修改源码文件只能使用内置编辑工具（Read/Edit/Write），禁止用 sed/awk/node -e/python -c 等管道命令改文件。格式化工具（ruff fmt、prettier）除外。
+**DO NOT**
+- 禁止用 sed/awk/node -e/python -c 等管道命令改源码文件（跳过编辑工具验证层）
+- 不主动推送，除非用户明确要求
+- 不假设单次 grep 覆盖所有情况（glob 可能漏嵌套文件或非标准扩展名）
 
-**不主动推送**：除非用户明确要求，否则不推送代码。
+**REQUIRE**
+- 使用格式化工具（ruff fmt / prettier 除外——不改语义）
+- 密钥与 .env 不入版本控制。示例用占位符（如 `YOUR_API_KEY`）。调试日志不打印凭据
 
-**中文回复**：用中文回复用户。
+---
 
-**安全规范**：密钥与 `.env` 文件不入版本控制。示例代码用占位符（如 `YOUR_API_KEY`）不用真实凭据。调试日志不打印凭据/密钥/token。
+## 5. 大规模任务
 
-## 5. 完整生产工作流
+> WHY：200+ 行直接修改缺乏评审，OpenSpec 工作流强制提案→设计→评审→实现。
 
-**Superpowers（可选增强）**：安装 `/plugin install superpowers@claude-plugins-official` 后，Superpowers 在 propose → apply → verify 阶段提供更严谨的 AI 方法论（对话式 spec 探索、TDD、subagent 并行实现）。Superpowers **不改变 OpenSpec 主流程**，所有阶段仍由用户手动触发。
+- 🔴 200+ 行修改或架构变更（新增服务/API 契约/数据模型重构）必须走 OpenSpec（`/opsx:propose`），禁止直接修改
 
-阶段命令即触发器：`/opsx:propose` → `/opsx:apply` → `/opsx:verify` → e2e 命令（Claude Code 用 `/opsx:e2e`，OpenCode 用 `/opsx-e2e`）→ `/opsx:archive`。**所有阶段由用户手动触发，AI 不自动进入下一阶段**（详见 §2 阶段隔离）。
+### 工作流参考
 
-## 6. 禁止编撰数据
+| 阶段 | 命令 | 退出条件 |
+|------|------|---------|
+| 提案 | `/opsx:propose` | proposal + scenarios 生成 |
+| 实现 | `/opsx:apply` | lint + typecheck 通过 |
+| 自审 | `/opsx:verify` | 实现匹配 design，无遗漏 |
+| E2E | `/opsx:e2e` / `/opsx-e2e` | 测试生成 + Healer 验证通过 |
+| 归档 | `/opsx:archive` | specs 更新，归档完成 |
 
-无论前后端一体还是纯前端项目，AI 助手**严禁**主动编撰任何数据填充代码，除非用户明确同意。
+所有阶段由用户手动触发，**AI 不自动进入下一阶段**。Superpowers（可选）：`/plugin install superpowers@claude-plugins-official`，提供对话式 spec 探索、TDD、subagent 并行实现，不改变主流程。
 
-**适用范围**：mock 用户 / 邮箱 / 手机号；编造的测试期望值（"期望返回 `{ success: true }`" 等）；凭空出现的配置默认值（API URL、feature flag、密钥）；假装存在的接口 / 字段 / 枚举值。
+---
 
-**强制流程**：
-1. 遇需数据的代码位 → **必须**显式询问用户
-2. 用户同意占位 → 用 `TODO(user)` 标注并附问询上下文
-3. 用户提供数据 → 使用真实数据
-4. 用户拒绝提供 → 用 stub / `throw` / `return null` 让代码显式失败，**禁止**静默编造值
+## 6. 数据编撰禁令
 
-**纯前端项目**：若存在 OpenAPI / 接口文档 / MCP 暴露的接口，必须查阅真实定义后引用，并标注来源（例如 `// 来源: docs/api/openapi.yaml#/paths/...`），禁止凭印象编造 endpoint / path / 字段名。
+> WHY：AI 有"填空"倾向——缺乏数据时编造看似合理的值，引入静默 bug。
+
+**DO NOT**
+- 严禁主动编撰任何数据填充代码，除非用户明确同意
+- 编撰示例：mock 用户/邮箱/手机号、编造测试期望值、凭空出现配置默认值、假装存在的接口/字段/枚举值
+- 不编造 URL/路径 → 引用真实来源，勿凭印象编造 endpoint/path/字段名
+- 遇需数据的代码位必须显式询问用户
+- 用户拒绝时，用 stub / `throw` / `return null` 显式失败，禁止静默编造
+
+**REQUIRE**
+- 用户同意占位 → `TODO(user)` 标注并附问询上下文
+- 用户提供数据 → 使用真实数据
+- 无论前后端一体还是纯前端，存在 OpenAPI/接口文档 → 查阅真实定义并标注来源（如 `// 来源: docs/api/openapi.yaml#/paths/...`）
+
+---
 
 ## 7. 临时文件管理
 
-所有工具（Chrome DevTools MCP、截图、日志、heapdump 等）产生的非源码临时文件必须放项目根目录 `tmp/` 下：
+- 非源码临时文件（截图、日志、heapdump 等）放项目根 `tmp/` 下
 - 平铺，不分子目录
-- 文件名含时间戳（避免覆盖）
-- `tmp/` 中超过 24 小时的文件可以在 commit 前删除
+- 文件名含时间戳
+- 超 24 小时的文件可在 commit 前删除
