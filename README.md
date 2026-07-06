@@ -50,7 +50,7 @@ openspec-pw audit         # Audit tests for orphaned specs and issues
 openspec-pw coverage      # Analyze spec–test coverage for changes
 openspec-pw flake         # Detect static flake patterns in test files
 openspec-pw migrate       # Migrate old test files to new structure
-openspec-pw explore       # Explore routes in parallel with Playwright
+openspec-pw explore       # Explore app routes with Playwright
 openspec-pw run <name>    # Execute E2E tests for a change
 openspec-pw uninstall     # Remove integration from the project
 ```
@@ -87,7 +87,7 @@ openspec-pw uninstall     # Remove integration from the project
   │
   ├── 10. Healer (if needed) → auto-heals failures via MCP
   │
-  └── 11. Report → openspec/reports/playwright-e2e-<name>.md
+  └── 11. Report → openspec/reports/playwright-e2e-<name>-<timestamp>.md
 ```
 
 ## Prerequisites
@@ -115,7 +115,7 @@ Browser exploration is provided out of the box by Playwright MCP and `openspec-p
 
 1. Detects supported editors in the project (Claude Code and/or OpenCode)
 2. Installs the E2E command for each detected editor (`/opsx:e2e` for Claude Code, `/opsx-e2e` for OpenCode)
-3. Generates `tests/playwright/seed.spec.ts`, `auth.setup.ts`, `credentials.yaml`, `app-knowledge.md`
+3. Generates `tests/playwright/seed.spec.ts`, `auth.setup.ts`, `credentials.yaml`, `app-knowledge.md`, `pages/BasePage.ts`
 4. Generates `playwright.config.ts` with automatic dev script and port detection (Vite/Next/Nuxt/Astro, `.env`, and `--port`)
 
 > **Note**: After running `openspec-pw init`, manually install Playwright browsers: `npx playwright install --with-deps`
@@ -144,14 +144,16 @@ Run through these steps in order when using the E2E workflow for the first time:
 
 ## App Server Detection
 
-Generated `playwright.config.ts` automatically detects the app URL in this order:
+Generated `playwright.config.ts` automatically detects the app URL in this priority order:
 
 1. `BASE_URL` environment variable
-2. port flags in `package.json` scripts, e.g. `vite --port 5125`
-3. `vite.config.*` `server.port`
-4. `.env.local`, `.env.development`, `.env` (`PLAYWRIGHT_PORT`, `E2E_PORT`, `VITE_PORT`, `PORT`)
-5. framework defaults: Vite `5173`, Astro `4321`, Next/Nuxt `3000`
-6. fallback: `http://localhost:3000`
+2. environment variables: `PLAYWRIGHT_PORT`, `E2E_PORT`, `VITE_PORT`, `PORT`
+3. port flags in `package.json` scripts, e.g. `vite --port 5125`
+4. `vite.config.*` `server.port`
+5. `.env.local`, `.env.development`, `.env` (same env var names)
+6. framework defaults: Vite `5173`, Astro `4321`, Next/Nuxt `3000`
+7. `seed.spec.ts` `BASE_URL` constant
+8. fallback: `http://localhost:3000`
 
 Run `openspec-pw doctor` to see the detected dev script and base URL:
 
@@ -215,27 +217,33 @@ CLI (openspec-pw)
   ├── run        → Executes E2E tests with server lifecycle
   ├── migrate    → Migrates old test files to new structure
   ├── audit      → Audits tests for orphaned specs and issues
+  ├── coverage   → Analyzes spec–test coverage for changes
   ├── flake      → Detects static flake patterns in test files
   ├── doctor     → Checks prerequisites
-  ├── explore    → Explores routes in parallel with Playwright
+  ├── explore    → Explores app routes with Playwright
   └── uninstall  → Removes integration from the project
 
 Editors (auto-detected by openspec-pw init)
   ├── Claude Code (/opsx:e2e)
   │   ├── .claude/commands/opsx/e2e.md   → Command file
   │   ├── @playwright/mcp                → Healer Agent tools (via `claude mcp add playwright …`)
-  │   └── CLAUDE.md                      → Employee-grade standards
+  │   └── CLAUDE.md                      → Imports AGENTS.md via `@AGENTS.md`
   └── OpenCode (/opsx-e2e)
       ├── .opencode/commands/opsx-e2e.md → Command file (body rewritten from /opsx: → /opsx-)
       ├── opencode.jsonc                 → Playwright MCP (mcp.playwright) + instructions routing
-      └── CLAUDE.md or AGENTS.md         → Employee-grade standards (routed by detected editors)
+      └── AGENTS.md                      → Employee-grade standards (SSOT)
+
+Employee-grade standards live in **AGENTS.md** as the single source of truth. Claude Code
+loads them via a thin CLAUDE.md with `@AGENTS.md` import. OpenCode registers AGENTS.md in
+`opencode.jsonc` under `instructions`.
 
 Test Assets (tests/playwright/)
   ├── seed.spec.ts         → Env validation
   ├── auth.setup.ts        → Session recording
   ├── global.teardown.ts   → Post-test cleanup (optional)
   ├── credentials.yaml     → Test users
-  └── app-knowledge.md     → Project-level selector patterns (cross-change)
+  ├── app-knowledge.md     → Project-level selector patterns (cross-change)
+  └── pages/BasePage.ts    → Shared page object class
 
 Exploration (openspec/changes/<name>/specs/playwright/)
   ├── app-exploration.md → This change's routes + verified selectors

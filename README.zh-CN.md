@@ -68,10 +68,12 @@ openspec-pw init          # 安装 Playwright E2E 集成
 ```bash
 openspec-pw init          # 初始化集成（一次性设置；加 --seed 覆盖已有 seed.spec.ts）
 openspec-pw update        # 更新 CLI 和命令到最新版本
-openspec-pw doctor        # 检查前置条件
+openspec-pw doctor        # 检查前置条件 + 应用服务器诊断
 openspec-pw audit         # 检查测试文件是否有孤儿文件和配置问题
+openspec-pw coverage      # 分析 spec 与测试之间的覆盖率
+openspec-pw flake         # 检测测试文件中的静态不稳定模式
 openspec-pw migrate       # 迁移旧测试文件到新目录结构
-openspec-pw explore       # 并行探索路由
+openspec-pw explore       # 探索应用路由
 openspec-pw run <name>    # 执行指定 change 的 E2E 测试
 openspec-pw uninstall     # 移除项目中的集成
 ```
@@ -108,14 +110,14 @@ openspec-pw uninstall     # 移除项目中的集成
   │
   ├── 10. Healer（如需要）→ 通过 MCP 自动修复失败
   │
-  └── 11. 报告 → openspec/reports/playwright-e2e-<name>.md
+  └── 11. 报告 → openspec/reports/playwright-e2e-<name>-<timestamp>.md
 ```
 
 ## `openspec-pw init` 做了什么
 
 1. 检测项目中的受支持编辑器（Claude Code 和/或 OpenCode）
 2. 为每个检测到的编辑器安装 E2E 命令（Claude Code 用 `/opsx:e2e`，OpenCode 用 `/opsx-e2e`）
-3. 生成 `tests/playwright/seed.spec.ts`、`auth.setup.ts`、`credentials.yaml`、`app-knowledge.md`
+3. 生成 `tests/playwright/seed.spec.ts`、`auth.setup.ts`、`credentials.yaml`、`app-knowledge.md`、`pages/BasePage.ts`
 
 ## 首次配置清单
 
@@ -188,23 +190,32 @@ CLI (openspec-pw)
   ├── run        → 执行 E2E 测试并管理服务器生命周期
   ├── migrate    → 迁移旧测试文件到新目录结构
   ├── audit      → 检查测试文件是否有孤儿文件和配置问题
+  ├── coverage   → 分析 spec 与测试之间的覆盖率
+  ├── flake      → 检测测试文件中的静态不稳定模式
   ├── doctor     → 检查前置条件
-  ├── explore    → 并行探索路由
+  ├── explore    → 探索应用路由
   └── uninstall  → 移除项目中的集成
 
 编辑器（由 openspec-pw init 自动检测）
   ├── Claude Code (/opsx:e2e)
   │   ├── .claude/commands/opsx/e2e.md    → 命令文件（从 templates/e2e-command.md 安装）
-  │   └── @playwright/mcp                 → Healer Agent 工具（通过 `claude mcp add playwright …`）
+  │   ├── @playwright/mcp                 → Healer Agent 工具（通过 `claude mcp add playwright …`）
+  │   └── CLAUDE.md                       → 通过 `@AGENTS.md` 引入 AGENTS.md
   └── OpenCode (/opsx-e2e)
       ├── .opencode/commands/opsx-e2e.md  → 命令文件（正文由 /opsx: 改写为 /opsx-）
-      └── opencode.jsonc                  → Playwright MCP (mcp.playwright) + 指令路由
+      ├── opencode.jsonc                  → Playwright MCP (mcp.playwright) + 指令路由
+      └── AGENTS.md                       → 员工级规范（单一数据源）
+
+员工级规范统一存放在 **AGENTS.md** 中。Claude Code 通过薄层 CLAUDE.md
+（包含 `@AGENTS.md` 导入）加载；OpenCode 在 `opencode.jsonc` 的 `instructions` 中注册 AGENTS.md。
 
 测试资产 (tests/playwright/)
-  ├── seed.spec.ts       → 环境验证
-  ├── auth.setup.ts      → 会话录制
-  ├── credentials.yaml   → 测试用户
-  └── app-knowledge.md   → 项目级选择器模式（跨 change 复用）
+  ├── seed.spec.ts        → 环境验证
+  ├── auth.setup.ts       → 会话录制
+  ├── global.teardown.ts  → 测试后清理（可选）
+  ├── credentials.yaml    → 测试用户
+  ├── app-knowledge.md    → 项目级选择器模式（跨 change 复用）
+  └── pages/BasePage.ts   → 共享页面对象基类
 
 探索结果 (openspec/changes/<name>/specs/playwright/)
   ├── app-exploration.md → 本次 change 的路由 + 已验证选择器
