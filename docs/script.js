@@ -150,6 +150,9 @@ function copyClaudeMd() {
 
 // Initialize language switch buttons + reveal-on-scroll
 document.addEventListener('DOMContentLoaded', () => {
+  // Populate initial CLAUDE.md content
+  setLanguage('zh');
+
   document.querySelectorAll('.lang-btn').forEach(btn => {
     btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
   });
