@@ -30,6 +30,25 @@
   color: var(--text-secondary);
 }
 
+.claude-config-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.claude-config-badge {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .claude-copy-btn {
   display: inline-flex;
   align-items: center;
@@ -59,24 +78,133 @@
   height: 14px;
 }
 
-.claude-config-content {
-  padding: 24px;
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  line-height: 1.8;
-  color: var(--text);
+.claude-config-rendered {
+  padding: 32px 36px;
   background: var(--bg);
+  color: var(--text);
+  font-size: 0.92rem;
+  line-height: 1.85;
   overflow-x: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
 }
 
-.claude-config-content code {
-  font-family: inherit;
-  background: none;
-  padding: 0;
-  color: inherit;
+/* H1: 主标题，带下划线和图标装饰 */
+.claude-config-rendered h1 {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0 0 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--accent);
+  color: var(--text);
+  letter-spacing: -0.01em;
+  position: relative;
+}
+
+.claude-config-rendered h1::before {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 60px;
+  height: 2px;
+  background: var(--accent);
+}
+
+/* H2: 分区标题，左侧色条 */
+.claude-config-rendered h2 {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 28px 0 14px;
+  padding-left: 12px;
+  border-left: 3px solid var(--accent);
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+/* 段落 */
+.claude-config-rendered p {
+  margin: 0 0 12px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.claude-config-rendered p:last-child {
+  margin-bottom: 0;
+}
+
+/* 有序/无序列表 */
+.claude-config-rendered ul {
+  list-style: disc;
+  padding-left: 20px;
+  margin: 0 0 14px;
+}
+
+.claude-config-rendered ul ul {
+  list-style: circle;
+  margin: 4px 0 4px;
+}
+
+.claude-config-rendered li {
+  padding: 3px 0;
+  line-height: 1.75;
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+}
+
+.claude-config-rendered li::marker {
+  color: var(--accent);
+  font-size: 0.7rem;
+}
+
+/* 嵌套列表缩进 */
+.claude-config-rendered li > ul {
+  padding-left: 16px;
+}
+
+.claude-config-rendered li strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* 行内代码 */
+.claude-config-rendered code {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  background: var(--surface2);
+  padding: 2px 7px;
+  border-radius: 5px;
+  color: var(--accent-dark);
+  border: 1px solid rgba(154, 52, 18, 0.1);
+}
+
+/* 链接 */
+.claude-config-rendered a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  transition: color 150ms;
+}
+
+.claude-config-rendered a:hover {
+  color: var(--accent-dark);
+}
+
+/* 列表末尾无外边距 */
+.claude-config-rendered ul:last-child {
+  margin-bottom: 0;
+}
+
+/* 优先级标签高亮 */
+.claude-config-rendered li strong:contains("CRITICAL"),
+.claude-config-rendered li strong:contains("🔴") {
+  color: #b91c1c;
+}
+
+.claude-config-rendered li strong:contains("IMPORTANT"),
+.claude-config-rendered li strong:contains("🟡") {
+  color: #b45309;
 }
 
 .nav-logo {

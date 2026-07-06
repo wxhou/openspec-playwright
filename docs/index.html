@@ -140,12 +140,15 @@
   <div class="claude-config-wrapper">
     <div class="claude-config-header">
       <span class="claude-config-filename">CLAUDE.md</span>
-      <button class="claude-copy-btn" onclick="copyClaudeMd()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-        复制配置
-      </button>
+      <div class="claude-config-actions">
+        <span class="claude-config-badge">Preview</span>
+        <button class="claude-copy-btn" onclick="copyClaudeMd()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          <span class="copy-text-zh">复制配置</span><span class="copy-text-en" style="display:none;">Copy Config</span>
+        </button>
+      </div>
     </div>
-    <pre class="claude-config-content"><code id="claude-md-content"></code></pre>
+    <div class="claude-config-rendered" id="claude-md-rendered"></div>
   </div>
 </section>
 

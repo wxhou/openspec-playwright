@@ -135,6 +135,79 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - Filenames include timestamp
 - Files older than 24h may be deleted before commit`;
 
+function processInline(text) {
+  // **bold** → <strong>
+  text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // `code` → <code>
+  text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // [text](url) → <a>
+  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  return text;
+}
+
+function renderMarkdown(md) {
+  const lines = md.split('\n');
+  let html = '';
+  let inList = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    // Skip empty lines (but close open lists)
+    if (trimmed === '') {
+      if (inList) {
+        html += '</ul>\n';
+        inList = false;
+      }
+      continue;
+    }
+
+    // H1
+    if (trimmed.startsWith('# ')) {
+      if (inList) { html += '</ul>\n'; inList = false; }
+      html += '<h1>' + processInline(trimmed.slice(2)) + '</h1>\n';
+      continue;
+    }
+
+    // H2
+    if (trimmed.startsWith('## ')) {
+      if (inList) { html += '</ul>\n'; inList = false; }
+      html += '<h2>' + processInline(trimmed.slice(3)) + '</h2>\n';
+      continue;
+    }
+
+    // H3-H6
+    if (/^#{3,6} /.test(trimmed)) {
+      if (inList) { html += '</ul>\n'; inList = false; }
+      const level = trimmed.match(/^(#{3,6}) /)[1].length;
+      const content = trimmed.slice(level + 1);
+      html += `<h${level}>` + processInline(content) + `</h${level}>\n`;
+      continue;
+    }
+
+    // List items (support nested by indent)
+    if (trimmed.startsWith('- ')) {
+      if (!inList) {
+        html += '<ul>\n';
+        inList = true;
+      }
+      html += '  <li>' + processInline(trimmed.slice(2)) + '</li>\n';
+      continue;
+    }
+
+    // Close list for non-list content
+    if (inList) { html += '</ul>\n'; inList = false; }
+    html += '<p>' + processInline(trimmed) + '</p>\n';
+  }
+
+  if (inList) {
+    html += '</ul>\n';
+  }
+
+  return html;
+}
+
 let currentLang = 'zh';
 
 function setLanguage(lang) {
@@ -157,8 +230,9 @@ function setLanguage(lang) {
     }
   });
 
-  // Update content
-  document.getElementById('claude-md-content').textContent = isZh ? CLAUDE_MD_ZH : CLAUDE_MD_EN;
+  // Update rendered content
+  const md = isZh ? CLAUDE_MD_ZH : CLAUDE_MD_EN;
+  document.getElementById('claude-md-rendered').innerHTML = renderMarkdown(md);
 }
 
 function copyClaudeMd() {
