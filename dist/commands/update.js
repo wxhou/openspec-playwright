@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { join } from "path";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync, statSync, } from "fs";
@@ -24,14 +24,36 @@ export async function update(options) {
     // 1. Update CLI tool from npm
     if (options.cli !== false) {
         console.log(chalk.blue("─── Updating CLI ───"));
+        let cliUpdated = false;
         try {
             await execFileAsync("npm", ["install", "-g", "openspec-playwright@latest"], { timeout: 120000, cwd: projectRoot, stdio: "inherit", shell: needsShell });
             console.log(chalk.green("  ✓ CLI updated via npm"));
+            cliUpdated = true;
         }
         catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
             console.log(chalk.yellow(`  ⚠ Failed to update CLI via npm: ${msg}`));
             console.log(chalk.gray("  Run manually: npm install -g openspec-playwright@latest"));
+        }
+        // Re-execute remaining steps (templates, commands, AGENTS.md) with the
+        // newly-installed binary so that the latest code handles project setup.
+        // The original process still runs old code and would miss AGENTS.md creation
+        // (which was added in a later version).
+        if (cliUpdated) {
+            console.log(chalk.gray("  Re-executing remaining steps with updated binary..."));
+            try {
+                execFileSync("openspec-pw", ["update", "--no-cli"], {
+                    stdio: "inherit",
+                    cwd: projectRoot,
+                    shell: needsShell,
+                });
+                console.log(chalk.green("  ✓ Post-update tasks completed with latest binary"));
+                return;
+            }
+            catch {
+                console.log(chalk.yellow("  ⚠ Re-execution failed, continuing with current binary..."));
+                // Fall through — let the old binary attempt remaining steps
+            }
         }
     }
     // 1b. Sync local devDependency if present

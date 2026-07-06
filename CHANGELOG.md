@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.52] - 2026-07-06
+
+### Fixed
+
+- **`openspec-pw update`: AGENTS.md not created on first run after upgrade**. The old binary ran `npm install -g` but continued with stale code that predated AGENTS.md support. After successful CLI update, the process now re-executes `openspec-pw update --no-cli` with the freshly-installed binary so post-CLI steps (templates, commands, AGENTS.md) run with the latest code. Falls back gracefully to the old binary if re-execution fails.
+  - `src/commands/update.ts` — re-execution block after CLI update
+
+## [0.3.46] - 2026-07-01
+
 ### Added
 
 - **`openspec-pw coverage [change-name]`**: New command for spec–test coverage analysis. Analyzes OpenSpec changes against Playwright test files across 5 levels (L1 directory → L5 edit-distance similarity). Reports per-change coverage %, uncovered scenarios, orphaned tests, and recommendations. Supports `--json` output.
