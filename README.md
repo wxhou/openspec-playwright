@@ -58,8 +58,8 @@ openspec-pw uninstall     # Remove integration from the project
 ## How It Works
 
 ```
-# Triggered by /opsx:e2e <change-name> (Claude Code) or /opsx-e2e <change-name> (OpenCode)
-/opsx:e2e <change-name>
+/opsx:e2e <change-name>          # Claude Code
+/opsx-e2e <change-name>          # OpenCode
   │
   ├── 1. Select change → read openspec/changes/<name>/specs/
   │
