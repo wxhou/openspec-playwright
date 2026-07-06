@@ -7,7 +7,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - lint + typecheck 通过才算成功。动手前扫描项目根目录源码文件扩展名检测主语言：\`.py\` → ruff+mypy、\`.ts\`/\`.tsx\` → ESLint+tsc、\`.go\` → gofmt+vet
 - 只写被要求的东西：不加"灵活"、"可配置"、单次使用的抽象。200行能50行完成则重写
 - 精准改动：只改必要的，改完清理自己造成的垃圾。匹配现有风格，不改进无关代码
-- 代码文件行数上限 1500：超过即视为过长，需要扩展时按职责拆分
+- 代码文件行数上限 1500：超过即违例，必须按职责拆分，不得继续堆叠
 
 ## 禁止非通用性改动
 - 禁止假设外部数据有效 → 必须校验类型/范围/null
@@ -51,7 +51,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - lint + typecheck must pass. Detect project language by file extensions: \`.py\` → ruff+mypy, \`.ts\`/\`.tsx\` → ESLint+tsc, \`.go\` → gofmt+vet
 - Write only what's requested: No "flexibility", "configurability", or single-use abstractions. Rewrite if 200 lines can be 50
 - Surgical changes: Touch only what's necessary, clean up only your own mess. Match existing style, don't improve unrelated code
-- Code file line limit 1500: split by responsibility when exceeding
+- Code file line limit 1500: over 1500 lines is a violation — must split by responsibility, never extend
 
 ## No Non-Generic Changes
 - Assume external data is valid → Must validate type/range/null
