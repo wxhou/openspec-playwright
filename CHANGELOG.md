@@ -14,6 +14,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`openspec-pw update`: AGENTS.md not created on first run after upgrade**. The old binary ran `npm install -g` but continued with stale code that predated AGENTS.md support. After successful CLI update, the process now re-executes `openspec-pw update --no-cli` with the freshly-installed binary so post-CLI steps (templates, commands, AGENTS.md) run with the latest code. Falls back gracefully to the old binary if re-execution fails.
   - `src/commands/update.ts` — re-execution block after CLI update
 
+### Changed
+
+- **CI: 1500-line max per source file**. New CI step fails if any scanned source file (`*.ts`/`*.tsx`/`*.js`/`*.mjs`/`*.css`/`*.md`/`*.html`) exceeds 1500 lines. Skips vendored dirs (`node_modules`, `dist`, `.git`, `.opencode`).
+- **Deploy Docs auto-retry**. GitHub Pages deploys occasionally fail with a transient `Deployment failed, try again later` error. The `pages.yml` workflow now retries via `gh api` and falls back to re-triggering the workflow.
+  - `.github/workflows/pages.yml` — `continue-on-error` + retry step (env-var based, no Actions injection)
+- **Employee-grade standards: 1500-line rule**. Added to `employee-standards.md` §1 and the `docs/script.js` CLAUDE.md templates (ZH + EN).
+
+### Added
+
+- **Tests for `cleanProjectRules`**. 9 new unit tests covering AGENTS.md always-clean, CLAUDE.md conditional clean, blank-line collapse, empty-file deletion, idempotency, CRLF line endings, and missing-file / no-marker no-ops. Plus an OpenCode-only assertion that `opencode.jsonc` registers `AGENTS.md` in `instructions`.
+  - `tests/editors.test.ts` — 233 → 242 tests
+
+## [0.3.51] - 2026-07-05
+
+### Changed
+
+- **`editors.ts`: AGENTS.md is now the single source of truth (SSOT) for employee-grade standards**, regardless of which editors are detected. CLAUDE.md becomes a thin wrapper with `@AGENTS.md` import (when Claude is in use); `opencode.jsonc` instructions register `AGENTS.md`. Migrates old-format CLAUDE.md (direct standards inside OPENSPEC markers) to the wrapper on next install.
+  - `src/commands/editors.ts` — `installProjectRules` rewritten; new `installClaudeWrapper`; `installProjectClaudeMd` renamed to `installOpenSpecBlock`; `cleanProjectRules` extracted to `removeMarkersFromFile`
+
+### Fixed
+
+- `installOpenSpecBlock`: trim `standardsContent` in create/append paths (was only trimmed in update path) — eliminates double blank lines around the `@AGENTS.md` wrapper
+- `removeMarkersFromFile`: restore `\s*` capture + `\n{3,}` collapse so cleaned files don't accumulate 3+ blank lines around the removed block
+- `installClaudeWrapper`: support CRLF line endings (`@AGENTS.md\r`) so the no-op guard works on Windows-authored CLAUDE.md
+- `cleanProjectRules`: use `adapter.projectRulesPath` instead of hardcoding `CLAUDE.md`
+
+## [0.3.50] - 2026-07-05
+
+### Added
+
+- **Cloudflare Web Analytics** on the docs site. Adds a deferred beacon script with SRI hash + `crossorigin="anonymous"` to `docs/index.html`. No cookies, no PII.
+  - `docs/index.html` — `<script data-cf-beacon>` in `<head>`
+
+## [0.3.49] - 2026-07-05
+
+### Added
+
+- **AI Coding Assistants section** on the docs site — Claude Code and OpenCode shown side-by-side as first-class citizens, each with its own icon, command (`/opsx:e2e` vs `/opsx-e2e`), and feature list. Nav gains an "Editors" link.
+- **Artistic background layers** on the docs site: SVG fractal noise (film grain), Vercel-style grid pattern with radial mask, top aurora gradient, bottom-corner amber glow, and an animated 4-blob mesh gradient in the hero.
+- **Stripe/Cursor-grade design polish** on the docs site: 500-weight display type, `tabular-nums` on all numeric UI, glassmorphism cards (`backdrop-filter` + inset highlight), hairline borders (`rgba(28,25,23,0.08)`), magnetic primary CTA, scroll-reveal via `IntersectionObserver`, shimmer-sweep button hover.
+- **Split `docs/index.html`** (2533 lines) into `index.html` (~850) + `style-base.css` + `style-sections.css` + `style-extra.css` + `script.js`. All resources served as separate files; GitHub Pages compatible.
+- **`agent-reach` rule** added to `employee-standards.md` §4 and both `docs/script.js` CLAUDE.md templates: prefer `agent-reach` skill for web research to avoid WebFetch/WebSearch anti-bot blocks.
+
+### Fixed
+
+- 8 stale `max-width: 1160px` values upgraded to `1200px` for consistency with the new layout width.
+- Duplicate `.section` CSS rule removed (was defined in both `style-base.css` and `style-sections.css`).
+- gstack references fully removed from active files (only CHANGELOG historical entries remain).
+
+## [0.3.48] - 2026-07-04
+
+### Changed
+
+- **Lazy CLI startup** continued: command modules loaded via dynamic `import()` on first use. `--help` loads only `commander`.
+
+### Fixed
+
+- README "How It Works" closed an unclosed code block and escaped a pipe in a template table; inline comments moved after code to avoid heading-like rendering.
+
+## [0.3.47] - 2026-07-04
+
+### Added
+
+- **Temp file management rule** (`employee-standards.md` §7): all non-source temp files (Chrome DevTools MCP screenshots, logs, heapdumps, etc.) must go in `tmp/` at the project root, flat layout, timestamped filenames; files older than 24h may be deleted before commit. Mirrored into the `docs/script.js` CLAUDE.md templates (ZH + EN).
+  - `employee-standards.md` — new §7
+  - `.gitignore` — `tmp/` ignored, `tmp/.gitkeep` tracked
+  - `docs/script.js` — CLAUDE_MD_ZH + CLAUDE_MD_EN
+
 ## [0.3.46] - 2026-07-01
 
 ### Added
@@ -28,11 +96,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `openspec list --json` returns `{"changes": [...]}` format in openspec v1.4.1; `getChangeNames` in both `audit` and `coverage` commands now handles the wrapped format in addition to the legacy formats
-
-## [0.3.46] - 2026-07-01
-
-### Fixed
-
 - `/opsx-e2e` not responding in OpenCode: compressed `e2e-command.md` template from 1173 to 313 lines (75%); the 65KB template exceeded OpenCode's config output size limit, causing the command to register silently but never match. Simplified structure with all decision logic, Healer phases, and guards preserved.
 
 ### Performance

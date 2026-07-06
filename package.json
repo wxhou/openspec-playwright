@@ -1,6 +1,6 @@
 {
   "name": "openspec-playwright",
-  "version": "0.3.52",
+  "version": "0.3.53",
   "description": "OpenSpec + Playwright E2E verification setup tool for Claude Code",
   "type": "module",
   "bin": {

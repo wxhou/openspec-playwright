@@ -42,7 +42,7 @@ jobs:
         run: |
           # Enforce a max line count per file to prevent runaway files.
           # Scans our own source only; skips vendored/cached deps.
-          MAX_LINES=3000
+          MAX_LINES=1500
           violations=$(find . -type f \
             \( -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.mjs' \
                -o -name '*.css' -o -name '*.md' -o -name '*.html' \) \

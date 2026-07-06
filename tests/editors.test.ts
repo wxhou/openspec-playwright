@@ -12,6 +12,7 @@ import { join } from "path";
 import {
   buildCommandMeta,
   claudeAdapter,
+  cleanProjectRules,
   detectAdapters,
   escapeYamlValue,
   formatClaudeCommand,
@@ -336,6 +337,14 @@ describe("installProjectRules routing", () => {
     expect(readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8")).toContain(
       standards,
     );
+
+    // opencode.json(c) must register AGENTS.md as a project instruction.
+    const configPath = existsSync(join(tmpRoot, "opencode.jsonc"))
+      ? join(tmpRoot, "opencode.jsonc")
+      : join(tmpRoot, "opencode.json");
+    expect(existsSync(configPath)).toBe(true);
+    const cfg = JSON.parse(readFileSync(configPath, "utf-8"));
+    expect(cfg.instructions).toContain("AGENTS.md");
   });
 
   it("writes AGENTS.md as SSOT + thin CLAUDE.md + registers AGENTS.md when both are detected", () => {
@@ -560,6 +569,119 @@ describe("opencodeAdapter registerInstructions", () => {
     ]);
     // Old single-element array must be gone.
     expect(cfg.instructions).not.toEqual(["CLAUDE.md"]);
+  });
+});
+
+// ─── cleanProjectRules ───────────────────────────────────────────────────────
+// Covers both the public cleanProjectRules routing AND the private
+// removeMarkersFromFile helper (exercised through the public API).
+
+describe("cleanProjectRules", () => {
+  const MARKER_BLOCK = (content: string) =>
+    `<!-- OPENSPEC:START -->\n\n${content}\n\n<!-- OPENSPEC:END -->`;
+
+  it("removes markers from AGENTS.md for any adapter (SSOT)", () => {
+    writeFileSync(
+      join(tmpRoot, "AGENTS.md"),
+      `# Project\n\n${MARKER_BLOCK("standards body")}\n`,
+    );
+    cleanProjectRules(opencodeAdapter, tmpRoot);
+    const after = readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8");
+    expect(after).not.toContain("OPENSPEC:START");
+    expect(after).not.toContain("standards body");
+    // Project header outside markers must survive.
+    expect(after).toContain("# Project");
+  });
+
+  it("also cleans CLAUDE.md when adapter is claude", () => {
+    writeFileSync(
+      join(tmpRoot, "AGENTS.md"),
+      `# Project\n\n${MARKER_BLOCK("standards body")}\n`,
+    );
+    writeFileSync(
+      join(tmpRoot, "CLAUDE.md"),
+      `# My Rules\n\n${MARKER_BLOCK("@AGENTS.md")}\n`,
+    );
+    cleanProjectRules(claudeAdapter, tmpRoot);
+    const agents = readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8");
+    const claude = readFileSync(join(tmpRoot, "CLAUDE.md"), "utf-8");
+    expect(agents).not.toContain("OPENSPEC:START");
+    expect(claude).not.toContain("OPENSPEC:START");
+    expect(claude).not.toContain("@AGENTS.md");
+    expect(claude).toContain("# My Rules");
+  });
+
+  it("skips CLAUDE.md when adapter is opencode", () => {
+    writeFileSync(
+      join(tmpRoot, "AGENTS.md"),
+      `# Project\n\n${MARKER_BLOCK("standards body")}\n`,
+    );
+    writeFileSync(
+      join(tmpRoot, "CLAUDE.md"),
+      `# My Rules\n\n${MARKER_BLOCK("@AGENTS.md")}\n`,
+    );
+    cleanProjectRules(opencodeAdapter, tmpRoot);
+    // AGENTS.md cleaned, CLAUDE.md untouched.
+    expect(readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8")).not.toContain(
+      "OPENSPEC:START",
+    );
+    expect(readFileSync(join(tmpRoot, "CLAUDE.md"), "utf-8")).toContain(
+      "OPENSPEC:START",
+    );
+  });
+
+  it("collapses surrounding blank lines instead of leaving 3+ gaps", () => {
+    writeFileSync(
+      join(tmpRoot, "AGENTS.md"),
+      `before\n\n${MARKER_BLOCK("x")}\n\nafter\n`,
+    );
+    cleanProjectRules(claudeAdapter, tmpRoot);
+    const after = readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8");
+    // No run of 3+ consecutive newlines should remain.
+    expect(after).not.toMatch(/\n{3,}/);
+    expect(after).toContain("before");
+    expect(after).toContain("after");
+  });
+
+  it("deletes the file when only markers + whitespace remain", () => {
+    writeFileSync(join(tmpRoot, "AGENTS.md"), `${MARKER_BLOCK("only this")}\n`);
+    cleanProjectRules(claudeAdapter, tmpRoot);
+    expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(false);
+  });
+
+  it("is idempotent — second call is a no-op", () => {
+    writeFileSync(
+      join(tmpRoot, "AGENTS.md"),
+      `# Project\n\n${MARKER_BLOCK("standards body")}\n`,
+    );
+    cleanProjectRules(claudeAdapter, tmpRoot);
+    const afterFirst = readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8");
+    // Second call: file has no markers, should not throw and should not mutate.
+    cleanProjectRules(claudeAdapter, tmpRoot);
+    const afterSecond = readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8");
+    expect(afterSecond).toBe(afterFirst);
+  });
+
+  it("handles CRLF line endings in marker block", () => {
+    const crlf = `# Project\r\n\r\n<!-- OPENSPEC:START -->\r\n\r\nstandards body\r\n\r\n<!-- OPENSPEC:END -->\r\n`;
+    writeFileSync(join(tmpRoot, "AGENTS.md"), crlf);
+    cleanProjectRules(claudeAdapter, tmpRoot);
+    const after = readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8");
+    expect(after).not.toContain("OPENSPEC:START");
+    expect(after).toContain("# Project");
+  });
+
+  it("no-ops gracefully when file is missing", () => {
+    // Neither file exists. Should not throw.
+    expect(() => cleanProjectRules(claudeAdapter, tmpRoot)).not.toThrow();
+  });
+
+  it("no-ops gracefully when file has no markers", () => {
+    writeFileSync(join(tmpRoot, "AGENTS.md"), `# Just a project file\n`);
+    cleanProjectRules(claudeAdapter, tmpRoot);
+    expect(readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8")).toBe(
+      `# Just a project file\n`,
+    );
   });
 });
 
