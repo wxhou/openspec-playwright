@@ -196,16 +196,7 @@
   margin-bottom: 0;
 }
 
-/* 优先级标签高亮 */
-.claude-config-rendered li strong:contains("CRITICAL"),
-.claude-config-rendered li strong:contains("🔴") {
-  color: #b91c1c;
-}
-
-.claude-config-rendered li strong:contains("IMPORTANT"),
-.claude-config-rendered li strong:contains("🟡") {
-  color: #b45309;
-}
+/* Priority emoji already colored in source text; no :contains() in standard CSS */
 
 .nav-logo {
   display: flex;
