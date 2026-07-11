@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **`init --seed` flag removed**. The `--seed` flag only force-overwrote `seed.spec.ts` but no other generated files. Same effect achieved by `rm tests/playwright/seed.spec.ts && openspec-pw init`. Reduces CLI surface and maintenance burden.
+  - `src/index.ts` — removed `--seed` option
+  - `src/commands/init.ts` — removed `seed` from `InitOptions` and `generateSeedTest` `force` parameter
+  - `README.md`, `README.zh-CN.md` — removed `--seed` from CLI description
+
+### Changed
+
+- **Employee standards: frontend UI design trio**. Added `frontend-design` + `ui-ux-pro-max` + `web-design-guidelines` skill combination to §4 tool usage, with explicit invocation order.
+  - `employee-standards.md` — new 🟡 rule
+  - `docs/script.js` — ZH + EN templates synced
+
 ## [0.3.52] - 2026-07-06
 
 ### Fixed

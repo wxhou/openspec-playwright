@@ -66,7 +66,7 @@ openspec-pw init          # 安装 Playwright E2E 集成
 ### CLI 命令
 
 ```bash
-openspec-pw init          # 初始化集成（一次性设置；加 --seed 覆盖已有 seed.spec.ts）
+openspec-pw init          # 初始化集成（一次性设置）
 openspec-pw update        # 更新 CLI 和命令到最新版本
 openspec-pw doctor        # 检查前置条件 + 应用服务器诊断
 openspec-pw audit         # 检查测试文件是否有孤儿文件和配置问题

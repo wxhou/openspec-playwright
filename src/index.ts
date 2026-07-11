@@ -28,7 +28,6 @@ program
   )
   .option("-c, --change <name>", "default change name", "default")
   .option("--no-mcp", "skip Playwright MCP configuration")
-  .option("--seed", "force regenerate seed.spec.ts (overwrite if exists)")
   .option("--ci", "generate GitHub Actions CI workflow")
   .action(async (opts) => {
     const { init } = await import("./commands/init.js");

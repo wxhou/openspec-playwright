@@ -79,7 +79,8 @@
 **DO**
 - 🟡 搜索要全：Grep 搜内容 + Glob 搜文件名，两者缺一不可。跳过 node_modules/vendor/__pycache__（调试依赖时除外），搜子目录时按需缩小
 - 🟡 重命名覆盖：调用、类型、字符串、import、barrel file、测试 mock，不得假设一次覆盖
-- ⚪ 联网调研优先 agent-reach skill
+- 🟡 联网调研优先 agent-reach skill
+- 🟡 涉及前端 UI 设计时，按序使用：frontend-design skill 定方向 → ui-ux-pro-max skill 选风格 → web-design-guidelines skill 审查，三步组合避免"千篇一律 AI 风"
 - 🟡 编辑 → 重新读取确认 → lint+typecheck → 任一失败则回退
 - 🟡 变更完成告知用户可能遗漏区域，提示人工复查
 

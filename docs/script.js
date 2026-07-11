@@ -13,7 +13,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - ⚪ 重构前清理未使用的 import/export/prop/console.log，单独提交再做重构
 
 ## 禁止非通用性改动
-- 🟡 不写只适配特定输入值的逻辑 → 上游格式变化即失效
+- 不写只适配特定输入值的逻辑 → 上游格式变化即失效
 - 不假设外部数据有效 → 校验类型/范围/null，处理空/异常/边界值，防 NPE 和注入
 - 不假设异步/外部操作一定成功 → 网络/磁盘/下游随时可能失败
 - 不假设响应结构一定如预期 → 先校验再访问深层属性
@@ -36,7 +36,8 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🟡 搜索要全：Grep 搜内容 + Glob 搜文件名，两者缺一不可。跳过 node_modules/vendor/__pycache__（调试依赖时除外），搜子目录时按需缩小
 - 🟡 重命名覆盖：调用、类型、字符串、import、barrel file、测试 mock，不得假设一次覆盖
 - 不假设单次 grep 覆盖所有情况（glob 可能漏嵌套文件或非标准扩展名）
-- ⚪ 联网调研优先 agent-reach skill
+- 🟡 联网调研优先 agent-reach skill
+- 🟡 涉及前端 UI 设计时，按序使用：frontend-design skill 定方向 → ui-ux-pro-max skill 选风格 → web-design-guidelines skill 审查，三步组合避免"千篇一律 AI 风"
 - 🟡 编辑 → 重新读取确认 → lint+typecheck → 任一失败则回退
 - 🟡 变更完成告知用户可能遗漏区域，提示人工复查
 - 禁止用 sed/awk/node -e/python -c 等管道命令改源码文件
@@ -81,7 +82,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - ⚪ Before refactoring, clean unused imports/exports/props/console.log in a separate commit
 
 ## No Non-Generic Changes
-- 🟡 Don't write logic that only fits specific input values → breaks when upstream format changes
+- Don't write logic that only fits specific input values → breaks when upstream format changes
 - Don't assume external data is valid → validate type/range/null, handle empty/edge/boundary values, prevent NPE and injection
 - Don't assume async/external ops always succeed → network/disk/downstream may fail anytime
 - Don't assume response structure stays as expected → validate before accessing deep properties
@@ -104,7 +105,8 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🟡 Search comprehensively: Grep for content + Glob for filenames. Skip node_modules/vendor/__pycache__ (except when debugging deps); narrow scope in subdirectories
 - 🟡 Renaming must cover: calls, types, strings, imports, barrel files, test mocks — don't assume one pass covers everything
 - Don't assume one grep covers everything — glob patterns may miss nested files or non-standard extensions
-- ⚪ Web research via agent-reach skill
+- 🟡 Web research via agent-reach skill
+- 🟡 When doing frontend UI work, use in order: frontend-design skill (direction) → ui-ux-pro-max skill (style selection) → web-design-guidelines skill (auto-review), three-step combo to avoid "generic AI look"
 - 🟡 Edit → re-read to confirm → lint+typecheck → rollback on any failure
 - 🟡 After changes, inform user of areas that may be missed, prompt manual review
 - No sed/awk/node -e/python -c pipelines for source edits (bypasses edit tool validation)

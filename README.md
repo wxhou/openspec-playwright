@@ -43,7 +43,7 @@ The command id is hyphenated per the OpenSpec convention; the body is rewritten 
 ### CLI Commands
 
 ```bash
-openspec-pw init          # Initialize integration (one-time setup; add --seed to overwrite existing seed.spec.ts)
+openspec-pw init          # Initialize integration (one-time setup)
 openspec-pw update        # Update CLI and commands to latest version
 openspec-pw doctor        # Check prerequisites + app server diagnostics
 openspec-pw audit         # Audit tests for orphaned specs and issues

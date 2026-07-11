@@ -156,7 +156,7 @@ const distExists = existsSync(distDir);
   it("init --help works", () => {
     const { stdout } = runCli("init --help");
     expect(stdout).toContain("--no-mcp");
-    expect(stdout).toContain("--seed");
+    expect(stdout).toContain("--ci");
   });
 
   it("run --help shows project and timeout options", () => {
