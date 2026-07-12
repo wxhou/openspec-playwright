@@ -51,7 +51,6 @@ openspec-pw coverage      # Analyze spec–test coverage for changes
 openspec-pw flake         # Detect static flake patterns in test files
 openspec-pw migrate       # Migrate old test files to new structure
 openspec-pw explore       # Explore app routes with Playwright
-openspec-pw run <name>    # Execute E2E tests for a change
 openspec-pw uninstall     # Remove integration from the project
 ```
 
@@ -83,7 +82,7 @@ openspec-pw uninstall     # Remove integration from the project
   │
   ├── 8. Configure playwright → playwright.config.ts
   │
-  ├── 9. Execute tests → openspec-pw run <name>
+  ├── 9. Execute tests → npx playwright test
   │
   ├── 10. Healer (if needed) → auto-heals failures via MCP
   │

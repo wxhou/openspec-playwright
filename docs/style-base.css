@@ -98,38 +98,17 @@ body::after {
       transparent 70%);
 }
 
-/* Layer 3: Grid pattern overlay (Vercel-style technical background) */
-.bg-grid-overlay {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background-image:
-    linear-gradient(rgba(28, 25, 23, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(28, 25, 23, 0.025) 1px, transparent 1px);
-  background-size: 64px 64px;
-  background-position: -1px -1px;
-  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, black 30%, transparent 80%);
-  mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, black 30%, transparent 80%);
-}
-
-/* Layer 4: Bottom corner glow */
-.bg-bottom-glow {
-  position: fixed;
-  bottom: 0;
-  right: 0;
-  width: 600px;
-  height: 600px;
-  pointer-events: none;
-  z-index: 0;
-  background: radial-gradient(circle at bottom right, rgba(245, 158, 11, 0.06), transparent 60%);
-}
-
 /* Ensure main content sits above art layers */
 main {
   position: relative;
   z-index: 2;
 }
+
+/* ── Constellation Decoration (removed) ─────────────────────────── */
+/* Earlier iterations added a flow-field particle canvas here. Reverted
+   because it carried no product meaning — decoration should either
+   reinforce brand identity (Stripe mesh, Vercel grid) or illustrate a
+   product mechanic. This section is intentionally left blank for now. */
 
 code {
   font-family: var(--font-mono);

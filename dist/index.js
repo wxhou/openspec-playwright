@@ -47,27 +47,6 @@ program
     // No version check needed after update — user just updated
 });
 program
-    .command("run <change-name>")
-    .description("Run Playwright E2E tests for an OpenSpec change")
-    .option("-p, --project <name>", "Playwright project to run (e.g., user, admin)")
-    .option("-t, --timeout <seconds>", "Test timeout in seconds", "300")
-    .option("--json", "Output results as JSON")
-    .option("-g, --grep <pattern>", "Run only tests matching pattern")
-    .option("--smoke", "Run only smoke tests (--grep @smoke)")
-    .option("-w, --workers <n>", "Number of parallel workers", (v) => parseInt(v, 10), undefined)
-    .option("--app-bugs <n>", "Number of app bugs (skipped tests)", (v) => parseInt(v, 10), undefined)
-    .option("--healed <n>", "Number of test bugs healed by Healer", (v) => parseInt(v, 10), undefined)
-    .option("--raft <n>", "Number of RAFTs detected", (v) => parseInt(v, 10), undefined)
-    .option("--escalated <n>", "Number of human escalations", (v) => parseInt(v, 10), undefined)
-    .option("--headed", "Show browser during test run (default: headless)")
-    .option("--update-snapshots", "Update screenshot baselines before running tests")
-    .action(async (changeName, opts) => {
-    const { run } = await import("./commands/run.js");
-    const { checkForUpdate } = await import("./shared/version-check.js");
-    await run(changeName, opts);
-    await checkForUpdate(pkg.version);
-});
-program
     .command("migrate")
     .description("Migrate old-style change spec files to the new tests/playwright/changes/<name>/ structure")
     .option("-n, --dry-run", "Show what would be migrated without moving files")

@@ -60,7 +60,6 @@ const distExists = existsSync(distDir);
     const { doctor } = await import("../dist/commands/doctor.js");
     const { coverage } = await import("../dist/commands/coverage.js");
     const { flake } = await import("../dist/commands/flake.js");
-    const { run } = await import("../dist/commands/run.js");
     const { uninstall } = await import("../dist/commands/uninstall.js");
     const { update } = await import("../dist/commands/update.js");
     const {
@@ -76,7 +75,6 @@ const distExists = existsSync(distDir);
     expect(typeof doctor).toBe("function");
     expect(typeof coverage).toBe("function");
     expect(typeof flake).toBe("function");
-    expect(typeof run).toBe("function");
     expect(typeof uninstall).toBe("function");
     expect(typeof update).toBe("function");
     expect(typeof hasClaudeCode).toBe("function");
@@ -149,7 +147,6 @@ const distExists = existsSync(distDir);
     expect(stdout).toContain("coverage");
     expect(stdout).toContain("flake");
     expect(stdout).toContain("update");
-    expect(stdout).toContain("run");
     expect(stdout).toContain("uninstall");
   });
 
@@ -157,12 +154,6 @@ const distExists = existsSync(distDir);
     const { stdout } = runCli("init --help");
     expect(stdout).toContain("--no-mcp");
     expect(stdout).toContain("--ci");
-  });
-
-  it("run --help shows project and timeout options", () => {
-    const { stdout } = runCli("run --help");
-    expect(stdout).toContain("--project");
-    expect(stdout).toContain("--timeout");
   });
 
   it("coverage --help shows --json flag and optional change-name", () => {
@@ -185,7 +176,6 @@ const CRITICAL_PACKAGE_FILES = [
   "bin/openspec-pw.js",
   "dist/index.js",
   "dist/commands/init.js",
-  "dist/commands/run.js",
   "dist/commands/coverage.js",
   "dist/commands/doctor.js",
   "dist/commands/update.js",

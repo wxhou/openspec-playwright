@@ -67,6 +67,6 @@ export async function migrate(options) {
     console.log(chalk.blue("\n─── Results ───"));
     console.log(`  ${chalk.green(`✓ ${migrated} migrated`)}  ${skipped > 0 ? chalk.red(`✗ ${skipped} skipped`) : ""}`);
     console.log(chalk.blue("\n─── Next step ───"));
-    console.log(chalk.green("  Run `openspec-pw run <name>` to verify each migrated change.\n"));
+    console.log(chalk.green("  Run /opsx:e2e <name> (Claude Code) or /opsx-e2e <name> (OpenCode) to verify each migrated change.\n"));
 }
 //# sourceMappingURL=migrate.js.map

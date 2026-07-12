@@ -74,7 +74,6 @@ openspec-pw coverage      # 分析 spec 与测试之间的覆盖率
 openspec-pw flake         # 检测测试文件中的静态不稳定模式
 openspec-pw migrate       # 迁移旧测试文件到新目录结构
 openspec-pw explore       # 探索应用路由
-openspec-pw run <name>    # 执行指定 change 的 E2E 测试
 openspec-pw uninstall     # 移除项目中的集成
 ```
 
@@ -106,7 +105,7 @@ openspec-pw uninstall     # 移除项目中的集成
   │
   ├── 8. 配置 playwright → playwright.config.ts
   │
-  ├── 9. 执行测试 → openspec-pw run <name>
+  ├── 9. 执行测试 → npx playwright test
   │
   ├── 10. Healer（如需要）→ 通过 MCP 自动修复失败
   │

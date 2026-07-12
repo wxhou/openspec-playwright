@@ -126,7 +126,7 @@ export async function migrate(options: MigrateOptions) {
   );
   console.log(
     chalk.green(
-      "  Run `openspec-pw run <name>` to verify each migrated change.\n",
+      "  Run /opsx:e2e <name> (Claude Code) or /opsx-e2e <name> (OpenCode) to verify each migrated change.\n",
     ),
   );
 }

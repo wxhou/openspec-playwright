@@ -7,18 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+> ⚠️ **BREAKING CHANGES in this release.** Two CLI commands removed. Update any scripts or documentation that reference them:
+> - `openspec-pw init --seed` — use `rm tests/playwright/seed.spec.ts && openspec-pw init` instead
+> - `openspec-pw run <name>` — use `npx playwright test` instead
+
 ### Removed
 
-- **`init --seed` flag removed**. The `--seed` flag only force-overwrote `seed.spec.ts` but no other generated files. Same effect achieved by `rm tests/playwright/seed.spec.ts && openspec-pw init`. Reduces CLI surface and maintenance burden.
+- **`init --seed` flag removed (BREAKING)**. The `--seed` flag only force-overwrote `seed.spec.ts` but no other generated files. Same effect achieved by `rm tests/playwright/seed.spec.ts && openspec-pw init`. Reduces CLI surface and maintenance burden.
   - `src/index.ts` — removed `--seed` option
   - `src/commands/init.ts` — removed `seed` from `InitOptions` and `generateSeedTest` `force` parameter
   - `README.md`, `README.zh-CN.md` — removed `--seed` from CLI description
+
+- **`openspec-pw run <name>` command removed (BREAKING)**. The command was never end-to-end validated: CI ran unit tests on its parser helpers but never spawned `playwright test` against a real project, and users overwhelmingly run `npx playwright test` directly. The reported benefits (markdown report generation, port-conflict detection) never shipped in a way users actually used. Removed to reduce CLI surface and stop pretending a feature is production-ready when it has never been exercised.
+  - `src/commands/run.ts` — deleted (346 lines)
+  - `src/index.ts` — removed command registration
+  - `src/commands/migrate.ts` — updated verify hint to point at `/opsx:e2e` instead of `openspec-pw run`
+  - `src/commands/init.ts` — removed `openspec-pw run` line from install summary
+  - `templates/github-workflow.yml` — CI now calls `npx playwright test` directly
+  - `templates/e2e-command.md` — Step 9 now documents `npx playwright test`
+  - `templates/playwright.config.ts` — comment updated to reference `/opsx:e2e Healer`
+  - `tests/run.test.ts`, `tests/commands/run.test.ts` — deleted
+  - `tests/smoke.test.ts` — removed `run` import, `--help` check, `run --help` test, and `dist/commands/run.js` from critical-package-files list
+  - `README.md`, `README.zh-CN.md` — removed from CLI list and Architecture tree
+  - `docs/llms.txt` — removed from command list
 
 ### Changed
 
 - **Employee standards: frontend UI design trio**. Added `frontend-design` + `ui-ux-pro-max` + `web-design-guidelines` skill combination to §4 tool usage, with explicit invocation order.
   - `employee-standards.md` — new 🟡 rule
   - `docs/script.js` — ZH + EN templates synced
+
+- **Docs site: removed decorative clutter**. Removed `bg-grid-overlay` (Vercel-style grid) and `bg-bottom-glow` (bottom-right amber glow) layers from the hero background. The hero's mesh-gradient and animated SVG decorations are retained.
+  - `docs/index.html`, `docs/style-base.css` — removed two decoration layers
+
+- **Docs site: removed hero CLI demo**. The hero previously rendered a fabricated `openspec-pw run` transcript (Planner → Generator → Healer with invented timings) which never matched real output. Removed because the decoration conveyed no product meaning and its content violated the "no fabricated data" rule.
+  - `docs/index.html`, `docs/style-sections.css` — removed `.cli-demo` block (124 lines)
+
+- **Employee standards: agent-reach priority upgraded**. Promoted `联网调研优先 agent-reach skill` from `⚪ STANDARD` to `🟡 IMPORTANT` in §4 tool usage, reflecting that anti-bot blocks make WebFetch/WebSearch unreliable for site-specific research.
+  - `employee-standards.md`, `docs/script.js` — synced
 
 ## [0.3.52] - 2026-07-06
 

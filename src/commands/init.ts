@@ -207,9 +207,6 @@ export async function init(options: InitOptions) {
     );
   }
   console.log(
-    chalk.gray("  • Or: openspec-pw run <change-name>"),
-  );
-  console.log(
     chalk.gray("  • Or: openspec-pw doctor to verify setup\n"),
   );
 

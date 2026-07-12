@@ -123,7 +123,6 @@ export async function init(options) {
         const slashCmd = adapter.id === "claude" ? "/opsx:e2e" : "/opsx-e2e";
         console.log(chalk.gray(`  • In ${adapter.label}, run: ${slashCmd} <change-name>`));
     }
-    console.log(chalk.gray("  • Or: openspec-pw run <change-name>"));
     console.log(chalk.gray("  • Or: openspec-pw doctor to verify setup\n"));
     console.log(chalk.bold(`\n  Restart ${detected.map((a) => a.displayName).join(" + ")} to use the updated commands.`));
     console.log(chalk.bold("How it works:"));

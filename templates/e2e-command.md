@@ -21,7 +21,7 @@
 | Change | `/opsx:e2e <name>`  | OpenSpec specs           | `changes/<name>/<name>.spec.ts` |
 | All    | `/opsx:e2e all`     | sitemap + homepage crawl | `pages/*.ts` (Page Objects)     |
 
-> **Full regression is opt-in only.** `openspec-pw run <name>` → one spec file. Do NOT run `npx playwright test` (no file) or `--only-changed` unless user explicitly requests.
+> **Full regression is opt-in only.** Run `npx playwright test` for one spec file or full suite. Do NOT use `--only-changed` unless the user explicitly requests it.
 > **Roles**: Planner (Steps 4–5) → test-plan.md; Generator (Step 6) → `.spec.ts` + Page Objects; Healer (Step 9) → repairs failures via MCP.
 
 Browser exploration is tool-agnostic: Playwright MCP or `openspec-pw explore --parallel N`.
@@ -221,10 +221,10 @@ If missing → generate minimal config with webServer, projects, reporters. If e
 ### 9. Execute tests
 
 ```bash
-openspec-pw run <name> [options]
+npx playwright test [options]
 ```
 
-Flags: `-p --project`, `-t --timeout`, `--json`, `-g --grep`, `--smoke`, `-w --workers`, `--headed`, `--update-snapshots`.
+Common flags: `-p --project`, `-t --timeout`, `-g --grep`, `--headed`, `--update-snapshots`.
 
 When tests fail → **Healer** (3 phases):
 

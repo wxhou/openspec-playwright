@@ -180,7 +180,7 @@ export default defineConfig({
     reuseExistingServer: true,
   },
 
-  // Setup project (configured by openspec-pw run)
+  // Setup project (used by /opsx:e2e Healer and local auth setup)
   // Teardown project (optional): uncomment the two lines below + create tests/playwright/global.teardown.ts
   projects: [
     { name: 'setup', testMatch: /.*\.setup\.ts/ },

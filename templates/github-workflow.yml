@@ -52,7 +52,7 @@ jobs:
         run: openspec-pw doctor --json
 
       - name: Run E2E tests
-        run: openspec-pw run all
+        run: npx playwright test
         env:
           E2E_USERNAME: ${{ secrets.E2E_USERNAME }}
           E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
