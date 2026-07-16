@@ -232,7 +232,6 @@ Templates (in npm package, installed to tests/playwright/)
 CLI (openspec-pw)
   ├── init       → Installs commands & templates
   ├── update     → Syncs commands & templates from npm
-  ├── run        → Executes E2E tests with server lifecycle
   ├── migrate    → Migrates old test files to new structure
   ├── audit      → Audits tests for orphaned specs and issues
   ├── coverage   → Analyzes spec–test coverage for changes

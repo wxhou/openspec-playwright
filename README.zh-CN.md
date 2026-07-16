@@ -205,7 +205,6 @@ npx playwright test --project=setup
 CLI (openspec-pw)
   ├── init       → 安装命令和模板
   ├── update     → 从 npm 同步命令和模板
-  ├── run        → 执行 E2E 测试并管理服务器生命周期
   ├── migrate    → 迁移旧测试文件到新目录结构
   ├── audit      → 检查测试文件是否有孤儿文件和配置问题
   ├── coverage   → 分析 spec 与测试之间的覆盖率

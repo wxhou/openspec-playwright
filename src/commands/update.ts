@@ -407,7 +407,7 @@ function syncProjectTemplates(tmpDir: string, projectRoot: string) {
       );
       console.log(
         chalk.gray(
-          "    Run 'openspec-pw init --seed' to regenerate (overwrites existing).",
+          "    Remove the file and run 'openspec-pw init' to regenerate.",
         ),
       );
     }
