@@ -48,6 +48,11 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 格式化工具（ruff fmt/prettier 除外——不改语义）
 - 密钥与 .env 不入版本控制。示例用占位符（如 \`YOUR_API_KEY\`）。调试日志不打印凭据
 
+**Agent 编排**
+- 🔴 每个任务最多 spawn 3 个子 Agent
+- 🔴 禁止嵌套子 Agent（子 Agent 不得再 spawn 子 Agent）
+- 🟡 单文件读取/搜索不要用子 Agent，直接用 Read / Grep 工具
+
 ## 大规模任务
 - 🔴 200+ 行修改或架构变更（新增服务/API 契约/数据模型重构）必须走 OpenSpec（\`/opsx:propose\`），禁止直接修改
 
@@ -119,6 +124,11 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - No push unless explicitly requested
 - Formatters allowed (ruff fmt/prettier — don't change semantics)
 - Secrets & .env out of version control. Use placeholders (e.g. \`YOUR_API_KEY\`). No credentials in debug logs
+
+**Agent Orchestration**
+- 🔴 Max 3 subagents per task
+- 🔴 No nested subagents (subagent must not spawn another subagent)
+- 🟡 Single-file reads/searches: use Read/Grep directly, don't spawn a subagent
 
 ## Large-Scale Tasks
 - 🔴 200+ line changes or architecture changes (new services/API contracts/data model refactors) must use OpenSpec (\`/opsx:propose\`), no direct edits

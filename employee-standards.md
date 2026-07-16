@@ -96,6 +96,11 @@
 - 使用格式化工具（ruff fmt / prettier 除外——不改语义）
 - 密钥与 .env 不入版本控制。示例用占位符（如 `YOUR_API_KEY`）。调试日志不打印凭据
 
+**Agent 编排**
+- 🔴 每个任务最多 spawn 3 个子 Agent
+- 🔴 禁止嵌套子 Agent（子 Agent 不得再 spawn 子 Agent）
+- 🟡 单文件读取/搜索不要用子 Agent，直接用 Read / Grep 工具
+
 ---
 
 ## 5. 大规模任务
