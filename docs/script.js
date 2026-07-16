@@ -5,6 +5,9 @@ const CLAUDE_MD_ZH = `# 项目规范
 
 ## 代码质量
 - 🔴 **lint+typecheck 每次编辑后自动执行，通过才算成功**。扫源码扩展名判断主语言：\`.ts\`→ESLint+tsc、\`.py\`→ruff+mypy、\`.go\`→gofmt+vet。工具不存在时告知用户，不假装跑过
+- 🟡 不隐藏任何 gate 失败结果——lint / typecheck / test 任一失败时，完整输出错误日志并停止，不继续后续步骤
+- ⚪ 未执行的检查步骤明确标注「未运行」，不暗示已通过
+- 🟡 需求理解不清或存在可见风险时，先停下来提问，不直接执行。偏离标准实践需说明理由
 - 🟡 动手前列假设 → 逐条验证。有不清→停下来，说出困惑，再提问。多解释则全列，更简单方案则提出并坚持
 - 🟡 多步任务先列计划（\`1. [Step] → verify: [check]\`），循环验证直到成功。lint 失败时优先 \`npm run lint:fix\`
 - 🟡 只写被要求的：不加"灵活"/"可配置"/单次使用抽象。200行能50行则重写
@@ -74,6 +77,9 @@ const CLAUDE_MD_EN = `# Project Guidelines
 
 ## Code Quality
 - 🔴 **lint+typecheck runs after every edit, both must pass**. Detect language by extension: \`.ts\`→ESLint+tsc, \`.py\`→ruff+mypy, \`.go\`→gofmt+vet. If tool missing, tell user, don't pretend it ran
+- 🟡 Never hide gate failures — when lint, typecheck, or test fails, output the full error log and stop. Do not proceed to subsequent steps.
+- ⚪ Unexecuted verification steps must be explicitly marked "not run", never implied as passed
+- 🟡 When requirements are unclear or risks are visible, pause and ask before executing. Deviations from standard practice must be justified.
 - 🟡 List assumptions before coding → verify each one. If unclear → stop, express confusion, then ask. Present all interpretations; suggest simpler approaches and insist
 - 🟡 Multi-step tasks: plan first (\`1. [Step] → verify: [check]\`), loop until verified. On lint failure, run \`npm run lint:fix\` first
 - 🟡 Write only what's requested: No flexibility/configurability/single-use abstractions. Rewrite if 200 lines can be 50
