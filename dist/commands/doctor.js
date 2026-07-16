@@ -1,4 +1,4 @@
-import { existsSync } from "fs";
+import { existsSync, readdirSync, readFileSync } from "fs";
 import { createRequire } from "node:module";
 import { join } from "path";
 import { execFileSync } from "child_process";
@@ -8,6 +8,8 @@ import { detectAppServer, isPlaywrightMcpInstalled, needsShell } from "../shared
 export async function doctor(options = {}) {
     const checks = [];
     const projectRoot = process.cwd();
+    let nodeMajor = 0;
+    let nodeVersion = "";
     // Node.js
     try {
         const node = execFileSync("node", ["--version"], {
@@ -15,8 +17,9 @@ export async function doctor(options = {}) {
             shell: needsShell,
         }).trim();
         const majorMatch = node.match(/v?(\d+)\./);
-        const major = majorMatch ? parseInt(majorMatch[1], 10) : 0;
-        const deprecated = major > 0 && major < 22;
+        nodeMajor = majorMatch ? parseInt(majorMatch[1], 10) : 0;
+        nodeVersion = node;
+        const deprecated = nodeMajor > 0 && nodeMajor < 22;
         checks.push({
             category: "Node.js",
             name: "node",
@@ -34,6 +37,33 @@ export async function doctor(options = {}) {
             message: "not found",
         });
     }
+    // Node.js engines compatibility
+    let engineOk = true;
+    let engineMsg = "no engines.node requirement";
+    try {
+        const pkgPath = join(projectRoot, "package.json");
+        if (existsSync(pkgPath)) {
+            const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
+            if (pkg.engines?.node) {
+                const req = pkg.engines.node;
+                engineMsg = `requires ${req}`;
+                const minMatch = req.match(/>=?\s*(\d+)/);
+                if (minMatch && nodeMajor > 0 && nodeMajor < parseInt(minMatch[1], 10)) {
+                    engineOk = false;
+                    engineMsg = `requires ${req}, current is ${nodeVersion}`;
+                }
+            }
+        }
+    }
+    catch {
+        // ignore parse errors
+    }
+    checks.push({
+        category: "Node.js",
+        name: "engines",
+        ok: engineOk,
+        message: engineMsg,
+    });
     // npm
     try {
         const npm = execFileSync("npm", ["--version"], {
@@ -55,6 +85,15 @@ export async function doctor(options = {}) {
             message: "not found",
         });
     }
+    // Playwright Config file
+    const configFiles = ["playwright.config.ts", "playwright.config.js", "playwright.config.mjs", "playwright.config.mts"];
+    const configPath = configFiles.find((f) => existsSync(join(projectRoot, f)));
+    checks.push({
+        category: "Playwright Config",
+        name: "config",
+        ok: Boolean(configPath),
+        message: configPath ? `found ${configPath}` : "not found",
+    });
     // OpenSpec
     const hasOpenSpec = existsSync(join(projectRoot, "openspec"));
     checks.push({
@@ -63,7 +102,15 @@ export async function doctor(options = {}) {
         ok: hasOpenSpec,
         message: hasOpenSpec ? "initialized" : "not initialized",
     });
-    // Playwright browsers
+    // OpenSpec specs
+    const specCount = countSpecFiles(join(projectRoot, "openspec"));
+    checks.push({
+        category: "OpenSpec",
+        name: "specs",
+        ok: specCount > 0,
+        message: specCount > 0 ? `${specCount} spec(s) found` : "no .spec.md files",
+    });
+    // Playwright CLI (package installed)
     try {
         const pw = execFileSync("npx", ["playwright", "--version"], {
             encoding: "utf-8",
@@ -71,7 +118,7 @@ export async function doctor(options = {}) {
         }).trim();
         checks.push({
             category: "Playwright Browsers",
-            name: "playwright",
+            name: "cli",
             ok: true,
             message: pw,
         });
@@ -79,11 +126,33 @@ export async function doctor(options = {}) {
     catch {
         checks.push({
             category: "Playwright Browsers",
-            name: "playwright",
+            name: "cli",
             ok: false,
             message: "not installed",
         });
     }
+    // Playwright browser binaries installed
+    let hasBrowsers = false;
+    let browsersMsg = "not installed";
+    try {
+        execFileSync("node", ["-e", "const {chromium} = require('playwright'); chromium.executablePath()"], {
+            encoding: "utf-8",
+            shell: needsShell,
+            stdio: "pipe",
+            timeout: 5000,
+        });
+        hasBrowsers = true;
+        browsersMsg = "chromium installed";
+    }
+    catch {
+        browsersMsg = "not installed (run: npx playwright install chromium)";
+    }
+    checks.push({
+        category: "Playwright Browsers",
+        name: "browsers",
+        ok: hasBrowsers,
+        message: browsersMsg,
+    });
     // Playwright Test framework (imported by spec files)
     let hasPwTest = false;
     let pwTestMsg = "not installed";
@@ -132,8 +201,24 @@ export async function doctor(options = {}) {
             });
         }
     }
+    // Tests directory structure
+    const testsDir = join(projectRoot, "tests", "playwright");
+    const hasTestsDir = existsSync(testsDir);
+    checks.push({
+        category: "Tests",
+        name: "directory",
+        ok: hasTestsDir,
+        message: hasTestsDir ? "tests/playwright/ exists" : "not found",
+    });
+    const hasAuthSetup = existsSync(join(testsDir, "auth.setup.ts"));
+    checks.push({
+        category: "Tests",
+        name: "auth-setup",
+        ok: hasAuthSetup,
+        message: hasAuthSetup ? "found" : "not found (optional)",
+    });
     // Seed test
-    const hasSeed = existsSync(join(projectRoot, "tests", "playwright", "seed.spec.ts"));
+    const hasSeed = existsSync(join(testsDir, "seed.spec.ts"));
     checks.push({
         category: "Seed Test",
         name: "seed",
@@ -165,7 +250,16 @@ export async function doctor(options = {}) {
             ? `responded ${reachable.status ?? "ok"}`
             : `${reachable.message} (diagnostic only; Playwright webServer may start it)`,
     });
-    const allOk = checks.filter((c) => !c.ok && c.category !== "Seed Test" && c.category !== "App Server").length === 0;
+    const OPTIONAL_NAMES = new Set([
+        "engines",
+        "specs",
+        "auth-setup",
+        "seed",
+        "dev-script",
+        "base-url",
+        "reachable",
+    ]);
+    const allOk = checks.filter((c) => !c.ok && !OPTIONAL_NAMES.has(c.name)).length === 0;
     if (options.json) {
         console.log(JSON.stringify({ ok: allOk, checks }, null, 2));
         if (!allOk)
@@ -183,7 +277,7 @@ export async function doctor(options = {}) {
         if (check.ok) {
             console.log(chalk.green(`  ✓ ${check.name}: ${check.message}`));
         }
-        else if (check.category === "Seed Test" || check.category === "App Server" || check.category === "Vision Check") {
+        else if (OPTIONAL_NAMES.has(check.name)) {
             console.log(chalk.yellow(`  ⚠ ${check.name}: ${check.message}`));
         }
         else {
@@ -225,6 +319,15 @@ async function checkUrl(url) {
             ok: false,
             message: err instanceof Error ? err.message : "not reachable",
         };
+    }
+}
+function countSpecFiles(dir) {
+    try {
+        return readdirSync(dir, { recursive: true })
+            .filter((f) => String(f).endsWith(".spec.md")).length;
+    }
+    catch {
+        return 0;
     }
 }
 //# sourceMappingURL=doctor.js.map

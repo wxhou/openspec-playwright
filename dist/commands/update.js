@@ -263,7 +263,7 @@ function syncProjectTemplates(tmpDir, projectRoot) {
         const latest = readFileSync(seedSrc, "utf-8");
         if (existing !== latest) {
             console.log(chalk.yellow("  ⚠ tests/playwright/seed.spec.ts differs from latest template"));
-            console.log(chalk.gray("    Run 'openspec-pw init --seed' to regenerate (overwrites existing)."));
+            console.log(chalk.gray("    Remove the file and run 'openspec-pw init' to regenerate."));
         }
     }
     // 4. Sync credentials.yaml — preserve user credentials
