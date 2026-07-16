@@ -46,6 +46,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Employee standards: agent-reach priority upgraded**. Promoted `联网调研优先 agent-reach skill` from `⚪ STANDARD` to `🟡 IMPORTANT` in §4 tool usage, reflecting that anti-bot blocks make WebFetch/WebSearch unreliable for site-specific research.
   - `employee-standards.md`, `docs/script.js` — synced
 
+### Enhanced
+
+- **`openspec-pw doctor` checks expanded by 5 items.** Previously the command verified basic tool presence (Node, npm, Playwright CLI, OpenSpec directory) but missed several failure modes users actually hit:
+  - **Playwright Config** — verifies `playwright.config.ts/.js/.mjs/.mts` exists (required; missing blocks all tests)
+  - **Playwright Browsers** — verifies Chromium binary is downloaded via `playwright.chromium.executablePath()` (required; CLI may be installed while browsers are not)
+  - **OpenSpec Specs** — counts `.spec.md` files in `openspec/` (optional warning; empty directory is valid for fresh projects)
+  - **Tests Directory** — verifies `tests/playwright/` directory exists (required; missing means no test files can be generated)
+  - **Node.js Engines** — validates current Node version against `package.json` `engines.node` (optional warning; mismatches cause cryptic runtime errors)
+  - `src/commands/doctor.ts` — new checks, `OPTIONAL_NAMES` set for precise required/optional classification
+  - `tests/commands/doctor.test.ts` — 7 new test cases covering all new items (225 total)
+  - `README.md` — updated doctor CLI description to list covered areas
+
 ## [0.3.52] - 2026-07-06
 
 ### Fixed

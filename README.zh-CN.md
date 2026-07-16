@@ -68,7 +68,7 @@ openspec-pw init          # 安装 Playwright E2E 集成
 ```bash
 openspec-pw init          # 初始化集成（一次性设置）
 openspec-pw update        # 更新 CLI 和命令到最新版本
-openspec-pw doctor        # 检查前置条件 + 应用服务器诊断
+openspec-pw doctor        # 检查前置条件 (Node, Playwright, OpenSpec, 配置, 测试) + 应用服务器诊断
 openspec-pw audit         # 检查测试文件是否有孤儿文件和配置问题
 openspec-pw coverage      # 分析 spec 与测试之间的覆盖率
 openspec-pw flake         # 检测测试文件中的静态不稳定模式
