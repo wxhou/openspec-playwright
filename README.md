@@ -135,6 +135,25 @@ Run through these steps in order when using the E2E workflow for the first time:
 | 8. Configure auth (if needed) | See "Authentication" below | Debug with `npx playwright test --project=setup` |
 | 9. Run first E2E | `/opsx:e2e <change-name>` (Claude) or `/opsx-e2e <change-name>` (OpenCode) | Check `openspec/reports/` for the report |
 
+### What `openspec-pw doctor` checks
+
+`openspec-pw doctor` verifies prerequisites across 8 categories and exits non-zero if any **required** check fails.
+
+| Category | Required checks | Optional checks |
+|---|---|---|
+| **Node.js** | `node` version | `engines` compatibility (vs `package.json`) |
+| **npm** | `npm` availability | — |
+| **Playwright Config** | config file exists (`ts`/`js`/`mjs`/`mts`) | — |
+| **OpenSpec** | directory initialized | `.spec.md` specs count |
+| **Playwright Browsers** | CLI version, Chromium binary downloaded | — |
+| **Playwright Test** | `@playwright/test` framework installed | — |
+| **Playwright MCP** | configured for each detected editor | — |
+| **Tests** | `tests/playwright/` directory exists | `auth.setup.ts` presence |
+| **Seed Test** | — | `seed.spec.ts` presence |
+| **App Server** | — | dev script, base URL, reachability |
+
+Run with `--json` for machine-readable output.
+
 **Optional — enhance your AI coding assistant with Superpowers methodology:**
 
 | Step | Command | If it fails |
