@@ -75,7 +75,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🟡 文件名含时间戳（如 \`screenshot-20260721T143000.png\`）以避免冲突和重复
 - ⚪ 平铺存放，不分子目录
 - 🔴 禁止将临时文件提交到版本控制
-- 🟡 超 24h 的文件可在 commit 前删除
+- 🟡 超 24h 的文件应在 commit 前删除
 - ⚪ 文件命名遵循 \`kebab-case\` 风格，避免空格和特殊字符`;
 
 const CLAUDE_MD_EN = `# Project Guidelines
@@ -154,7 +154,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🟡 Filenames include timestamp (e.g. \`screenshot-20260721T143000.png\`) to avoid collisions
 - ⚪ Flat layout, no subdirectories
 - 🔴 Never commit temp files to version control
-- 🟡 Files older than 24h may be deleted before commit
+- 🟡 Files older than 24h should be deleted before commit
 - ⚪ Use \`kebab-case\` filenames, avoid spaces and special characters`;
 
 function processInline(text) {
