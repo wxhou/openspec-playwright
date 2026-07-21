@@ -71,10 +71,12 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 无论前后端一体还是纯前端，存在 OpenAPI/接口文档 → 查阅真实定义并标注来源（如 \`// 来源: docs/api/openapi.yaml#/paths/...\`）
 
 ## 临时文件管理
-- 非源码临时文件（截图、日志、heapdump 等）放项目根 \`tmp/\` 下
-- 平铺，不分子目录
-- 文件名含时间戳
-- 超 24h 的文件可在 commit 前删除`;
+- 🟡 非源码临时文件（截图、日志、heapdump 等）放项目根 \`tmp/\` 下
+- 🟡 文件名含时间戳（如 \`screenshot-20260721T143000.png\`）以避免冲突和重复
+- ⚪ 平铺存放，不分子目录
+- 🔴 禁止将临时文件提交到版本控制
+- 🟡 超 24h 的文件可在 commit 前删除
+- ⚪ 文件命名遵循 \`kebab-case\` 风格，避免空格和特殊字符`;
 
 const CLAUDE_MD_EN = `# Project Guidelines
 - Read \`openspec/config.yaml\` first (tech stack, structure, conventions, constraints, etc.); ignore if absent
@@ -148,10 +150,12 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - Full-stack or pure frontend — if OpenAPI/docs exist → consult real definitions and cite source (e.g. \`// source: docs/api/openapi.yaml#/paths/...\`)
 
 ## Temp File Management
-- Non-source temp files (screenshots, logs, heapdumps, etc.) go in \`tmp/\` at project root
-- Flat layout, no subdirectories
-- Filenames include timestamp
-- Files older than 24h may be deleted before commit`;
+- 🟡 Non-source temp files (screenshots, logs, heapdumps, etc.) go in \`tmp/\` at project root
+- 🟡 Filenames include timestamp (e.g. \`screenshot-20260721T143000.png\`) to avoid collisions
+- ⚪ Flat layout, no subdirectories
+- 🔴 Never commit temp files to version control
+- 🟡 Files older than 24h may be deleted before commit
+- ⚪ Use \`kebab-case\` filenames, avoid spaces and special characters`;
 
 function processInline(text) {
   // **bold** → <strong>
