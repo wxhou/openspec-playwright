@@ -17,18 +17,18 @@
 > WHY：AI 默认倾向多写、快写、猜写。本节约束将这些倾向转化为可验证的生产代码。
 
 **DO**
-- 🔴 **lint + typecheck 每次编辑后自动执行，通过才算成功**。扫源码扩展名判断主语言：.ts/.tsx→ESLint+tsc、.py→ruff+mypy、.go→gofmt+vet。工具不存在时告知用户，不假装跑过
+- 🔴 **lint + typecheck 每次编辑后自动执行，通过才算成功**。扫源码扩展名判断主语言：.ts/.tsx→ESLint+tsc、.py→ruff+mypy、.go→gofmt+vet 等。工具不存在时告知用户，不假装跑过
 - 🟡 不隐藏任何 gate 失败结果——lint / typecheck / test 任一失败时，完整输出错误日志并停止，不继续后续步骤
 - ⚪ 未执行的检查步骤明确标注「未运行」，不暗示已通过
 - 🟡 需求理解不清或存在可见风险时，先停下来提问，不直接执行。偏离标准实践需说明理由
 - 🟡 动手前列假设 → 逐条验证。有不清→停下来，说出困惑，再提问
 - 🟡 多解释则全列，更简单方案则提出并坚持
 - 🟡 多步任务先列计划（`1. [Step] → verify: [check]`），循环验证直到成功
-- 🟡 lint 失败时优先运行 `npm run lint:fix`
+- 🟡 lint 失败时优先运行对应语言的 auto-fix（如 `npm run lint:fix` / `ruff format .` / `go fmt ./...`）
 - 🟡 只写被要求的：不加"灵活"、"可配置"、单次使用抽象、未要求功能。200行能50行则重写
 - 🟡 精准改动：只改必要的，改完清理自己造成的垃圾。匹配现有风格
 - 🟡 代码文件行数上限 1500：超过即违例，必须按职责拆分，不得继续堆叠
-- ⚪ 重构前清理未使用的 import/export/prop/console.log，单独提交再做重构
+- ⚪ 重构前清理未使用的 import/export/prop/console.log 等，单独提交再做重构
 
 **DO NOT**
 - 不写只适配特定输入值的逻辑 → 上游格式变化即失效
@@ -80,7 +80,7 @@
 > WHY：工具使用方式直接影响搜索覆盖面和结果准确性。
 
 **DO**
-- 🟡 搜索要全：Grep 搜内容 + Glob 搜文件名，两者缺一不可。跳过 node_modules/vendor/__pycache__（调试依赖时除外），搜子目录时按需缩小
+- 🟡 搜索分层：结构性问题（定义/调用/影响/流）优先用 CodeGraph；字面文本用全文搜索；文件名模式用文件名匹配。跳过依赖目录和缓存目录（调试依赖时除外），搜子目录时按需缩小
 - 🟡 重命名覆盖：调用、类型、字符串、import、barrel file、测试 mock，不得假设一次覆盖
 - 🟡 联网调研优先 agent-reach skill
 - 🟡 涉及前端 UI 设计时，按序使用：frontend-design skill 定方向 → ui-ux-pro-max skill 选风格 → web-design-guidelines skill 审查，三步组合避免"千篇一律 AI 风"
@@ -90,16 +90,11 @@
 **DO NOT**
 - 禁止用 sed/awk/node -e/python -c 等管道命令改源码文件（跳过编辑工具验证层）
 - 不主动推送，除非用户明确要求
-- 不假设单次 grep 覆盖所有情况（glob 可能漏嵌套文件或非标准扩展名）
+- 不假设单次搜索覆盖所有情况——CodeGraph 覆盖最全，文件名匹配可能漏嵌套文件或非标准扩展名，全文搜索跨语言/跨仓库一致性差
 
 **REQUIRE**
 - 使用格式化工具（ruff fmt / prettier 除外——不改语义）
 - 密钥与 .env 不入版本控制。示例用占位符（如 `YOUR_API_KEY`）。调试日志不打印凭据
-
-**Agent 编排**
-- 🔴 每个任务最多 spawn 3 个子 Agent
-- 🔴 禁止嵌套子 Agent（子 Agent 不得再 spawn 子 Agent）
-- 🟡 单文件读取/搜索不要用子 Agent，直接用 Read / Grep 工具
 
 ---
 
@@ -155,4 +150,4 @@
 
 **REQUIRE**
 - 🟡 超 24 小时的文件应在 commit 前删除
-- ⚪ 文件命名遵循 `kebab-case` 风格，避免空格和特殊字符
+- ⚪ 文件命名遵循项目所在语言/框架的约定（如 JS/Go 用 kebab-case，Python/Rust 用 snake_case，Java 用 PascalCase），避免空格和特殊字符

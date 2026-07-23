@@ -248,7 +248,7 @@ nav {
   font-weight: 600;
   color: var(--text);
   cursor: pointer;
-  transition: all 150ms;
+  transition: background 150ms, border-color 150ms, color 150ms;
   font-family: var(--font-body);
 }
 
@@ -284,7 +284,7 @@ nav {
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 150ms;
+  transition: background 150ms, border-color 150ms, color 150ms;
   font-family: var(--font-body);
 }
 
@@ -318,7 +318,7 @@ nav {
   font-weight: 600;
   font-family: var(--font-body);
   text-decoration: none;
-  transition: all 200ms var(--ease-out);
+  transition: background 200ms, color 200ms, border-color 200ms, transform 200ms var(--ease-out);
   cursor: pointer;
   border: none;
 }
@@ -391,11 +391,12 @@ nav {
 .section-title {
   font-family: var(--font-display);
   font-size: clamp(2rem, 4vw, 2.75rem);
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: var(--tracking-heading);
   color: var(--text);
   line-height: 1.1;
   margin-bottom: 20px;
+  text-wrap: balance;
   font-feature-settings: 'ss01' on;
 }
 

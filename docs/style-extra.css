@@ -594,3 +594,152 @@
     padding: 20px;
   }
 }
+
+/* ── Reading Progress Bar ─────────────────── */
+.reading-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-amber));
+  z-index: 200;
+  width: 0%;
+  will-change: width;
+  pointer-events: none;
+}
+
+/* ── Terminal Cursor ──────────────────────── */
+.terminal-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 1.1em;
+  background: var(--accent-amber);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: cursor-blink 1s step-end infinite;
+}
+
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* ── Step Number Hover ────────────────────── */
+.step-num {
+  transition: transform 200ms var(--ease-spring);
+}
+
+.workflow-step:hover .step-num {
+  transform: scale(1.1);
+}
+
+/* ── Copy Celebration Sparkles ────────────── */
+.copy-sparkle {
+  position: fixed;
+  pointer-events: none;
+  z-index: 300;
+  font-size: 1rem;
+  animation: sparkle-float 1s ease-out forwards;
+}
+
+@keyframes sparkle-float {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(0) rotate(0deg);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translateY(-30px) scale(1.2) rotate(180deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-60px) scale(0.5) rotate(360deg);
+  }
+}
+
+/* ── Easter Egg Message ───────────────────── */
+.footer-brand-mark {
+  cursor: pointer;
+  user-select: none;
+  transition: transform 150ms var(--ease-spring);
+}
+
+.footer-brand-mark:active {
+  transform: scale(0.9);
+}
+
+.easter-egg-message {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text);
+  color: var(--bg);
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  z-index: 300;
+  animation: egg-pop 0.4s var(--ease-spring) forwards;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+@keyframes egg-pop {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(16px) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+/* ── Feature Card Shimmer on Hover ────────── */
+.feature-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.15),
+    transparent
+  );
+  transition: left 0.6s var(--ease-precise);
+  pointer-events: none;
+}
+
+.feature-card:hover::after {
+  left: 100%;
+}
+
+/* ── Reduced Motion ───────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .terminal-cursor {
+    animation: none;
+    opacity: 0.5;
+  }
+
+  .step-num {
+    transition: none;
+  }
+
+  .workflow-step:hover .step-num {
+    transform: none;
+  }
+
+  .copy-sparkle {
+    display: none;
+  }
+
+  .feature-card::after {
+    display: none;
+  }
+}

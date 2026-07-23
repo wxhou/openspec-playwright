@@ -4,16 +4,16 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 优先级：🔴 CRITICAL（违反→静默 bug/安全漏洞，停下确认后执行）｜🟡 IMPORTANT（偏离说明理由，谨慎执行）｜⚪ STANDARD（按标准执行）
 
 ## 代码质量
-- 🔴 **lint+typecheck 每次编辑后自动执行，通过才算成功**。扫源码扩展名判断主语言：\`.ts\`→ESLint+tsc、\`.py\`→ruff+mypy、\`.go\`→gofmt+vet。工具不存在时告知用户，不假装跑过
+- 🔴 **lint+typecheck 每次编辑后自动执行，通过才算成功**。扫源码扩展名判断主语言：\`.ts\`→ESLint+tsc、\`.py\`→ruff+mypy、\`.go\`→gofmt+vet 等。工具不存在时告知用户，不假装跑过
 - 🟡 不隐藏任何 gate 失败结果——lint / typecheck / test 任一失败时，完整输出错误日志并停止，不继续后续步骤
 - ⚪ 未执行的检查步骤明确标注「未运行」，不暗示已通过
 - 🟡 需求理解不清或存在可见风险时，先停下来提问，不直接执行。偏离标准实践需说明理由
 - 🟡 动手前列假设 → 逐条验证。有不清→停下来，说出困惑，再提问。多解释则全列，更简单方案则提出并坚持
-- 🟡 多步任务先列计划（\`1. [Step] → verify: [check]\`），循环验证直到成功。lint 失败时优先 \`npm run lint:fix\`
+- 🟡 多步任务先列计划（\`1. [Step] → verify: [check]\`），循环验证直到成功。lint 失败时优先运行对应语言的 auto-fix（如 \`npm run lint:fix\` / \`ruff format .\` / \`go fmt ./...\`）
 - 🟡 只写被要求的：不加"灵活"/"可配置"/单次使用抽象。200行能50行则重写
 - 🟡 精准改动：只改必要的，改完清理自己造成的垃圾。匹配现有风格
 - 🟡 代码文件行数上限 1500：超过即违例，按职责拆分，不得继续堆叠
-- ⚪ 重构前清理未使用的 import/export/prop/console.log，单独提交再做重构
+- ⚪ 重构前清理未使用的 import/export/prop/console.log 等，单独提交再做重构
 
 ## 禁止非通用性改动
 - 不写只适配特定输入值的逻辑 → 上游格式变化即失效
@@ -36,9 +36,9 @@ const CLAUDE_MD_ZH = `# 项目规范
 - ⚪ 超过 10 条消息后，编辑任何文件前强制重新读取
 
 ## 工具限制
-- 🟡 搜索要全：Grep 搜内容 + Glob 搜文件名，两者缺一不可。跳过 node_modules/vendor/__pycache__（调试依赖时除外），搜子目录时按需缩小
+- 🟡 搜索分层：结构性问题（定义/调用/影响/流）优先用 CodeGraph；字面文本用全文搜索；文件名模式用文件名匹配。跳过依赖目录和缓存目录（调试依赖时除外），搜子目录时按需缩小
 - 🟡 重命名覆盖：调用、类型、字符串、import、barrel file、测试 mock，不得假设一次覆盖
-- 不假设单次 grep 覆盖所有情况（glob 可能漏嵌套文件或非标准扩展名）
+- 不假设单次搜索覆盖所有情况——CodeGraph 覆盖最全，文件名匹配可能漏嵌套文件或非标准扩展名，全文搜索跨语言/跨仓库一致性差
 - 🟡 联网调研优先 agent-reach skill
 - 🟡 涉及前端 UI 设计时，按序使用：frontend-design skill 定方向 → ui-ux-pro-max skill 选风格 → web-design-guidelines skill 审查，三步组合避免"千篇一律 AI 风"
 - 🟡 编辑 → 重新读取确认 → lint+typecheck → 任一失败则回退
@@ -47,11 +47,6 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 不主动推送，除非用户明确要求
 - 格式化工具（ruff fmt/prettier 除外——不改语义）
 - 密钥与 .env 不入版本控制。示例用占位符（如 \`YOUR_API_KEY\`）。调试日志不打印凭据
-
-**Agent 编排**
-- 🔴 每个任务最多 spawn 3 个子 Agent
-- 🔴 禁止嵌套子 Agent（子 Agent 不得再 spawn 子 Agent）
-- 🟡 单文件读取/搜索不要用子 Agent，直接用 Read / Grep 工具
 
 ## 大规模任务
 - 🔴 200+ 行修改或架构变更（新增服务/API 契约/数据模型重构）必须走 OpenSpec（\`/opsx:propose\`），禁止直接修改
@@ -76,23 +71,23 @@ const CLAUDE_MD_ZH = `# 项目规范
 - ⚪ 平铺存放，不分子目录
 - 🔴 禁止将临时文件提交到版本控制
 - 🟡 超 24h 的文件应在 commit 前删除
-- ⚪ 文件命名遵循 \`kebab-case\` 风格，避免空格和特殊字符`;
+- ⚪ 文件命名遵循项目所在语言/框架的约定（如 JS/Go 用 kebab-case，Python/Rust 用 snake_case，Java 用 PascalCase），避免空格和特殊字符`;
 
 const CLAUDE_MD_EN = `# Project Guidelines
 - Read \`openspec/config.yaml\` first (tech stack, structure, conventions, constraints, etc.); ignore if absent
 - Priority: 🔴 CRITICAL (violation → silent bug/security hole, stop and confirm before acting)｜🟡 IMPORTANT (deviations need justification, proceed with caution)｜⚪ STANDARD (follow as standard practice)
 
 ## Code Quality
-- 🔴 **lint+typecheck runs after every edit, both must pass**. Detect language by extension: \`.ts\`→ESLint+tsc, \`.py\`→ruff+mypy, \`.go\`→gofmt+vet. If tool missing, tell user, don't pretend it ran
+- 🔴 **lint+typecheck runs after every edit, both must pass**. Detect language by extension: \`.ts\`→ESLint+tsc, \`.py\`→ruff+mypy, \`.go\`→gofmt+vet, etc. If tool missing, tell user, don't pretend it ran
 - 🟡 Never hide gate failures — when lint, typecheck, or test fails, output the full error log and stop. Do not proceed to subsequent steps.
 - ⚪ Unexecuted verification steps must be explicitly marked "not run", never implied as passed
 - 🟡 When requirements are unclear or risks are visible, pause and ask before executing. Deviations from standard practice must be justified.
 - 🟡 List assumptions before coding → verify each one. If unclear → stop, express confusion, then ask. Present all interpretations; suggest simpler approaches and insist
-- 🟡 Multi-step tasks: plan first (\`1. [Step] → verify: [check]\`), loop until verified. On lint failure, run \`npm run lint:fix\` first
+- 🟡 Multi-step tasks: plan first (\`1. [Step] → verify: [check]\`), loop until verified. On lint failure, run the language's auto-fix first (e.g. \`npm run lint:fix\` / \`ruff format .\` / \`go fmt ./...\`)
 - 🟡 Write only what's requested: No flexibility/configurability/single-use abstractions. Rewrite if 200 lines can be 50
 - 🟡 Surgical changes: Touch only what's needed, clean up your own mess. Match existing style
 - 🟡 Code file line limit 1500: over 1500 is a violation — split by responsibility, never extend
-- ⚪ Before refactoring, clean unused imports/exports/props/console.log in a separate commit
+- ⚪ Before refactoring, clean unused imports/exports/props/console.log etc. in a separate commit
 
 ## No Non-Generic Changes
 - Don't write logic that only fits specific input values → breaks when upstream format changes
@@ -115,9 +110,9 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - ⚪ After 10+ messages: force re-read any file before editing
 
 ## Tool Constraints
-- 🟡 Search comprehensively: Grep for content + Glob for filenames. Skip node_modules/vendor/__pycache__ (except when debugging deps); narrow scope in subdirectories
+- 🟡 Search in layers: structural queries (definitions/calls/impact/flow) prefer CodeGraph; literal text → full-text search; filename patterns → filename matching. Skip dependency and cache directories (except when debugging deps); narrow scope in subdirectories
 - 🟡 Renaming must cover: calls, types, strings, imports, barrel files, test mocks — don't assume one pass covers everything
-- Don't assume one grep covers everything — glob patterns may miss nested files or non-standard extensions
+- Don't assume one search covers everything — CodeGraph queries offer the most complete coverage; filename matching may miss nested files or non-standard extensions; full-text search degrades across languages/repos
 - 🟡 Web research via agent-reach skill
 - 🟡 When doing frontend UI work, use in order: frontend-design skill (direction) → ui-ux-pro-max skill (style selection) → web-design-guidelines skill (auto-review), three-step combo to avoid "generic AI look"
 - 🟡 Edit → re-read to confirm → lint+typecheck → rollback on any failure
@@ -126,11 +121,6 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - No push unless explicitly requested
 - Formatters allowed (ruff fmt/prettier — don't change semantics)
 - Secrets & .env out of version control. Use placeholders (e.g. \`YOUR_API_KEY\`). No credentials in debug logs
-
-**Agent Orchestration**
-- 🔴 Max 3 subagents per task
-- 🔴 No nested subagents (subagent must not spawn another subagent)
-- 🟡 Single-file reads/searches: use Read/Grep directly, don't spawn a subagent
 
 ## Large-Scale Tasks
 - 🔴 200+ line changes or architecture changes (new services/API contracts/data model refactors) must use OpenSpec (\`/opsx:propose\`), no direct edits
@@ -155,7 +145,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - ⚪ Flat layout, no subdirectories
 - 🔴 Never commit temp files to version control
 - 🟡 Files older than 24h should be deleted before commit
-- ⚪ Use \`kebab-case\` filenames, avoid spaces and special characters`;
+- ⚪ Use filenames matching the project's language/framework convention (e.g. kebab-case for JS/Go, snake_case for Python/Rust, PascalCase for Java), avoid spaces and special characters`;
 
 function processInline(text) {
   // **bold** → <strong>
@@ -245,9 +235,11 @@ function setLanguage(lang) {
   // Hide all zh/en elements first
   document.querySelectorAll('[class*="-zh"], [class*="-en"]').forEach(el => {
     if (el.classList.contains('lang-btn')) return;
-    if (el.className.includes('-zh')) {
+    const hasZh = Array.from(el.classList).some(c => c.endsWith('-zh'));
+    const hasEn = Array.from(el.classList).some(c => c.endsWith('-en'));
+    if (hasZh) {
       el.style.display = isZh ? '' : 'none';
-    } else if (el.className.includes('-en')) {
+    } else if (hasEn) {
       el.style.display = isZh ? 'none' : '';
     }
   });
@@ -294,6 +286,145 @@ function copyClaudeMd() {
   }
 }
 
+/* ── Whimsy: Reading Progress Bar ─────────── */
+function initProgressBar() {
+  const bar = document.querySelector('.reading-progress');
+  if (!bar) return;
+  let ticking = false;
+  window.addEventListener('scroll', () => {
+    if (!ticking) {
+      window.requestAnimationFrame(() => {
+        const scrollTop = window.scrollY;
+        const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+        bar.style.width = (docHeight > 0 ? (scrollTop / docHeight) * 100 : 0) + '%';
+        ticking = false;
+      });
+      ticking = true;
+    }
+  }, { passive: true });
+}
+
+/* ── Whimsy: Terminal Cursor ─────────────── */
+function initTerminalCursor() {
+  const terminalBody = document.querySelector('.terminal-body');
+  if (!terminalBody) return;
+  const cursor = document.createElement('span');
+  cursor.className = 'terminal-cursor';
+  cursor.setAttribute('aria-hidden', 'true');
+  const lastDiv = terminalBody.querySelector('div:last-of-type, .terminal-cmd:last-of-type');
+  if (lastDiv) {
+    lastDiv.appendChild(cursor);
+  } else {
+    terminalBody.appendChild(cursor);
+  }
+}
+
+/* ── Whimsy: Counter Animation ───────────── */
+function prefersReducedMotion() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function initCounters() {
+  if (prefersReducedMotion()) return;
+  const counters = document.querySelectorAll('.sidebar-stat-value');
+  if (!counters.length || !('IntersectionObserver' in window)) return;
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting || entry.target.dataset.counted) return;
+      const text = entry.target.textContent.trim();
+      let num = parseInt(text, 10);
+      if (isNaN(num)) {
+        const match = text.match(/\d+/);
+        if (!match) return;
+        num = parseInt(match[0], 10);
+      }
+      entry.target.dataset.counted = 'true';
+      animateCounter(entry.target, num);
+      observer.unobserve(entry.target);
+    });
+  }, { rootMargin: '0px 0px -50px 0px' });
+  counters.forEach(counter => observer.observe(counter));
+}
+
+function animateCounter(el, target) {
+  let current = 0;
+  const duration = 600;
+  const steps = 15;
+  const increment = target / steps;
+  const stepTime = duration / steps;
+  const timer = setInterval(() => {
+    current += increment;
+    if (current >= target) {
+      current = target;
+      clearInterval(timer);
+    }
+    el.textContent = Math.round(current);
+  }, stepTime);
+}
+
+/* ── Whimsy: Footer Easter Egg ────────────── */
+function initEasterEgg() {
+  const logo = document.querySelector('.footer-brand-mark');
+  if (!logo) return;
+  let clicks = 0;
+  let timer = null;
+  logo.addEventListener('click', () => {
+    clicks++;
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => { clicks = 0; }, 2000);
+    if (clicks >= 3) {
+      clicks = 0;
+      showEasterEgg();
+    }
+  });
+}
+
+function showEasterEgg() {
+  const messages = [
+    'Spec-driven development FTW!',
+    'Tests write themselves.',
+    'Healer says hi!',
+    'E2E all the things!',
+  ];
+  const msg = document.createElement('div');
+  msg.className = 'easter-egg-message';
+  msg.textContent = messages[Math.floor(Math.random() * messages.length)];
+  msg.setAttribute('role', 'status');
+  document.body.appendChild(msg);
+  setTimeout(() => {
+    msg.style.opacity = '0';
+    msg.style.transition = 'opacity 300ms';
+    setTimeout(() => msg.remove(), 300);
+  }, 2500);
+}
+
+/* ── Whimsy: Copy Celebration Sparkles ────── */
+function initCopyCelebration() {
+  document.querySelectorAll('.nav-copy-btn, .claude-copy-btn').forEach(btn => {
+    btn.addEventListener('click', createSparkles);
+  });
+}
+
+function createSparkles(e) {
+  const sparkles = ['✦', '✧'];
+  const rect = e.currentTarget.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  sparkles.forEach((s, i) => {
+    setTimeout(() => {
+      const el = document.createElement('span');
+      el.className = 'copy-sparkle';
+      el.textContent = s;
+      el.setAttribute('aria-hidden', 'true');
+      el.style.left = (cx + (Math.random() - 0.5) * 60) + 'px';
+      el.style.top = (cy + (Math.random() - 0.5) * 30) + 'px';
+      el.style.fontSize = (0.7 + Math.random() * 0.8) + 'rem';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 1000);
+    }, i * 60);
+  });
+}
+
 // Initialize language switch buttons + reveal-on-scroll
 document.addEventListener('DOMContentLoaded', () => {
   // Populate initial CLAUDE.md content
@@ -321,16 +452,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.reveal').forEach((el) => el.classList.add('in-view'));
   }
 
-  // Magnetic effect for primary CTA: button follows cursor within 60px
-  document.querySelectorAll('.btn-primary').forEach((btn) => {
-    btn.addEventListener('mousemove', (e) => {
-      const rect = btn.getBoundingClientRect();
-      const x = e.clientX - rect.left - rect.width / 2;
-      const y = e.clientY - rect.top - rect.height / 2;
-      btn.style.transform = `translate(${x * 0.15}px, ${y * 0.15}px) translateY(-2px)`;
-    });
-    btn.addEventListener('mouseleave', () => {
-      btn.style.transform = '';
-    });
-  });
+  // Whimsy: init playful features
+  initProgressBar();
+  initTerminalCursor();
+  initCounters();
+  initEasterEgg();
+  initCopyCelebration();
 });
+

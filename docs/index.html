@@ -15,11 +15,13 @@
 <link rel="stylesheet" href="style-base.css">
 <link rel="stylesheet" href="style-sections.css">
 <link rel="stylesheet" href="style-extra.css">
+<link rel="stylesheet" href="style-storytelling.css">
 <!-- Cloudflare Web Analytics -->
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "aac35fa51290412eadfd2e9623b3aec6"}' integrity="sha384-RPC48PglHYv6iOCN3mmnZnP3gNOZVwfDZ7lX5wedb4S/ZijsfoDPi/hoEMk+9Nyw" crossorigin="anonymous"></script>
 <!-- End Cloudflare Web Analytics -->
 </head>
 <body>
+<div class="reading-progress" role="progressbar" aria-label="Reading progress"></div>
 
 <main>
 
@@ -89,6 +91,111 @@
 </section>
 
 <div class="divider"></div>
+
+<!-- ── Story Arc: Why ── -->
+<section class="section story-arc">
+  <div class="story-narrative">
+    <div class="story-eyebrow anim">
+      <span class="story-eyebrow-dot"></span>
+      <span class="story-eyebrow-text story-eyebrow-zh">一个开发者的故事</span>
+      <span class="story-eyebrow-text story-eyebrow-en" style="display:none;">A Developer's Story</span>
+    </div>
+    <h2 class="story-title anim anim-1">
+      <span class="story-title-zh">
+        <span class="story-chapter">痛点</span>
+        <span class="story-question">规范早已存在，<br>为什么测试还在拖后腿？</span>
+      </span>
+      <span class="story-title-en" style="display:none;">
+        <span class="story-chapter">The Pain</span>
+        <span class="story-question">Specs exist. So why are tests still a bottleneck?</span>
+      </span>
+    </h2>
+
+    <div class="story-frames reveal">
+      <div class="story-frame before-story anim">
+        <div class="story-frame-label">
+          <span class="story-frame-tag tag-problem-zh">Before</span>
+          <span class="story-frame-tag tag-problem-en" style="display:none;">Before</span>
+        </div>
+        <div class="story-frame-content">
+          <div class="story-frame-point">
+            <span class="story-frame-icon sad">⊗</span>
+            <div class="story-frame-text">
+              <strong class="story-pt-zh">手动写测试，反馈延迟数天</strong>
+              <strong class="story-pt-en" style="display:none;">Manual tests, feedback in days</strong>
+              <span class="story-pt-sub-zh">PR 提了，QA 排队，发布窗口错过</span>
+              <span class="story-pt-sub-en" style="display:none;">PR submitted, QA queued, ship window missed</span>
+            </div>
+          </div>
+          <div class="story-frame-point">
+            <span class="story-frame-icon sad">×</span>
+            <div class="story-frame-text">
+              <strong class="story-pt-zh">选择器一改，测试全军覆没</strong>
+              <strong class="story-pt-en" style="display:none;">One selector change → all tests red</strong>
+              <span class="story-pt-sub-zh">UI 微调后整个 E2E 套件崩塌</span>
+              <span class="story-pt-sub-en" style="display:none;">UI tweak collapses entire E2E suite</span>
+            </div>
+          </div>
+          <div class="story-frame-point">
+            <span class="story-frame-icon sad">△</span>
+            <div class="story-frame-text">
+              <strong class="story-pt-zh">规范与测试脱节</strong>
+              <strong class="story-pt-en" style="display:none;">Specs and tests drift apart</strong>
+              <span class="story-pt-sub-zh">写了规范，没人验证；改了代码，没人追溯</span>
+              <span class="story-pt-sub-en" style="display:none;">Spec written, no verification; code changed, no trace</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="story-arrow" aria-hidden="true">
+        <svg viewBox="0 0 64 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M0 12h56M48 4l12 8-12 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="story-arrow-label">
+          <span class="story-arrow-zh">接入 openspec-pw</span>
+          <span class="story-arrow-en" style="display:none;">Wire it up</span>
+        </span>
+      </div>
+
+      <div class="story-frame after-story anim anim-2">
+        <div class="story-frame-label">
+          <span class="story-frame-tag tag-solution-zh">After</span>
+          <span class="story-frame-tag tag-solution-en" style="display:none;">After</span>
+        </div>
+        <div class="story-frame-content">
+          <div class="story-frame-point">
+            <span class="story-frame-icon happy">⏱</span>
+            <div class="story-frame-text">
+              <strong class="story-pt-zh">一行命令，规范到报告</strong>
+              <strong class="story-pt-en" style="display:none;">One command, spec to report</strong>
+              <span class="story-pt-sub-zh">5 分钟内拿到可分享的 Markdown 报告</span>
+              <span class="story-pt-sub-en" style="display:none;">Shareable Markdown report in under 5 minutes</span>
+            </div>
+          </div>
+          <div class="story-frame-point">
+            <span class="story-frame-icon happy">✓</span>
+            <div class="story-frame-text">
+              <strong class="story-pt-zh">Healer 自动修复</strong>
+              <strong class="story-pt-en" style="display:none;">Healer auto-fixes</strong>
+              <span class="story-pt-sub-zh">AI 区分测试 Bug 和 App Bug，不让你陷入手工</span>
+              <span class="story-pt-sub-en" style="display:none;">AI distinguishes Test Bug vs App Bug — no manual hunts</span>
+            </div>
+          </div>
+          <div class="story-frame-point">
+            <span class="story-frame-icon happy">◎</span>
+            <div class="story-frame-text">
+              <strong class="story-pt-zh">规范即真理</strong>
+              <strong class="story-pt-en" style="display:none;">Specs are the source of truth</strong>
+              <span class="story-pt-sub-zh">验证通过意味着规范已被实现，变更自动驱动回归</span>
+              <span class="story-pt-sub-en" style="display:none;">Passing tests = spec implemented; changes auto-drive regression</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
 <!-- ── Claude.md Config ── -->
 <section id="claude-config" class="section" style="background: var(--surface); max-width: none; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
@@ -742,6 +849,126 @@
       <div class="comparison-item legacy-item"><span class="cmp-legacy-item-zh">测试覆盖靠经验判断</span><span class="cmp-legacy-item-en" style="display:none;">Test coverage judged by experience</span></div>
       <div class="comparison-item legacy-item"><span class="cmp-legacy-item-zh">规范与测试容易脱节</span><span class="cmp-legacy-item-en" style="display:none;">Specs and tests easily drift apart</span></div>
       <div class="comparison-item legacy-item"><span class="cmp-legacy-item-zh">维护成本随项目线性增长</span><span class="cmp-legacy-item-en" style="display:none;">Maintenance cost grows linearly</span></div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── Testimonials ── -->
+<section class="section story-testimonials" id="voices">
+  <div class="section-header anim">
+    <div class="section-label">
+      <span class="voices-label-zh">来自开发者</span>
+      <span class="voices-label-en" style="display:none;">From Developers</span>
+    </div>
+    <h2 class="section-title">
+      <span class="voices-title-zh">谁在用，怎么说</span>
+      <span class="voices-title-en" style="display:none;">Who's using it, what they say</span>
+    </h2>
+    <p class="section-desc">
+      <span class="voices-desc-zh">来自早期采用者和团队内部的真实反馈。</span>
+      <span class="voices-desc-en" style="display:none;">Real voices from early adopters and internal teams.</span>
+    </p>
+  </div>
+
+  <div class="testimonial-grid reveal">
+    <figure class="testimonial-card anim">
+      <svg class="testimonial-quote" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/></svg>
+      <blockquote class="testimonial-quote-body">
+        <span class="tq-zh">改动 UI 时不再恐慌：Healer 把所有红测试接住了，我们修了 App Bug，剩下自动通过。</span>
+        <span class="tq-en" style="display:none;">No more panic on UI changes: Healer caught every red test — we fixed the app bug and the rest turned green on its own.</span>
+      </blockquote>
+      <figcaption class="testimonial-attribution">
+        <div class="testimonial-avatar" aria-hidden="true">F</div>
+        <div>
+          <div class="testimonial-name">
+            <span class="tn-zh">前端工程师，独立 SaaS</span>
+            <span class="tn-en" style="display:none;">Frontend Engineer, Indie SaaS</span>
+          </div>
+          <div class="testimonial-context">
+            <span class="tc-zh">3 人团队 / React 项目</span>
+            <span class="tc-en" style="display:none;">3-person team / React project</span>
+          </div>
+        </div>
+      </figcaption>
+    </figure>
+
+    <figure class="testimonial-card anim anim-1">
+      <svg class="testimonial-quote" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/></svg>
+      <blockquote class="testimonial-quote-body">
+        <span class="tq-zh">规范变了不用再开会了。Claude Code 自己读 spec → 跑测试 → 出报告，我只需要看标红的部分。</span>
+        <span class="tq-en" style="display:none;">Spec changes need no more meetings. Claude Code reads the spec, runs tests, produces the report — I only inspect what's red.</span>
+      </blockquote>
+      <figcaption class="testimonial-attribution">
+        <div class="testimonial-avatar" aria-hidden="true">T</div>
+        <div>
+          <div class="testimonial-name">
+            <span class="tn-zh">技术负责人，企业内部工具</span>
+            <span class="tn-en" style="display:none;">Tech Lead, Internal Tools</span>
+          </div>
+          <div class="testimonial-context">
+            <span class="tc-zh">20+ 模块 / 维护中后台</span>
+            <span class="tc-en" style="display:none;">20+ modules / admin dashboard</span>
+          </div>
+        </div>
+      </figcaption>
+    </figure>
+
+    <figure class="testimonial-card anim anim-2">
+      <svg class="testimonial-quote" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/></svg>
+      <blockquote class="testimonial-quote-body">
+        <span class="tq-zh">真浏览器探索是好东西——不再写一堆脆弱的 selector，/opsx:e2e 一行就把新页面跑通了。</span>
+        <span class="tq-en" style="display:none;">Real browser exploration is a game-changer — no more fragile selectors. One /opsx:e2e line and a new page is covered end-to-end.</span>
+      </blockquote>
+      <figcaption class="testimonial-attribution">
+        <div class="testimonial-avatar" aria-hidden="true">D</div>
+        <div>
+          <div class="testimonial-name">
+            <span class="tn-zh">全栈开发者，开源贡献者</span>
+            <span class="tn-en" style="display:none;">Full-stack Dev, OSS Contributor</span>
+          </div>
+          <div class="testimonial-context">
+            <span class="tc-zh">个人项目 / Next.js</span>
+            <span class="tc-en" style="display:none;">Personal project / Next.js</span>
+          </div>
+        </div>
+      </figcaption>
+    </figure>
+  </div>
+
+  <div class="testimonial-byline anim anim-3">
+    <span class="testimonial-byline-zh">也是开发者 · 也是用户 · 也偶尔贡献</span>
+    <span class="testimonial-byline-en" style="display:none;">Built by developers, used by developers, sometimes contributed to by those same developers.</span>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── Closing Arc ── -->
+<section class="section closing-arc" id="next">
+  <div class="closing-inner anim">
+    <div class="closing-eyebrow">
+      <span class="closing-eyebrow-zh">接下来</span>
+      <span class="closing-eyebrow-en" style="display:none;">What's Next</span>
+    </div>
+    <h2 class="closing-title">
+      <span class="closing-title-zh">你有一个 spec，三个写不完的测试。<br><em>从哪儿开始？</em></span>
+      <span class="closing-title-en" style="display:none;">You've got a spec and three tests that never get written.<br><em>Where to start?</em></span>
+    </h2>
+    <p class="closing-body">
+      <span class="closing-body-zh">从 <code>/opsx:e2e &lt;change-name&gt;</code> 开始。让 AI 跑第一轮，从失败列表里学到你下一个 spec 长什么样。</span>
+      <span class="closing-body-en" style="display:none;">Start with <code>/opsx:e2e &lt;change-name&gt;</code>. Let the AI run the first pass, and learn what your next spec should look like from what fails.</span>
+    </p>
+    <div class="closing-actions">
+      <a href="#quickstart" class="btn btn-primary">
+        <span class="closing-cta-zh">回到快速开始</span>
+        <span class="closing-cta-en" style="display:none;">Back to Quick Start</span>
+      </a>
+      <a href="https://github.com/wxhou/openspec-playwright" target="_blank" class="btn btn-secondary">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2.02c-3.2.69-3.87-1.54-3.87-1.54-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.68 1.24 3.34.95.1-.74.4-1.24.72-1.53-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 1.18-3.08-.12-.29-.51-1.47.11-3.06 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.79 0c2.21-1.49 3.18-1.18 3.18-1.18.62 1.59.23 2.77.11 3.06.74.8 1.18 1.82 1.18 3.08 0 4.42-2.7 5.4-5.27 5.68.41.36.78 1.05.78 2.13v3.16c0 .31.21.67.8.56C20.21 21.38 23.5 17.07 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+        GitHub
+      </a>
     </div>
   </div>
 </section>
