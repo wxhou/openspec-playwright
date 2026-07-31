@@ -70,6 +70,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `tests/commands/doctor.test.ts` — 7 new test cases covering all new items (225 total)
   - `README.md` — updated doctor CLI description to list covered areas
 
+
+## [0.3.60] - 2026-07-31
+
+### Added
+
+- **Cursor editor support**. `openspec-pw init` auto-detects Cursor (`.cursor/` directory) alongside Claude Code, OpenCode, and Cline.
+  - Dual install: `.cursor/commands/opsx-e2e.md` (plain markdown, `$1` change name) + `.cursor/skills/opsx-e2e/SKILL.md` (`disable-model-invocation: true`)
+  - Playwright MCP merged into `.cursor/mcp.json` (`mcpServers.playwright`); shared `mcpServers` JSON helpers also used by Cline
+  - `EditorAdapter.extraArtifacts` so install/uninstall/doctor share a dual-file contract
+  - `doctor` reports Cursor command + skill readiness; `update` `hasCommand` recognizes Cursor paths
+  - `README.md`, `README.zh-CN.md` — Cursor usage, prerequisites, architecture
+  - `docs/index.html`, `docs/style-sections.css`, `docs/llms.txt` — Editors section (four assistants), hero/prereq/workflow copy, 2×2 grid
+  - `package.json` — description + keywords updated for multi-editor support
+
 ## [0.3.52] - 2026-07-06
 
 ### Fixed

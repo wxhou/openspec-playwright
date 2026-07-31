@@ -15,7 +15,9 @@ export async function update(options) {
     // Check if init has been run
     const hasCommand = existsSync(join(projectRoot, ".claude", "commands", "opsx", "e2e.md")) ||
         existsSync(join(projectRoot, ".opencode", "commands", "opsx-e2e.md")) ||
-        existsSync(join(projectRoot, ".cline", "skills", "opsx-e2e", "SKILL.md"));
+        existsSync(join(projectRoot, ".cline", "skills", "opsx-e2e", "SKILL.md")) ||
+        existsSync(join(projectRoot, ".cursor", "commands", "opsx-e2e.md")) ||
+        existsSync(join(projectRoot, ".cursor", "skills", "opsx-e2e", "SKILL.md"));
     const hasOpenSpec = existsSync(join(projectRoot, "openspec"));
     if (!hasCommand && !hasOpenSpec) {
         console.log(chalk.yellow("  ⚠ OpenSpec + Playwright E2E not initialized."));
@@ -113,7 +115,7 @@ export async function update(options) {
             }
             const detected = detectAdapters(projectRoot);
             if (detected.length === 0) {
-                console.log(chalk.gray("  - No supported editor (.claude, .opencode, or .cline) found, skipping command installation"));
+                console.log(chalk.gray("  - No supported editor (.claude, .opencode, .cline, or .cursor) found, skipping command installation"));
             }
             else if (body) {
                 const meta = buildCommandMeta(body);

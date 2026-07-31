@@ -1,7 +1,7 @@
 {
   "name": "openspec-playwright",
   "version": "0.3.59",
-  "description": "OpenSpec + Playwright E2E verification setup tool for Claude Code",
+  "description": "OpenSpec + Playwright E2E verification setup tool for Claude Code, OpenCode, Cline, and Cursor",
   "type": "module",
   "bin": {
     "openspec-pw": "bin/openspec-pw.js"
@@ -60,6 +60,9 @@
     "e2e",
     "testing",
     "claude-code",
+    "opencode",
+    "cline",
+    "cursor",
     "spec-driven",
     "claude-code-skill"
   ],

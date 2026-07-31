@@ -1,8 +1,8 @@
 /**
  * Editor adapter layer.
  *
- * Both Claude Code, OpenCode, and Cline can host the /opsx:e2e command, plus a
- * project-level rules file (CLAUDE.md / AGENTS.md) and an MCP server
+ * Claude Code, OpenCode, Cline, and Cursor can host the /opsx:e2e command,
+ * plus a project-level rules file (CLAUDE.md / AGENTS.md) and an MCP server
  * definition. Each editor has its own conventions — file path, frontmatter
  * shape, MCP install mechanism — so this module exposes a single
  * `EditorAdapter` interface and a registry that callers can iterate.
@@ -15,6 +15,9 @@
  *              under `instructions` (CLAUDE.md is a built-in fallback).
  *   - Cline:   `.cline/skills/opsx-<id>/SKILL.md`, name+description
  *              frontmatter, edits `.cline/mcp.json`, auto-detects AGENTS.md.
+ *   - Cursor:  `.cursor/commands/opsx-<id>.md` (plain MD) +
+ *              `.cursor/skills/opsx-<id>/SKILL.md` (extraArtifacts),
+ *              edits `.cursor/mcp.json`, auto-detects AGENTS.md.
  */
 import {
   existsSync,
@@ -93,8 +96,15 @@ export function buildCommandMeta(body: string): CommandMeta {
 
 // ─── Editor adapter interface ────────────────────────────────────────────
 
+export type EditorId = "claude" | "opencode" | "cline" | "cursor";
+
+export interface ExtraArtifact {
+  relativePath: string;
+  contents: string;
+}
+
 export interface EditorAdapter {
-  id: "claude" | "opencode" | "cline";
+  id: EditorId;
   /** Short label used in log messages. */
   label: string;
   /** Human-readable name used in user-facing messages. */
@@ -115,6 +125,8 @@ export interface EditorAdapter {
   removeMcp(projectRoot: string, serverName: string): void;
   /** Optional: register project rules file path in editor config. */
   registerInstructions?(projectRoot: string, instructions: string[]): void;
+  /** Optional: secondary files written alongside commandFilePath (Cursor skill). */
+  extraArtifacts?(meta: CommandMeta): ExtraArtifact[];
 }
 
 // ─── Claude Code adapter ─────────────────────────────────────────────────
@@ -269,56 +281,140 @@ export function hasCline(projectRoot: string): boolean {
   );
 }
 
-/** Path to the project-level MCP config file for Cline. */
-function clineMcpPath(projectRoot: string): string {
-  return join(projectRoot, ".cline", "mcp.json");
-}
+// ─── Shared mcpServers JSON helpers (Cline + Cursor) ─────────────────────
 
-interface ClineMcpServer {
+export interface McpStdioServer {
   command: string;
   args: string[];
 }
 
+export type McpServersFile = Record<string, unknown> & {
+  mcpServers: Record<string, McpStdioServer>;
+};
+
 /**
- * Read `.cline/mcp.json`, or null if missing/unparseable.
- *
- * Preserves the **entire** raw JSON object (including unknown top-level fields
- * that Cline may add in future versions) — only the `mcpServers` sub-object
- * is typed. This prevents `installMcp`/`removeMcp` from silently dropping
- * fields the user or Cline itself may have added.
+ * Read an MCP config file with a top-level `mcpServers` map, or null if
+ * missing/unparseable. Preserves unknown top-level fields.
  */
-function readClineMcpConfig(projectRoot: string): (Record<string, unknown> & { mcpServers: Record<string, ClineMcpServer> }) | null {
-  const p = clineMcpPath(projectRoot);
-  if (!existsSync(p)) return null;
+export function readMcpServersFile(configPath: string): McpServersFile | null {
+  if (!existsSync(configPath)) return null;
   try {
-    const raw = JSON.parse(readFileSync(p, "utf-8")) as Record<string, unknown>;
+    const raw = JSON.parse(readFileSync(configPath, "utf-8")) as Record<
+      string,
+      unknown
+    >;
     if (raw.mcpServers && typeof raw.mcpServers === "object") {
-      return raw as Record<string, unknown> & { mcpServers: Record<string, ClineMcpServer> };
+      return raw as McpServersFile;
     }
-    // mcpServers missing or not an object — initialise it, preserving other fields.
     raw.mcpServers = {};
-    return raw as Record<string, unknown> & { mcpServers: Record<string, ClineMcpServer> };
+    return raw as McpServersFile;
   } catch {
     return null;
   }
 }
 
-/** Write `.cline/mcp.json`, creating the `.cline/` directory if needed. */
-function writeClineMcpConfig(projectRoot: string, config: Record<string, unknown> & { mcpServers: Record<string, ClineMcpServer> }): void {
-  const p = clineMcpPath(projectRoot);
-  mkdirSync(dirname(p), { recursive: true });
-  writeFileSync(p, JSON.stringify(config, null, 2) + "\n");
+/** Write an MCP config file, creating parent directories if needed. */
+export function writeMcpServersFile(
+  configPath: string,
+  config: McpServersFile,
+): void {
+  mkdirSync(dirname(configPath), { recursive: true });
+  writeFileSync(configPath, JSON.stringify(config, null, 2) + "\n");
+}
+
+export function isMcpServerInFile(
+  configPath: string,
+  serverName: string,
+): boolean {
+  const config = readMcpServersFile(configPath);
+  if (!config) return false;
+  return config.mcpServers[serverName] !== undefined;
+}
+
+export function installMcpServerInFile(
+  configPath: string,
+  serverName: string,
+  command: string[],
+): void {
+  const config = readMcpServersFile(configPath) ?? { mcpServers: {} };
+  config.mcpServers[serverName] = {
+    command: command[0],
+    args: command.slice(1),
+  };
+  writeMcpServersFile(configPath, config);
+}
+
+export function removeMcpServerFromFile(
+  configPath: string,
+  serverName: string,
+): void {
+  const config = readMcpServersFile(configPath);
+  if (!config) return;
+  if (config.mcpServers[serverName] === undefined) return;
+  delete config.mcpServers[serverName];
+  writeMcpServersFile(configPath, config);
+}
+
+/** Path to the project-level MCP config file for Cline. */
+function clineMcpPath(projectRoot: string): string {
+  return join(projectRoot, ".cline", "mcp.json");
+}
+
+/** Path to the project-level MCP config file for Cursor. */
+function cursorMcpPath(projectRoot: string): string {
+  return join(projectRoot, ".cursor", "mcp.json");
+}
+
+// ─── Cursor adapter (format / paths) ─────────────────────────────────────
+
+/**
+ * Cursor slash commands are plain markdown (no frontmatter); the filename
+ * is the command name. `$1` is the change-name argument.
+ */
+export function formatCursorCommand(meta: CommandMeta): string {
+  const body = transformToHyphenCommands(meta.body);
+  return `<!-- Change name: $1 (e.g. /opsx-${meta.id} my-change) -->
+
+${body}
+`;
+}
+
+export function getCursorCommandPath(id: string): string {
+  return join(".cursor", "commands", `opsx-${id}.md`);
+}
+
+export function getCursorSkillPath(id: string): string {
+  return join(".cursor", "skills", `opsx-${id}`, "SKILL.md");
+}
+
+/**
+ * Cursor Agent Skill — explicit invocation only (`disable-model-invocation`).
+ * No `$1` placeholders (those belong to the slash command file).
+ */
+export function formatCursorSkill(meta: CommandMeta): string {
+  const body = transformToHyphenCommands(meta.body);
+  const skillName = `opsx-${meta.id}`;
+  return `---
+name: ${escapeYamlValue(skillName)}
+description: ${escapeYamlValue(meta.description)}
+disable-model-invocation: true
+---
+
+${body}
+`;
+}
+
+export function hasCursor(projectRoot: string): boolean {
+  return existsSync(join(projectRoot, ".cursor"));
 }
 
 // ─── Registry ────────────────────────────────────────────────────────────
 
 const ADAPTERS: EditorAdapter[] = [
-  // claudeAdapter is declared further down (after the shared mcp helpers)
-  // We forward-define it after shared code; the registry is filled in
-  // by `registerAdapter` below. See the bottom of this file.
+  // Adapters are registered after const declarations at the bottom of this file.
 ];
 
-export function getAdapter(id: "claude" | "opencode" | "cline"): EditorAdapter | undefined {
+export function getAdapter(id: EditorId): EditorAdapter | undefined {
   return ADAPTERS.find((a) => a.id === id);
 }
 
@@ -330,9 +426,26 @@ function registerAdapter(adapter: EditorAdapter): void {
   ADAPTERS.push(adapter);
 }
 
+/** Slash-command hint for user-facing messages. */
+export function slashCommandForAdapter(adapter: EditorAdapter): string {
+  return adapter.id === "claude" ? "/opsx:e2e" : "/opsx-e2e";
+}
+
+/** Relative paths installCommand writes for this adapter + meta. */
+export function listCommandArtifactPaths(
+  adapter: EditorAdapter,
+  meta: CommandMeta,
+): string[] {
+  const paths = [adapter.commandFilePath(meta.id)];
+  for (const extra of adapter.extraArtifacts?.(meta) ?? []) {
+    paths.push(extra.relativePath);
+  }
+  return paths;
+}
+
 // ─── Install helpers ─────────────────────────────────────────────────────
 
-/** Install the command file for one adapter. */
+/** Install the command file (and optional extraArtifacts) for one adapter. */
 export function installCommand(
   adapter: EditorAdapter,
   meta: CommandMeta,
@@ -343,13 +456,20 @@ export function installCommand(
   mkdirSync(dirname(absPath), { recursive: true });
   writeFileSync(absPath, adapter.formatCommand(meta));
   console.log(chalk.green(`  ✓ ${adapter.label}: ${relPath}`));
+
+  for (const extra of adapter.extraArtifacts?.(meta) ?? []) {
+    const extraAbs = pathResolve(projectRoot, extra.relativePath);
+    mkdirSync(dirname(extraAbs), { recursive: true });
+    writeFileSync(extraAbs, extra.contents);
+    console.log(chalk.green(`  ✓ ${adapter.label}: ${extra.relativePath}`));
+  }
 }
 
 // ─── Project rules file (CLAUDE.md / AGENTS.md) ──────────────────────────
 
 /**
  * Install employee-grade standards into the editor's rules file
- * (CLAUDE.md for Claude, AGENTS.md for OpenCode and Cline). Wraps content in
+ * (CLAUDE.md for Claude, AGENTS.md for OpenCode, Cline, and Cursor). Wraps content in
  * `<!-- OPENSPEC:START -->` / `<!-- OPENSPEC:END -->` markers so future
  * updates can replace the block without touching the rest of the file.
  */
@@ -453,8 +573,8 @@ export function installClaudeWrapper(projectRoot: string): void {
  * AGENTS.md is always the single source of truth, regardless of which
  * editors are detected. If Claude is in use, a thin CLAUDE.md wrapper
  * with `@AGENTS.md` import is created so Claude loads AGENTS.md as
- * its project rules. Cline auto-detects AGENTS.md natively — no wrapper
- * needed.
+ * its project rules. Cline and Cursor auto-detect AGENTS.md natively — no
+ * wrapper needed.
  */
 export function installProjectRules(
   projectRoot: string,
@@ -629,24 +749,41 @@ export const clineAdapter: EditorAdapter = {
   // (AGENTS.md) is created by installProjectRules regardless of adapter.
   projectRulesPath: (root) => join(root, "AGENTS.md"),
   isMcpInstalled(projectRoot, serverName) {
-    const config = readClineMcpConfig(projectRoot);
-    if (!config) return false;
-    return config.mcpServers[serverName] !== undefined;
+    return isMcpServerInFile(clineMcpPath(projectRoot), serverName);
   },
   installMcp(projectRoot, serverName, command) {
-    const config = readClineMcpConfig(projectRoot) ?? { mcpServers: {} };
-    config.mcpServers[serverName] = {
-      command: command[0],
-      args: command.slice(1),
-    };
-    writeClineMcpConfig(projectRoot, config);
+    installMcpServerInFile(clineMcpPath(projectRoot), serverName, command);
   },
   removeMcp(projectRoot, serverName) {
-    const config = readClineMcpConfig(projectRoot);
-    if (!config) return;
-    if (config.mcpServers[serverName] === undefined) return;
-    delete config.mcpServers[serverName];
-    writeClineMcpConfig(projectRoot, config);
+    removeMcpServerFromFile(clineMcpPath(projectRoot), serverName);
+  },
+};
+
+export const cursorAdapter: EditorAdapter = {
+  id: "cursor",
+  label: "cursor",
+  displayName: "Cursor",
+  detect: hasCursor,
+  commandFilePath: getCursorCommandPath,
+  formatCommand: formatCursorCommand,
+  // Cursor auto-detects AGENTS.md — no .mdc wrapper needed.
+  projectRulesPath: (root) => join(root, "AGENTS.md"),
+  isMcpInstalled(projectRoot, serverName) {
+    return isMcpServerInFile(cursorMcpPath(projectRoot), serverName);
+  },
+  installMcp(projectRoot, serverName, command) {
+    installMcpServerInFile(cursorMcpPath(projectRoot), serverName, command);
+  },
+  removeMcp(projectRoot, serverName) {
+    removeMcpServerFromFile(cursorMcpPath(projectRoot), serverName);
+  },
+  extraArtifacts(meta) {
+    return [
+      {
+        relativePath: getCursorSkillPath(meta.id),
+        contents: formatCursorSkill(meta),
+      },
+    ];
   },
 };
 
@@ -654,3 +791,4 @@ export const clineAdapter: EditorAdapter = {
 registerAdapter(claudeAdapter);
 registerAdapter(opencodeAdapter);
 registerAdapter(clineAdapter);
+registerAdapter(cursorAdapter);

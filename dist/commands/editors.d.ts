@@ -18,8 +18,13 @@ export interface CommandMeta {
 }
 /** Build the command metadata for the /opsx:e2e command. */
 export declare function buildCommandMeta(body: string): CommandMeta;
+export type EditorId = "claude" | "opencode" | "cline" | "cursor";
+export interface ExtraArtifact {
+    relativePath: string;
+    contents: string;
+}
 export interface EditorAdapter {
-    id: "claude" | "opencode" | "cline";
+    id: EditorId;
     /** Short label used in log messages. */
     label: string;
     /** Human-readable name used in user-facing messages. */
@@ -40,6 +45,8 @@ export interface EditorAdapter {
     removeMcp(projectRoot: string, serverName: string): void;
     /** Optional: register project rules file path in editor config. */
     registerInstructions?(projectRoot: string, instructions: string[]): void;
+    /** Optional: secondary files written alongside commandFilePath (Cursor skill). */
+    extraArtifacts?(meta: CommandMeta): ExtraArtifact[];
 }
 export declare function formatClaudeCommand(meta: CommandMeta): string;
 export declare function getClaudeCommandPath(id: string): string;
@@ -60,13 +67,47 @@ export declare function hasOpenCode(projectRoot: string): boolean;
 export declare function formatClineCommand(meta: CommandMeta): string;
 export declare function getClineCommandPath(id: string): string;
 export declare function hasCline(projectRoot: string): boolean;
-export declare function getAdapter(id: "claude" | "opencode" | "cline"): EditorAdapter | undefined;
+export interface McpStdioServer {
+    command: string;
+    args: string[];
+}
+export type McpServersFile = Record<string, unknown> & {
+    mcpServers: Record<string, McpStdioServer>;
+};
+/**
+ * Read an MCP config file with a top-level `mcpServers` map, or null if
+ * missing/unparseable. Preserves unknown top-level fields.
+ */
+export declare function readMcpServersFile(configPath: string): McpServersFile | null;
+/** Write an MCP config file, creating parent directories if needed. */
+export declare function writeMcpServersFile(configPath: string, config: McpServersFile): void;
+export declare function isMcpServerInFile(configPath: string, serverName: string): boolean;
+export declare function installMcpServerInFile(configPath: string, serverName: string, command: string[]): void;
+export declare function removeMcpServerFromFile(configPath: string, serverName: string): void;
+/**
+ * Cursor slash commands are plain markdown (no frontmatter); the filename
+ * is the command name. `$1` is the change-name argument.
+ */
+export declare function formatCursorCommand(meta: CommandMeta): string;
+export declare function getCursorCommandPath(id: string): string;
+export declare function getCursorSkillPath(id: string): string;
+/**
+ * Cursor Agent Skill — explicit invocation only (`disable-model-invocation`).
+ * No `$1` placeholders (those belong to the slash command file).
+ */
+export declare function formatCursorSkill(meta: CommandMeta): string;
+export declare function hasCursor(projectRoot: string): boolean;
+export declare function getAdapter(id: EditorId): EditorAdapter | undefined;
 export declare function detectAdapters(projectRoot: string): EditorAdapter[];
-/** Install the command file for one adapter. */
+/** Slash-command hint for user-facing messages. */
+export declare function slashCommandForAdapter(adapter: EditorAdapter): string;
+/** Relative paths installCommand writes for this adapter + meta. */
+export declare function listCommandArtifactPaths(adapter: EditorAdapter, meta: CommandMeta): string[];
+/** Install the command file (and optional extraArtifacts) for one adapter. */
 export declare function installCommand(adapter: EditorAdapter, meta: CommandMeta, projectRoot: string): void;
 /**
  * Install employee-grade standards into the editor's rules file
- * (CLAUDE.md for Claude, AGENTS.md for OpenCode and Cline). Wraps content in
+ * (CLAUDE.md for Claude, AGENTS.md for OpenCode, Cline, and Cursor). Wraps content in
  * `<!-- OPENSPEC:START -->` / `<!-- OPENSPEC:END -->` markers so future
  * updates can replace the block without touching the rest of the file.
  */
@@ -89,8 +130,8 @@ export declare function installClaudeWrapper(projectRoot: string): void;
  * AGENTS.md is always the single source of truth, regardless of which
  * editors are detected. If Claude is in use, a thin CLAUDE.md wrapper
  * with `@AGENTS.md` import is created so Claude loads AGENTS.md as
- * its project rules. Cline auto-detects AGENTS.md natively — no wrapper
- * needed.
+ * its project rules. Cline and Cursor auto-detect AGENTS.md natively — no
+ * wrapper needed.
  */
 export declare function installProjectRules(projectRoot: string, standardsContent: string, detected: EditorAdapter[]): void;
 /** Remove all OpenSpec marker blocks from AGENTS.md (always) and CLAUDE.md (for claude adapter). */
@@ -100,3 +141,4 @@ export declare function readEmployeeStandards(srcPath: string): string;
 export declare const claudeAdapter: EditorAdapter;
 export declare const opencodeAdapter: EditorAdapter;
 export declare const clineAdapter: EditorAdapter;
+export declare const cursorAdapter: EditorAdapter;

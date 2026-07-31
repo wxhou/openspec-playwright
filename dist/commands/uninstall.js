@@ -1,28 +1,34 @@
 import { existsSync, rmSync, readdirSync, rmdirSync, } from "fs";
 import { join, dirname } from "path";
 import chalk from "chalk";
-import { cleanProjectRules, detectAdapters, } from "./editors.js";
+import { buildCommandMeta, cleanProjectRules, detectAdapters, listCommandArtifactPaths, } from "./editors.js";
 import { removePlaywrightMcp } from "../shared/index.js";
 export async function uninstall() {
     console.log(chalk.blue("\n🗑️  Uninstalling OpenSpec + Playwright E2E\n"));
     const projectRoot = process.cwd();
     const detected = detectAdapters(projectRoot);
+    // Body unused — only need paths from commandFilePath / extraArtifacts
+    const meta = buildCommandMeta("");
     // 1. Remove Playwright MCP for each detected editor
     console.log(chalk.blue("\n─── Removing Playwright MCP ───"));
     for (const adapter of detected) {
         removePlaywrightMcp(adapter);
     }
-    // 2. Remove E2E command file for each detected editor
+    // 2. Remove E2E command (+ extraArtifacts) for each detected editor
     console.log(chalk.blue("\n─── Removing E2E Commands ───"));
     for (const adapter of detected) {
-        const relPath = adapter.commandFilePath("e2e");
-        const absPath = join(projectRoot, relPath);
-        if (existsSync(absPath)) {
-            rmSync(absPath);
-            cleanupEmptyDirs(dirname(absPath), projectRoot);
-            console.log(chalk.green(`  ✓ ${adapter.label}: ${relPath}`));
+        const relPaths = listCommandArtifactPaths(adapter, meta);
+        let removedAny = false;
+        for (const relPath of relPaths) {
+            const absPath = join(projectRoot, relPath);
+            if (existsSync(absPath)) {
+                rmSync(absPath);
+                cleanupEmptyDirs(dirname(absPath), projectRoot);
+                console.log(chalk.green(`  ✓ ${adapter.label}: ${relPath}`));
+                removedAny = true;
+            }
         }
-        else {
+        if (!removedAny) {
             console.log(chalk.gray(`  - ${adapter.label}: E2E command not found, skipping`));
         }
     }

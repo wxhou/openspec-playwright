@@ -1,6 +1,6 @@
 # OpenSpec Playwright
 
-> OpenSpec + Playwright E2E verification setup tool for Claude Code, OpenCode, and Cline.
+> OpenSpec + Playwright E2E verification setup tool for Claude Code, OpenCode, Cline, and Cursor.
 
 A setup tool that integrates OpenSpec's spec-driven development with Playwright's three-agent test pipeline for automated E2E verification.
 
@@ -28,7 +28,7 @@ npx playwright install --with-deps
 # In Claude Code
 /opsx:e2e <change-name>
 
-# In OpenCode / Cline
+# In OpenCode / Cline / Cursor
 /opsx-e2e <change-name>
 ```
 

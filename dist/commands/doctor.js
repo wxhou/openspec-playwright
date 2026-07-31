@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import { join } from "path";
 import { execFileSync } from "child_process";
 import chalk from "chalk";
-import { detectAdapters } from "../commands/editors.js";
+import { detectAdapters, slashCommandForAdapter } from "../commands/editors.js";
 import { detectAppServer, isPlaywrightMcpInstalled, needsShell } from "../shared/index.js";
 export async function doctor(options = {}) {
     const checks = [];
@@ -187,7 +187,7 @@ export async function doctor(options = {}) {
             category: "Playwright MCP",
             name: "playwright-mcp",
             ok: false,
-            message: "no editors detected (configure .claude/, .opencode/, or .cline/)",
+            message: "no editors detected (configure .claude/, .opencode/, .cline/, or .cursor/)",
         });
     }
     else {
@@ -198,6 +198,30 @@ export async function doctor(options = {}) {
                 name: `playwright-mcp-${adapter.label}`,
                 ok: installed,
                 message: installed ? "installed" : `not configured for ${adapter.label}`,
+            });
+        }
+        // Cursor-specific: command + skill readiness (spec requirement)
+        const cursor = adapters.find((a) => a.id === "cursor");
+        if (cursor) {
+            const cmdPath = join(projectRoot, ".cursor", "commands", "opsx-e2e.md");
+            const skillPath = join(projectRoot, ".cursor", "skills", "opsx-e2e", "SKILL.md");
+            const hasCmd = existsSync(cmdPath);
+            const hasSkill = existsSync(skillPath);
+            checks.push({
+                category: "Cursor E2E",
+                name: "cursor-e2e-command",
+                ok: hasCmd,
+                message: hasCmd
+                    ? ".cursor/commands/opsx-e2e.md found"
+                    : ".cursor/commands/opsx-e2e.md missing",
+            });
+            checks.push({
+                category: "Cursor E2E",
+                name: "cursor-e2e-skill",
+                ok: hasSkill,
+                message: hasSkill
+                    ? ".cursor/skills/opsx-e2e/SKILL.md found"
+                    : ".cursor/skills/opsx-e2e/SKILL.md missing",
             });
         }
     }
@@ -290,10 +314,9 @@ export async function doctor(options = {}) {
         const detected = detectAdapters(process.cwd());
         const hints = detected.length
             ? detected.map((a) => {
-                const slash = a.id === "claude" ? "/opsx:e2e" : "/opsx-e2e";
-                return `${slash} (in ${a.displayName})`;
+                return `${slashCommandForAdapter(a)} (in ${a.displayName})`;
             })
-            : ["/opsx:e2e (in Claude Code, OpenCode, or Cline)"];
+            : ["/opsx:e2e (in Claude Code, OpenCode, Cline, or Cursor)"];
         console.log(chalk.gray(`  Run: ${hints.join("  or  ")} <change-name>\n`));
     }
     else {

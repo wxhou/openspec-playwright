@@ -4,7 +4,7 @@ import { join } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { readFile } from "fs/promises";
-import { buildCommandMeta, detectAdapters, installCommand, installProjectRules, readEmployeeStandards, } from "./editors.js";
+import { buildCommandMeta, detectAdapters, installCommand, installProjectRules, readEmployeeStandards, slashCommandForAdapter, } from "./editors.js";
 import { isPlaywrightMcpInstalled, ensurePlaywrightMcp, needsShell } from "../shared/index.js";
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
 const E2E_COMMAND_SRC = fileURLToPath(new URL("../../templates/e2e-command.md", import.meta.url));
@@ -42,11 +42,12 @@ export async function init(options) {
         return;
     }
     console.log(chalk.green("  ✓ OpenSpec initialized"));
-    // 3. Detect supported editors (.claude/ and/or .opencode/)
+    // 3. Detect supported editors (.claude/, .opencode/, .cline/, .cursor/)
     const detected = detectAdapters(projectRoot);
     if (detected.length === 0) {
-        console.log(chalk.yellow("\n  ⚠ No supported editor detected (need .claude/, .opencode/, or .cline/)."));
-        console.log(chalk.gray("  Run openspec-pw init from a Claude Code, OpenCode, or Cline project to install commands.\n"));
+        console.log(chalk.yellow("\n  ⚠ No supported editor detected (need .claude/, .opencode/, .cline/, or .cursor/)."));
+        console.log(chalk.gray("  Run openspec-pw init from a Claude Code, OpenCode, Cline, or Cursor project to install commands.\n"));
+        console.log(chalk.gray("  For Cursor without an existing .cursor/ dir: mkdir -p .cursor\n"));
         return;
     }
     console.log(chalk.gray(`  Detected: ${detected.map((a) => a.label).join(", ")}`));
@@ -75,8 +76,11 @@ export async function init(options) {
                     else if (adapter.id === "opencode") {
                         console.log(chalk.gray("    Add `playwright` to mcp in opencode.json / opencode.jsonc"));
                     }
-                    else {
+                    else if (adapter.id === "cline") {
                         console.log(chalk.gray("    Add `playwright` to mcpServers in .cline/mcp.json"));
+                    }
+                    else {
+                        console.log(chalk.gray("    Add `playwright` to mcpServers in .cursor/mcp.json"));
                     }
                     console.log(chalk.gray(`    (Restart ${adapter.label} to activate the MCP server)`));
                 }
@@ -123,13 +127,13 @@ export async function init(options) {
     console.log(chalk.gray("  4. Run auth setup: npx playwright test --project=setup"));
     console.log(chalk.gray("  5. Page objects: extend tests/playwright/pages/BasePage.ts for shared selectors"));
     for (const adapter of detected) {
-        const slashCmd = adapter.id === "claude" ? "/opsx:e2e" : "/opsx-e2e";
+        const slashCmd = slashCommandForAdapter(adapter);
         console.log(chalk.gray(`  • In ${adapter.label}, run: ${slashCmd} <change-name>`));
     }
     console.log(chalk.gray("  • Or: openspec-pw doctor to verify setup\n"));
     console.log(chalk.bold(`\n  Restart ${detected.map((a) => a.displayName).join(" + ")} to use the updated commands.`));
     console.log(chalk.bold("How it works:"));
-    console.log(chalk.gray("  /opsx:e2e (Claude), /opsx-e2e (OpenCode/Cline) read your OpenSpec specs"));
+    console.log(chalk.gray("  /opsx:e2e (Claude), /opsx-e2e (OpenCode/Cline/Cursor) read your OpenSpec specs"));
     console.log(chalk.gray("  and run Playwright E2E tests through a three-agent pipeline:"));
     console.log(chalk.gray("  Planner → Generator → Healer\n"));
 }

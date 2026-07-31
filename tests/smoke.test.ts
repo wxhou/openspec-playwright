@@ -67,6 +67,7 @@ const distExists = existsSync(distDir);
       claudeAdapter,
       opencodeAdapter,
       clineAdapter,
+      cursorAdapter,
       installCommand,
       buildCommandMeta,
       escapeYamlValue,
@@ -82,31 +83,44 @@ const distExists = existsSync(distDir);
     expect(typeof claudeAdapter).toBe("object");
     expect(typeof opencodeAdapter).toBe("object");
     expect(typeof clineAdapter).toBe("object");
+    expect(typeof cursorAdapter).toBe("object");
     expect(typeof installCommand).toBe("function");
     expect(typeof buildCommandMeta).toBe("function");
     expect(typeof escapeYamlValue).toBe("function");
   });
 
   it("installCommand writes the command file for each adapter", async () => {
-    const { claudeAdapter, opencodeAdapter, clineAdapter, installCommand, buildCommandMeta } =
-      await import("../dist/commands/editors.js");
+    const {
+      claudeAdapter,
+      opencodeAdapter,
+      clineAdapter,
+      cursorAdapter,
+      installCommand,
+      buildCommandMeta,
+    } = await import("../dist/commands/editors.js");
     const tmpDir = mkdtempSync(join(tmpdir(), "openspec-pw-smoke-"));
     try {
       installCommand(claudeAdapter, buildCommandMeta("hello"), tmpDir);
       installCommand(opencodeAdapter, buildCommandMeta("hello"), tmpDir);
       installCommand(clineAdapter, buildCommandMeta("hello"), tmpDir);
+      installCommand(cursorAdapter, buildCommandMeta("hello /opsx:e2e"), tmpDir);
       expect(existsSync(join(tmpDir, ".claude", "commands", "opsx", "e2e.md"))).toBe(true);
       expect(existsSync(join(tmpDir, ".opencode", "commands", "opsx-e2e.md"))).toBe(true);
       expect(existsSync(join(tmpDir, ".cline", "skills", "opsx-e2e", "SKILL.md"))).toBe(true);
+      expect(existsSync(join(tmpDir, ".cursor", "commands", "opsx-e2e.md"))).toBe(true);
+      expect(
+        existsSync(join(tmpDir, ".cursor", "skills", "opsx-e2e", "SKILL.md")),
+      ).toBe(true);
     } finally {
       rmSync(tmpDir, { recursive: true, force: true });
     }
   });
 
   it("hasClaudeCode detects Claude Code in project", async () => {
-    const { hasClaudeCode, hasCline } = await import("../dist/commands/editors.js");
+    const { hasClaudeCode, hasCline, hasCursor } = await import("../dist/commands/editors.js");
     expect(typeof hasClaudeCode(".")).toBe("boolean");
     expect(typeof hasCline(".")).toBe("boolean");
+    expect(typeof hasCursor(".")).toBe("boolean");
   });
 });
 

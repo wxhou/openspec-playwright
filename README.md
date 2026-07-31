@@ -26,6 +26,8 @@ openspec-pw init          # Install Playwright E2E integration
 
 **Cline** — E2E workflow is driven by the `/opsx-e2e` skill (installed as `.cline/skills/opsx-e2e/SKILL.md`) using the same browser exploration + Playwright MCP stack. Playwright MCP is configured in `.cline/mcp.json` under `mcpServers.playwright`. Cline auto-detects `AGENTS.md` as project rules — no wrapper file needed.
 
+**Cursor** — E2E workflow is dual-installed: slash command at `.cursor/commands/opsx-e2e.md` (plain markdown, `$1` = change name) and Agent Skill at `.cursor/skills/opsx-e2e/SKILL.md` (`disable-model-invocation: true`). Invoke `/opsx-e2e`. Playwright MCP is merged into `.cursor/mcp.json` under `mcpServers.playwright`. Cursor auto-detects `AGENTS.md`. Skill name is `opsx-e2e` (not OpenSpec’s `openspec-*` skill prefix). If you want Cursor support but have no `.cursor/` yet: `mkdir -p .cursor`.
+
 ## Usage
 
 ### In Claude Code
@@ -50,6 +52,13 @@ The command id is hyphenated per the OpenSpec convention; the body is rewritten 
 
 The skill is installed at `.cline/skills/opsx-e2e/SKILL.md` and triggered via the `/opsx-e2e` slash command. The body is rewritten from `/opsx:` to `/opsx-` during install.
 
+### In Cursor
+
+```bash
+/opsx-e2e <change-name>
+```
+
+Installed as `.cursor/commands/opsx-e2e.md` plus `.cursor/skills/opsx-e2e/SKILL.md`. The command body is plain markdown (no frontmatter); the skill uses `disable-model-invocation: true` so it only runs when invoked explicitly.
 ### CLI Commands
 
 ```bash
@@ -68,7 +77,7 @@ openspec-pw uninstall     # Remove integration from the project
 
 ```
 /opsx:e2e <change-name>          # Claude Code
-/opsx-e2e <change-name>          # OpenCode / Cline
+/opsx-e2e <change-name>          # OpenCode / Cline / Cursor
   │
   ├── 1. Select change → read openspec/changes/<name>/specs/
   │
@@ -104,12 +113,13 @@ openspec-pw uninstall     # Remove integration from the project
 **Required:**
 
 1. **Node.js >= 20**
-2. **Claude Code** (with `.claude/` directory) and/or **OpenCode** (with `.opencode/` directory) and/or **Cline** (with `.cline/` or `.clinerules/` directory)
+2. **Claude Code** (with `.claude/` directory) and/or **OpenCode** (with `.opencode/` directory) and/or **Cline** (with `.cline/` or `.clinerules/` directory) and/or **Cursor** (with `.cursor/` directory)
 3. **OpenSpec** initialized: `npm install -g @fission-ai/openspec@latest && openspec init`
 4. **Playwright MCP** (for test execution + Healer) — installed automatically by `openspec-pw init` for the detected editor:
    - **Claude Code**: `claude mcp add playwright npx @playwright/mcp@latest`
    - **OpenCode**: merged into `opencode.jsonc` under `mcp.playwright = { type: "local", command: ["npx", "@playwright/mcp@latest"] }`
    - **Cline**: merged into `.cline/mcp.json` under `mcpServers.playwright = { "command": "npx", "args": ["@playwright/mcp@latest"] }`
+   - **Cursor**: merged into `.cursor/mcp.json` under `mcpServers.playwright = { "command": "npx", "args": ["@playwright/mcp@latest"] }`
 
 **Optional** — enhance your AI coding assistant with Superpowers methodology:
 
@@ -123,8 +133,8 @@ Browser exploration is provided out of the box by Playwright MCP and `openspec-p
 
 ## What `openspec-pw init` Does
 
-1. Detects supported editors in the project (Claude Code and/or OpenCode and/or Cline)
-2. Installs the E2E command for each detected editor (`/opsx:e2e` for Claude Code, `/opsx-e2e` for OpenCode and Cline)
+1. Detects supported editors in the project (Claude Code and/or OpenCode and/or Cline and/or Cursor)
+2. Installs the E2E command for each detected editor (`/opsx:e2e` for Claude Code, `/opsx-e2e` for OpenCode, Cline, and Cursor; Cursor also gets an Agent Skill)
 3. Generates `tests/playwright/seed.spec.ts`, `auth.setup.ts`, `credentials.yaml`, `app-knowledge.md`, `pages/BasePage.ts`
 4. Generates `playwright.config.ts` with automatic dev script and port detection (Vite/Next/Nuxt/Astro, `.env`, and `--port`)
 
@@ -139,12 +149,12 @@ Run through these steps in order when using the E2E workflow for the first time:
 | 1. Install CLI | `npm install -g openspec-playwright@latest` | Check Node.js version `node -v` (needs >= 20) |
 | 2. Install OpenSpec | `npm install -g @fission-ai/openspec@latest && openspec init` | `npm cache clean -f && npm install -g @fission-ai/openspec@latest` |
 | 3. Initialize E2E | `openspec-pw init` | Run `openspec-pw doctor` to see what's missing |
-| 4. Install Playwright MCP | `claude mcp add playwright npx @playwright/mcp@latest` (Claude), or add `mcp.playwright` to `opencode.jsonc` (OpenCode) | `claude mcp list` (Claude) / `cat opencode.jsonc` (OpenCode) to confirm |
+| 4. Install Playwright MCP | `claude mcp add playwright npx @playwright/mcp@latest` (Claude), or add `mcp.playwright` to `opencode.jsonc` (OpenCode), or `mcpServers.playwright` in `.cline/mcp.json` / `.cursor/mcp.json` | `claude mcp list` (Claude) / `cat opencode.jsonc` (OpenCode) / `cat .cline/mcp.json` (Cline) / `cat .cursor/mcp.json` (Cursor) |
 | 5. Install browsers | `npx playwright install --with-deps` | macOS may need `xcode-select --install` first |
 | 6. Start dev server | `npm run dev` (in a separate terminal) | Confirm port, set `BASE_URL` if non-standard |
 | 7. Validate env | `npx playwright test tests/playwright/seed.spec.ts` | Check `webServer` in `playwright.config.ts` |
 | 8. Configure auth (if needed) | See "Authentication" below | Debug with `npx playwright test --project=setup` |
-| 9. Run first E2E | `/opsx:e2e <change-name>` (Claude) or `/opsx-e2e <change-name>` (OpenCode) | Check `openspec/reports/` for the report |
+| 9. Run first E2E | `/opsx:e2e <change-name>` (Claude) or `/opsx-e2e <change-name>` (OpenCode / Cline / Cursor) | Check `openspec/reports/` for the report |
 
 ### What `openspec-pw doctor` checks
 
@@ -216,7 +226,7 @@ npx playwright test --project=setup
 /opsx:e2e my-feature
 ```
 
-Supports **API login** (preferred) and **UI login** (fallback). For multi-user tests (admin vs user), add multiple users in `credentials.yaml` and run `/opsx:e2e` (or `/opsx-e2e` in OpenCode/Cline) — it auto-detects roles from specs.
+Supports **API login** (preferred) and **UI login** (fallback). For multi-user tests (admin vs user), add multiple users in `credentials.yaml` and run `/opsx:e2e` (or `/opsx-e2e` in OpenCode/Cline/Cursor) — it auto-detects roles from specs.
 
 ## Customization
 
@@ -260,14 +270,19 @@ Editors (auto-detected by openspec-pw init)
   │   ├── .opencode/commands/opsx-e2e.md → Command file (body rewritten from /opsx: → /opsx-)
   │   ├── opencode.jsonc                 → Playwright MCP (mcp.playwright) + instructions routing
   │   └── AGENTS.md                      → Employee-grade standards (SSOT)
-  └── Cline (/opsx-e2e)
-      ├── .cline/skills/opsx-e2e/SKILL.md → Skill file (body rewritten from /opsx: → /opsx-)
-      ├── .cline/mcp.json                 → Playwright MCP (mcpServers.playwright)
-      └── AGENTS.md                       → Employee-grade standards (auto-detected by Cline)
+  ├── Cline (/opsx-e2e)
+  │   ├── .cline/skills/opsx-e2e/SKILL.md → Skill file (body rewritten from /opsx: → /opsx-)
+  │   ├── .cline/mcp.json                 → Playwright MCP (mcpServers.playwright)
+  │   └── AGENTS.md                       → Employee-grade standards (auto-detected by Cline)
+  └── Cursor (/opsx-e2e)
+      ├── .cursor/commands/opsx-e2e.md    → Slash command (plain MD, $1 = change name)
+      ├── .cursor/skills/opsx-e2e/SKILL.md → Skill (disable-model-invocation: true)
+      ├── .cursor/mcp.json                → Playwright MCP (mcpServers.playwright)
+      └── AGENTS.md                       → Employee-grade standards (auto-detected by Cursor)
 
 Employee-grade standards live in **AGENTS.md** as the single source of truth. Claude Code
 loads them via a thin CLAUDE.md with `@AGENTS.md` import. OpenCode registers AGENTS.md in
-`opencode.jsonc` under `instructions`. Cline auto-detects `AGENTS.md` natively — no wrapper
+`opencode.jsonc` under `instructions`. Cline and Cursor auto-detect `AGENTS.md` natively — no wrapper
 file needed.
 
 Test Assets (tests/playwright/)
