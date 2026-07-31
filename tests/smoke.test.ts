@@ -66,6 +66,7 @@ const distExists = existsSync(distDir);
       hasClaudeCode,
       claudeAdapter,
       opencodeAdapter,
+      clineAdapter,
       installCommand,
       buildCommandMeta,
       escapeYamlValue,
@@ -80,28 +81,32 @@ const distExists = existsSync(distDir);
     expect(typeof hasClaudeCode).toBe("function");
     expect(typeof claudeAdapter).toBe("object");
     expect(typeof opencodeAdapter).toBe("object");
+    expect(typeof clineAdapter).toBe("object");
     expect(typeof installCommand).toBe("function");
     expect(typeof buildCommandMeta).toBe("function");
     expect(typeof escapeYamlValue).toBe("function");
   });
 
   it("installCommand writes the command file for each adapter", async () => {
-    const { claudeAdapter, opencodeAdapter, installCommand, buildCommandMeta } =
+    const { claudeAdapter, opencodeAdapter, clineAdapter, installCommand, buildCommandMeta } =
       await import("../dist/commands/editors.js");
     const tmpDir = mkdtempSync(join(tmpdir(), "openspec-pw-smoke-"));
     try {
       installCommand(claudeAdapter, buildCommandMeta("hello"), tmpDir);
       installCommand(opencodeAdapter, buildCommandMeta("hello"), tmpDir);
+      installCommand(clineAdapter, buildCommandMeta("hello"), tmpDir);
       expect(existsSync(join(tmpDir, ".claude", "commands", "opsx", "e2e.md"))).toBe(true);
       expect(existsSync(join(tmpDir, ".opencode", "commands", "opsx-e2e.md"))).toBe(true);
+      expect(existsSync(join(tmpDir, ".cline", "skills", "opsx-e2e", "SKILL.md"))).toBe(true);
     } finally {
       rmSync(tmpDir, { recursive: true, force: true });
     }
   });
 
   it("hasClaudeCode detects Claude Code in project", async () => {
-    const { hasClaudeCode } = await import("../dist/commands/editors.js");
+    const { hasClaudeCode, hasCline } = await import("../dist/commands/editors.js");
     expect(typeof hasClaudeCode(".")).toBe("boolean");
+    expect(typeof hasCline(".")).toBe("boolean");
   });
 });
 

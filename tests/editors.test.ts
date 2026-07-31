@@ -13,12 +13,15 @@ import {
   buildCommandMeta,
   claudeAdapter,
   cleanProjectRules,
+  clineAdapter,
   detectAdapters,
   escapeYamlValue,
   formatClaudeCommand,
+  formatClineCommand,
   formatOpenCodeCommand,
   formatTagsArray,
   getClaudeCommandPath,
+  getClineCommandPath,
   getOpenCodeCommandPath,
   hasClaudeCode,
   hasOpenCode,
@@ -572,6 +575,214 @@ describe("opencodeAdapter registerInstructions", () => {
   });
 });
 
+// ─── clineAdapter ────────────────────────────────────────────────────────────
+
+describe("clineAdapter", () => {
+  it("has correct metadata", () => {
+    expect(clineAdapter.id).toBe("cline");
+    expect(clineAdapter.displayName).toBe("Cline");
+  });
+
+  it("detects .cline/ directory", () => {
+    mkdirSync(join(tmpRoot, ".cline"));
+    expect(clineAdapter.detect(tmpRoot)).toBe(true);
+  });
+
+  it("detects .clinerules/ directory (legacy)", () => {
+    mkdirSync(join(tmpRoot, ".clinerules"));
+    expect(clineAdapter.detect(tmpRoot)).toBe(true);
+  });
+
+  it("does not detect when neither directory exists", () => {
+    expect(clineAdapter.detect(tmpRoot)).toBe(false);
+  });
+});
+
+// ─── getClineCommandPath / formatClineCommand ────────────────────────────────
+
+describe("getClineCommandPath", () => {
+  it("returns .cline/skills/opsx-<id>/SKILL.md", () => {
+    expect(getClineCommandPath("e2e")).toBe(
+      join(".cline", "skills", "opsx-e2e", "SKILL.md"),
+    );
+  });
+});
+
+describe("formatClineCommand", () => {
+  const meta = buildCommandMeta("Run /opsx:e2e now");
+
+  it("emits YAML frontmatter with name and description", () => {
+    const out = formatClineCommand(meta);
+    expect(out).toContain("---");
+    expect(out).toContain("name: opsx-e2e");
+    expect(out).toContain(`description: ${meta.description}`);
+  });
+
+  it("rewrites /opsx: to /opsx- in the body (hyphenated)", () => {
+    const out = formatClineCommand(meta);
+    expect(out).toContain("/opsx-e2e");
+    expect(out).not.toContain("/opsx:");
+  });
+
+  it("uses the skill name derived from the command id", () => {
+    const out = formatClineCommand(meta);
+    // Skill name = directory name = opsx-<id>
+    expect(out).toMatch(/^name: opsx-e2e$/m);
+  });
+});
+
+// ─── clineAdapter MCP (.cline/mcp.json) ─────────────────────────────────────
+
+describe("clineAdapter MCP", () => {
+  it("isMcpInstalled returns false when .cline/mcp.json does not exist", () => {
+    expect(clineAdapter.isMcpInstalled(tmpRoot, "playwright")).toBe(false);
+  });
+
+  it("installMcp creates .cline/mcp.json with mcpServers structure", () => {
+    clineAdapter.installMcp(tmpRoot, "playwright", [
+      "npx",
+      "@playwright/mcp@latest",
+    ]);
+
+    const cfg = JSON.parse(
+      readFileSync(join(tmpRoot, ".cline", "mcp.json"), "utf-8"),
+    );
+    expect(cfg.mcpServers.playwright).toEqual({
+      command: "npx",
+      args: ["@playwright/mcp@latest"],
+    });
+  });
+
+  it("isMcpInstalled returns true after installMcp", () => {
+    clineAdapter.installMcp(tmpRoot, "playwright", ["npx", "pw-mcp"]);
+    expect(clineAdapter.isMcpInstalled(tmpRoot, "playwright")).toBe(true);
+  });
+
+  it("installMcp preserves existing servers in mcpServers", () => {
+    clineAdapter.installMcp(tmpRoot, "other", ["echo", "hi"]);
+    clineAdapter.installMcp(tmpRoot, "playwright", ["npx", "pw-mcp"]);
+
+    const cfg = JSON.parse(
+      readFileSync(join(tmpRoot, ".cline", "mcp.json"), "utf-8"),
+    );
+    expect(cfg.mcpServers.other).toEqual({ command: "echo", args: ["hi"] });
+    expect(cfg.mcpServers.playwright).toEqual({
+      command: "npx",
+      args: ["pw-mcp"],
+    });
+  });
+
+  it("installMcp preserves unknown top-level fields in mcp.json", () => {
+    mkdirSync(join(tmpRoot, ".cline"), { recursive: true });
+    writeFileSync(
+      join(tmpRoot, ".cline", "mcp.json"),
+      JSON.stringify(
+        { mcpServers: {}, customField: "preserve me", version: 2 },
+        null,
+        2,
+      ),
+    );
+
+    clineAdapter.installMcp(tmpRoot, "playwright", ["npx", "pw-mcp"]);
+
+    const cfg = JSON.parse(
+      readFileSync(join(tmpRoot, ".cline", "mcp.json"), "utf-8"),
+    );
+    expect(cfg.mcpServers.playwright).toEqual({
+      command: "npx",
+      args: ["pw-mcp"],
+    });
+    expect(cfg.customField).toBe("preserve me");
+    expect(cfg.version).toBe(2);
+  });
+
+  it("removeMcp preserves unknown top-level fields in mcp.json", () => {
+    mkdirSync(join(tmpRoot, ".cline"), { recursive: true });
+    writeFileSync(
+      join(tmpRoot, ".cline", "mcp.json"),
+      JSON.stringify(
+        {
+          mcpServers: { playwright: { command: "npx", args: ["pw"] } },
+          customField: "preserve me",
+        },
+        null,
+        2,
+      ),
+    );
+
+    clineAdapter.removeMcp(tmpRoot, "playwright");
+
+    const cfg = JSON.parse(
+      readFileSync(join(tmpRoot, ".cline", "mcp.json"), "utf-8"),
+    );
+    expect(cfg.mcpServers.playwright).toBeUndefined();
+    expect(cfg.customField).toBe("preserve me");
+  });
+
+  it("removeMcp removes only the named server", () => {
+    clineAdapter.installMcp(tmpRoot, "playwright", ["npx", "pw"]);
+    clineAdapter.installMcp(tmpRoot, "other", ["echo", "hi"]);
+
+    clineAdapter.removeMcp(tmpRoot, "playwright");
+
+    const cfg = JSON.parse(
+      readFileSync(join(tmpRoot, ".cline", "mcp.json"), "utf-8"),
+    );
+    expect(cfg.mcpServers.playwright).toBeUndefined();
+    expect(cfg.mcpServers.other).toEqual({ command: "echo", args: ["hi"] });
+  });
+
+  it("removeMcp is a no-op when server is not present", () => {
+    clineAdapter.installMcp(tmpRoot, "other", ["echo", "hi"]);
+    // Should not throw
+    expect(() => clineAdapter.removeMcp(tmpRoot, "playwright")).not.toThrow();
+
+    const cfg = JSON.parse(
+      readFileSync(join(tmpRoot, ".cline", "mcp.json"), "utf-8"),
+    );
+    expect(cfg.mcpServers.other).toEqual({ command: "echo", args: ["hi"] });
+  });
+
+  it("removeMcp is a no-op when mcp.json does not exist", () => {
+    expect(() => clineAdapter.removeMcp(tmpRoot, "playwright")).not.toThrow();
+  });
+
+  it("isMcpInstalled returns false when mcp.json is unparseable", () => {
+    mkdirSync(join(tmpRoot, ".cline"), { recursive: true });
+    writeFileSync(join(tmpRoot, ".cline", "mcp.json"), "{ invalid json");
+    expect(clineAdapter.isMcpInstalled(tmpRoot, "playwright")).toBe(false);
+  });
+
+  it("installMcp overwrites an existing server entry", () => {
+    clineAdapter.installMcp(tmpRoot, "playwright", ["npx", "old"]);
+    clineAdapter.installMcp(tmpRoot, "playwright", ["npx", "new"]);
+
+    const cfg = JSON.parse(
+      readFileSync(join(tmpRoot, ".cline", "mcp.json"), "utf-8"),
+    );
+    expect(cfg.mcpServers.playwright).toEqual({
+      command: "npx",
+      args: ["new"],
+    });
+  });
+});
+
+// ─── installCommand (Cline) ──────────────────────────────────────────────────
+
+describe("installCommand (Cline)", () => {
+  it("writes SKILL.md to .cline/skills/opsx-e2e/", () => {
+    const meta = buildCommandMeta("Do the E2E thing with /opsx:e2e");
+    installCommand(clineAdapter, meta, tmpRoot);
+
+    const skillPath = join(tmpRoot, ".cline", "skills", "opsx-e2e", "SKILL.md");
+    expect(existsSync(skillPath)).toBe(true);
+    const content = readFileSync(skillPath, "utf-8");
+    expect(content).toContain("name: opsx-e2e");
+    expect(content).toContain("/opsx-e2e");
+    expect(content).not.toContain("/opsx:");
+  });
+});
+
 // ─── cleanProjectRules ───────────────────────────────────────────────────────
 // Covers both the public cleanProjectRules routing AND the private
 // removeMarkersFromFile helper (exercised through the public API).
@@ -683,16 +894,70 @@ describe("cleanProjectRules", () => {
       `# Just a project file\n`,
     );
   });
+
+  it("clineAdapter: removes markers from AGENTS.md but does not create CLAUDE.md", () => {
+    writeFileSync(
+      join(tmpRoot, "AGENTS.md"),
+      `# Project\n\n${MARKER_BLOCK("standards body")}\n`,
+    );
+    cleanProjectRules(clineAdapter, tmpRoot);
+    // AGENTS.md markers must be removed.
+    const after = readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8");
+    expect(after).not.toContain("OPENSPEC:START");
+    expect(after).toContain("# Project");
+    // CLAUDE.md must NOT be created — Cline auto-detects AGENTS.md natively.
+    expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(false);
+  });
+});
+
+// ─── installProjectRules ─────────────────────────────────────────────────────
+
+describe("installProjectRules", () => {
+  const STANDARDS = "Employee-grade standards content";
+
+  it("creates AGENTS.md when Cline is detected", () => {
+    mkdirSync(join(tmpRoot, ".cline"));
+    const detected = detectAdapters(tmpRoot);
+    installProjectRules(tmpRoot, STANDARDS, detected);
+    expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(true);
+    const content = readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8");
+    expect(content).toContain("OPENSPEC:START");
+    expect(content).toContain(STANDARDS);
+  });
+
+  it("creates AGENTS.md but NOT CLAUDE.md when Cline is the only detected editor", () => {
+    mkdirSync(join(tmpRoot, ".cline"));
+    const detected = detectAdapters(tmpRoot);
+    installProjectRules(tmpRoot, STANDARDS, detected);
+    // AGENTS.md must exist (SSOT).
+    expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(true);
+    // CLAUDE.md must NOT exist — Cline auto-detects AGENTS.md natively.
+    expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(false);
+  });
+
+  it("creates AGENTS.md + CLAUDE.md when both Cline and Claude are detected", () => {
+    mkdirSync(join(tmpRoot, ".claude"));
+    mkdirSync(join(tmpRoot, ".cline"));
+    const detected = detectAdapters(tmpRoot);
+    installProjectRules(tmpRoot, STANDARDS, detected);
+    // Both files must exist.
+    expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(true);
+    expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(true);
+    // CLAUDE.md must contain the @AGENTS.md import.
+    const claude = readFileSync(join(tmpRoot, "CLAUDE.md"), "utf-8");
+    expect(claude).toContain("@AGENTS.md");
+  });
 });
 
 // ─── detectAdapters ─────────────────────────────────────────────────────────
 
 describe("detectAdapters", () => {
-  it("returns both adapters when .claude and .opencode both exist", () => {
+  it("returns all three adapters when .claude, .opencode, and .cline all exist", () => {
     mkdirSync(join(tmpRoot, ".claude"));
     mkdirSync(join(tmpRoot, ".opencode"));
+    mkdirSync(join(tmpRoot, ".cline"));
     const adapters = detectAdapters(tmpRoot);
-    expect(adapters.map((a) => a.id).sort()).toEqual(["claude", "opencode"]);
+    expect(adapters.map((a) => a.id).sort()).toEqual(["claude", "cline", "opencode"]);
   });
 
   it("returns [claude] when only .claude exists", () => {
@@ -707,7 +972,19 @@ describe("detectAdapters", () => {
     expect(adapters.map((a) => a.id)).toEqual(["opencode"]);
   });
 
-  it("returns [] when neither .claude nor .opencode exists", () => {
+  it("returns [cline] when only .cline exists", () => {
+    mkdirSync(join(tmpRoot, ".cline"));
+    const adapters = detectAdapters(tmpRoot);
+    expect(adapters.map((a) => a.id)).toEqual(["cline"]);
+  });
+
+  it("returns [cline] when only .clinerules exists (legacy)", () => {
+    mkdirSync(join(tmpRoot, ".clinerules"));
+    const adapters = detectAdapters(tmpRoot);
+    expect(adapters.map((a) => a.id)).toEqual(["cline"]);
+  });
+
+  it("returns [] when no editor directory exists", () => {
     const adapters = detectAdapters(tmpRoot);
     expect(adapters).toEqual([]);
   });

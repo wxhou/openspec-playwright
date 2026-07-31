@@ -19,7 +19,7 @@ export interface CommandMeta {
 /** Build the command metadata for the /opsx:e2e command. */
 export declare function buildCommandMeta(body: string): CommandMeta;
 export interface EditorAdapter {
-    id: "claude" | "opencode";
+    id: "claude" | "opencode" | "cline";
     /** Short label used in log messages. */
     label: string;
     /** Human-readable name used in user-facing messages. */
@@ -47,13 +47,26 @@ export declare function hasClaudeCode(projectRoot: string): boolean;
 export declare function formatOpenCodeCommand(meta: CommandMeta): string;
 export declare function getOpenCodeCommandPath(id: string): string;
 export declare function hasOpenCode(projectRoot: string): boolean;
-export declare function getAdapter(id: "claude" | "opencode"): EditorAdapter | undefined;
+/**
+ * Cline stores project-level config in `.cline/` (skills/, rules/, mcp.json).
+ * `.clinerules/` is the legacy rules-only directory, still auto-detected.
+ *
+ * Conventions follow the Cline documentation (2026):
+ *   - Skills:   `.cline/skills/<name>/SKILL.md` with YAML frontmatter
+ *                (name + description). Triggered via `/<name>` slash command.
+ *   - MCP:      `.cline/mcp.json` with `{ "mcpServers": { ... } }` structure.
+ *   - Rules:    Cline auto-detects `AGENTS.md` — no wrapper file needed.
+ */
+export declare function formatClineCommand(meta: CommandMeta): string;
+export declare function getClineCommandPath(id: string): string;
+export declare function hasCline(projectRoot: string): boolean;
+export declare function getAdapter(id: "claude" | "opencode" | "cline"): EditorAdapter | undefined;
 export declare function detectAdapters(projectRoot: string): EditorAdapter[];
 /** Install the command file for one adapter. */
 export declare function installCommand(adapter: EditorAdapter, meta: CommandMeta, projectRoot: string): void;
 /**
  * Install employee-grade standards into the editor's rules file
- * (CLAUDE.md for Claude, AGENTS.md for OpenCode). Wraps content in
+ * (CLAUDE.md for Claude, AGENTS.md for OpenCode and Cline). Wraps content in
  * `<!-- OPENSPEC:START -->` / `<!-- OPENSPEC:END -->` markers so future
  * updates can replace the block without touching the rest of the file.
  */
@@ -76,7 +89,8 @@ export declare function installClaudeWrapper(projectRoot: string): void;
  * AGENTS.md is always the single source of truth, regardless of which
  * editors are detected. If Claude is in use, a thin CLAUDE.md wrapper
  * with `@AGENTS.md` import is created so Claude loads AGENTS.md as
- * its project rules.
+ * its project rules. Cline auto-detects AGENTS.md natively — no wrapper
+ * needed.
  */
 export declare function installProjectRules(projectRoot: string, standardsContent: string, detected: EditorAdapter[]): void;
 /** Remove all OpenSpec marker blocks from AGENTS.md (always) and CLAUDE.md (for claude adapter). */
@@ -85,3 +99,4 @@ export declare function cleanProjectRules(adapter: EditorAdapter, projectRoot: s
 export declare function readEmployeeStandards(srcPath: string): string;
 export declare const claudeAdapter: EditorAdapter;
 export declare const opencodeAdapter: EditorAdapter;
+export declare const clineAdapter: EditorAdapter;

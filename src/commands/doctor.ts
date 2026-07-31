@@ -202,7 +202,7 @@ export async function doctor(options: DoctorOptions = {}) {
       category: "Playwright MCP",
       name: "playwright-mcp",
       ok: false,
-      message: "no editors detected (configure .claude/ or .opencode/)",
+      message: "no editors detected (configure .claude/, .opencode/, or .cline/)",
     });
   } else {
     for (const adapter of adapters) {
@@ -319,7 +319,7 @@ export async function doctor(options: DoctorOptions = {}) {
           const slash = a.id === "claude" ? "/opsx:e2e" : "/opsx-e2e";
           return `${slash} (in ${a.displayName})`;
         })
-      : ["/opsx:e2e (in Claude Code) or /opsx-e2e (in OpenCode)"];
+      : ["/opsx:e2e (in Claude Code, OpenCode, or Cline)"];
     console.log(chalk.gray(`  Run: ${hints.join("  or  ")} <change-name>\n`));
   } else {
     console.log(chalk.red("  ❌ Some prerequisites are missing\n"));

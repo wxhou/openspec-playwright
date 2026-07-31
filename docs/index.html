@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OpenSpec Playwright: AI-Driven E2E Testing for OpenSpec Projects</title>
-<meta name="description" content="自动化 E2E 测试框架，专为 OpenSpec 规范驱动开发设计。AI 生成测试、Healer 自愈、Claude Code 一键执行。">
+<meta name="description" content="自动化 E2E 测试框架，专为 OpenSpec 规范驱动开发设计。AI 生成测试、Healer 自愈、Claude Code、OpenCode 和 Cline 一键执行。">
 <meta property="og:title" content="OpenSpec Playwright">
 <meta property="og:description" content="AI-Driven E2E Testing for OpenSpec Projects">
 <meta property="og:type" content="website">
@@ -78,8 +78,8 @@
     <span class="hero-title-en" style="display:none;">AI Development Loop,<br><em>From Spec to Test, Automated</em></span>
   </h1>
   <p class="hero-desc anim anim-2">
-    <span class="hero-desc-zh">OpenSpec Playwright 将 OpenSpec 规范自动转化为 Playwright E2E 测试。AI 生成测试用例、Healer 自动修复选择器、Claude Code 和 OpenCode 一键执行。告别手动维护测试，专注于真正重要的代码。</span>
-    <span class="hero-desc-en" style="display:none;">OpenSpec Playwright transforms OpenSpec specs into Playwright E2E tests automatically. AI generates test cases, Healer auto-fixes selectors, Claude Code and OpenCode execute with one command. Say goodbye to manual test maintenance.</span>
+    <span class="hero-desc-zh">OpenSpec Playwright 将 OpenSpec 规范自动转化为 Playwright E2E 测试。AI 生成测试用例、Healer 自动修复选择器、Claude Code、OpenCode 和 Cline 一键执行。告别手动维护测试，专注于真正重要的代码。</span>
+    <span class="hero-desc-en" style="display:none;">OpenSpec Playwright transforms OpenSpec specs into Playwright E2E tests automatically. AI generates test cases, Healer auto-fixes selectors, Claude Code, OpenCode, and Cline execute with one command. Say goodbye to manual test maintenance.</span>
   </p>
   <div class="hero-actions anim anim-3">
     <a href="#quickstart" class="btn btn-primary"><span class="quickstart-zh">快速开始</span><span class="quickstart-en" style="display:none;">Quick Start</span></a>
@@ -344,12 +344,12 @@
   <div class="section-header anim">
     <div class="section-label">AI Coding Assistants</div>
     <h2 class="section-title">
-      <span class="section-title-zh">原生支持两种 AI 编码助手</span>
-      <span class="section-title-en" style="display:none;">Native Support for Two AI Coding Assistants</span>
+      <span class="section-title-zh">原生支持三种 AI 编码助手</span>
+      <span class="section-title-en" style="display:none;">Native Support for Three AI Coding Assistants</span>
     </h2>
     <p class="section-desc">
-      <span class="section-desc-zh">自动检测项目中的编辑器，按编辑器命名规范安装对应的命令。Claude Code 与 OpenCode 平起平坐，享受同一套 E2E 管线。</span>
-      <span class="section-desc-en" style="display:none;">Auto-detects editors in your project and installs the appropriate command. Claude Code and OpenCode are first-class citizens on the same E2E pipeline.</span>
+      <span class="section-desc-zh">自动检测项目中的编辑器，按编辑器命名规范安装对应的命令。Claude Code、OpenCode 和 Cline 平起平坐，享受同一套 E2E 管线。</span>
+      <span class="section-desc-en" style="display:none;">Auto-detects editors in your project and installs the appropriate command. Claude Code, OpenCode, and Cline are first-class citizens on the same E2E pipeline.</span>
     </p>
   </div>
 
@@ -373,8 +373,6 @@
       </ul>
     </div>
 
-    <div class="editor-vs">or</div>
-
     <div class="editor-card">
       <div class="editor-icon">
         <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -392,6 +390,26 @@
         <li><span class="check">✓</span> <code>.opencode/commands/</code> install (hyphenated)</li>
         <li><span class="check">✓</span> Playwright MCP via <code>opencode.jsonc</code></li>
         <li><span class="check">✓</span> <code>AGENTS.md</code> + <code>opencode.jsonc.instructions</code></li>
+      </ul>
+    </div>
+
+    <div class="editor-card">
+      <div class="editor-icon">
+        <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="16" cy="16" r="14" fill="#6366f1" fill-opacity="0.12"/>
+          <path d="M10 20 L14 12 L18 16 L22 8" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <circle cx="22" cy="8" r="2" fill="#6366f1" fill-opacity="0.6"/>
+        </svg>
+      </div>
+      <div class="editor-name">Cline</div>
+      <div class="editor-vendor">Cline</div>
+      <div class="editor-cmd">
+        <code>/opsx-e2e</code> <span class="editor-arg">&lt;name&gt;</span>
+      </div>
+      <ul class="editor-features">
+        <li><span class="check">✓</span> <code>.cline/skills/</code> skill installation</li>
+        <li><span class="check">✓</span> Playwright MCP via <code>.cline/mcp.json</code></li>
+        <li><span class="check">✓</span> <code>AGENTS.md</code> auto-detected natively</li>
       </ul>
     </div>
   </div>
@@ -437,7 +455,7 @@
         openspec-playwright
       </div>
       <div class="prereq-cmd">npm install -g openspec-playwright@latest && openspec-pw init</div>
-      <div class="prereq-role"><span class="prereq-role-zh">Claude Code 用 <code>/opsx:e2e</code>，OpenCode 用 <code>/opsx-e2e</code></span><span class="prereq-role-en" style="display:none;"><code>/opsx:e2e</code> for Claude Code, <code>/opsx-e2e</code> for OpenCode</span></div>
+      <div class="prereq-role"><span class="prereq-role-zh">Claude Code 用 <code>/opsx:e2e</code>，OpenCode 和 Cline 用 <code>/opsx-e2e</code></span><span class="prereq-role-en" style="display:none;"><code>/opsx:e2e</code> for Claude Code, <code>/opsx-e2e</code> for OpenCode and Cline</span></div>
     </div>
     <div class="prereq-card">
       <div class="prereq-card-title">
@@ -445,7 +463,7 @@
         Playwright MCP
       </div>
       <div class="prereq-cmd">claude mcp add playwright npx @playwright/mcp@latest</div>
-      <div class="prereq-role"><span class="prereq-role-zh">测试执行 + Healer 自愈。OpenCode：在 <code>opencode.jsonc</code> 的 <code>mcp.playwright</code> 中配置</span><span class="prereq-role-en" style="display:none;">Test execution + Healer. OpenCode: configure via <code>mcp.playwright</code> in <code>opencode.jsonc</code></span></div>
+      <div class="prereq-role"><span class="prereq-role-zh">测试执行 + Healer 自愈。OpenCode：在 <code>opencode.jsonc</code> 的 <code>mcp.playwright</code> 中配置；Cline：在 <code>.cline/mcp.json</code> 的 <code>mcpServers</code> 中配置</span><span class="prereq-role-en" style="display:none;">Test execution + Healer. OpenCode: configure via <code>mcp.playwright</code> in <code>opencode.jsonc</code>; Cline: configure via <code>mcpServers</code> in <code>.cline/mcp.json</code></span></div>
     </div>
   </div>
 
@@ -527,7 +545,7 @@
             <span class="step-name"><span class="step-name-zh">E2E 测试生成与执行</span><span class="step-name-en" style="display:none;">E2E Test Generation & Execution</span></span>
             <span class="step-badge badge-required"><span class="badge-zh">必需</span><span class="badge-en" style="display:none;">Required</span></span>
           </div>
-          <div class="step-desc"><span class="step-desc-zh">Claude Code 用 <code>/opsx:e2e</code> 或 OpenCode 用 <code>/opsx-e2e</code> 生成测试 → 浏览器探索 → Healer 修复。</span><span class="step-desc-en" style="display:none;">Run <code>/opsx:e2e</code> in Claude Code or <code>/opsx-e2e</code> in OpenCode → generates tests → browser exploration → Healer fixes.</span></div>
+          <div class="step-desc"><span class="step-desc-zh">Claude Code 用 <code>/opsx:e2e</code>，OpenCode 和 Cline 用 <code>/opsx-e2e</code> 生成测试 → 浏览器探索 → Healer 修复。</span><span class="step-desc-en" style="display:none;">Run <code>/opsx:e2e</code> in Claude Code or <code>/opsx-e2e</code> in OpenCode/Cline → generates tests → browser exploration → Healer fixes.</span></div>
           <div class="step-tags">
             <span class="step-tag tag-openspec">opsx:e2e</span>
             <span class="step-tag tag-opencode">opsx-e2e</span>
@@ -594,7 +612,7 @@
         </div>
         <div class="sidebar-stat">
           <span class="sidebar-stat-label"><span class="stat-zh">支持的编辑器</span><span class="stat-en" style="display:none;">Editors</span></span>
-          <span class="sidebar-stat-value">Claude Code · OpenCode</span>
+          <span class="sidebar-stat-value">Claude Code · OpenCode · Cline</span>
         </div>
         <div class="sidebar-stat">
           <span class="sidebar-stat-label">OpenSpec 阶段</span>
@@ -726,7 +744,7 @@
           <div><span class="terminal-comment"># In Claude Code:</span></div>
           <div><span class="terminal-prompt">$</span><span class="terminal-cmd">/opsx:e2e</span> <span class="terminal-accent">&lt;change-name&gt;</span></div>
           <div class="terminal-divider"></div>
-          <div><span class="terminal-comment"># In OpenCode:</span></div>
+          <div><span class="terminal-comment"># In OpenCode or Cline:</span></div>
           <div><span class="terminal-prompt">$</span><span class="terminal-cmd">/opsx-e2e</span> <span class="terminal-accent">&lt;change-name&gt;</span></div>
           <div class="terminal-divider"></div>
           <div><span class="terminal-comment"># Auto: read specs → explore → generate tests</span></div>

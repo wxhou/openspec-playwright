@@ -1,7 +1,7 @@
 /**
  * Editor adapter layer.
  *
- * Both Claude Code and OpenCode can host the /opsx:e2e command, plus a
+ * Both Claude Code, OpenCode, and Cline can host the /opsx:e2e command, plus a
  * project-level rules file (CLAUDE.md / AGENTS.md) and an MCP server
  * definition. Each editor has its own conventions — file path, frontmatter
  * shape, MCP install mechanism — so this module exposes a single
@@ -13,6 +13,8 @@
  *   - OpenCode: `.opencode/commands/opsx-<id>.md`, description-only
  *              frontmatter, edits `opencode.json(c)`, reads files listed
  *              under `instructions` (CLAUDE.md is a built-in fallback).
+ *   - Cline:   `.cline/skills/opsx-<id>/SKILL.md`, name+description
+ *              frontmatter, edits `.cline/mcp.json`, auto-detects AGENTS.md.
  */
 import { existsSync, mkdirSync, rmSync, writeFileSync, readFileSync, } from "fs";
 import { execFileSync } from "node:child_process";
@@ -155,6 +157,70 @@ function readOpenCodeInstructions(projectRoot) {
     }
     return undefined;
 }
+// ─── Cline adapter ───────────────────────────────────────────────────────
+/**
+ * Cline stores project-level config in `.cline/` (skills/, rules/, mcp.json).
+ * `.clinerules/` is the legacy rules-only directory, still auto-detected.
+ *
+ * Conventions follow the Cline documentation (2026):
+ *   - Skills:   `.cline/skills/<name>/SKILL.md` with YAML frontmatter
+ *                (name + description). Triggered via `/<name>` slash command.
+ *   - MCP:      `.cline/mcp.json` with `{ "mcpServers": { ... } }` structure.
+ *   - Rules:    Cline auto-detects `AGENTS.md` — no wrapper file needed.
+ */
+export function formatClineCommand(meta) {
+    const body = transformToHyphenCommands(meta.body);
+    const skillName = `opsx-${meta.id}`;
+    return `---
+name: ${escapeYamlValue(skillName)}
+description: ${escapeYamlValue(meta.description)}
+---
+
+${body}
+`;
+}
+export function getClineCommandPath(id) {
+    return join(".cline", "skills", `opsx-${id}`, "SKILL.md");
+}
+export function hasCline(projectRoot) {
+    return (existsSync(join(projectRoot, ".cline")) ||
+        existsSync(join(projectRoot, ".clinerules")));
+}
+/** Path to the project-level MCP config file for Cline. */
+function clineMcpPath(projectRoot) {
+    return join(projectRoot, ".cline", "mcp.json");
+}
+/**
+ * Read `.cline/mcp.json`, or null if missing/unparseable.
+ *
+ * Preserves the **entire** raw JSON object (including unknown top-level fields
+ * that Cline may add in future versions) — only the `mcpServers` sub-object
+ * is typed. This prevents `installMcp`/`removeMcp` from silently dropping
+ * fields the user or Cline itself may have added.
+ */
+function readClineMcpConfig(projectRoot) {
+    const p = clineMcpPath(projectRoot);
+    if (!existsSync(p))
+        return null;
+    try {
+        const raw = JSON.parse(readFileSync(p, "utf-8"));
+        if (raw.mcpServers && typeof raw.mcpServers === "object") {
+            return raw;
+        }
+        // mcpServers missing or not an object — initialise it, preserving other fields.
+        raw.mcpServers = {};
+        return raw;
+    }
+    catch {
+        return null;
+    }
+}
+/** Write `.cline/mcp.json`, creating the `.cline/` directory if needed. */
+function writeClineMcpConfig(projectRoot, config) {
+    const p = clineMcpPath(projectRoot);
+    mkdirSync(dirname(p), { recursive: true });
+    writeFileSync(p, JSON.stringify(config, null, 2) + "\n");
+}
 // ─── Registry ────────────────────────────────────────────────────────────
 const ADAPTERS = [
 // claudeAdapter is declared further down (after the shared mcp helpers)
@@ -182,7 +248,7 @@ export function installCommand(adapter, meta, projectRoot) {
 // ─── Project rules file (CLAUDE.md / AGENTS.md) ──────────────────────────
 /**
  * Install employee-grade standards into the editor's rules file
- * (CLAUDE.md for Claude, AGENTS.md for OpenCode). Wraps content in
+ * (CLAUDE.md for Claude, AGENTS.md for OpenCode and Cline). Wraps content in
  * `<!-- OPENSPEC:START -->` / `<!-- OPENSPEC:END -->` markers so future
  * updates can replace the block without touching the rest of the file.
  */
@@ -265,7 +331,8 @@ export function installClaudeWrapper(projectRoot) {
  * AGENTS.md is always the single source of truth, regardless of which
  * editors are detected. If Claude is in use, a thin CLAUDE.md wrapper
  * with `@AGENTS.md` import is created so Claude loads AGENTS.md as
- * its project rules.
+ * its project rules. Cline auto-detects AGENTS.md natively — no wrapper
+ * needed.
  */
 export function installProjectRules(projectRoot, standardsContent, detected) {
     if (detected.length === 0)
@@ -407,7 +474,42 @@ export const opencodeAdapter = {
         setOpenCodeValue(projectRoot, ["instructions"], instructions);
     },
 };
+export const clineAdapter = {
+    id: "cline",
+    label: "cline",
+    displayName: "Cline",
+    detect: hasCline,
+    commandFilePath: getClineCommandPath,
+    formatCommand: formatClineCommand,
+    // Cline auto-detects AGENTS.md — no wrapper file needed. The SSOT
+    // (AGENTS.md) is created by installProjectRules regardless of adapter.
+    projectRulesPath: (root) => join(root, "AGENTS.md"),
+    isMcpInstalled(projectRoot, serverName) {
+        const config = readClineMcpConfig(projectRoot);
+        if (!config)
+            return false;
+        return config.mcpServers[serverName] !== undefined;
+    },
+    installMcp(projectRoot, serverName, command) {
+        const config = readClineMcpConfig(projectRoot) ?? { mcpServers: {} };
+        config.mcpServers[serverName] = {
+            command: command[0],
+            args: command.slice(1),
+        };
+        writeClineMcpConfig(projectRoot, config);
+    },
+    removeMcp(projectRoot, serverName) {
+        const config = readClineMcpConfig(projectRoot);
+        if (!config)
+            return;
+        if (config.mcpServers[serverName] === undefined)
+            return;
+        delete config.mcpServers[serverName];
+        writeClineMcpConfig(projectRoot, config);
+    },
+};
 // Register the adapters now that the const arrows exist
 registerAdapter(claudeAdapter);
 registerAdapter(opencodeAdapter);
+registerAdapter(clineAdapter);
 //# sourceMappingURL=editors.js.map

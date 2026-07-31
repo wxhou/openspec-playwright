@@ -959,10 +959,10 @@
 /* ── AI Coding Assistants ─────────────── */
 .editors-grid {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: 32px;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 24px;
   align-items: stretch;
-  max-width: 1000px;
+  max-width: 1100px;
   margin: 0 auto;
 }
 
@@ -1070,25 +1070,10 @@
   font-size: 0.85rem;
 }
 
-.editor-vs {
-  align-self: center;
-  font-family: var(--font-display);
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--text-secondary);
-  letter-spacing: var(--tracking-eyebrow);
-  text-transform: uppercase;
-  padding: 0 8px;
-}
-
 @media (max-width: 768px) {
   .editors-grid {
     grid-template-columns: 1fr;
     gap: 16px;
-  }
-  .editor-vs {
-    text-align: center;
-    padding: 8px 0;
   }
 }
 

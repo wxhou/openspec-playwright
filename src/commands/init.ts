@@ -72,12 +72,12 @@ export async function init(options: InitOptions) {
   if (detected.length === 0) {
     console.log(
       chalk.yellow(
-        "\n  ⚠ No supported editor detected (need .claude/ or .opencode/).",
+        "\n  ⚠ No supported editor detected (need .claude/, .opencode/, or .cline/).",
       ),
     );
     console.log(
       chalk.gray(
-        "  Run openspec-pw init from a Claude Code or OpenCode project to install commands.\n",
+        "  Run openspec-pw init from a Claude Code, OpenCode, or Cline project to install commands.\n",
       ),
     );
     return;
@@ -117,10 +117,16 @@ export async function init(options: InitOptions) {
                 "    claude mcp add playwright npx @playwright/mcp@latest",
               ),
             );
-          } else {
+          } else if (adapter.id === "opencode") {
             console.log(
               chalk.gray(
                 "    Add `playwright` to mcp in opencode.json / opencode.jsonc",
+              ),
+            );
+          } else {
+            console.log(
+              chalk.gray(
+                "    Add `playwright` to mcpServers in .cline/mcp.json",
               ),
             );
           }
@@ -165,7 +171,7 @@ export async function init(options: InitOptions) {
     await generateGithubWorkflow(projectRoot);
   }
 
-  // 8. Install employee-grade CLAUDE.md
+  // 8. Install employee-grade standards (AGENTS.md + CLAUDE.md wrapper if Claude)
   console.log(chalk.blue("\n─── Installing Employee Standards ───"));
   const standards = readEmployeeStandards(EMPLOYEE_STANDARDS_SRC);
   if (standards) {
@@ -218,7 +224,7 @@ export async function init(options: InitOptions) {
 
   console.log(chalk.bold("How it works:"));
   console.log(
-    chalk.gray("  /opsx:e2e (Claude) and /opsx-e2e (OpenCode) read your OpenSpec specs"),
+    chalk.gray("  /opsx:e2e (Claude), /opsx-e2e (OpenCode/Cline) read your OpenSpec specs"),
   );
   console.log(chalk.gray("  and run Playwright E2E tests through a three-agent pipeline:"));
   console.log(chalk.gray("  Planner → Generator → Healer\n"));

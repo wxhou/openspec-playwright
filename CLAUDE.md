@@ -108,3 +108,9 @@ templates/e2e-command.md test-data reminder references §6.
 
 Tests: 197/197 pass. No version bump.
 ```
+
+<!-- OPENSPEC:START -->
+
+@AGENTS.md
+
+<!-- OPENSPEC:END -->

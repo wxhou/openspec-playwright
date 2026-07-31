@@ -11,6 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > - `openspec-pw init --seed` — use `rm tests/playwright/seed.spec.ts && openspec-pw init` instead
 > - `openspec-pw run <name>` — use `npx playwright test` instead
 
+### Added
+
+- **Cline editor support**. `openspec-pw init` now auto-detects Cline (`.cline/` or `.clinerules/` directory) alongside Claude Code and OpenCode, installing the `/opsx-e2e` skill and Playwright MCP for it.
+  - `src/commands/editors.ts` — new `clineAdapter` (id `"cline"`), `formatClineCommand`, `getClineCommandPath`, `hasCline`; `.cline/mcp.json` read/write helpers; registered in adapter registry
+  - `src/commands/init.ts` — detection prompt and MCP error messages updated for three editors
+  - `src/commands/update.ts` — `hasCommand` check includes `.cline/skills/opsx-e2e/SKILL.md`
+  - `src/commands/doctor.ts` — fallback hint lists all three editors
+  - Cline conventions: skill at `.cline/skills/opsx-e2e/SKILL.md` (YAML frontmatter `name`+`description`, body rewritten `/opsx:`→`/opsx-`), MCP at `.cline/mcp.json` (`mcpServers` structure), `AGENTS.md` auto-detected natively (no wrapper file)
+  - `tests/editors.test.ts` — 25 new Cline tests (adapter metadata, detection, command path/format, MCP CRUD, installCommand)
+  - `tests/smoke.test.ts` — Cline added to `installCommand` and dist-exports checks
+  - `README.md`, `README.zh-CN.md` — Cline added to supported editors, usage, prerequisites, architecture diagram
+
 ### Removed
 
 - **`init --seed` flag removed (BREAKING)**. The `--seed` flag only force-overwrote `seed.spec.ts` but no other generated files. Same effect achieved by `rm tests/playwright/seed.spec.ts && openspec-pw init`. Reduces CLI surface and maintenance burden.
