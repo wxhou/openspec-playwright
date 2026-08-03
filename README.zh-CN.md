@@ -23,14 +23,6 @@ npm install -g openspec-playwright@latest
    - **Cline**：合并到 `.cline/mcp.json` 的 `mcpServers.playwright = { "command": "npx", "args": ["@playwright/mcp@latest"] }`
    - **Cursor**：合并到 `.cursor/mcp.json` 的 `mcpServers.playwright = { "command": "npx", "args": ["@playwright/mcp@latest"] }`
 
-**可选** — 用 Superpowers 增强 AI 编码助手的能力：
-
-- **Superpowers**：完整的 AI 编码助手开发方法论插件。它在 OpenSpec 工作流（propose → apply → verify）阶段增强 AI 能力：对话式 spec 探索、TDD 纪律、subagent 并行实现。Superpowers **不替换 OpenSpec**，E2E 验证管线（`/opsx:e2e`、`openspec-pw doctor/explore/run` 等）保持不变。
-  ```bash
-  /plugin install superpowers@claude-plugins-official
-  ```
-  详见 [github.com/obra/superpowers](https://github.com/obra/superpowers)
-
 浏览器探索能力由 Playwright MCP 和 `openspec-pw explore` 内置提供，无需额外工具。
 
 ## 初始化
@@ -174,12 +166,6 @@ openspec-pw uninstall     # 移除项目中的集成
 | **应用服务器** | — | 开发脚本、基础 URL、可达性 |
 
 加 `--json` 参数输出机器可读格式。
-
-**可选 — 用 Superpowers 增强 AI 编码助手：**
-
-| 步骤 | 命令 | 失败时快速修复 |
-|------|------|----------------|
-| A. 安装 Superpowers | `/plugin install superpowers@claude-plugins-official` | 详见 [github.com/obra/superpowers](https://github.com/obra/superpowers) |
 
 ## 认证配置
 

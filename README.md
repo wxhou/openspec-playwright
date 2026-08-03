@@ -121,14 +121,6 @@ openspec-pw uninstall     # Remove integration from the project
    - **Cline**: merged into `.cline/mcp.json` under `mcpServers.playwright = { "command": "npx", "args": ["@playwright/mcp@latest"] }`
    - **Cursor**: merged into `.cursor/mcp.json` under `mcpServers.playwright = { "command": "npx", "args": ["@playwright/mcp@latest"] }`
 
-**Optional** — enhance your AI coding assistant with Superpowers methodology:
-
-- **Superpowers**: a complete development methodology plugin for Claude Code. It enhances the OpenSpec workflow (propose → apply → verify) with conversational spec exploration, TDD discipline, and subagent-driven implementation. Superpowers does **not** replace OpenSpec — the E2E verification pipeline (`/opsx:e2e`, `openspec-pw doctor/explore/run`) remains unchanged.
-  ```bash
-  /plugin install superpowers@claude-plugins-official
-  ```
-  See [github.com/obra/superpowers](https://github.com/obra/superpowers) for details.
-
 Browser exploration is provided out of the box by Playwright MCP and `openspec-pw explore`; no extra browser tool is needed.
 
 ## What `openspec-pw init` Does
@@ -174,12 +166,6 @@ Run through these steps in order when using the E2E workflow for the first time:
 | **App Server** | — | dev script, base URL, reachability |
 
 Run with `--json` for machine-readable output.
-
-**Optional — enhance your AI coding assistant with Superpowers methodology:**
-
-| Step | Command | If it fails |
-|------|---------|-------------|
-| A. Install Superpowers | `/plugin install superpowers@claude-plugins-official` | See [github.com/obra/superpowers](https://github.com/obra/superpowers) for alternative install methods |
 
 ## App Server Detection
 

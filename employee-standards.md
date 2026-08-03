@@ -114,7 +114,7 @@
 | E2E | `/opsx:e2e` / `/opsx-e2e` | 测试生成 + Healer 验证通过 |
 | 归档 | `/opsx:archive` | specs 更新，归档完成 |
 
-所有阶段由用户手动触发，**AI 不自动进入下一阶段**。Superpowers（可选）：`/plugin install superpowers@claude-plugins-official`，提供对话式 spec 探索、TDD、subagent 并行实现，不改变主流程。
+所有阶段由用户手动触发，**AI 不自动进入下一阶段**。
 
 ---
 
