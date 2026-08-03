@@ -53,7 +53,6 @@ const CLAUDE_MD_ZH = `# 项目规范
 
 ## 工作流参考
 - 提案→实现→自审→E2E→归档，**所有阶段由用户手动触发，AI 不自动进入下一阶段**
-- Superpowers（可选）：\`/plugin install superpowers@claude-plugins-official\`，提供对话式 spec 探索、TDD、subagent 并行实现，不改变主流程
 
 ## 数据编撰
 - 🔴 严禁主动编撰任何数据填充代码，除非用户明确同意
@@ -127,7 +126,6 @@ const CLAUDE_MD_EN = `# Project Guidelines
 
 ## Workflow Reference
 - Propose→Apply→Verify→E2E→Archive, **all phases manually triggered by user, AI does not auto-advance**
-- Superpowers (optional): \`/plugin install superpowers@claude-plugins-official\` — conversational spec exploration, TDD, subagent parallel execution, doesn't change main flow
 
 ## Data Fabrication
 - 🔴 Never fabricate any data to fill code without explicit user consent
