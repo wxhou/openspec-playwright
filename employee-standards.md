@@ -2,9 +2,9 @@
 
 ---
 
-## CodeGraph 优先
+## CodeGraph 优先 🔴
 
-🔴 存在 `.codegraph/` 时，理解或定位代码前**必须先调用** `codegraph_explore`，不要直接 grep / find / 读文件。
+存在 `.codegraph/` 时：结构/定位问题先 `codegraph_explore`，字面文本/已打开文件用 grep/read，自行判断。无 `.codegraph/` 跳过。
 
 ---
 

@@ -4,7 +4,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 优先级：🔴 CRITICAL（违反→静默 bug/安全漏洞，停下确认后执行）｜🟡 IMPORTANT（偏离说明理由，谨慎执行）｜⚪ STANDARD（按标准执行）
 
 ## CodeGraph 优先
-- 🔴 存在 \`.codegraph/\` 时，理解或定位代码前**必须先调用** \`codegraph_explore\`，不要直接 grep / find / 读文件
+- 🔴 存在 \`.codegraph/\` 时：结构/定位问题先 \`codegraph_explore\`，字面文本/已打开文件用 grep/read，自行判断。无 \`.codegraph/\` 跳过
 
 ## 代码质量
 - 🔴 **lint+typecheck 每次编辑后自动执行，通过才算成功**。扫源码扩展名判断主语言：\`.ts\`→ESLint+tsc、\`.py\`→ruff+mypy、\`.go\`→gofmt+vet 等。工具不存在时告知用户，不假装跑过
@@ -79,7 +79,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - Priority: 🔴 CRITICAL (violation → silent bug/security hole, stop and confirm before acting)｜🟡 IMPORTANT (deviations need justification, proceed with caution)｜⚪ STANDARD (follow as standard practice)
 
 ## CodeGraph First
-- 🔴 When \`.codegraph/\` exists, **must call \`codegraph_explore\`** before understanding or locating code — don't grep / find / read files directly
+- 🔴 When \`.codegraph/\` exists: structural/location questions → \`codegraph_explore\` first; literal text / already-open files → grep/read, judge for yourself. Skip if no \`.codegraph/\`
 
 ## Code Quality
 - 🔴 **lint+typecheck runs after every edit, both must pass**. Detect language by extension: \`.ts\`→ESLint+tsc, \`.py\`→ruff+mypy, \`.go\`→gofmt+vet, etc. If tool missing, tell user, don't pretend it ran

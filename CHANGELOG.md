@@ -5,17 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.62] - 2026-08-05
 
-> ⚠️ **BREAKING CHANGES in this release.** Two CLI commands removed. Update any scripts or documentation that reference them:
-> - `openspec-pw init --seed` — use `rm tests/playwright/seed.spec.ts && openspec-pw init` instead
-> - `openspec-pw run <name>` — use `npx playwright test` instead
+### Changed
+
+- **CodeGraph 优先规则改为引导式，不再禁止内置工具**. `employee-standards.md` 文首「CodeGraph 优先」从「必须先调用 `codegraph_explore`，不要直接 grep / find / 读文件」改为「结构/定位问题先 `codegraph_explore`，字面文本/已打开文件用 grep/read，自行判断」，并补充无 `.codegraph/` 时跳过的说明。同步 `docs/script.js` 内嵌标准（ZH + EN）。
+
+## [0.3.61] - 2026-08-05
 
 ### Added
 
 - **CodeGraph 优先规则置顶员工标准**. `employee-standards.md` 新增文首「CodeGraph 优先」节：存在 `.codegraph/` 时理解/定位代码前必须先调用 `codegraph_explore`（🔴 CRITICAL）。§4 搜索分层改为引用文首，去除重复指令。同步更新 `docs/script.js` 内嵌标准（中英文各加 CodeGraph First 节）。
 
 - **移除 §3 架构 Invariants**. `employee-standards.md` 删除「3. 架构 Invariants」整节（项目特定约束，不再作为通用员工标准下发），后续章节重编号（4→3、5→4、6→5、7→6），§6→§5 交叉引用同步更新。
+
+## [0.3.60] - 2026-07-31
+
+### Added
+
+- **Cursor editor support**. `openspec-pw init` auto-detects Cursor (`.cursor/` directory) alongside Claude Code, OpenCode, and Cline.
+  - Dual install: `.cursor/commands/opsx-e2e.md` (plain markdown, `$1` change name) + `.cursor/skills/opsx-e2e/SKILL.md` (`disable-model-invocation: true`)
+  - Playwright MCP merged into `.cursor/mcp.json` (`mcpServers.playwright`); shared `mcpServers` JSON helpers also used by Cline
+  - `EditorAdapter.extraArtifacts` so install/uninstall/doctor share a dual-file contract
+  - `doctor` reports Cursor command + skill readiness; `update` `hasCommand` recognizes Cursor paths
+  - `README.md`, `README.zh-CN.md` — Cursor usage, prerequisites, architecture
+  - `docs/index.html`, `docs/style-sections.css`, `docs/llms.txt` — Editors section (four assistants), hero/prereq/workflow copy, 2×2 grid
+  - `package.json` — description + keywords updated for multi-editor support
+
+## [0.3.59] - 2026-07-31
+
+### Added
 
 - **Cline editor support**. `openspec-pw init` now auto-detects Cline (`.cline/` or `.clinerules/` directory) alongside Claude Code and OpenCode, installing the `/opsx-e2e` skill and Playwright MCP for it.
   - `src/commands/editors.ts` — new `clineAdapter` (id `"cline"`), `formatClineCommand`, `getClineCommandPath`, `hasCline`; `.cline/mcp.json` read/write helpers; registered in adapter registry
@@ -26,6 +45,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `tests/editors.test.ts` — 25 new Cline tests (adapter metadata, detection, command path/format, MCP CRUD, installCommand)
   - `tests/smoke.test.ts` — Cline added to `installCommand` and dist-exports checks
   - `README.md`, `README.zh-CN.md` — Cline added to supported editors, usage, prerequisites, architecture diagram
+
+## [0.3.57] - 2026-07-16
+
+### Enhanced
+
+- **`openspec-pw doctor` checks expanded by 5 items.** Previously the command verified basic tool presence (Node, npm, Playwright CLI, OpenSpec directory) but missed several failure modes users actually hit:
+  - **Playwright Config** — verifies `playwright.config.ts/.js/.mjs/.mts` exists (required; missing blocks all tests)
+  - **Playwright Browsers** — verifies Chromium binary is downloaded via `playwright.chromium.executablePath()` (required; CLI may be installed while browsers are not)
+  - **OpenSpec Specs** — counts `.spec.md` files in `openspec/` (optional warning; empty directory is valid for fresh projects)
+  - **Tests Directory** — verifies `tests/playwright/` directory exists (required; missing means no test files can be generated)
+  - **Node.js Engines** — validates current Node version against `package.json` `engines.node` (optional warning; mismatches cause cryptic runtime errors)
+  - `src/commands/doctor.ts` — new checks, `OPTIONAL_NAMES` set for precise required/optional classification
+  - `tests/commands/doctor.test.ts` — 7 new test cases covering all new items (225 total)
+  - `README.md` — updated doctor CLI description to list covered areas
+
+## [0.3.56] - 2026-07-12
 
 ### Removed
 
@@ -49,44 +84,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Employee standards: frontend UI design trio**. Added `frontend-design` + `ui-ux-pro-max` + `web-design-guidelines` skill combination to §4 tool usage, with explicit invocation order.
-  - `employee-standards.md` — new 🟡 rule
-  - `docs/script.js` — ZH + EN templates synced
-
 - **Docs site: removed decorative clutter**. Removed `bg-grid-overlay` (Vercel-style grid) and `bg-bottom-glow` (bottom-right amber glow) layers from the hero background. The hero's mesh-gradient and animated SVG decorations are retained.
   - `docs/index.html`, `docs/style-base.css` — removed two decoration layers
 
 - **Docs site: removed hero CLI demo**. The hero previously rendered a fabricated `openspec-pw run` transcript (Planner → Generator → Healer with invented timings) which never matched real output. Removed because the decoration conveyed no product meaning and its content violated the "no fabricated data" rule.
   - `docs/index.html`, `docs/style-sections.css` — removed `.cli-demo` block (124 lines)
 
+## [0.3.55] - 2026-07-12
+
+### Changed
+
+- **Employee standards: frontend UI design trio**. Added `frontend-design` + `ui-ux-pro-max` + `web-design-guidelines` skill combination to §4 tool usage, with explicit invocation order.
+  - `employee-standards.md` — new 🟡 rule
+  - `docs/script.js` — ZH + EN templates synced
+
 - **Employee standards: agent-reach priority upgraded**. Promoted `联网调研优先 agent-reach skill` from `⚪ STANDARD` to `🟡 IMPORTANT` in §4 tool usage, reflecting that anti-bot blocks make WebFetch/WebSearch unreliable for site-specific research.
   - `employee-standards.md`, `docs/script.js` — synced
 
-### Enhanced
-
-- **`openspec-pw doctor` checks expanded by 5 items.** Previously the command verified basic tool presence (Node, npm, Playwright CLI, OpenSpec directory) but missed several failure modes users actually hit:
-  - **Playwright Config** — verifies `playwright.config.ts/.js/.mjs/.mts` exists (required; missing blocks all tests)
-  - **Playwright Browsers** — verifies Chromium binary is downloaded via `playwright.chromium.executablePath()` (required; CLI may be installed while browsers are not)
-  - **OpenSpec Specs** — counts `.spec.md` files in `openspec/` (optional warning; empty directory is valid for fresh projects)
-  - **Tests Directory** — verifies `tests/playwright/` directory exists (required; missing means no test files can be generated)
-  - **Node.js Engines** — validates current Node version against `package.json` `engines.node` (optional warning; mismatches cause cryptic runtime errors)
-  - `src/commands/doctor.ts` — new checks, `OPTIONAL_NAMES` set for precise required/optional classification
-  - `tests/commands/doctor.test.ts` — 7 new test cases covering all new items (225 total)
-  - `README.md` — updated doctor CLI description to list covered areas
-
-
-## [0.3.60] - 2026-07-31
-
-### Added
-
-- **Cursor editor support**. `openspec-pw init` auto-detects Cursor (`.cursor/` directory) alongside Claude Code, OpenCode, and Cline.
-  - Dual install: `.cursor/commands/opsx-e2e.md` (plain markdown, `$1` change name) + `.cursor/skills/opsx-e2e/SKILL.md` (`disable-model-invocation: true`)
-  - Playwright MCP merged into `.cursor/mcp.json` (`mcpServers.playwright`); shared `mcpServers` JSON helpers also used by Cline
-  - `EditorAdapter.extraArtifacts` so install/uninstall/doctor share a dual-file contract
-  - `doctor` reports Cursor command + skill readiness; `update` `hasCommand` recognizes Cursor paths
-  - `README.md`, `README.zh-CN.md` — Cursor usage, prerequisites, architecture
-  - `docs/index.html`, `docs/style-sections.css`, `docs/llms.txt` — Editors section (four assistants), hero/prereq/workflow copy, 2×2 grid
-  - `package.json` — description + keywords updated for multi-editor support
 
 ## [0.3.52] - 2026-07-06
 
