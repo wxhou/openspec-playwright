@@ -251,7 +251,7 @@ Editors (auto-detected by openspec-pw init)
   ├── Claude Code (/opsx:e2e)
   │   ├── .claude/commands/opsx/e2e.md   → Command file
   │   ├── @playwright/mcp                → Healer Agent tools (via `claude mcp add playwright …`)
-  │   └── CLAUDE.md                      → Imports AGENTS.md via `@AGENTS.md`
+  │   └── CLAUDE.md                      → CodeGraph 优先 block + imports AGENTS.md via `@AGENTS.md`
   ├── OpenCode (/opsx-e2e)
   │   ├── .opencode/commands/opsx-e2e.md → Command file (body rewritten from /opsx: → /opsx-)
   │   ├── opencode.jsonc                 → Playwright MCP (mcp.playwright) + instructions routing
@@ -267,7 +267,8 @@ Editors (auto-detected by openspec-pw init)
       └── AGENTS.md                       → Employee-grade standards (auto-detected by Cursor)
 
 Employee-grade standards live in **AGENTS.md** as the single source of truth. Claude Code
-loads them via a thin CLAUDE.md with `@AGENTS.md` import. OpenCode registers AGENTS.md in
+loads them via a CLAUDE.md that carries a CodeGraph-first block up front, followed by an
+`@AGENTS.md` import. OpenCode registers AGENTS.md in
 `opencode.jsonc` under `instructions`. Cline and Cursor auto-detect `AGENTS.md` natively — no wrapper
 file needed.
 

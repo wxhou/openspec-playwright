@@ -218,6 +218,22 @@ export async function init(options: InitOptions) {
       "  5. Page objects: extend tests/playwright/pages/BasePage.ts for shared selectors",
     ),
   );
+  // Optional: detect CodeGraph (installed but project not indexed yet).
+  // Indexing stays the user's decision — this is a hint, not a setup step.
+  let codegraphInstalled = false;
+  try {
+    execFileSync(process.platform === "win32" ? "where" : "which", ["codegraph"], {
+      stdio: "ignore",
+    });
+    codegraphInstalled = true;
+  } catch {
+    /* codegraph not installed — skip the hint */
+  }
+  if (codegraphInstalled && !existsSync(join(projectRoot, ".codegraph"))) {
+    console.log(
+      chalk.gray("  6. Build code index (optional): codegraph init"),
+    );
+  }
   for (const adapter of detected) {
     const slashCmd = slashCommandForAdapter(adapter);
     console.log(

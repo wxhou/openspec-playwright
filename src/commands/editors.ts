@@ -539,32 +539,47 @@ export function installOpenSpecBlock(
 }
 
 /**
+ * CodeGraph-first guidance prepended to the Claude wrapper so the model sees
+ * it in the main rules file instead of relying on the AGENTS.md import
+ * (imported content ranks lower and is treated as optional by the model).
+ */
+const CODE_GRAPH_FIRST_BLOCK = `## CodeGraph 优先 🔴
+
+存在 \`.codegraph/\` 时：结构性任务（定位定义、调用链、影响面、流程）**默认第一步**调用 \`codegraph_explore\`，直接用结果回答，不要先 grep/read；grep/read 仅用于字面文本、已打开文件、或结果不足时补查。不派子 agent 重建索引。无 \`.codegraph/\` 跳过。`;
+
+/**
  * Install a thin CLAUDE.md that imports AGENTS.md.
  *
  * Uses the same OPENSPEC:START/END markers as the full standards block so
- * `cleanProjectRules` can remove it uniformly. No-ops if bare `@AGENTS.md`
- * is already present (may have been added by openspec CLI or manually).
+ * `cleanProjectRules` can remove it uniformly. The CodeGraph-first block is
+ * written directly into CLAUDE.md (before the @AGENTS.md import) so Claude
+ * Code picks it up without depending on the import.
  *
  * Also handles migration: if CLAUDE.md has an existing OPENSPEC:START block
  * (old format that wrote standards directly to CLAUDE.md), calling
- * `installOpenSpecBlock` replaces the content with the `@AGENTS.md` import.
+ * `installOpenSpecBlock` replaces the content with the CodeGraph block +
+ * `@AGENTS.md` import.
  */
 export function installClaudeWrapper(projectRoot: string): void {
   const dest = join(projectRoot, "CLAUDE.md");
 
-  // No-op if bare @AGENTS.md already present (added by openspec CLI or user)
+  // No-op if our full wrapper (CodeGraph block + @AGENTS.md import) is in
+  // place. A bare @AGENTS.md without our markers (added by openspec CLI or
+  // the user) is left untouched.
   if (existsSync(dest)) {
     const existing = readFileSync(dest, "utf-8");
-    if (/^@AGENTS\.md\r?$/m.test(existing)) {
-      return;
-    }
+    const hasMarkers = existing.includes("<!-- OPENSPEC:START -->");
+    if (!hasMarkers && /^@AGENTS\.md\r?$/m.test(existing)) return;
+    if (hasMarkers && existing.includes("CodeGraph 优先") && /^@AGENTS\.md\r?$/m.test(existing)) return;
   }
 
   // Delegate to installOpenSpecBlock which handles create/update/append
-  // with OPENSPEC:START/END markers. Content is just the import line.
-  // When CLAUDE.md already has OPENSPEC markers (old-format migration),
-  // the existing content between them is replaced with @AGENTS.md.
-  installOpenSpecBlock(projectRoot, "@AGENTS.md\n", claudeAdapter);
+  // with OPENSPEC:START/END markers.
+  installOpenSpecBlock(
+    projectRoot,
+    `${CODE_GRAPH_FIRST_BLOCK}\n\n@AGENTS.md\n`,
+    claudeAdapter,
+  );
 }
 
 /**

@@ -225,7 +225,7 @@ CLI (openspec-pw)
   ├── Claude Code (/opsx:e2e)
   │   ├── .claude/commands/opsx/e2e.md    → 命令文件（从 templates/e2e-command.md 安装）
   │   ├── @playwright/mcp                 → Healer Agent 工具（通过 `claude mcp add playwright …`）
-  │   └── CLAUDE.md                       → 通过 `@AGENTS.md` 引入 AGENTS.md
+  │   └── CLAUDE.md                       → CodeGraph 优先节 + 通过 `@AGENTS.md` 引入 AGENTS.md
   ├── OpenCode (/opsx-e2e)
   │   ├── .opencode/commands/opsx-e2e.md  → 命令文件（正文由 /opsx: 改写为 /opsx-）
   │   ├── opencode.jsonc                  → Playwright MCP (mcp.playwright) + 指令路由
@@ -240,8 +240,8 @@ CLI (openspec-pw)
       ├── .cursor/mcp.json                → Playwright MCP (mcpServers.playwright)
       └── AGENTS.md                       → 员工级规范（Cursor 原生自动识别）
 
-员工级规范统一存放在 **AGENTS.md** 中。Claude Code 通过薄层 CLAUDE.md
-（包含 `@AGENTS.md` 导入）加载；OpenCode 在 `opencode.jsonc` 的 `instructions` 中注册 AGENTS.md；
+员工级规范统一存放在 **AGENTS.md** 中。Claude Code 通过 CLAUDE.md 加载——前置 CodeGraph 优先节，
+后接 `@AGENTS.md` 导入；OpenCode 在 `opencode.jsonc` 的 `instructions` 中注册 AGENTS.md；
 Cline 与 Cursor 原生自动识别 `AGENTS.md`，无需包装文件。
 
 测试资产 (tests/playwright/)

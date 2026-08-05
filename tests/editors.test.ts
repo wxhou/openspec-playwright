@@ -329,6 +329,7 @@ describe("installProjectRules routing", () => {
     expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(true);
     const claudeContent = readFileSync(join(tmpRoot, "CLAUDE.md"), "utf-8");
     expect(claudeContent).toContain("@AGENTS.md");
+    expect(claudeContent).toContain("CodeGraph 优先");
     expect(claudeContent).not.toContain(standards);
 
     // No opencode config (OpenCode not detected).
@@ -376,6 +377,7 @@ describe("installProjectRules routing", () => {
     expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(true);
     const claudeContent = readFileSync(join(tmpRoot, "CLAUDE.md"), "utf-8");
     expect(claudeContent).toContain("@AGENTS.md");
+    expect(claudeContent).toContain("CodeGraph 优先");
     // Standards live in AGENTS.md, not duplicated into CLAUDE.md.
     expect(claudeContent).not.toContain(standards);
 

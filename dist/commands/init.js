@@ -126,6 +126,21 @@ export async function init(options) {
     console.log(chalk.gray("  3. Set credentials: export E2E_USERNAME=xxx E2E_PASSWORD=yyy"));
     console.log(chalk.gray("  4. Run auth setup: npx playwright test --project=setup"));
     console.log(chalk.gray("  5. Page objects: extend tests/playwright/pages/BasePage.ts for shared selectors"));
+    // Optional: detect CodeGraph (installed but project not indexed yet).
+    // Indexing stays the user's decision — this is a hint, not a setup step.
+    let codegraphInstalled = false;
+    try {
+        execFileSync(process.platform === "win32" ? "where" : "which", ["codegraph"], {
+            stdio: "ignore",
+        });
+        codegraphInstalled = true;
+    }
+    catch {
+        /* codegraph not installed — skip the hint */
+    }
+    if (codegraphInstalled && !existsSync(join(projectRoot, ".codegraph"))) {
+        console.log(chalk.gray("  6. Build code index (optional): codegraph init"));
+    }
     for (const adapter of detected) {
         const slashCmd = slashCommandForAdapter(adapter);
         console.log(chalk.gray(`  • In ${adapter.label}, run: ${slashCmd} <change-name>`));

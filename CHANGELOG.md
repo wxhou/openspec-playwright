@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **CodeGraph 规则升级为「默认第一步」**. `employee-standards.md` 文首「CodeGraph 优先」从引导式（先…自行判断）改为明确默认动作：结构性任务（定位定义、调用链、影响面、流程）默认第一步调用 `codegraph_explore`，grep/read 仅用于字面文本、已打开文件、或结果不足时补查。`openspec-pw init`/`update` 现在把 CodeGraph 优先节直接写入 Claude 的 `CLAUDE.md`（OPENSPEC 标记段内、`@AGENTS.md` 引用之前），不再依赖引用文件；init 末尾检测到 codegraph 已安装但项目未索引时提示 `codegraph init`。同步 `docs/script.js` 内嵌标准（ZH + EN）。
+
 ## [0.3.62] - 2026-08-05
 
 ### Changed

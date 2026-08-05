@@ -116,12 +116,14 @@ export declare function installOpenSpecBlock(projectRoot: string, standardsConte
  * Install a thin CLAUDE.md that imports AGENTS.md.
  *
  * Uses the same OPENSPEC:START/END markers as the full standards block so
- * `cleanProjectRules` can remove it uniformly. No-ops if bare `@AGENTS.md`
- * is already present (may have been added by openspec CLI or manually).
+ * `cleanProjectRules` can remove it uniformly. The CodeGraph-first block is
+ * written directly into CLAUDE.md (before the @AGENTS.md import) so Claude
+ * Code picks it up without depending on the import.
  *
  * Also handles migration: if CLAUDE.md has an existing OPENSPEC:START block
  * (old format that wrote standards directly to CLAUDE.md), calling
- * `installOpenSpecBlock` replaces the content with the `@AGENTS.md` import.
+ * `installOpenSpecBlock` replaces the content with the CodeGraph block +
+ * `@AGENTS.md` import.
  */
 export declare function installClaudeWrapper(projectRoot: string): void;
 /**

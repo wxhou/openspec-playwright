@@ -4,7 +4,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 优先级：🔴 CRITICAL（违反→静默 bug/安全漏洞，停下确认后执行）｜🟡 IMPORTANT（偏离说明理由，谨慎执行）｜⚪ STANDARD（按标准执行）
 
 ## CodeGraph 优先
-- 🔴 存在 \`.codegraph/\` 时：结构/定位问题先 \`codegraph_explore\`，字面文本/已打开文件用 grep/read，自行判断。无 \`.codegraph/\` 跳过
+- 🔴 存在 \`.codegraph/\` 时：结构性任务（定位定义、调用链、影响面、流程）**默认第一步**调用 \`codegraph_explore\`，直接用结果回答，不要先 grep/read；grep/read 仅用于字面文本、已打开文件、或结果不足时补查。无 \`.codegraph/\` 跳过
 
 ## 代码质量
 - 🔴 **lint+typecheck 每次编辑后自动执行，通过才算成功**。扫源码扩展名判断主语言：\`.ts\`→ESLint+tsc、\`.py\`→ruff+mypy、\`.go\`→gofmt+vet 等。工具不存在时告知用户，不假装跑过
@@ -79,7 +79,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - Priority: 🔴 CRITICAL (violation → silent bug/security hole, stop and confirm before acting)｜🟡 IMPORTANT (deviations need justification, proceed with caution)｜⚪ STANDARD (follow as standard practice)
 
 ## CodeGraph First
-- 🔴 When \`.codegraph/\` exists: structural/location questions → \`codegraph_explore\` first; literal text / already-open files → grep/read, judge for yourself. Skip if no \`.codegraph/\`
+- 🔴 When \`.codegraph/\` exists: structural tasks (find definition, call chains, impact, flow) → call \`codegraph_explore\` as the default first step, answer directly — don't grep/read first; grep/read only for literal text, already-open files, or filling gaps. Skip if no \`.codegraph/\`
 
 ## Code Quality
 - 🔴 **lint+typecheck runs after every edit, both must pass**. Detect language by extension: \`.ts\`→ESLint+tsc, \`.py\`→ruff+mypy, \`.go\`→gofmt+vet, etc. If tool missing, tell user, don't pretend it ran
