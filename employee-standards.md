@@ -2,6 +2,12 @@
 
 ---
 
+## CodeGraph 优先
+
+🔴 存在 `.codegraph/` 时，理解或定位代码前**必须先调用** `codegraph_explore`，不要直接 grep / find / 读文件。
+
+---
+
 ## 0. 适用范围
 
 **约定**：动手前先读 `openspec/config.yaml`（技术栈、结构、约定、约束等），无内容则忽略。
@@ -80,7 +86,7 @@
 > WHY：工具使用方式直接影响搜索覆盖面和结果准确性。
 
 **DO**
-- 🟡 搜索分层：结构性问题（定义/调用/影响/流）优先用 CodeGraph；字面文本用全文搜索；文件名模式用文件名匹配。跳过依赖目录和缓存目录（调试依赖时除外），搜子目录时按需缩小
+- 🟡 搜索分层：结构性问题用 CodeGraph（见文首）；字面文本用全文搜索；文件名模式用文件名匹配。跳过依赖目录和缓存目录（调试依赖时除外），搜子目录时按需缩小
 - 🟡 重命名覆盖：调用、类型、字符串、import、barrel file、测试 mock，不得假设一次覆盖
 - 🟡 联网调研优先 agent-reach skill
 - 🟡 涉及前端 UI 设计时，按序使用：frontend-design skill 定方向 → ui-ux-pro-max skill 选风格 → web-design-guidelines skill 审查，三步组合避免"千篇一律 AI 风"

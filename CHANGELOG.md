@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **CodeGraph 优先规则置顶员工标准**. `employee-standards.md` 新增文首「CodeGraph 优先」节：存在 `.codegraph/` 时理解/定位代码前必须先调用 `codegraph_explore`（🔴 CRITICAL）。§4 搜索分层改为引用文首，去除重复指令。同步更新 `docs/script.js` 内嵌标准（中英文各加 CodeGraph First 节）。
+
 - **Cline editor support**. `openspec-pw init` now auto-detects Cline (`.cline/` or `.clinerules/` directory) alongside Claude Code and OpenCode, installing the `/opsx-e2e` skill and Playwright MCP for it.
   - `src/commands/editors.ts` — new `clineAdapter` (id `"cline"`), `formatClineCommand`, `getClineCommandPath`, `hasCline`; `.cline/mcp.json` read/write helpers; registered in adapter registry
   - `src/commands/init.ts` — detection prompt and MCP error messages updated for three editors
