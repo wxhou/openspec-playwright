@@ -48,7 +48,7 @@
 
 **REQUIRE**
 - linter/typechecker 不存在 → 告知用户并建议安装
-- mock 数据 / fixture → 参见 §6 数据编撰禁令
+- mock 数据 / fixture → 参见 §5 数据编撰禁令
 - 涉及 API 定义 → 查阅真实 OpenAPI/MCP 定义并标注来源
 
 ---
@@ -69,19 +69,7 @@
 
 ---
 
-## 3. 架构 Invariants
-
-> **[项目特定]** 以下仅适用于 openspec-playwright 项目结构。WHY：这些约束一违反即产生 review 难发现的 bug。Anthropic 称其为最高杠杆的 agent 代码质量措施。
-
-- 🔴 CLI 命令向 `src/index.ts` 注册，`src/commands/` 下按职责分文件
-- 🔴 模板文件放 `templates/`，不与其他源码混放
-- 🟡 OpenSpec change artifacts 放 `changes/<name>/`，遵循命名规范
-- 🟡 E2E 测试生成代码放 `e2e/`（如 `e2e/auth.setup.ts`）
-- 🔴 文档同步规则：改 `src/commands/*.ts`/`src/index.ts` 时必须同步更新 README + CHANGELOG
-
----
-
-## 4. 工具使用
+## 3. 工具使用
 
 > WHY：工具使用方式直接影响搜索覆盖面和结果准确性。
 
@@ -104,7 +92,7 @@
 
 ---
 
-## 5. 大规模任务
+## 4. 大规模任务
 
 > WHY：200+ 行直接修改缺乏评审，OpenSpec 工作流强制提案→设计→评审→实现。
 
@@ -124,7 +112,7 @@
 
 ---
 
-## 6. 数据编撰禁令
+## 5. 数据编撰禁令
 
 > WHY：AI 有"填空"倾向——缺乏数据时编造看似合理的值，引入静默 bug。
 
@@ -142,7 +130,7 @@
 
 ---
 
-## 7. 临时文件管理
+## 6. 临时文件管理
 
 > WHY：临时文件散落在项目根目录而非集中存放，会在 commit 时被意外加入版本控制（导致仓库膨胀），或积累到难以清理（占用磁盘空间）。本节建立可自动化管理协议，避免这两类问题。
 
