@@ -420,6 +420,23 @@
   background: linear-gradient(90deg, var(--accent), transparent);
 }
 
+.hero-card-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 11px;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: none;
+  color: var(--accent);
+  background: var(--accent-light);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  border-radius: 999px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
 
 .hero-title {
   grid-column: 1;
