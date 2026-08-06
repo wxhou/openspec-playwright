@@ -10,8 +10,10 @@ import {
 import { tmpdir } from "os";
 import { join } from "path";
 import {
+  blockMatchesExpected,
   buildCommandMeta,
   claudeAdapter,
+  claudeWrapperStandardsContent,
   cleanProjectRules,
   clineAdapter,
   cursorAdapter,
@@ -23,6 +25,7 @@ import {
   formatCursorSkill,
   formatOpenCodeCommand,
   formatTagsArray,
+  getAdapter,
   getClaudeCommandPath,
   getClineCommandPath,
   getCursorCommandPath,
@@ -32,12 +35,15 @@ import {
   hasCursor,
   hasOpenCode,
   installCommand,
+  installOpenSpecBlock,
   installProjectRules,
   listCommandArtifactPaths,
   opencodeAdapter,
+  readOpenSpecBlock,
   transformToHyphenCommands,
 } from "../src/commands/editors.js";
 import { uninstall } from "../src/commands/uninstall.js";
+import { compareBlock } from "../src/shared/drift.js";
 
 // Shared temp-dir lifecycle for filesystem-touching tests below.
 let tmpRoot: string;
@@ -957,6 +963,37 @@ describe("installProjectRules", () => {
     const claude = readFileSync(join(tmpRoot, "CLAUDE.md"), "utf-8");
     expect(claude).toContain("@AGENTS.md");
   });
+
+  it("readOpenSpecBlock extracts the OPENSPEC block content", () => {
+    mkdirSync(join(tmpRoot, ".claude"));
+    const detected = detectAdapters(tmpRoot);
+    installProjectRules(tmpRoot, STANDARDS, detected);
+    const claudeAdapter = getAdapter("claude")!;
+    const block = readOpenSpecBlock(tmpRoot, claudeAdapter);
+    expect(block).not.toBeNull();
+    expect(block).toContain("@AGENTS.md");
+    expect(block).toContain("CodeGraph 优先");
+  });
+
+  it("readOpenSpecBlock returns null when the file has no markers", () => {
+    const opencodeAdapter = getAdapter("opencode")!;
+    writeFileSync(join(tmpRoot, "AGENTS.md"), "# user file, no markers\n");
+    expect(readOpenSpecBlock(tmpRoot, opencodeAdapter)).toBeNull();
+  });
+
+  it("blockMatchesExpected matches an identical block and rejects drift", () => {
+    mkdirSync(join(tmpRoot, ".claude"));
+    const detected = detectAdapters(tmpRoot);
+    installProjectRules(tmpRoot, STANDARDS, detected);
+    const claudeAdapter = getAdapter("claude")!;
+    expect(blockMatchesExpected(tmpRoot, claudeAdapter, claudeWrapperStandardsContent())).toBe(true);
+    expect(blockMatchesExpected(tmpRoot, claudeAdapter, "totally different")).toBe(false);
+  });
+
+  it("blockMatchesExpected returns false when the rules file is missing", () => {
+    const opencodeAdapter = getAdapter("opencode")!;
+    expect(blockMatchesExpected(tmpRoot, opencodeAdapter, "any")).toBe(false);
+  });
 });
 
 // ─── detectAdapters ─────────────────────────────────────────────────────────
@@ -1184,5 +1221,43 @@ describe("installProjectRules (Cursor only)", () => {
     expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(true);
     expect(existsSync(join(tmpRoot, ".cursor", "rules"))).toBe(false);
     expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(false);
+  });
+});
+
+// ─── installOpenSpecBlock: truncated-marker repair ────────────────────────
+
+describe("installOpenSpecBlock truncated-marker repair", () => {
+  const M_START = "<!-- OPENSPEC:START -->";
+  const M_END = "<!-- OPENSPEC:END -->";
+
+  it("repairs a lone START marker (no END) instead of skipping", () => {
+    const dest = join(tmpRoot, "AGENTS.md");
+    writeFileSync(dest, `# proj\n${M_START}\nsome half-written content\n`);
+    installOpenSpecBlock(tmpRoot, "EMPLOYEE STANDARDS", opencodeAdapter);
+    const content = readFileSync(dest, "utf-8");
+    expect(content).toContain(M_START);
+    expect(content).toContain(M_END);
+    expect(content).toContain("EMPLOYEE STANDARDS");
+    // The half-written marker content is gone (rebuilt clean)
+    expect(content).not.toContain("some half-written content");
+  });
+
+  it("repairs a lone END marker (no START)", () => {
+    const dest = join(tmpRoot, "AGENTS.md");
+    writeFileSync(dest, `# proj\n${M_END}\norphan end\n`);
+    installOpenSpecBlock(tmpRoot, "EMPLOYEE STANDARDS", opencodeAdapter);
+    const content = readFileSync(dest, "utf-8");
+    expect(content).toContain(M_START);
+    expect(content).toContain(M_END);
+    expect(content).toContain("EMPLOYEE STANDARDS");
+    expect(content).not.toContain("orphan end");
+  });
+
+  it("repaired block is no longer reported stale", () => {
+    const dest = join(tmpRoot, "AGENTS.md");
+    writeFileSync(dest, `# proj\n${M_START}\nsome half-written content\n`);
+    installOpenSpecBlock(tmpRoot, "EMPLOYEE STANDARDS", opencodeAdapter);
+    const content = readFileSync(dest, "utf-8");
+    expect(compareBlock(content, "EMPLOYEE STANDARDS").stale).toBe(false);
   });
 });

@@ -6,8 +6,9 @@ import { tmpdir } from "os";
 import { promisify } from "util";
 import chalk from "chalk";
 import * as tar from "tar";
-import { buildCommandMeta, detectAdapters, installCommand, installProjectRules, } from "./editors.js";
+import { buildCommandMeta, detectAdapters, installCommand, installProjectRules, claudeWrapperStandardsContent, } from "./editors.js";
 import { isPlaywrightMcpInstalled, ensurePlaywrightMcp, needsShell } from "../shared/index.js";
+import { compareBlock, OPENSPEC_START } from "../shared/drift.js";
 const execFileAsync = promisify(execFile);
 export async function update(options) {
     console.log(chalk.blue("\n🔄 Updating OpenSpec + Playwright E2E\n"));
@@ -45,7 +46,15 @@ export async function update(options) {
         if (cliUpdated) {
             console.log(chalk.gray("  Re-executing remaining steps with updated binary..."));
             try {
-                execFileSync("openspec-pw", ["update", "--no-cli"], {
+                // Re-run with --no-cli (avoid re-updating the just-updated CLI) and
+                // forward the user's other skip flags so the restarted process honors
+                // them too (e.g. --no-mcp must still skip the MCP phase).
+                const reExecArgs = ["update", "--no-cli"];
+                if (options.mcp === false)
+                    reExecArgs.push("--no-mcp");
+                if (options.skill === false)
+                    reExecArgs.push("--no-skill");
+                execFileSync("openspec-pw", reExecArgs, {
                     stdio: "inherit",
                     cwd: projectRoot,
                     shell: needsShell,
@@ -120,16 +129,87 @@ export async function update(options) {
             else if (body) {
                 const meta = buildCommandMeta(body);
                 for (const adapter of detected) {
-                    installCommand(adapter, meta, projectRoot);
+                    // Drift-aware: only rewrite a command file when its content differs
+                    // from the formatted template. Untouched files keep their mtime.
+                    const relPath = adapter.commandFilePath(meta.id);
+                    const absPath = join(projectRoot, relPath);
+                    const expected = adapter.formatCommand(meta);
+                    let needsWrite = !existsSync(absPath);
+                    if (!needsWrite) {
+                        needsWrite = readFileSync(absPath, "utf-8") !== expected;
+                    }
+                    // Extra artifacts (e.g. Cursor skill SKILL.md) must also match —
+                    // a missing/stale secondary file is repaired along with the command.
+                    if (!needsWrite) {
+                        for (const extra of adapter.extraArtifacts?.(meta) ?? []) {
+                            const extraAbs = join(projectRoot, extra.relativePath);
+                            if (!existsSync(extraAbs) ||
+                                readFileSync(extraAbs, "utf-8") !== extra.contents) {
+                                needsWrite = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (needsWrite) {
+                        installCommand(adapter, meta, projectRoot);
+                    }
+                    else {
+                        console.log(chalk.gray(`  - ${adapter.label}: ${relPath} already current`));
+                    }
                 }
             }
             // Sync project templates (BasePage.ts, seed.spec.ts)
             syncProjectTemplates(tmpDir, projectRoot);
-            // Update employee-grade standards in project rules files (AGENTS.md + CLAUDE.md)
+            // Update employee-grade standards in project rules files (AGENTS.md + CLAUDE.md).
+            // Drift-aware: only rewrite a rules file when its OPENSPEC block differs
+            // from the bundled template; matching content is left untouched (no mtime
+            // change). AGENTS.md is the SSOT (always written by installProjectRules);
+            // CLAUDE.md is the Claude wrapper (only written when Claude is detected).
             const standardsSrc = join(tmpDir, "employee-standards.md");
             if (existsSync(standardsSrc)) {
                 const standards = readFileSync(standardsSrc, "utf-8");
-                installProjectRules(projectRoot, standards, detected);
+                if (detected.length === 0) {
+                    console.log(chalk.gray("  - No supported editor (.claude, .opencode, .cline, or .cursor) found, skipping standards sync"));
+                }
+                else {
+                    // AGENTS.md is the single source of truth and is always written by
+                    // installProjectRules regardless of which editors are detected — so it
+                    // is always checked here (covers claude-only projects). A present file
+                    // with no OPENSPEC marker needs the block appended (tool-owned).
+                    const agentsPath = join(projectRoot, "AGENTS.md");
+                    let agentsStale = !existsSync(agentsPath);
+                    if (!agentsStale) {
+                        const fileContent = readFileSync(agentsPath, "utf-8");
+                        agentsStale =
+                            !fileContent.includes(OPENSPEC_START) ||
+                                compareBlock(fileContent, standards).stale;
+                    }
+                    // CLAUDE.md wrapper is only written when Claude is detected. A bare
+                    // `@AGENTS.md` import without markers is left untouched (added by the
+                    // openspec CLI or the user) — not stale.
+                    let claudeStale = false;
+                    if (detected.some((a) => a.id === "claude")) {
+                        const claudePath = join(projectRoot, "CLAUDE.md");
+                        claudeStale = !existsSync(claudePath);
+                        if (!claudeStale) {
+                            const fileContent = readFileSync(claudePath, "utf-8");
+                            if (!fileContent.includes(OPENSPEC_START)) {
+                                claudeStale = !/^@AGENTS\.md\r?$/m.test(fileContent);
+                            }
+                            else {
+                                claudeStale = compareBlock(fileContent, claudeWrapperStandardsContent()).stale;
+                            }
+                        }
+                    }
+                    const anyStale = agentsStale || claudeStale;
+                    if (anyStale) {
+                        console.log(chalk.gray("  检测到非模板内容将被覆盖 — OPENSPEC block differs from bundled version"));
+                        installProjectRules(projectRoot, standards, detected);
+                    }
+                    else {
+                        console.log(chalk.green("  ✓ employee-grade standards already in sync"));
+                    }
+                }
             }
             rmSync(tmpDir, { recursive: true, force: true });
             console.log(chalk.green("  ✓ Commands & templates updated to latest"));
@@ -229,7 +309,7 @@ async function checkVersionShadow() {
     console.log(chalk.gray("         then re-run: openspec-pw update (or: npm install -D openspec-playwright@latest)"));
 }
 // Sync project-level templates
-function syncProjectTemplates(tmpDir, projectRoot) {
+export function syncProjectTemplates(tmpDir, projectRoot) {
     const testsDir = join(projectRoot, "tests", "playwright");
     if (!existsSync(testsDir))
         return;

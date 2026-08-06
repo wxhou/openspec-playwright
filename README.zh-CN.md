@@ -150,7 +150,7 @@ openspec-pw uninstall     # 移除项目中的集成
 
 ### `openspec-pw doctor` 检查清单
 
-`openspec-pw doctor` 在 8 个类别中验证前置条件，**必需**项失败时退出码非零。
+`openspec-pw doctor` 在 9 个类别中验证前置条件，**必需**项失败时退出码非零。
 
 | 类别 | 必需检查项 | 可选检查项 |
 |---|---|---|
@@ -161,6 +161,7 @@ openspec-pw uninstall     # 移除项目中的集成
 | **Playwright 浏览器** | CLI 版本、Chromium 二进制已下载 | — |
 | **Playwright 测试框架** | `@playwright/test` 已安装 | — |
 | **Playwright MCP** | 每个检测到的编辑器均已配置 | — |
+| **Sync** | 已初始化时标准同步（漂移 → `openspec-pw update`） | 未初始化（闸门，不阻断） |
 | **测试目录** | `tests/playwright/` 目录存在 | `auth.setup.ts` 是否存在 |
 | **种子测试** | — | `seed.spec.ts` 是否存在 |
 | **应用服务器** | — | 开发脚本、基础 URL、可达性 |

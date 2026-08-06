@@ -468,6 +468,36 @@ export function installCommand(
 // ─── Project rules file (CLAUDE.md / AGENTS.md) ──────────────────────────
 
 /**
+ * Read the OPENSPEC marker block from a rules file, or `null` when the file
+ * is missing / has no markers. Used by drift detection and update to decide
+ * whether a rules file needs rewriting.
+ */
+export function readOpenSpecBlock(projectRoot: string, adapter: EditorAdapter): string | null {
+  const dest = adapter.projectRulesPath(projectRoot);
+  if (!existsSync(dest)) return null;
+  const content = readFileSync(dest, "utf-8");
+  const startIdx = content.indexOf("<!-- OPENSPEC:START -->");
+  const endIdx = content.indexOf("<!-- OPENSPEC:END -->");
+  if (startIdx === -1 || endIdx === -1) return null;
+  return content.slice(startIdx + "<!-- OPENSPEC:START -->".length, endIdx).trim();
+}
+
+/**
+ * Whether a rules file's OPENSPEC block matches the expected content.
+ * A missing file or absent/truncated markers counts as "does not match"
+ * (the caller will rewrite it), which keeps update idempotent but safe.
+ */
+export function blockMatchesExpected(
+  projectRoot: string,
+  adapter: EditorAdapter,
+  expected: string,
+): boolean {
+  const block = readOpenSpecBlock(projectRoot, adapter);
+  if (block === null) return false;
+  return block === expected.trim();
+}
+
+/**
  * Install employee-grade standards into the editor's rules file
  * (CLAUDE.md for Claude, AGENTS.md for OpenCode, Cline, and Cursor). Wraps content in
  * `<!-- OPENSPEC:START -->` / `<!-- OPENSPEC:END -->` markers so future
@@ -532,8 +562,28 @@ export function installOpenSpecBlock(
       chalk.green(`  ✓ ${fileLabel}: appended employee-grade standards with markers`),
     );
   } else {
+    // Incomplete markers (only START, or only END) — corrupted tool territory.
+    // Keep everything before the first marker (user content), discard the
+    // truncated tool output after it, and write a clean complete block so
+    // `doctor`/`update` converge instead of dead-ending on a skipped file.
+    const firstIdx = hasStart
+      ? existing.indexOf(markerStart)
+      : existing.indexOf(markerEnd);
+    const header = existing.slice(0, firstIdx).trimEnd();
+    const updated =
+      header +
+      "\n\n" +
+      markerStart +
+      "\n\n" +
+      standardsContent.trim() +
+      "\n\n" +
+      markerEnd +
+      "\n";
+    writeFileSync(dest, updated);
     console.log(
-      chalk.yellow(`  ⚠ ${fileLabel} has incomplete OPENSPEC markers — skipped`),
+      chalk.green(
+        `  ✓ ${fileLabel}: repaired incomplete OPENSPEC markers with employee-grade standards`,
+      ),
     );
   }
 }
@@ -546,6 +596,15 @@ export function installOpenSpecBlock(
 const CODE_GRAPH_FIRST_BLOCK = `## CodeGraph 优先 🔴
 
 存在 \`.codegraph/\` 时：结构性任务（定位定义、调用链、影响面、流程）**默认第一步**调用 \`codegraph_explore\`，直接用结果回答，不要先 grep/read；grep/read 仅用于字面文本、已打开文件、或结果不足时补查。不派子 agent 重建索引。无 \`.codegraph/\` 跳过。违反会退化为 grep/read 探索循环，token 成本高 5-10×。`;
+
+/**
+ * The expected OPENSPEC block content for a thin CLAUDE.md wrapper
+ * (CodeGraph-first guidance + `@AGENTS.md` import). Exported so drift
+ * detection / update can compare against it.
+ */
+export function claudeWrapperStandardsContent(): string {
+  return `${CODE_GRAPH_FIRST_BLOCK}\n\n@AGENTS.md\n`;
+}
 
 /**
  * Install a thin CLAUDE.md that imports AGENTS.md.
@@ -563,21 +622,24 @@ const CODE_GRAPH_FIRST_BLOCK = `## CodeGraph 优先 🔴
 export function installClaudeWrapper(projectRoot: string): void {
   const dest = join(projectRoot, "CLAUDE.md");
 
-  // No-op if our full wrapper (CodeGraph block + @AGENTS.md import) is in
-  // place. A bare @AGENTS.md without our markers (added by openspec CLI or
-  // the user) is left untouched.
+  // No-op if our full wrapper (CodeGraph block + @AGENTS.md import) is already
+  // in place — content-equal, so a user edit inside the markers is detected.
+  // A bare @AGENTS.md without our markers (added by openspec CLI or the user)
+  // is left untouched.
   if (existsSync(dest)) {
     const existing = readFileSync(dest, "utf-8");
     const hasMarkers = existing.includes("<!-- OPENSPEC:START -->");
     if (!hasMarkers && /^@AGENTS\.md\r?$/m.test(existing)) return;
-    if (hasMarkers && existing.includes("CodeGraph 优先") && /^@AGENTS\.md\r?$/m.test(existing)) return;
+    if (hasMarkers && blockMatchesExpected(projectRoot, claudeAdapter, claudeWrapperStandardsContent())) {
+      return;
+    }
   }
 
   // Delegate to installOpenSpecBlock which handles create/update/append
   // with OPENSPEC:START/END markers.
   installOpenSpecBlock(
     projectRoot,
-    `${CODE_GRAPH_FIRST_BLOCK}\n\n@AGENTS.md\n`,
+    claudeWrapperStandardsContent(),
     claudeAdapter,
   );
 }

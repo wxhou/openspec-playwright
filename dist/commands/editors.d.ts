@@ -106,12 +106,30 @@ export declare function listCommandArtifactPaths(adapter: EditorAdapter, meta: C
 /** Install the command file (and optional extraArtifacts) for one adapter. */
 export declare function installCommand(adapter: EditorAdapter, meta: CommandMeta, projectRoot: string): void;
 /**
+ * Read the OPENSPEC marker block from a rules file, or `null` when the file
+ * is missing / has no markers. Used by drift detection and update to decide
+ * whether a rules file needs rewriting.
+ */
+export declare function readOpenSpecBlock(projectRoot: string, adapter: EditorAdapter): string | null;
+/**
+ * Whether a rules file's OPENSPEC block matches the expected content.
+ * A missing file or absent/truncated markers counts as "does not match"
+ * (the caller will rewrite it), which keeps update idempotent but safe.
+ */
+export declare function blockMatchesExpected(projectRoot: string, adapter: EditorAdapter, expected: string): boolean;
+/**
  * Install employee-grade standards into the editor's rules file
  * (CLAUDE.md for Claude, AGENTS.md for OpenCode, Cline, and Cursor). Wraps content in
  * `<!-- OPENSPEC:START -->` / `<!-- OPENSPEC:END -->` markers so future
  * updates can replace the block without touching the rest of the file.
  */
 export declare function installOpenSpecBlock(projectRoot: string, standardsContent: string, adapter?: EditorAdapter): void;
+/**
+ * The expected OPENSPEC block content for a thin CLAUDE.md wrapper
+ * (CodeGraph-first guidance + `@AGENTS.md` import). Exported so drift
+ * detection / update can compare against it.
+ */
+export declare function claudeWrapperStandardsContent(): string;
 /**
  * Install a thin CLAUDE.md that imports AGENTS.md.
  *

@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`openspec-pw doctor` Sync 分类**. 检测已初始化项目里 AGENTS.md / CLAUDE.md 的 OPENSPEC 标记段与当前已装包模板是否漂移。纳入 `--json` 与 exit code，但以"是否初始化过"为闸门——未初始化项目记 `ok:true`（不阻断 CI），已初始化但标准过期记 `ok:false` 并提示 `openspec-pw update`。措辞中性（"OPENSPEC block differs from bundled version（手动修改或旧版模板）"），不归因用户修改。
+  - `src/shared/drift.ts` — 新增纯函数（提取 OPENSPEC 段、内容相等比较、定位本地已装包模板，零网络）
+  - `src/commands/doctor.ts` — 新增 Sync 分类 + 初始化闸门
+
+### Changed
+
+- **`openspec-pw update` 改为漂移感知**. 命令/标准相位先比较内容，与当前已装包模板一致时 no-op（不改文件 mtime），不一致才覆盖；覆盖前打印"检测到非模板内容将被覆盖"。AGENTS.md / CLAUDE.md 标记段、BasePage.ts 仅在漂移时重写；seed.spec.ts 仅警告不覆盖。
+  - `src/commands/update.ts` — standards/commands 相位漂移判断
+  - `src/commands/editors.ts` — 新增 `readOpenSpecBlock` / `blockMatchesExpected`，导出 `claudeWrapperStandardsContent`
+  - `tests/drift.test.ts` — 新增纯函数测试；`tests/update.test.ts` / `tests/editors.test.ts` / `tests/doctor.test.ts` 扩展
+
+### Fixed
+
+- **`--no-mcp` 未注册 bug**. `openspec-pw update` 的 `--no-mcp` 之前未被 `index.ts` 注册，用户传入被静默忽略（`options.mcp` 恒为 undefined）。现已补注册，`update --no-mcp` 跳过 Playwright MCP 相位；CLI 自重启时也正确转发 `--no-mcp` / `--no-skill`，避免重启进程重跑已跳过的相位。
+
+- **漂移判断边缘情况（code review 确认 7 个 bug）**. `compareBlock` 做 CRLF 归一化（Windows / macOS 不再误报）；单边 marker（只有 START 或只有 END）判为 stale 而非跳过，`installOpenSpecBlock` 遇到截断 marker 修复重建干净完整段，不再死胡同；AGENTS.md 作为唯一事实源**总是**检查（claude-only 项目也不例外）、无 marker 判 stale 需追加；Cursor skill 的 `extraArtifacts` 纳入命令 drift 检查；`installClaudeWrapper` 改用内容比对，过期内容能被正确清除。
+  - `src/shared/drift.ts`、`src/commands/editors.ts`、`src/commands/update.ts`、`src/commands/doctor.ts`
+
 ## [0.3.63] - 2026-08-05
 
 ### Changed

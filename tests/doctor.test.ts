@@ -162,3 +162,35 @@ describe("doctor.ts: all child_process calls use execFileSync with shell: needsS
     expect(callsWithShell).toBeGreaterThanOrEqual(3);
   });
 });
+
+// ─── Sync category (drift detection) ──────────────────────────────────────
+
+describe("doctor.ts: Sync category wiring", () => {
+  it("references compareBlock + bundledStandardsPath for standards drift", async () => {
+    const { readFileSync } = await import("fs");
+    const { fileURLToPath } = await import("url");
+    const { join } = await import("path");
+    const src = readFileSync(
+      join(fileURLToPath(import.meta.url), "../../src/commands/doctor.ts"),
+      "utf-8",
+    );
+    expect(src).toMatch(/import .*compareBlock.*from "\.\.\/shared\/drift\.js"/s);
+    expect(src).toMatch(/import .*bundledStandardsPath.*from "\.\.\/shared\/drift\.js"/s);
+    // Sync category emitted
+    expect(src).toMatch(/category: "Sync"/);
+    // Neutral wording (manual edit OR old template) — never blames the user
+    expect(src).toMatch(/OPENSPEC block differs from bundled version/);
+  });
+
+  it("gates Sync check on 'initialized' so uninitialized projects are not blocked", async () => {
+    const { readFileSync } = await import("fs");
+    const { fileURLToPath } = await import("url");
+    const { join } = await import("path");
+    const src = readFileSync(
+      join(fileURLToPath(import.meta.url), "../../src/commands/doctor.ts"),
+      "utf-8",
+    );
+    expect(src).toMatch(/not initialized \(run openspec-pw init first\)/);
+    expect(src).toMatch(/initialized\s*=\s*hasCommand\s*\|\|\s*hasOpenSpec/);
+  });
+});

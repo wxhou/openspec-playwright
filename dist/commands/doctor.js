@@ -3,8 +3,9 @@ import { createRequire } from "node:module";
 import { join } from "path";
 import { execFileSync } from "child_process";
 import chalk from "chalk";
-import { detectAdapters, slashCommandForAdapter } from "../commands/editors.js";
+import { detectAdapters, slashCommandForAdapter, claudeWrapperStandardsContent } from "../commands/editors.js";
 import { detectAppServer, isPlaywrightMcpInstalled, needsShell } from "../shared/index.js";
+import { bundledStandardsPath, compareBlock, OPENSPEC_START } from "../shared/drift.js";
 export async function doctor(options = {}) {
     const checks = [];
     const projectRoot = process.cwd();
@@ -222,6 +223,98 @@ export async function doctor(options = {}) {
                 message: hasSkill
                     ? ".cursor/skills/opsx-e2e/SKILL.md found"
                     : ".cursor/skills/opsx-e2e/SKILL.md missing",
+            });
+        }
+    }
+    // Sync — employee standards drift (AGENTS.md / CLAUDE.md OPENSPEC blocks)
+    // Gated on "initialized": a project that never ran init is `ok:true` so CI
+    // is not tripped; an initialized project with stale standards is `ok:false`.
+    const hasCommand = existsSync(join(projectRoot, ".claude", "commands", "opsx", "e2e.md")) ||
+        existsSync(join(projectRoot, ".opencode", "commands", "opsx-e2e.md")) ||
+        existsSync(join(projectRoot, ".cline", "skills", "opsx-e2e", "SKILL.md")) ||
+        existsSync(join(projectRoot, ".cursor", "commands", "opsx-e2e.md")) ||
+        existsSync(join(projectRoot, ".cursor", "skills", "opsx-e2e", "SKILL.md"));
+    const initialized = hasCommand || hasOpenSpec;
+    if (!initialized) {
+        checks.push({
+            category: "Sync",
+            name: "standards",
+            ok: true,
+            message: "not initialized (run openspec-pw init first)",
+        });
+    }
+    else {
+        const standardsPath = bundledStandardsPath();
+        const standardsExpected = existsSync(standardsPath)
+            ? readFileSync(standardsPath, "utf-8")
+            : "";
+        // AGENTS.md is the single source of truth — always checked regardless of
+        // which editors are detected (covers claude-only projects). A present file
+        // with no OPENSPEC marker needs the block appended (tool-owned).
+        const agentsPath = join(projectRoot, "AGENTS.md");
+        if (!existsSync(agentsPath)) {
+            checks.push({
+                category: "Sync",
+                name: "standards-agents",
+                ok: false,
+                message: "AGENTS.md missing — run openspec-pw update",
+            });
+        }
+        else {
+            const fileContent = readFileSync(agentsPath, "utf-8");
+            const noMarkers = !fileContent.includes(OPENSPEC_START);
+            const drift = noMarkers
+                ? { stale: true }
+                : compareBlock(fileContent, standardsExpected);
+            checks.push({
+                category: "Sync",
+                name: "standards-agents",
+                ok: !drift.stale,
+                message: drift.stale
+                    ? "AGENTS.md needs update (missing markers or differs from bundled version) — run openspec-pw update"
+                    : "standards in sync",
+            });
+        }
+        // CLAUDE.md wrapper is only checked when Claude is detected. A bare
+        // `@AGENTS.md` import without markers is left untouched — not stale.
+        if (adapters.some((a) => a.id === "claude")) {
+            const claudePath = join(projectRoot, "CLAUDE.md");
+            if (!existsSync(claudePath)) {
+                checks.push({
+                    category: "Sync",
+                    name: "standards-claude",
+                    ok: false,
+                    message: "CLAUDE.md missing — run openspec-pw update",
+                });
+            }
+            else {
+                const fileContent = readFileSync(claudePath, "utf-8");
+                let stale;
+                if (!fileContent.includes(OPENSPEC_START)) {
+                    stale = !/^@AGENTS\.md\r?$/m.test(fileContent);
+                }
+                else {
+                    stale = compareBlock(fileContent, claudeWrapperStandardsContent()).stale;
+                }
+                checks.push({
+                    category: "Sync",
+                    name: "standards-claude",
+                    ok: !stale,
+                    message: stale
+                        ? "OPENSPEC block differs from bundled version（手动修改或旧版模板）— run openspec-pw update"
+                        : "standards in sync",
+                });
+            }
+        }
+        // If a project is initialized but has no editor directories, AGENTS.md is
+        // still checked above; surface that explicitly rather than silently
+        // emitting no Sync checks.
+        if (adapters.length === 0) {
+            checks.push({
+                category: "Sync",
+                name: "editors",
+                ok: true,
+                message: "no editors detected — AGENTS.md checked above",
             });
         }
     }

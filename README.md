@@ -150,7 +150,7 @@ Run through these steps in order when using the E2E workflow for the first time:
 
 ### What `openspec-pw doctor` checks
 
-`openspec-pw doctor` verifies prerequisites across 8 categories and exits non-zero if any **required** check fails.
+`openspec-pw doctor` verifies prerequisites across 9 categories and exits non-zero if any **required** check fails.
 
 | Category | Required checks | Optional checks |
 |---|---|---|
@@ -161,6 +161,7 @@ Run through these steps in order when using the E2E workflow for the first time:
 | **Playwright Browsers** | CLI version, Chromium binary downloaded | — |
 | **Playwright Test** | `@playwright/test` framework installed | — |
 | **Playwright MCP** | configured for each detected editor | — |
+| **Sync** | standards in sync when initialized (drift → `openspec-pw update`) | not initialized (gated, non-blocking) |
 | **Tests** | `tests/playwright/` directory exists | `auth.setup.ts` presence |
 | **Seed Test** | — | `seed.spec.ts` presence |
 | **App Server** | — | dev script, base URL, reachability |

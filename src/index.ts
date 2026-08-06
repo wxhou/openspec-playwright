@@ -52,6 +52,7 @@ program
   .description("Update the CLI tool and commands to the latest version")
   .option("--no-cli", "skip CLI update")
   .option("--no-skill", "skip command update")
+  .option("--no-mcp", "skip Playwright MCP install")
   .action(async (opts) => {
     const { update } = await import("./commands/update.js");
     await update(opts);

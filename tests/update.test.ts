@@ -237,3 +237,118 @@ describe("update.ts: npm spawn calls (execFile, no shell)", () => {
     expect(errCatches).toBeGreaterThanOrEqual(3);
   });
 });
+// ─── Drift-aware no-op behavior ───────────────────────────────────────────
+
+describe("update.ts: drift-aware no-op", () => {
+  const tmpDir = join(tmpdir(), "openspec-pw-noop-test-" + Date.now());
+  const testsDir = join(tmpDir, "tests", "playwright");
+
+  beforeEach(() => {
+    mkdirSync(join(testsDir, "pages"), { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("BasePage.ts mtime unchanged when content already matches template", async () => {
+    const { syncProjectTemplates } = await import("../../src/commands/update.js");
+    const { statSync } = await import("fs");
+
+    // Simulate a bundled template in a tmp dir
+    const basePageSrc = join(tmpDir, "templates", "pages", "BasePage.ts");
+    mkdirSync(join(tmpDir, "templates", "pages"), { recursive: true });
+    const basePageContent = "export class BasePage {}";
+    writeFileSync(basePageSrc, basePageContent);
+
+    const basePageDest = join(testsDir, "pages", "BasePage.ts");
+    writeFileSync(basePageDest, basePageContent);
+
+    // Give the file a distinct mtime
+    const before = statSync(basePageDest).mtimeMs;
+
+    // Wait a few ms so a rewrite would be detectable
+    await new Promise((r) => setTimeout(r, 20));
+
+    syncProjectTemplates(tmpDir, tmpDir);
+
+    const after = statSync(basePageDest).mtimeMs;
+    expect(after).toBe(before); // no-op: mtime unchanged
+  });
+
+  it("BasePage.ts is rewritten when content differs", async () => {
+    const { syncProjectTemplates } = await import("../../src/commands/update.js");
+    const { statSync } = await import("fs");
+
+    const basePageSrc = join(tmpDir, "templates", "pages", "BasePage.ts");
+    mkdirSync(join(tmpDir, "templates", "pages"), { recursive: true });
+    writeFileSync(basePageSrc, "export class BasePage {}");
+
+    const basePageDest = join(testsDir, "pages", "BasePage.ts");
+    writeFileSync(basePageDest, "export class OldBasePage {}");
+
+    const before = statSync(basePageDest).mtimeMs;
+    await new Promise((r) => setTimeout(r, 20));
+
+    syncProjectTemplates(tmpDir, tmpDir);
+
+    const after = statSync(basePageDest).mtimeMs;
+    expect(after).not.toBe(before); // updated
+    expect(readFileSync(basePageDest, "utf-8")).toBe("export class BasePage {}");
+  });
+});
+
+describe("update.ts: --no-mcp registered + --no-cli recursion", () => {
+  it("index.ts registers --no-mcp for the update command", () => {
+    const src = readFileSync(
+      new URL("../src/index.ts", import.meta.url).pathname,
+      "utf-8",
+    );
+    expect(src).toMatch(/\.option\("--no-mcp",/);
+  });
+
+  it("update re-executes with --no-cli after a CLI update (self-restart)", () => {
+    const src = readFileSync(
+      new URL("../src/commands/update.ts", import.meta.url).pathname,
+      "utf-8",
+    );
+    // The self-restart must spawn `openspec-pw update --no-cli` so the new
+    // binary runs the remaining phases without re-updating the CLI (no loop).
+    expect(src).toMatch(/execFileSync\(\s*"openspec-pw",\s*reExecArgs/);
+    // --no-mcp / --no-skill are forwarded to the restart so the restarted
+    // process honors the user's skip flags (regression guard).
+    expect(src).toMatch(/if \(options\.mcp === false\) reExecArgs\.push\("--no-mcp"\)/);
+    expect(src).toMatch(/if \(options\.skill === false\) reExecArgs\.push\("--no-skill"\)/);
+  });
+});
+
+describe("update.ts: drift coverage regression guards", () => {
+  it("AGENTS.md is always checked (SSOT) — not only via detected adapters", () => {
+    const src = readFileSync(
+      new URL("../src/commands/update.ts", import.meta.url).pathname,
+      "utf-8",
+    );
+    // AGENTS.md path is always evaluated for staleness
+    expect(src).toMatch(/const agentsPath = join\(projectRoot, "AGENTS\.md"\)/);
+    // A claude-only project still checks AGENTS.md (SSOT)
+    expect(src).toMatch(/detected\.length === 0/);
+    expect(src).toMatch(/already in sync/);
+  });
+
+  it("no-marker AGENTS.md is treated as stale (needs append)", () => {
+    const src = readFileSync(
+      new URL("../src/commands/update.ts", import.meta.url).pathname,
+      "utf-8",
+    );
+    expect(src).toMatch(/!fileContent\.includes\(OPENSPEC_START\) \|\|/);
+  });
+
+  it("Cursor skill extraArtifacts are included in command drift check", () => {
+    const src = readFileSync(
+      new URL("../src/commands/update.ts", import.meta.url).pathname,
+      "utf-8",
+    );
+    expect(src).toMatch(/adapter\.extraArtifacts\?\.\(meta\)/);
+    expect(src).toMatch(/extra\.relativePath/);
+  });
+});
