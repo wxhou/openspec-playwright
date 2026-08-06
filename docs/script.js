@@ -74,14 +74,14 @@ const CLAUDE_MD_ZH = `# 项目规范
 ## 浏览器验证证据链
 - 触发条件：改 DOM/交互/跳转/异步渲染/样式/响应式，或路由守卫/权限/多角色可见性 → 必须浏览器验证（权限类用真实登录态）；纯逻辑用 unit，不开浏览器
 - 🔴 截图不等于行为验证：涉及交互必须验证交互结果（点击后的状态/跳转/数据渲染），仅截图不算通过
-- 🟡 自检不留测试代码，但必须留验证记录：构建新鲜度（跑旧包验证作废）、登录态真实性（禁止注入 token）、期望锚定 spec（不自定期望）、控制台/网络无错
-- 🟡 多角色场景：每个角色单独登录、单独出证据，一个账号不能代表所有角色
+- 🟡 自检不留测试代码：构建新鲜度（跑旧包验证作废）、登录态真实性（禁止注入 token）、期望锚定 spec（不自定期望）、控制台/网络无错
+- 🟡 多角色场景：每个角色单独登录验证，一个账号不能代表所有角色
 - 🔴 有验证价值的浏览器路径写成 Playwright 测试；AI 临时打开浏览器「看着没问题」不算完成
 - 🔴 测试必须断言交互结果，\`toBeVisible\` 等存在性断言只能作辅助
-- 🟡 提交前实跑测试，运行结果随 commit 记录；未运行不视为完成
-- 🟡 对应测试或书面豁免 + reviewer 批准；禁无跟踪 issue 的 \`test.skip\`/\`test.fixme\`
-- 🟡 稳定选择器（data-testid/role）；Healer 只消 flaky，不得掩盖断言失败且留日志
-- 🔴 含断言的临时脚本必须同一 PR 内转正为 Playwright 测试或删除`;
+- 🟡 提交前实跑测试，通过才算完成；未运行不视为完成
+- 🟡 无法覆盖的路径说明理由；\`test.skip\`/\`test.fixme\` 必附理由
+- 🟡 稳定选择器（data-testid/role）；Healer 只消 flaky，不得掩盖断言失败
+- 🔴 含断言的临时脚本转正为 Playwright 测试或删除`;
 
 const CLAUDE_MD_EN = `# Project Guidelines
 - Read \`openspec/config.yaml\` first (tech stack, structure, conventions, constraints, etc.); ignore if absent
@@ -158,14 +158,14 @@ const CLAUDE_MD_EN = `# Project Guidelines
 ## Browser Verification Evidence Chain
 - Trigger: DOM/interaction/navigation/async-render/style/responsive changes OR route guards/permissions/multi-role visibility → must be browser-verified (permissions need real login); pure logic → unit tests suffice, no browser
 - 🔴 Screenshot ≠ behavior proof: interactions must verify the result (state change after click / navigation / data render); screenshot alone does not pass
-- 🟡 Self-check leaves no test code but MUST leave a verification record: build freshness (stale bundle invalidates), login authenticity (no token injection), expectations anchored to spec (no self-defined expectations), console/network clean
-- 🟡 Multi-role scenarios: each role logs in separately with separate evidence; one account cannot represent all roles
+- 🟡 Self-check leaves no test code: verify build freshness (stale bundle invalidates), real login (no token injection), expectations anchored to spec (no self-defined expectations), console/network clean
+- 🟡 Multi-role scenarios: each role logs in separately; one account cannot represent all roles
 - 🔴 Browser paths with verification value become Playwright tests; "looks fine in the browser" is not completion
 - 🔴 Tests must assert interaction results; existence assertions like \`toBeVisible\` are auxiliary only
-- 🟡 Run tests before committing and record results with the commit; not run = not done
-- 🟡 A corresponding test, or a written exemption approved by reviewer; no \`test.skip\`/\`test.fixme\` without a tracked issue
-- 🟡 Stable selectors (data-testid/role); Healer only reduces flakiness, must not mask assertion failures and logs its fixes
-- 🔴 Temporary scripts with assertions must be converted to Playwright tests or deleted within the same PR`;
+- 🟡 Run tests before committing; not run = not done
+- 🟡 Uncovered paths need a reason; \`test.skip\`/\`test.fixme\` must state a reason
+- 🟡 Stable selectors (data-testid/role); Healer only reduces flakiness, must not mask assertion failures
+- 🔴 Temporary scripts with assertions must be converted to Playwright tests or deleted`;
 
 function processInline(text) {
   // **bold** → <strong>
