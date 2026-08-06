@@ -3,9 +3,6 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 用中文回复用户
 - 优先级：🔴 CRITICAL（违反→静默 bug/安全漏洞，停下确认后执行）｜🟡 IMPORTANT（偏离说明理由，谨慎执行）｜⚪ STANDARD（按标准执行）
 
-## CodeGraph 优先
-- 🔴 存在 \`.codegraph/\` 时：结构性任务（定位定义、调用链、影响面、流程）**默认第一步**调用 \`codegraph_explore\`，直接用结果回答，不要先 grep/read；grep/read 仅用于字面文本、已打开文件、或结果不足时补查。不派子 agent 重建索引。无 \`.codegraph/\` 跳过。违反会退化为 grep/read 探索循环，token 成本高 5-10×
-
 ## 代码质量
 - 🔴 **lint+typecheck 每次编辑后自动执行，通过才算成功**。扫源码扩展名判断主语言：\`.ts\`→ESLint+tsc、\`.py\`→ruff+mypy、\`.go\`→gofmt+vet 等。工具不存在时告知用户，不假装跑过
 - 🟡 不隐藏任何 gate 失败结果——lint / typecheck / test 任一失败时，完整输出错误日志并停止，不继续后续步骤
@@ -39,7 +36,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - ⚪ 超过 10 条消息后，编辑任何文件前强制重新读取
 
 ## 工具限制
-- 🟡 搜索分层：结构性问题用 CodeGraph（见文首）；字面文本用全文搜索；文件名模式用文件名匹配。跳过依赖目录和缓存目录（调试依赖时除外），搜子目录时按需缩小
+- 🟡 搜索分层：结构性问题（定义/调用/影响/流）优先用 CodeGraph；字面文本用全文搜索；文件名模式用文件名匹配。跳过依赖目录和缓存目录（调试依赖时除外），搜子目录时按需缩小
 - 🟡 重命名覆盖：调用、类型、字符串、import、barrel file、测试 mock，不得假设一次覆盖
 - 🟡 联网调研优先 agent-reach skill
 - 🟡 涉及前端 UI 设计时，按序使用：frontend-design skill 定方向 → ui-ux-pro-max skill 选风格 → web-design-guidelines skill 审查，三步组合避免"千篇一律 AI 风"
@@ -78,9 +75,6 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - Read \`openspec/config.yaml\` first (tech stack, structure, conventions, constraints, etc.); ignore if absent
 - Priority: 🔴 CRITICAL (violation → silent bug/security hole, stop and confirm before acting)｜🟡 IMPORTANT (deviations need justification, proceed with caution)｜⚪ STANDARD (follow as standard practice)
 
-## CodeGraph First
-- 🔴 When \`.codegraph/\` exists: structural tasks (find definition, call chains, impact, flow) → call \`codegraph_explore\` as the default first step, answer directly — don't grep/read first; grep/read only for literal text, already-open files, or filling gaps; don't delegate to a file-reading sub-agent. Skip if no \`.codegraph/\`. Violating this degrades to a grep/read exploration loop costing 5-10× tokens
-
 ## Code Quality
 - 🔴 **lint+typecheck runs after every edit, both must pass**. Detect language by extension: \`.ts\`→ESLint+tsc, \`.py\`→ruff+mypy, \`.go\`→gofmt+vet, etc. If tool missing, tell user, don't pretend it ran
 - 🟡 Never hide gate failures — when lint, typecheck, or test fails, output the full error log and stop. Do not proceed to subsequent steps.
@@ -114,7 +108,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - ⚪ After 10+ messages: force re-read any file before editing
 
 ## Tool Constraints
-- 🟡 Search in layers: structural queries use CodeGraph (see top); literal text → full-text search; filename patterns → filename matching. Skip dependency and cache directories (except when debugging deps); narrow scope in subdirectories
+- 🟡 Search in layers: structural queries (definitions/calls/impact/flow) prefer CodeGraph; literal text → full-text search; filename patterns → filename matching. Skip dependency and cache directories (except when debugging deps); narrow scope in subdirectories
 - 🟡 Renaming must cover: calls, types, strings, imports, barrel files, test mocks — don't assume one pass covers everything
 - 🟡 Web research via agent-reach skill
 - 🟡 When doing frontend UI work, use in order: frontend-design skill (direction) → ui-ux-pro-max skill (style selection) → web-design-guidelines skill (auto-review), three-step combo to avoid "generic AI look"
