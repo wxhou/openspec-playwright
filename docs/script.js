@@ -69,7 +69,19 @@ const CLAUDE_MD_ZH = `# 项目规范
 - ⚪ 平铺存放，不分子目录
 - 🔴 禁止将临时文件提交到版本控制
 - 🟡 超 24h 的文件应在 commit 前删除
-- ⚪ 文件命名遵循项目所在语言/框架的约定（如 JS/Go 用 kebab-case，Python/Rust 用 snake_case，Java 用 PascalCase），避免空格和特殊字符`;
+- ⚪ 文件命名遵循项目所在语言/框架的约定（如 JS/Go 用 kebab-case，Python/Rust 用 snake_case，Java 用 PascalCase），避免空格和特殊字符
+
+## 浏览器验证证据链
+- 触发条件：改 DOM/交互/跳转/异步渲染/样式/响应式，或路由守卫/权限/多角色可见性 → 必须浏览器验证；纯逻辑用 unit，不开浏览器
+- 🔴 截图不等于行为验证：涉及交互必须验证交互结果（点击后的状态/跳转/数据渲染），仅截图不算通过
+- 🟡 自检不留测试代码，但必须留验证记录：构建新鲜度（跑旧包验证作废）、登录态真实性（禁止注入 token）、期望锚定 spec（不自定期望）、控制台/网络无错
+- 🟡 多角色场景：每个角色单独登录、单独出证据，一个账号不能代表所有角色
+- 🔴 有验证价值的浏览器路径写成 Playwright 测试进 CI；AI 临时打开浏览器「看着没问题」不算完成
+- 🔴 进 CI 测试必须断言交互结果，\`toBeVisible\` 等存在性断言只能作辅助
+- 🟡 PR 必须含对应测试，或书面豁免理由 + reviewer 批准
+- 🟡 稳定选择器（data-testid/role）；Healer 不得掩盖断言失败，修复动作留日志
+- 🟡 禁止无跟踪 issue 的 \`test.skip\`/\`test.fixme\`
+- 🔴 含断言的临时脚本必须同一 PR 内转正为 Playwright 测试或删除`;
 
 const CLAUDE_MD_EN = `# Project Guidelines
 - Read \`openspec/config.yaml\` first (tech stack, structure, conventions, constraints, etc.); ignore if absent
@@ -141,7 +153,19 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - ⚪ Flat layout, no subdirectories
 - 🔴 Never commit temp files to version control
 - 🟡 Files older than 24h should be deleted before commit
-- ⚪ Use filenames matching the project's language/framework convention (e.g. kebab-case for JS/Go, snake_case for Python/Rust, PascalCase for Java), avoid spaces and special characters`;
+- ⚪ Use filenames matching the project's language/framework convention (e.g. kebab-case for JS/Go, snake_case for Python/Rust, PascalCase for Java), avoid spaces and special characters
+
+## Browser Verification Evidence Chain
+- Trigger: DOM/interaction/navigation/async-render/style/responsive changes OR route guards/permissions/multi-role visibility → must be browser-verified; pure logic → unit tests suffice, no browser
+- 🔴 Screenshot ≠ behavior proof: interactions must verify the result (state change after click / navigation / data render); screenshot alone does not pass
+- 🟡 Self-check leaves no test code but MUST leave a verification record: build freshness (stale bundle invalidates), login authenticity (no token injection), expectations anchored to spec (no self-defined expectations), console/network clean
+- 🟡 Multi-role scenarios: each role logs in separately with separate evidence; one account cannot represent all roles
+- 🔴 Browser paths with verification value become Playwright tests in CI; "looks fine in the browser" is not completion
+- 🔴 CI tests must assert interaction results; existence assertions like \`toBeVisible\` are auxiliary only
+- 🟡 PR needs the corresponding test, or a written exemption approved by reviewer
+- 🟡 Stable selectors (data-testid/role); Healer must not mask assertion failures, its fixes are logged
+- 🟡 No \`test.skip\`/\`test.fixme\` without a tracked issue
+- 🔴 Temporary scripts with assertions must be converted to Playwright tests or deleted within the same PR`;
 
 function processInline(text) {
   // **bold** → <strong>

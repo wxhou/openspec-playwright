@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **employee-standards.md 新增 §7「浏览器验证证据链」**. 定义「什么算浏览器验证通过」的证据标准：改了用户可见可交互的东西就必须在浏览器里证明；自检不留测试代码但必须留验证记录（构建新鲜度 / 登录态真实性 / 期望锚定 spec / 控制台与网络无错）；截图不等于行为验证；有验证价值的浏览器路径必须写成 Playwright 测试进 CI；含断言的临时脚本必须同一 PR 内转正或删除。§5 数据编撰禁令同步扩展：验证期望值禁止编造、验证证据不得编造或复用旧证据。
+  - `employee-standards.md`、`docs/script.js`（ZH + EN 内嵌标准）
+
+## [0.3.64] - 2026-08-06
+
+### Added
+
 - **`openspec-pw doctor` Sync 分类**. 检测已初始化项目里 AGENTS.md / CLAUDE.md 的 OPENSPEC 标记段与当前已装包模板是否漂移。纳入 `--json` 与 exit code，但以"是否初始化过"为闸门——未初始化项目记 `ok:true`（不阻断 CI），已初始化但标准过期记 `ok:false` 并提示 `openspec-pw update`。措辞中性（"OPENSPEC block differs from bundled version（手动修改或旧版模板）"），不归因用户修改。
   - `src/shared/drift.ts` — 新增纯函数（提取 OPENSPEC 段、内容相等比较、定位本地已装包模板，零网络）
   - `src/commands/doctor.ts` — 新增 Sync 分类 + 初始化闸门
