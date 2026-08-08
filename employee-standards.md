@@ -57,7 +57,6 @@
 - ⚪ 超过 10 条消息后，编辑任何文件前强制重新读取
 
 **DO NOT**
-- 禁止跨阶段跳步（explore→apply→verify→e2e 各阶段由用户触发）
 - 禁止跨 change 改动：`/opsx:apply <X>` 期间不改 `changes/<Y>/`
 - 禁止"顺手清理"其他 open change 文件 → 告知用户，由用户决定
 
@@ -72,7 +71,7 @@
 - 🟡 重命名覆盖：调用、类型、字符串、import、barrel file、测试 mock，不得假设一次覆盖
 - 🟡 联网调研优先 agent-reach skill
 - 🟡 涉及前端 UI 设计时，按序使用：frontend-design skill 定方向 → ui-ux-pro-max skill 选风格 → web-design-guidelines skill 审查，三步组合避免"千篇一律 AI 风"
-- 🟡 编辑 → 重新读取确认 → lint+typecheck → 任一失败则回退
+- 🟡 编辑 → 重新读取确认 → 跑 §1 的 lint+typecheck → 任一失败则回退
 - 🟡 变更完成告知用户可能遗漏区域，提示人工复查
 
 **DO NOT**
@@ -121,8 +120,7 @@
 - 用户同意占位 → `TODO(user)` 标注并附问询上下文
 - 用户提供数据 → 使用真实数据
 - 无论前后端一体还是纯前端，存在 OpenAPI/接口文档 → 查阅真实定义并标注来源（如 `// 来源: docs/api/openapi.yaml#/paths/...`）
-- 验证期望值同样禁止编造 → 锚定 spec / 验收标准，不自定期望（呼应 §7）
-- 截图 / 日志 / 测试结果等验证证据不得编造或复用旧证据（呼应 §7）
+- 验证期望值 / 截图 / 日志 / 测试结果等验证证据不编造、不复用旧证据 → 参见 §7
 
 ---
 
