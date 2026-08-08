@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.65] - 2026-08-08
 
 ### Added
 
@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **employee-standards 补齐 6 条工程选型/架构原则**. §1 代码质量新增「过时直接删（不留兼容层/迁移/fallback）」「优先成熟库」「选型先翻已有依赖」「用成熟产品验证过的模式」；§4 大规模任务新增「先跑通最小端到端再增量」「架构决策往长了做（不留临时方案）」。其中 3 条标 🔴（违反→静默 bug/安全漏洞）：fallback 静默降级、数据编撰、管道命令改源码。
   - `employee-standards.md`
+
+### Changed
+
+- **employee-standards 收敛去重**. §2/§3/§5 重复规则改为单一事实源：跨阶段跳步并入 §4、编辑循环引用 §1、验证证据归 §7；删除 §3 搜索分层残留的 CodeGraph 覆盖说明行；CodeGraph 优先节违反理由句删除（规则自足）。docs 版本 badge 边框改 rgba 兼容旧浏览器。
 
 ## [0.3.64] - 2026-08-06
 
