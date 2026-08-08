@@ -431,7 +431,7 @@
   text-transform: none;
   color: var(--accent);
   background: var(--accent-light);
-  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  border: 1px solid rgba(194, 65, 12, 0.28);
   border-radius: 999px;
   white-space: nowrap;
   vertical-align: middle;
