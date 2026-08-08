@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **employee-standards 补齐 6 条工程选型/架构原则**. §1 代码质量新增「过时直接删（不留兼容层/迁移/fallback）」「优先成熟库」「选型先翻已有依赖」「用成熟产品验证过的模式」；§4 大规模任务新增「先跑通最小端到端再增量」「架构决策往长了做（不留临时方案）」。
+  - `employee-standards.md`
+
 - **employee-standards.md 新增 §7「浏览器验证证据链」**. 定义「什么算浏览器验证通过」的证据标准：改了用户可见可交互的东西就必须在浏览器里证明；自检不留测试代码，验证须覆盖（构建新鲜度 / 登录态真实性 / 期望锚定 spec / 控制台与网络无错）；截图不等于行为验证；有验证价值的浏览器路径必须写成 Playwright 测试、**提交前实跑（不依赖 CI / commit / PR 机制）**；含断言的临时脚本转正或删除。§5 数据编撰禁令同步扩展：验证期望值禁止编造、验证证据不得编造或复用旧证据。
   - `employee-standards.md`、`docs/script.js`（ZH + EN 内嵌标准）
 
