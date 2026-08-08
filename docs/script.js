@@ -11,6 +11,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🟡 动手前列假设 → 逐条验证。有不清→停下来，说出困惑，再提问。多解释则全列，更简单方案则提出并坚持
 - 🟡 多步任务先列计划（\`1. [Step] → verify: [check]\`），循环验证直到成功。lint 失败时优先运行对应语言的 auto-fix（如 \`npm run lint:fix\` / \`ruff format .\` / \`go fmt ./...\`）
 - 🟡 只写被要求的：不加"灵活"/"可配置"/单次使用抽象。200行能50行则重写
+- 🔴 过时的直接删：删除/修改时不留兼容层、不写迁移、不留 fallback
 - 🟡 精准改动：只改必要的，改完清理自己造成的垃圾。匹配现有风格
 - 🟡 代码文件行数上限 1500：超过即违例，按职责拆分，不得继续堆叠
 - ⚪ 重构前清理未使用的 import/export/prop/console.log 等，单独提交再做重构
@@ -31,7 +32,6 @@ const CLAUDE_MD_ZH = `# 项目规范
 ## 上下文管理
 - 🟡 超过 500 行文件：分次读取或编辑前重新读取完整内容
 - 🟡 上下文压缩恢复后：git status → 重读 proposal/design/tasks → 对照 design 检查 → lint+typecheck → 继续
-- 禁止跨阶段跳步（explore→apply→verify→e2e 由用户触发）
 - 禁止跨 change 改动，禁止顺手清理其他 open change → 告知用户，由用户决定
 - ⚪ 超过 10 条消息后，编辑任何文件前强制重新读取
 
@@ -42,7 +42,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🟡 涉及前端 UI 设计时，按序使用：frontend-design skill 定方向 → ui-ux-pro-max skill 选风格 → web-design-guidelines skill 审查，三步组合避免"千篇一律 AI 风"
 - 🟡 编辑 → 重新读取确认 → lint+typecheck → 任一失败则回退
 - 🟡 变更完成告知用户可能遗漏区域，提示人工复查
-- 禁止用 sed/awk/node -e/python -c 等管道命令改源码文件
+- 🔴 禁止用 sed/awk/node -e/python -c 等管道命令改源码文件（跳过编辑工具验证层）
 - 不主动推送，除非用户明确要求
 - 格式化工具（ruff fmt/prettier 除外——不改语义）
 - 密钥与 .env 不入版本控制。示例用占位符（如 \`YOUR_API_KEY\`）。调试日志不打印凭据
@@ -95,6 +95,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🟡 List assumptions before coding → verify each one. If unclear → stop, express confusion, then ask. Present all interpretations; suggest simpler approaches and insist
 - 🟡 Multi-step tasks: plan first (\`1. [Step] → verify: [check]\`), loop until verified. On lint failure, run the language's auto-fix first (e.g. \`npm run lint:fix\` / \`ruff format .\` / \`go fmt ./...\`)
 - 🟡 Write only what's requested: No flexibility/configurability/single-use abstractions. Rewrite if 200 lines can be 50
+- 🔴 Delete obsolete code outright: no compat layers, migrations, or fallbacks when removing/editing
 - 🟡 Surgical changes: Touch only what's needed, clean up your own mess. Match existing style
 - 🟡 Code file line limit 1500: over 1500 is a violation — split by responsibility, never extend
 - ⚪ Before refactoring, clean unused imports/exports/props/console.log etc. in a separate commit
@@ -115,7 +116,6 @@ const CLAUDE_MD_EN = `# Project Guidelines
 ## Context Management
 - 🟡 Files over 500 lines: read in parts or re-read fully before editing
 - 🟡 After context compression: git status → re-read proposal/design/tasks → check implementation against design → lint+typecheck → continue
-- No跨-stage jumps (explore→apply→verify→e2e triggered by user)
 - No跨-change edits during \`/opsx:apply <X>\`, no "cleanup" other open changes
 - ⚪ After 10+ messages: force re-read any file before editing
 
@@ -126,7 +126,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🟡 When doing frontend UI work, use in order: frontend-design skill (direction) → ui-ux-pro-max skill (style selection) → web-design-guidelines skill (auto-review), three-step combo to avoid "generic AI look"
 - 🟡 Edit → re-read to confirm → lint+typecheck → rollback on any failure
 - 🟡 After changes, inform user of areas that may be missed, prompt manual review
-- No sed/awk/node -e/python -c pipelines for source edits (bypasses edit tool validation)
+- 🔴 No sed/awk/node -e/python -c pipelines for source edits (bypasses edit tool validation)
 - No push unless explicitly requested
 - Formatters allowed (ruff fmt/prettier — don't change semantics)
 - Secrets & .env out of version control. Use placeholders (e.g. \`YOUR_API_KEY\`). No credentials in debug logs

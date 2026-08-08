@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **docs 网页版内嵌标准同步**. `docs/script.js` ZH + EN 补齐「过时的直接删（不留 fallback）」🔴、管道命令改源码升级 🔴；删除已从通用规范移除的「禁止跨阶段跳步」残留行。与 employee-standards 保持关键一致。
+  - `docs/script.js`
+
 - **employee-standards 补齐 6 条工程选型/架构原则**. §1 代码质量新增「过时直接删（不留兼容层/迁移/fallback）」「优先成熟库」「选型先翻已有依赖」「用成熟产品验证过的模式」；§4 大规模任务新增「先跑通最小端到端再增量」「架构决策往长了做（不留临时方案）」。其中 3 条标 🔴（违反→静默 bug/安全漏洞）：fallback 静默降级、数据编撰、管道命令改源码。
   - `employee-standards.md`
 
