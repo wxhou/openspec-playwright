@@ -595,7 +595,7 @@ export function installOpenSpecBlock(
  */
 const CODE_GRAPH_FIRST_BLOCK = `## CodeGraph 优先 🔴
 
-存在 \`.codegraph/\` 时：结构性任务（定位定义、调用链、影响面、流程）**默认第一步**调用 \`codegraph_explore\`，直接用结果回答，不要先 grep/read；grep/read 仅用于字面文本、已打开文件、或结果不足时补查。不派子 agent 重建索引。无 \`.codegraph/\` 跳过。（违反 → grep/read 循环，token 成本高 5-10×）`;
+存在 \`.codegraph/\` 时：结构性任务（定位定义、调用链、影响面、流程）**默认第一步**调用 \`codegraph_explore\`，直接用结果回答，不要先 grep/read；grep/read 仅用于字面文本、已打开文件、或结果不足时补查。不派子 agent 重建索引。无 \`.codegraph/\` 跳过。`;
 
 /**
  * The expected OPENSPEC block content for a thin CLAUDE.md wrapper
