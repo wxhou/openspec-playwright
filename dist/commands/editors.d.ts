@@ -133,9 +133,11 @@ export declare function installOpenSpecBlock(projectRoot: string, standardsConte
  * inside CLAUDE.md — AGENTS.md is NOT read by default ("Claude Code reads
  * CLAUDE.md, not AGENTS.md"). Contract per
  * https://code.claude.com/docs/en/memory.md:
- * - `@path` must be its own line. This wrapper keeps it at the end of the
- *   block, outside any code span / fenced block — import lines inside those
- *   are skipped by the resolver.
+ * - Position is irrelevant — the doc says "@ ... anywhere in your CLAUDE.md"
+ *   (examples even inline it mid-sentence or in a list item). The one real
+ *   constraint: the `@` line must NOT sit inside a code span (backticks) or
+ *   a fenced code block — the resolver skips those. This wrapper keeps the
+ *   import at the end of the block as a bare line.
  * - The path resolves relative to the importing CLAUDE.md; import recursion
  *   is capped at 4 hops.
  * - Block-level HTML comments (`<!-- ... -->`) are stripped before context
