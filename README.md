@@ -269,7 +269,10 @@ Editors (auto-detected by openspec-pw init)
 
 Employee-grade standards live in **AGENTS.md** as the single source of truth. Claude Code
 loads them via a CLAUDE.md that carries a CodeGraph-first block up front, followed by an
-`@AGENTS.md` import. OpenCode registers AGENTS.md in
+`@AGENTS.md` import — Claude Code's documented mechanism for reusing AGENTS.md, which it does
+not read by default. The import line sits outside the OPENSPEC:START/END comments (stripped
+before context injection), so the markers act as the tool-owned boundary while the import is
+honored. OpenCode registers AGENTS.md in
 `opencode.jsonc` under `instructions`. Cline and Cursor auto-detect `AGENTS.md` natively — no wrapper
 file needed.
 

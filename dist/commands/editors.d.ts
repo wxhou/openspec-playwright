@@ -128,6 +128,19 @@ export declare function installOpenSpecBlock(projectRoot: string, standardsConte
  * The expected OPENSPEC block content for a thin CLAUDE.md wrapper
  * (CodeGraph-first guidance + `@AGENTS.md` import). Exported so drift
  * detection / update can compare against it.
+ *
+ * The `@AGENTS.md` line is Claude Code's documented way to reuse AGENTS.md
+ * inside CLAUDE.md — AGENTS.md is NOT read by default ("Claude Code reads
+ * CLAUDE.md, not AGENTS.md"). Contract per
+ * https://code.claude.com/docs/en/memory.md:
+ * - `@path` must be its own line. This wrapper keeps it at the end of the
+ *   block, outside any code span / fenced block — import lines inside those
+ *   are skipped by the resolver.
+ * - The path resolves relative to the importing CLAUDE.md; import recursion
+ *   is capped at 4 hops.
+ * - Block-level HTML comments (`<!-- ... -->`) are stripped before context
+ *   injection, so the OPENSPEC markers vanish while the live `@AGENTS.md`
+ *   line inside them is still honored.
  */
 export declare function claudeWrapperStandardsContent(): string;
 /**
