@@ -295,6 +295,13 @@ export async function update(options: UpdateOptions) {
               const fileContent = readFileSync(claudePath, "utf-8");
               if (!fileContent.includes(OPENSPEC_START)) {
                 claudeStale = !/^@AGENTS\.md\r?$/m.test(fileContent);
+                if (!claudeStale) {
+                  console.log(
+                    chalk.yellow(
+                      "  ⚠ CLAUDE.md 是裸 @AGENTS.md 导入（无 OPENSPEC 标记），CodeGraph 优先约束未写入。如需启用：删除该行后重跑 openspec-pw update。",
+                    ),
+                  );
+                }
               } else {
                 claudeStale = compareBlock(
                   fileContent,

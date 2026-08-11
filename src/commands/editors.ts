@@ -767,11 +767,18 @@ export function installClaudeWrapper(projectRoot: string): void {
   // No-op if our full wrapper (CodeGraph block + @AGENTS.md import) is already
   // in place — content-equal, so a user edit inside the markers is detected.
   // A bare @AGENTS.md without our markers (added by openspec CLI or the user)
-  // is left untouched.
+  // is left untouched — but tell the user CodeGraph-first won't be written.
   if (existsSync(dest)) {
     const existing = readFileSync(dest, "utf-8");
     const hasMarkers = existing.includes("<!-- OPENSPEC:START -->");
-    if (!hasMarkers && /^@AGENTS\.md\r?$/m.test(existing)) return;
+    if (!hasMarkers && /^@AGENTS\.md\r?$/m.test(existing)) {
+      console.log(
+        chalk.yellow(
+          "  ⚠ CLAUDE.md 是裸 @AGENTS.md 导入（无 OPENSPEC 标记），CodeGraph 优先约束未写入。如需启用：删除该行后重跑 openspec-pw update。",
+        ),
+      );
+      return;
+    }
     if (hasMarkers && blockMatchesExpected(projectRoot, claudeAdapter, claudeWrapperStandardsContent())) {
       return;
     }

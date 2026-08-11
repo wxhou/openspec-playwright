@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **init/update 对裸 `@AGENTS.md` 的 CLAUDE.md 加提示**. 检测到 CLAUDE.md 只有裸 `@AGENTS.md` 导入（openspec CLI 或用户手写、无 OPENSPEC 标记）时，行为保持不干预，但提示「CodeGraph 优先约束未写入，删除该行后重跑 openspec-pw update 可启用」。
+  - `src/commands/editors.ts` — `installClaudeWrapper` 裸导入分支
+  - `src/commands/update.ts` — standards 相位漂移检查
+
 ### Fixed
 
 - **release 脚本 commit message 变量未展开**. `git commit -m 'docs: bump version badge to v${npm_package_version}'` 用单引号导致 `${npm_package_version}` 字面输出，每次发布留下 `v${npm_package_version}` 字面 commit message。改为双引号，shell 展开 npm 注入的环境变量。
