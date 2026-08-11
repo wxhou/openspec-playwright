@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **release 脚本 commit message 变量未展开**. `git commit -m 'docs: bump version badge to v${npm_package_version}'` 用单引号导致 `${npm_package_version}` 字面输出，每次发布留下 `v${npm_package_version}` 字面 commit message。改为双引号，shell 展开 npm 注入的环境变量。
+  - `package.json`
+
 ## [0.3.66] - 2026-08-11
 
 ### Added
