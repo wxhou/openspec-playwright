@@ -18,7 +18,7 @@ export interface CommandMeta {
 }
 /** Build the command metadata for the /opsx:e2e command. */
 export declare function buildCommandMeta(body: string): CommandMeta;
-export type EditorId = "claude" | "opencode" | "cline" | "cursor";
+export type EditorId = "claude" | "opencode" | "cline" | "cursor" | "pi" | "omp";
 export interface ExtraArtifact {
     relativePath: string;
     contents: string;
@@ -29,8 +29,18 @@ export interface EditorAdapter {
     label: string;
     /** Human-readable name used in user-facing messages. */
     displayName: string;
-    /** True if this editor's config dir is present in the project. */
-    detect(projectRoot: string): boolean;
+    /**
+     * True if this editor's config dir is present in the project.
+     * Some adapters (Pi, Oh My Pi) also treat a global config dir in the
+     * user's home as a detection signal — `homeDir` lets tests inject a
+     * fake home so detection stays hermetic.
+     */
+    detect(projectRoot: string, homeDir?: string): boolean;
+    /**
+     * True when this editor has an MCP client to configure. False skips all
+     * MCP install/check/remove phases (Pi has no MCP client).
+     */
+    supportsMcp?: boolean;
     /** Relative path of the command file inside the project. */
     commandFilePath(id: string): string;
     /** Format command file contents (frontmatter + body). */
@@ -97,8 +107,55 @@ export declare function getCursorSkillPath(id: string): string;
  */
 export declare function formatCursorSkill(meta: CommandMeta): string;
 export declare function hasCursor(projectRoot: string): boolean;
+/**
+ * Pi stores project resources in `.pi/` (skills/, prompts/, extensions/).
+ * Prompt templates are Markdown with optional YAML frontmatter; the
+ * filename becomes the slash command name (`opsx-e2e.md` → `/opsx-e2e`),
+ * `description` feeds autocomplete, and `argument-hint` shows expected
+ * arguments. `$1` / `$ARGUMENTS` placeholders expand at prompt time.
+ *
+ * Conventions follow the Pi docs (packages/coding-agent/docs):
+ *   - Prompts:   `.pi/prompts/*.md`, invoked via `/name`.
+ *   - Skills:    `.pi/skills/` (root `.md` files or `SKILL.md` dirs),
+ *                invoked via `/skill:name`.
+ *   - Rules:     Pi loads `AGENTS.md` (or `CLAUDE.md`) walking up from cwd
+ *                natively — no wrapper file needed.
+ *   - MCP:       Pi has NO MCP client (built-in tools only). The adapter
+ *                still implements the interface with no-ops and declares
+ *                `supportsMcp: false` so shared MCP phases skip it.
+ */
+export declare function formatPiCommand(meta: CommandMeta): string;
+export declare function getPiCommandPath(id: string): string;
+/**
+ * True when Pi is in use: a project `.pi/` dir, or a global Pi config dir
+ * (`~/.pi/agent/`, created by Pi on first run). The home signal lets
+ * `openspec-pw init` detect Pi in a fresh project that has no `.pi/` yet.
+ */
+export declare function hasPi(projectRoot: string, homeDir?: string): boolean;
+/**
+ * Oh My Pi (omp) stores project slash commands in `.omp/commands/*.md`
+ * (non-recursive scan, project before user). Native commands are parsed
+ * with FATAL frontmatter parsing, so the YAML must be valid; `name`
+ * overrides the filename and `description` feeds autocomplete. `$1` /
+ * `$ARGUMENTS` placeholders expand at prompt time.
+ *
+ * Conventions follow the omp docs (docs/slash-command-internals.md,
+ * docs/mcp-config.md):
+ *   - Commands:  `.omp/commands/*.md`, invoked via `/name`.
+ *   - MCP:       `.omp/mcp.json` with `{ "mcpServers": { ... } }` — same
+ *                shape as Cline/Cursor. omp also inherits `.claude/` /
+ *                `.cursor/` / opencode MCP configs when present.
+ *   - Rules:     omp reads `AGENTS.md` natively — no wrapper file needed.
+ */
+export declare function formatOmpCommand(meta: CommandMeta): string;
+export declare function getOmpCommandPath(id: string): string;
+/**
+ * True when Oh My Pi is in use: a project `.omp/` dir, or a global omp
+ * config dir (`~/.omp/agent/`, created by omp on first run).
+ */
+export declare function hasOmp(projectRoot: string, homeDir?: string): boolean;
 export declare function getAdapter(id: EditorId): EditorAdapter | undefined;
-export declare function detectAdapters(projectRoot: string): EditorAdapter[];
+export declare function detectAdapters(projectRoot: string, homeDir?: string): EditorAdapter[];
 /** Slash-command hint for user-facing messages. */
 export declare function slashCommandForAdapter(adapter: EditorAdapter): string;
 /** Relative paths installCommand writes for this adapter + meta. */
@@ -177,3 +234,5 @@ export declare const claudeAdapter: EditorAdapter;
 export declare const opencodeAdapter: EditorAdapter;
 export declare const clineAdapter: EditorAdapter;
 export declare const cursorAdapter: EditorAdapter;
+export declare const piAdapter: EditorAdapter;
+export declare const ompAdapter: EditorAdapter;

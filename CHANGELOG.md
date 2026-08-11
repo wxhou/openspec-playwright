@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Pi 与 Oh My Pi (omp) 支持**. 新增两个编辑器适配器：Pi 通过 `.pi/prompts/opsx-e2e.md` 提示词模板（文件名即命令名，`argument-hint` 提示参数）；Oh My Pi 通过 `.omp/commands/opsx-e2e.md` 原生命令（`name` + `description` frontmatter）。两者原生读 `AGENTS.md`，无需包装文件；检测信号为项目 `.pi/` / `.omp/` 目录或全局 `~/.pi/agent/` / `~/.omp/agent/` 配置目录（`detectAdapters` 新增可注入 `homeDir`，测试保持封闭）。
+  - `src/commands/editors.ts` — `EditorId` 扩为 6 个、接口新增 `supportsMcp`、Pi / omp 适配器
+  - `src/shared/mcp.ts` — `supportsMcp:false` 的适配器跳过全部 MCP 相位（Pi 无 MCP 客户端，探索走 `openspec-pw explore`）
+  - `src/commands/doctor.ts` — MCP 分类对 Pi 记录 `ok:true` 信息性检查（不阻断 exit code）
+  - `tests/editors.test.ts` — 新增 21 个 pi/omp 用例；既有 detectAdapters 用例注入 fake home 防环境依赖
+  - `README.md` / `README.zh-CN.md` — 编辑器支持、init 检测、doctor 表、架构树同步
+
 ### Changed
 
 - **CLAUDE.md wrapper 沉淀官方依据**. `@AGENTS.md` 是 Claude Code 官方记载的复用 AGENTS.md 机制（AGENTS.md 默认不读），位置无关（官方 "anywhere in your CLAUDE.md"）、唯一要求是 `@` 行不在反引号/代码块内；相对 CLAUDE.md 解析、递归上限 4 跳；OPENSPEC:START/END 块级注释在注入上下文前被剥离，marker 内的 `@AGENTS.md` 仍生效。

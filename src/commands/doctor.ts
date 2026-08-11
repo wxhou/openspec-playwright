@@ -203,10 +203,21 @@ export async function doctor(options: DoctorOptions = {}) {
       category: "Playwright MCP",
       name: "playwright-mcp",
       ok: false,
-      message: "no editors detected (configure .claude/, .opencode/, .cline/, or .cursor/)",
+      message: "no editors detected (configure .claude/, .opencode/, .cline/, .cursor/, .pi/, or .omp/)",
     });
   } else {
     for (const adapter of adapters) {
+      // Editors without an MCP client (Pi) get an informational, non-blocking
+      // check instead of a failing one — there is nothing to configure.
+      if (adapter.supportsMcp === false) {
+        checks.push({
+          category: "Playwright MCP",
+          name: `playwright-mcp-${adapter.label}`,
+          ok: true,
+          message: `${adapter.displayName} has no MCP client (use openspec-pw explore)`,
+        });
+        continue;
+      }
       const installed = isPlaywrightMcpInstalled(adapter);
       checks.push({
         category: "Playwright MCP",
@@ -256,7 +267,9 @@ export async function doctor(options: DoctorOptions = {}) {
     existsSync(join(projectRoot, ".opencode", "commands", "opsx-e2e.md")) ||
     existsSync(join(projectRoot, ".cline", "skills", "opsx-e2e", "SKILL.md")) ||
     existsSync(join(projectRoot, ".cursor", "commands", "opsx-e2e.md")) ||
-    existsSync(join(projectRoot, ".cursor", "skills", "opsx-e2e", "SKILL.md"));
+    existsSync(join(projectRoot, ".cursor", "skills", "opsx-e2e", "SKILL.md")) ||
+    existsSync(join(projectRoot, ".pi", "prompts", "opsx-e2e.md")) ||
+    existsSync(join(projectRoot, ".omp", "commands", "opsx-e2e.md"));
   const initialized = hasCommand || hasOpenSpec;
   if (!initialized) {
     checks.push({
@@ -446,7 +459,7 @@ export async function doctor(options: DoctorOptions = {}) {
       ? detected.map((a) => {
           return `${slashCommandForAdapter(a)} (in ${a.displayName})`;
         })
-      : ["/opsx:e2e (in Claude Code, OpenCode, Cline, or Cursor)"];
+      : ["/opsx:e2e (in Claude Code, OpenCode, Cline, Cursor, Pi, or Oh My Pi)"];
     console.log(chalk.gray(`  Run: ${hints.join("  or  ")} <change-name>\n`));
   } else {
     console.log(chalk.red("  ❌ Some prerequisites are missing\n"));

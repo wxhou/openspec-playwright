@@ -61,7 +61,9 @@ export async function update(options: UpdateOptions) {
     existsSync(join(projectRoot, ".opencode", "commands", "opsx-e2e.md")) ||
     existsSync(join(projectRoot, ".cline", "skills", "opsx-e2e", "SKILL.md")) ||
     existsSync(join(projectRoot, ".cursor", "commands", "opsx-e2e.md")) ||
-    existsSync(join(projectRoot, ".cursor", "skills", "opsx-e2e", "SKILL.md"));
+    existsSync(join(projectRoot, ".cursor", "skills", "opsx-e2e", "SKILL.md")) ||
+    existsSync(join(projectRoot, ".pi", "prompts", "opsx-e2e.md")) ||
+    existsSync(join(projectRoot, ".omp", "commands", "opsx-e2e.md"));
   const hasOpenSpec = existsSync(join(projectRoot, "openspec"));
   if (!hasCommand && !hasOpenSpec) {
     console.log(chalk.yellow("  ⚠ OpenSpec + Playwright E2E not initialized."));
@@ -209,7 +211,7 @@ export async function update(options: UpdateOptions) {
       if (detected.length === 0) {
         console.log(
           chalk.gray(
-            "  - No supported editor (.claude, .opencode, .cline, or .cursor) found, skipping command installation",
+            "  - No supported editor (.claude, .opencode, .cline, .cursor, .pi, or .omp) found, skipping command installation",
           ),
         );
       } else if (body) {
@@ -265,7 +267,7 @@ export async function update(options: UpdateOptions) {
         if (detected.length === 0) {
           console.log(
             chalk.gray(
-              "  - No supported editor (.claude, .opencode, .cline, or .cursor) found, skipping standards sync",
+              "  - No supported editor (.claude, .opencode, .cline, .cursor, .pi, or .omp) found, skipping standards sync",
             ),
           );
         } else {
@@ -353,7 +355,9 @@ export async function update(options: UpdateOptions) {
         }
         try {
           ensurePlaywrightMcp(adapter);
-          console.log(chalk.gray(`  (Restart ${adapter.label} to activate)`));
+          if (adapter.supportsMcp !== false) {
+            console.log(chalk.gray(`  (Restart ${adapter.label} to activate)`));
+          }
         } catch {
           console.log(
             chalk.yellow(`  ⚠ ${adapter.label}: Failed to install Playwright MCP`),

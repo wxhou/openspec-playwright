@@ -10,6 +10,7 @@ import { type EditorAdapter } from "../commands/editors.js";
 
 /** Check if the named MCP server is installed in this editor. */
 export function isMcpInstalled(adapter: EditorAdapter, serverName: string): boolean {
+  if (adapter.supportsMcp === false) return false;
   return adapter.isMcpInstalled(process.cwd(), serverName);
 }
 
@@ -19,6 +20,12 @@ export function ensureMcp(
   serverName: string,
   command: string[],
 ): void {
+  if (adapter.supportsMcp === false) {
+    console.log(
+      `  - ${adapter.label}: ${serverName} MCP not supported (no MCP client; use "openspec-pw explore" for browser exploration)`,
+    );
+    return;
+  }
   if (isMcpInstalled(adapter, serverName)) {
     console.log(`  ✓ ${adapter.label}: ${serverName} MCP already installed`);
     return;
@@ -34,6 +41,10 @@ export function ensureMcp(
 
 /** Remove an MCP server from this editor. Does not throw if missing. */
 export function removeMcp(adapter: EditorAdapter, serverName: string): void {
+  if (adapter.supportsMcp === false) {
+    console.log(`  - ${adapter.label}: ${serverName} MCP not supported (nothing to remove)`);
+    return;
+  }
   if (!isMcpInstalled(adapter, serverName)) {
     console.log(`  - ${adapter.label}: ${serverName} MCP not installed (nothing to remove)`);
     return;

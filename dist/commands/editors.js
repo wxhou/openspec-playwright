@@ -18,9 +18,16 @@
  *   - Cursor:  `.cursor/commands/opsx-<id>.md` (plain MD) +
  *              `.cursor/skills/opsx-<id>/SKILL.md` (extraArtifacts),
  *              edits `.cursor/mcp.json`, auto-detects AGENTS.md.
+ *   - Pi:      `.pi/prompts/opsx-<id>.md` (prompt template), description +
+ *              argument-hint frontmatter, NO MCP client (supportsMcp:false),
+ *              auto-detects AGENTS.md. Detected via `.pi/` or `~/.pi/agent/`.
+ *   - Oh My Pi: `.omp/commands/opsx-<id>.md`, name+description frontmatter,
+ *              edits `.omp/mcp.json` (same shape as Cline/Cursor),
+ *              auto-detects AGENTS.md. Detected via `.omp/` or `~/.omp/agent/`.
  */
 import { existsSync, mkdirSync, rmSync, writeFileSync, readFileSync, } from "fs";
 import { execFileSync } from "node:child_process";
+import { homedir } from "os";
 import { join, dirname, basename, resolve as pathResolve } from "path";
 import chalk from "chalk";
 import { modify, applyEdits, parseTree as parseJsonc, findNodeAtLocation, getNodeValue, } from "jsonc-parser";
@@ -244,6 +251,10 @@ function clineMcpPath(projectRoot) {
 function cursorMcpPath(projectRoot) {
     return join(projectRoot, ".cursor", "mcp.json");
 }
+/** Path to the project-level MCP config file for Oh My Pi. */
+function ompMcpPath(projectRoot) {
+    return join(projectRoot, ".omp", "mcp.json");
+}
 // ─── Cursor adapter (format / paths) ─────────────────────────────────────
 /**
  * Cursor slash commands are plain markdown (no frontmatter); the filename
@@ -281,6 +292,84 @@ ${body}
 export function hasCursor(projectRoot) {
     return existsSync(join(projectRoot, ".cursor"));
 }
+// ─── Pi adapter ──────────────────────────────────────────────────────────
+/**
+ * Pi stores project resources in `.pi/` (skills/, prompts/, extensions/).
+ * Prompt templates are Markdown with optional YAML frontmatter; the
+ * filename becomes the slash command name (`opsx-e2e.md` → `/opsx-e2e`),
+ * `description` feeds autocomplete, and `argument-hint` shows expected
+ * arguments. `$1` / `$ARGUMENTS` placeholders expand at prompt time.
+ *
+ * Conventions follow the Pi docs (packages/coding-agent/docs):
+ *   - Prompts:   `.pi/prompts/*.md`, invoked via `/name`.
+ *   - Skills:    `.pi/skills/` (root `.md` files or `SKILL.md` dirs),
+ *                invoked via `/skill:name`.
+ *   - Rules:     Pi loads `AGENTS.md` (or `CLAUDE.md`) walking up from cwd
+ *                natively — no wrapper file needed.
+ *   - MCP:       Pi has NO MCP client (built-in tools only). The adapter
+ *                still implements the interface with no-ops and declares
+ *                `supportsMcp: false` so shared MCP phases skip it.
+ */
+export function formatPiCommand(meta) {
+    const body = transformToHyphenCommands(meta.body);
+    return `---
+description: ${escapeYamlValue(meta.description)}
+argument-hint: "<change-name>"
+---
+
+${body}
+`;
+}
+export function getPiCommandPath(id) {
+    return join(".pi", "prompts", `opsx-${id}.md`);
+}
+/**
+ * True when Pi is in use: a project `.pi/` dir, or a global Pi config dir
+ * (`~/.pi/agent/`, created by Pi on first run). The home signal lets
+ * `openspec-pw init` detect Pi in a fresh project that has no `.pi/` yet.
+ */
+export function hasPi(projectRoot, homeDir = homedir()) {
+    return (existsSync(join(projectRoot, ".pi")) ||
+        existsSync(join(homeDir, ".pi", "agent")));
+}
+// ─── Oh My Pi adapter ────────────────────────────────────────────────────
+/**
+ * Oh My Pi (omp) stores project slash commands in `.omp/commands/*.md`
+ * (non-recursive scan, project before user). Native commands are parsed
+ * with FATAL frontmatter parsing, so the YAML must be valid; `name`
+ * overrides the filename and `description` feeds autocomplete. `$1` /
+ * `$ARGUMENTS` placeholders expand at prompt time.
+ *
+ * Conventions follow the omp docs (docs/slash-command-internals.md,
+ * docs/mcp-config.md):
+ *   - Commands:  `.omp/commands/*.md`, invoked via `/name`.
+ *   - MCP:       `.omp/mcp.json` with `{ "mcpServers": { ... } }` — same
+ *                shape as Cline/Cursor. omp also inherits `.claude/` /
+ *                `.cursor/` / opencode MCP configs when present.
+ *   - Rules:     omp reads `AGENTS.md` natively — no wrapper file needed.
+ */
+export function formatOmpCommand(meta) {
+    const body = transformToHyphenCommands(meta.body);
+    const cmdName = `opsx-${meta.id}`;
+    return `---
+name: ${escapeYamlValue(cmdName)}
+description: ${escapeYamlValue(meta.description)}
+---
+
+${body}
+`;
+}
+export function getOmpCommandPath(id) {
+    return join(".omp", "commands", `opsx-${id}.md`);
+}
+/**
+ * True when Oh My Pi is in use: a project `.omp/` dir, or a global omp
+ * config dir (`~/.omp/agent/`, created by omp on first run).
+ */
+export function hasOmp(projectRoot, homeDir = homedir()) {
+    return (existsSync(join(projectRoot, ".omp")) ||
+        existsSync(join(homeDir, ".omp", "agent")));
+}
 // ─── Registry ────────────────────────────────────────────────────────────
 const ADAPTERS = [
 // Adapters are registered after const declarations at the bottom of this file.
@@ -288,8 +377,8 @@ const ADAPTERS = [
 export function getAdapter(id) {
     return ADAPTERS.find((a) => a.id === id);
 }
-export function detectAdapters(projectRoot) {
-    return ADAPTERS.filter((a) => a.detect(projectRoot));
+export function detectAdapters(projectRoot, homeDir) {
+    return ADAPTERS.filter((a) => a.detect(projectRoot, homeDir));
 }
 function registerAdapter(adapter) {
     ADAPTERS.push(adapter);
@@ -678,9 +767,45 @@ export const cursorAdapter = {
         ];
     },
 };
+export const piAdapter = {
+    id: "pi",
+    label: "pi",
+    displayName: "Pi",
+    detect: hasPi,
+    // Pi has no MCP client — shared MCP phases skip this adapter.
+    supportsMcp: false,
+    commandFilePath: getPiCommandPath,
+    formatCommand: formatPiCommand,
+    // Pi loads AGENTS.md natively (walking up from cwd) — no wrapper file.
+    projectRulesPath: (root) => join(root, "AGENTS.md"),
+    isMcpInstalled: () => false,
+    installMcp: () => { },
+    removeMcp: () => { },
+};
+export const ompAdapter = {
+    id: "omp",
+    label: "omp",
+    displayName: "Oh My Pi",
+    detect: hasOmp,
+    commandFilePath: getOmpCommandPath,
+    formatCommand: formatOmpCommand,
+    // omp reads AGENTS.md natively — no wrapper file needed.
+    projectRulesPath: (root) => join(root, "AGENTS.md"),
+    isMcpInstalled(projectRoot, serverName) {
+        return isMcpServerInFile(ompMcpPath(projectRoot), serverName);
+    },
+    installMcp(projectRoot, serverName, command) {
+        installMcpServerInFile(ompMcpPath(projectRoot), serverName, command);
+    },
+    removeMcp(projectRoot, serverName) {
+        removeMcpServerFromFile(ompMcpPath(projectRoot), serverName);
+    },
+};
 // Register the adapters now that the const arrows exist
 registerAdapter(claudeAdapter);
 registerAdapter(opencodeAdapter);
 registerAdapter(clineAdapter);
 registerAdapter(cursorAdapter);
+registerAdapter(piAdapter);
+registerAdapter(ompAdapter);
 //# sourceMappingURL=editors.js.map

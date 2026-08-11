@@ -68,22 +68,29 @@ export async function init(options: InitOptions) {
   }
   console.log(chalk.green("  ✓ OpenSpec initialized"));
 
-  // 3. Detect supported editors (.claude/, .opencode/, .cline/, .cursor/)
+  // 3. Detect supported editors
+  // (.claude/, .opencode/, .cline/, .cursor/ in the project; Pi and Oh My Pi
+  // also detect via their global config dirs ~/.pi/agent and ~/.omp/agent)
   const detected = detectAdapters(projectRoot);
   if (detected.length === 0) {
     console.log(
       chalk.yellow(
-        "\n  ⚠ No supported editor detected (need .claude/, .opencode/, .cline/, or .cursor/).",
+        "\n  ⚠ No supported editor detected (need .claude/, .opencode/, .cline/, .cursor/, .pi/, or .omp/).",
       ),
     );
     console.log(
       chalk.gray(
-        "  Run openspec-pw init from a Claude Code, OpenCode, Cline, or Cursor project to install commands.\n",
+        "  Run openspec-pw init from a Claude Code, OpenCode, Cline, Cursor, Pi, or Oh My Pi project to install commands.\n",
       ),
     );
     console.log(
       chalk.gray(
         "  For Cursor without an existing .cursor/ dir: mkdir -p .cursor\n",
+      ),
+    );
+    console.log(
+      chalk.gray(
+        "  Pi and Oh My Pi are detected via their global config dirs (~/.pi/agent/, ~/.omp/agent/) when no project dir exists.\n",
       ),
     );
     return;
@@ -104,7 +111,9 @@ export async function init(options: InitOptions) {
       }
       try {
         ensurePlaywrightMcp(adapter);
-        console.log(chalk.gray(`  (Restart ${adapter.label} to activate)`));
+        if (adapter.supportsMcp !== false) {
+          console.log(chalk.gray(`  (Restart ${adapter.label} to activate)`));
+        }
       } catch (err) {
         const e = err as { stderr?: string };
         if (e.stderr?.includes("already exists")) {
@@ -133,6 +142,18 @@ export async function init(options: InitOptions) {
             console.log(
               chalk.gray(
                 "    Add `playwright` to mcpServers in .cline/mcp.json",
+              ),
+            );
+          } else if (adapter.id === "omp") {
+            console.log(
+              chalk.gray(
+                "    Add `playwright` to mcpServers in .omp/mcp.json",
+              ),
+            );
+          } else if (adapter.id === "pi") {
+            console.log(
+              chalk.gray(
+                "    Pi has no MCP client — use `openspec-pw explore` for browser exploration",
               ),
             );
           } else {
@@ -253,7 +274,7 @@ export async function init(options: InitOptions) {
   console.log(chalk.bold("How it works:"));
   console.log(
     chalk.gray(
-      "  /opsx:e2e (Claude), /opsx-e2e (OpenCode/Cline/Cursor) read your OpenSpec specs",
+      "  /opsx:e2e (Claude), /opsx-e2e (OpenCode/Cline/Cursor/Pi/Oh My Pi) read your OpenSpec specs",
     ),
   );
   console.log(chalk.gray("  and run Playwright E2E tests through a three-agent pipeline:"));

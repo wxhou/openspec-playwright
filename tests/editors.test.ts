@@ -25,20 +25,28 @@ import {
   formatCursorSkill,
   formatOpenCodeCommand,
   formatTagsArray,
+  formatPiCommand,
+  formatOmpCommand,
   getAdapter,
   getClaudeCommandPath,
   getClineCommandPath,
   getCursorCommandPath,
   getCursorSkillPath,
   getOpenCodeCommandPath,
+  getPiCommandPath,
+  getOmpCommandPath,
   hasClaudeCode,
   hasCursor,
   hasOpenCode,
+  hasPi,
+  hasOmp,
   installCommand,
   installOpenSpecBlock,
   installProjectRules,
   listCommandArtifactPaths,
   opencodeAdapter,
+  piAdapter,
+  ompAdapter,
   readOpenSpecBlock,
   transformToHyphenCommands,
 } from "../src/commands/editors.js";
@@ -320,7 +328,7 @@ describe("installProjectRules routing", () => {
 
   it("writes AGENTS.md (SSOT) + thin CLAUDE.md when only Claude is detected", () => {
     mkdirSync(join(tmpRoot, ".claude"));
-    const detected = detectAdapters(tmpRoot);
+    const detected = detectAdapters(tmpRoot, join(tmpRoot, "fake-home"));
     expect(detected.map((a) => a.id)).toEqual(["claude"]);
 
     installProjectRules(tmpRoot, standards, detected);
@@ -345,7 +353,7 @@ describe("installProjectRules routing", () => {
 
   it("writes AGENTS.md (only) when only OpenCode is detected", () => {
     mkdirSync(join(tmpRoot, ".opencode"));
-    const detected = detectAdapters(tmpRoot);
+    const detected = detectAdapters(tmpRoot, join(tmpRoot, "fake-home"));
     expect(detected.map((a) => a.id)).toEqual(["opencode"]);
 
     installProjectRules(tmpRoot, standards, detected);
@@ -368,7 +376,7 @@ describe("installProjectRules routing", () => {
   it("writes AGENTS.md as SSOT + thin CLAUDE.md + registers AGENTS.md when both are detected", () => {
     mkdirSync(join(tmpRoot, ".claude"));
     mkdirSync(join(tmpRoot, ".opencode"));
-    const detected = detectAdapters(tmpRoot);
+    const detected = detectAdapters(tmpRoot, join(tmpRoot, "fake-home"));
     expect(detected.map((a) => a.id).sort()).toEqual(["claude", "opencode"]);
 
     installProjectRules(tmpRoot, standards, detected);
@@ -933,7 +941,7 @@ describe("installProjectRules", () => {
 
   it("creates AGENTS.md when Cline is detected", () => {
     mkdirSync(join(tmpRoot, ".cline"));
-    const detected = detectAdapters(tmpRoot);
+    const detected = detectAdapters(tmpRoot, join(tmpRoot, "fake-home"));
     installProjectRules(tmpRoot, STANDARDS, detected);
     expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(true);
     const content = readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8");
@@ -943,7 +951,7 @@ describe("installProjectRules", () => {
 
   it("creates AGENTS.md but NOT CLAUDE.md when Cline is the only detected editor", () => {
     mkdirSync(join(tmpRoot, ".cline"));
-    const detected = detectAdapters(tmpRoot);
+    const detected = detectAdapters(tmpRoot, join(tmpRoot, "fake-home"));
     installProjectRules(tmpRoot, STANDARDS, detected);
     // AGENTS.md must exist (SSOT).
     expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(true);
@@ -954,7 +962,7 @@ describe("installProjectRules", () => {
   it("creates AGENTS.md + CLAUDE.md when both Cline and Claude are detected", () => {
     mkdirSync(join(tmpRoot, ".claude"));
     mkdirSync(join(tmpRoot, ".cline"));
-    const detected = detectAdapters(tmpRoot);
+    const detected = detectAdapters(tmpRoot, join(tmpRoot, "fake-home"));
     installProjectRules(tmpRoot, STANDARDS, detected);
     // Both files must exist.
     expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(true);
@@ -966,7 +974,7 @@ describe("installProjectRules", () => {
 
   it("readOpenSpecBlock extracts the OPENSPEC block content", () => {
     mkdirSync(join(tmpRoot, ".claude"));
-    const detected = detectAdapters(tmpRoot);
+    const detected = detectAdapters(tmpRoot, join(tmpRoot, "fake-home"));
     installProjectRules(tmpRoot, STANDARDS, detected);
     const claudeAdapter = getAdapter("claude")!;
     const block = readOpenSpecBlock(tmpRoot, claudeAdapter);
@@ -983,7 +991,7 @@ describe("installProjectRules", () => {
 
   it("blockMatchesExpected matches an identical block and rejects drift", () => {
     mkdirSync(join(tmpRoot, ".claude"));
-    const detected = detectAdapters(tmpRoot);
+    const detected = detectAdapters(tmpRoot, join(tmpRoot, "fake-home"));
     installProjectRules(tmpRoot, STANDARDS, detected);
     const claudeAdapter = getAdapter("claude")!;
     expect(blockMatchesExpected(tmpRoot, claudeAdapter, claudeWrapperStandardsContent())).toBe(true);
@@ -999,53 +1007,254 @@ describe("installProjectRules", () => {
 // ─── detectAdapters ─────────────────────────────────────────────────────────
 
 describe("detectAdapters", () => {
-  it("returns all four adapters when .claude, .opencode, .cline, and .cursor all exist", () => {
+  it("returns all six adapters when every editor dir exists", () => {
     mkdirSync(join(tmpRoot, ".claude"));
     mkdirSync(join(tmpRoot, ".opencode"));
     mkdirSync(join(tmpRoot, ".cline"));
     mkdirSync(join(tmpRoot, ".cursor"));
-    const adapters = detectAdapters(tmpRoot);
+    mkdirSync(join(tmpRoot, ".pi"));
+    mkdirSync(join(tmpRoot, ".omp"));
+    const adapters = detectAdapters(tmpRoot, join(tmpRoot, "fake-home"));
     expect(adapters.map((a) => a.id).sort()).toEqual([
       "claude",
       "cline",
       "cursor",
+      "omp",
       "opencode",
+      "pi",
     ]);
   });
 
   it("returns [claude] when only .claude exists", () => {
     mkdirSync(join(tmpRoot, ".claude"));
-    const adapters = detectAdapters(tmpRoot);
+    const adapters = detectAdapters(tmpRoot, join(tmpRoot, "fake-home"));
     expect(adapters.map((a) => a.id)).toEqual(["claude"]);
   });
 
   it("returns [opencode] when only .opencode exists", () => {
     mkdirSync(join(tmpRoot, ".opencode"));
-    const adapters = detectAdapters(tmpRoot);
+    const adapters = detectAdapters(tmpRoot, join(tmpRoot, "fake-home"));
     expect(adapters.map((a) => a.id)).toEqual(["opencode"]);
   });
 
   it("returns [cline] when only .cline exists", () => {
     mkdirSync(join(tmpRoot, ".cline"));
-    const adapters = detectAdapters(tmpRoot);
+    const adapters = detectAdapters(tmpRoot, join(tmpRoot, "fake-home"));
     expect(adapters.map((a) => a.id)).toEqual(["cline"]);
   });
 
   it("returns [cursor] when only .cursor exists", () => {
     mkdirSync(join(tmpRoot, ".cursor"));
-    const adapters = detectAdapters(tmpRoot);
+    const adapters = detectAdapters(tmpRoot, join(tmpRoot, "fake-home"));
     expect(adapters.map((a) => a.id)).toEqual(["cursor"]);
   });
 
   it("returns [cline] when only .clinerules exists (legacy)", () => {
     mkdirSync(join(tmpRoot, ".clinerules"));
-    const adapters = detectAdapters(tmpRoot);
+    const adapters = detectAdapters(tmpRoot, join(tmpRoot, "fake-home"));
     expect(adapters.map((a) => a.id)).toEqual(["cline"]);
   });
 
   it("returns [] when no editor directory exists", () => {
-    const adapters = detectAdapters(tmpRoot);
+    const adapters = detectAdapters(tmpRoot, join(tmpRoot, "fake-home"));
     expect(adapters).toEqual([]);
+  });
+
+  it("detects Pi via the global ~/.pi/agent dir when no project .pi/ exists", () => {
+    const home = join(tmpRoot, "fake-home");
+    mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+    const adapters = detectAdapters(tmpRoot, home);
+    expect(adapters.map((a) => a.id)).toEqual(["pi"]);
+  });
+
+  it("detects Oh My Pi via the global ~/.omp/agent dir when no project .omp/ exists", () => {
+    const home = join(tmpRoot, "fake-home");
+    mkdirSync(join(home, ".omp", "agent"), { recursive: true });
+    const adapters = detectAdapters(tmpRoot, home);
+    expect(adapters.map((a) => a.id)).toEqual(["omp"]);
+  });
+});
+
+// ─── Pi adapter ────────────────────────────────────────────────────────────
+
+describe("piAdapter", () => {
+  it("has correct metadata", () => {
+    expect(piAdapter.id).toBe("pi");
+    expect(piAdapter.displayName).toBe("Pi");
+    // Pi has no MCP client — MCP phases must skip it.
+    expect(piAdapter.supportsMcp).toBe(false);
+  });
+
+  it("detects a project .pi/ directory", () => {
+    mkdirSync(join(tmpRoot, ".pi"));
+    expect(hasPi(tmpRoot)).toBe(true);
+    expect(piAdapter.detect(tmpRoot)).toBe(true);
+  });
+
+  it("detects the global ~/.pi/agent directory", () => {
+    const home = join(tmpRoot, "fake-home");
+    mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+    expect(hasPi(tmpRoot, home)).toBe(true);
+    expect(piAdapter.detect(tmpRoot, home)).toBe(true);
+  });
+
+  it("does not detect when neither .pi/ nor ~/.pi/agent exists", () => {
+    const home = join(tmpRoot, "fake-home");
+    expect(hasPi(tmpRoot, home)).toBe(false);
+    expect(piAdapter.detect(tmpRoot, home)).toBe(false);
+  });
+});
+
+describe("getPiCommandPath", () => {
+  it("returns .pi/prompts/opsx-<id>.md", () => {
+    expect(getPiCommandPath("e2e")).toBe(
+      join(".pi", "prompts", "opsx-e2e.md"),
+    );
+  });
+});
+
+describe("formatPiCommand", () => {
+  it("emits description + argument-hint frontmatter and hyphenated body", () => {
+    const meta = buildCommandMeta("Run the E2E flow via /opsx:e2e");
+    const out = formatPiCommand(meta);
+    expect(out).toContain("description: Run Playwright E2E verification for an OpenSpec change");
+    expect(out).toContain('argument-hint: "<change-name>"');
+    expect(out).toContain("/opsx-e2e");
+    expect(out).not.toContain("/opsx:e2e");
+  });
+});
+
+describe("piAdapter MCP (no client)", () => {
+  it("isMcpInstalled always returns false", () => {
+    expect(piAdapter.isMcpInstalled(tmpRoot, "playwright")).toBe(false);
+  });
+
+  it("installMcp and removeMcp are no-ops (do not write files)", () => {
+    piAdapter.installMcp(tmpRoot, "playwright", ["npx", "@playwright/mcp@latest"]);
+    piAdapter.removeMcp(tmpRoot, "playwright");
+    expect(existsSync(join(tmpRoot, ".pi", "mcp.json"))).toBe(false);
+  });
+});
+
+describe("installCommand (Pi)", () => {
+  it("writes the prompt template to .pi/prompts/opsx-e2e.md", () => {
+    const meta = buildCommandMeta("Do the E2E thing");
+    installCommand(piAdapter, meta, tmpRoot);
+    const dest = join(tmpRoot, ".pi", "prompts", "opsx-e2e.md");
+    expect(existsSync(dest)).toBe(true);
+    const content = readFileSync(dest, "utf-8");
+    expect(content).toContain("description:");
+    expect(content).toContain("Do the E2E thing");
+  });
+
+  it("lists the prompt file as the only artifact", () => {
+    const meta = buildCommandMeta("body");
+    expect(listCommandArtifactPaths(piAdapter, meta)).toEqual([
+      join(".pi", "prompts", "opsx-e2e.md"),
+    ]);
+  });
+});
+
+describe("installProjectRules (Pi)", () => {
+  it("writes AGENTS.md (SSOT) and no CLAUDE.md wrapper", () => {
+    mkdirSync(join(tmpRoot, ".pi"));
+    const detected = detectAdapters(tmpRoot, join(tmpRoot, "fake-home"));
+    installProjectRules(tmpRoot, "standards", detected);
+    expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(true);
+    expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(false);
+  });
+});
+
+// ─── Oh My Pi adapter ──────────────────────────────────────────────────────
+
+describe("ompAdapter", () => {
+  it("has correct metadata", () => {
+    expect(ompAdapter.id).toBe("omp");
+    expect(ompAdapter.displayName).toBe("Oh My Pi");
+    expect(ompAdapter.supportsMcp).not.toBe(false);
+  });
+
+  it("detects a project .omp/ directory", () => {
+    mkdirSync(join(tmpRoot, ".omp"));
+    expect(hasOmp(tmpRoot)).toBe(true);
+    expect(ompAdapter.detect(tmpRoot)).toBe(true);
+  });
+
+  it("detects the global ~/.omp/agent directory", () => {
+    const home = join(tmpRoot, "fake-home");
+    mkdirSync(join(home, ".omp", "agent"), { recursive: true });
+    expect(hasOmp(tmpRoot, home)).toBe(true);
+    expect(ompAdapter.detect(tmpRoot, home)).toBe(true);
+  });
+
+  it("does not detect when neither .omp/ nor ~/.omp/agent exists", () => {
+    const home = join(tmpRoot, "fake-home");
+    expect(hasOmp(tmpRoot, home)).toBe(false);
+    expect(ompAdapter.detect(tmpRoot, home)).toBe(false);
+  });
+});
+
+describe("getOmpCommandPath", () => {
+  it("returns .omp/commands/opsx-<id>.md", () => {
+    expect(getOmpCommandPath("e2e")).toBe(
+      join(".omp", "commands", "opsx-e2e.md"),
+    );
+  });
+});
+
+describe("formatOmpCommand", () => {
+  it("emits name + description frontmatter and hyphenated body", () => {
+    const meta = buildCommandMeta("Run the E2E flow via /opsx:e2e");
+    const out = formatOmpCommand(meta);
+    expect(out).toContain("name: opsx-e2e");
+    expect(out).toContain("description: Run Playwright E2E verification for an OpenSpec change");
+    expect(out).toContain("/opsx-e2e");
+    expect(out).not.toContain("/opsx:e2e");
+  });
+});
+
+describe("ompAdapter MCP (.omp/mcp.json)", () => {
+  it("isMcpInstalled returns false when .omp/mcp.json does not exist", () => {
+    expect(ompAdapter.isMcpInstalled(tmpRoot, "playwright")).toBe(false);
+  });
+
+  it("installMcp creates .omp/mcp.json with mcpServers structure", () => {
+    ompAdapter.installMcp(tmpRoot, "playwright", [
+      "npx",
+      "@playwright/mcp@latest",
+    ]);
+    const dest = join(tmpRoot, ".omp", "mcp.json");
+    expect(existsSync(dest)).toBe(true);
+    const config = JSON.parse(readFileSync(dest, "utf-8"));
+    expect(config.mcpServers.playwright).toEqual({
+      command: "npx",
+      args: ["@playwright/mcp@latest"],
+    });
+    expect(ompAdapter.isMcpInstalled(tmpRoot, "playwright")).toBe(true);
+  });
+
+  it("removeMcp deletes only the named server", () => {
+    ompAdapter.installMcp(tmpRoot, "playwright", ["npx", "@playwright/mcp@latest"]);
+    ompAdapter.installMcp(tmpRoot, "filesystem", ["npx", "fs-mcp"]);
+    ompAdapter.removeMcp(tmpRoot, "playwright");
+    const config = JSON.parse(
+      readFileSync(join(tmpRoot, ".omp", "mcp.json"), "utf-8"),
+    );
+    expect(config.mcpServers.playwright).toBeUndefined();
+    expect(config.mcpServers.filesystem).toBeDefined();
+    expect(ompAdapter.isMcpInstalled(tmpRoot, "playwright")).toBe(false);
+  });
+});
+
+describe("installCommand (Oh My Pi)", () => {
+  it("writes the command to .omp/commands/opsx-e2e.md", () => {
+    const meta = buildCommandMeta("Do the E2E thing");
+    installCommand(ompAdapter, meta, tmpRoot);
+    const dest = join(tmpRoot, ".omp", "commands", "opsx-e2e.md");
+    expect(existsSync(dest)).toBe(true);
+    const content = readFileSync(dest, "utf-8");
+    expect(content).toContain("name: opsx-e2e");
+    expect(content).toContain("Do the E2E thing");
   });
 });
 
@@ -1215,7 +1424,7 @@ describe("uninstall removes Cursor dual artifacts", () => {
 describe("installProjectRules (Cursor only)", () => {
   it("writes AGENTS.md and does not create .cursor/rules", () => {
     mkdirSync(join(tmpRoot, ".cursor"));
-    const detected = detectAdapters(tmpRoot);
+    const detected = detectAdapters(tmpRoot, join(tmpRoot, "fake-home"));
     installProjectRules(tmpRoot, "## Standards\nCursor only", detected);
 
     expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(true);

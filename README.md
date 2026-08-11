@@ -26,7 +26,11 @@ openspec-pw init          # Install Playwright E2E integration
 
 **Cline** — E2E workflow is driven by the `/opsx-e2e` skill (installed as `.cline/skills/opsx-e2e/SKILL.md`) using the same browser exploration + Playwright MCP stack. Playwright MCP is configured in `.cline/mcp.json` under `mcpServers.playwright`. Cline auto-detects `AGENTS.md` as project rules — no wrapper file needed.
 
-**Cursor** — E2E workflow is dual-installed: slash command at `.cursor/commands/opsx-e2e.md` (plain markdown, `$1` = change name) and Agent Skill at `.cursor/skills/opsx-e2e/SKILL.md` (`disable-model-invocation: true`). Invoke `/opsx-e2e`. Playwright MCP is merged into `.cursor/mcp.json` under `mcpServers.playwright`. Cursor auto-detects `AGENTS.md`. Skill name is `opsx-e2e` (not OpenSpec’s `openspec-*` skill prefix). If you want Cursor support but have no `.cursor/` yet: `mkdir -p .cursor`.
+**Cursor** — E2E workflow is dual-installed: slash command at `.cursor/commands/opsx-e2e.md` (plain markdown, `$1` = change name) and Agent Skill at `.cursor/skills/opsx-e2e/SKILL.md` (`disable-model-invocation: true`). Invoke `/opsx-e2e`. Playwright MCP is merged into `.cursor/mcp.json` under `mcpServers.playwright`. Cursor auto-detects `AGENTS.md`. Skill name is `opsx-e2e` (not OpenSpec's `openspec-*` skill prefix). If you want Cursor support but have no `.cursor/` yet: `mkdir -p .cursor`.
+
+**Pi** (earendil-works) — E2E workflow is driven by the `/opsx-e2e` prompt template (installed as `.pi/prompts/opsx-e2e.md`; the filename becomes the command name). Pi has **no MCP client**, so browser exploration runs through `openspec-pw explore` and test execution through `npx playwright test` in the shell. Pi loads `AGENTS.md` natively — no wrapper file needed. Detected via a project `.pi/` dir or the global `~/.pi/agent/` config dir.
+
+**Oh My Pi (omp)** — E2E workflow is driven by the `/opsx-e2e` command (installed as `.omp/commands/opsx-e2e.md`). Playwright MCP is configured in `.omp/mcp.json` under `mcpServers.playwright` (omp also inherits `.claude/`/`.cursor/`/opencode MCP configs when present). omp auto-detects `AGENTS.md` — no wrapper file needed. Detected via a project `.omp/` dir or the global `~/.omp/agent/` config dir.
 
 ## Usage
 
@@ -59,6 +63,22 @@ The skill is installed at `.cline/skills/opsx-e2e/SKILL.md` and triggered via th
 ```
 
 Installed as `.cursor/commands/opsx-e2e.md` plus `.cursor/skills/opsx-e2e/SKILL.md`. The command body is plain markdown (no frontmatter); the skill uses `disable-model-invocation: true` so it only runs when invoked explicitly.
+
+### In Pi
+
+```bash
+/opsx-e2e <change-name>
+```
+
+Installed as `.pi/prompts/opsx-e2e.md` — a prompt template whose filename is the command name. Pi has no MCP client, so the workflow uses `openspec-pw explore` for browser exploration and `npx playwright test` for execution (no Healer).
+
+### In Oh My Pi
+
+```bash
+/opsx-e2e <change-name>
+```
+
+Installed as `.omp/commands/opsx-e2e.md` (native omp command with `name` + `description` frontmatter). Playwright MCP is configured in `.omp/mcp.json`; omp also inherits MCP servers from `.claude/` / `.cursor/` / `opencode.json` when those are present.
 ### CLI Commands
 
 ```bash
@@ -77,7 +97,7 @@ openspec-pw uninstall     # Remove integration from the project
 
 ```
 /opsx:e2e <change-name>          # Claude Code
-/opsx-e2e <change-name>          # OpenCode / Cline / Cursor
+/opsx-e2e <change-name>          # OpenCode / Cline / Cursor / Pi / Oh My Pi
   │
   ├── 1. Select change → read openspec/changes/<name>/specs/
   │
@@ -113,7 +133,7 @@ openspec-pw uninstall     # Remove integration from the project
 **Required:**
 
 1. **Node.js >= 20**
-2. **Claude Code** (with `.claude/` directory) and/or **OpenCode** (with `.opencode/` directory) and/or **Cline** (with `.cline/` or `.clinerules/` directory) and/or **Cursor** (with `.cursor/` directory)
+2. **Claude Code** (with `.claude/` directory) and/or **OpenCode** (with `.opencode/` directory) and/or **Cline** (with `.cline/` or `.clinerules/` directory) and/or **Cursor** (with `.cursor/` directory) and/or **Pi** (project `.pi/` or global `~/.pi/agent/`) and/or **Oh My Pi** (project `.omp/` or global `~/.omp/agent/`)
 3. **OpenSpec** initialized: `npm install -g @fission-ai/openspec@latest && openspec init`
 4. **Playwright MCP** (for test execution + Healer) — installed automatically by `openspec-pw init` for the detected editor:
    - **Claude Code**: `claude mcp add playwright npx @playwright/mcp@latest`
@@ -125,8 +145,8 @@ Browser exploration is provided out of the box by Playwright MCP and `openspec-p
 
 ## What `openspec-pw init` Does
 
-1. Detects supported editors in the project (Claude Code and/or OpenCode and/or Cline and/or Cursor)
-2. Installs the E2E command for each detected editor (`/opsx:e2e` for Claude Code, `/opsx-e2e` for OpenCode, Cline, and Cursor; Cursor also gets an Agent Skill)
+1. Detects supported editors in the project (Claude Code and/or OpenCode and/or Cline and/or Cursor and/or Pi and/or Oh My Pi; Pi and Oh My Pi are also detected via their global config dirs `~/.pi/agent/` / `~/.omp/agent/`)
+2. Installs the E2E command for each detected editor (`/opsx:e2e` for Claude Code, `/opsx-e2e` for OpenCode, Cline, Cursor, Pi, and Oh My Pi; Cursor also gets an Agent Skill)
 3. Generates `tests/playwright/seed.spec.ts`, `auth.setup.ts`, `credentials.yaml`, `app-knowledge.md`, `pages/BasePage.ts`
 4. Generates `playwright.config.ts` with automatic dev script and port detection (Vite/Next/Nuxt/Astro, `.env`, and `--port`)
 
@@ -160,7 +180,7 @@ Run through these steps in order when using the E2E workflow for the first time:
 | **OpenSpec** | directory initialized | `.spec.md` specs count |
 | **Playwright Browsers** | CLI version, Chromium binary downloaded | — |
 | **Playwright Test** | `@playwright/test` framework installed | — |
-| **Playwright MCP** | configured for each detected editor | — |
+| **Playwright MCP** | configured for each detected editor (skipped with an informational note for Pi, which has no MCP client) | — |
 | **Sync** | standards in sync when initialized (drift → `openspec-pw update`) | not initialized (gated, non-blocking) |
 | **Tests** | `tests/playwright/` directory exists | `auth.setup.ts` presence |
 | **Seed Test** | — | `seed.spec.ts` presence |
@@ -261,11 +281,19 @@ Editors (auto-detected by openspec-pw init)
   │   ├── .cline/skills/opsx-e2e/SKILL.md → Skill file (body rewritten from /opsx: → /opsx-)
   │   ├── .cline/mcp.json                 → Playwright MCP (mcpServers.playwright)
   │   └── AGENTS.md                       → Employee-grade standards (auto-detected by Cline)
-  └── Cursor (/opsx-e2e)
-      ├── .cursor/commands/opsx-e2e.md    → Slash command (plain MD, $1 = change name)
-      ├── .cursor/skills/opsx-e2e/SKILL.md → Skill (disable-model-invocation: true)
-      ├── .cursor/mcp.json                → Playwright MCP (mcpServers.playwright)
-      └── AGENTS.md                       → Employee-grade standards (auto-detected by Cursor)
+  ├── Cursor (/opsx-e2e)
+  │   ├── .cursor/commands/opsx-e2e.md    → Slash command (plain MD, $1 = change name)
+  │   ├── .cursor/skills/opsx-e2e/SKILL.md → Skill (disable-model-invocation: true)
+  │   ├── .cursor/mcp.json                → Playwright MCP (mcpServers.playwright)
+  │   └── AGENTS.md                       → Employee-grade standards (auto-detected by Cursor)
+  ├── Pi (/opsx-e2e)
+  │   ├── .pi/prompts/opsx-e2e.md         → Prompt template (filename = command name)
+  │   └── AGENTS.md                       → Employee-grade standards (auto-detected by Pi)
+  │       (no MCP client — exploration via `openspec-pw explore`)
+  └── Oh My Pi (/opsx-e2e)
+      ├── .omp/commands/opsx-e2e.md       → Command file (name + description frontmatter)
+      ├── .omp/mcp.json                   → Playwright MCP (mcpServers.playwright)
+      └── AGENTS.md                       → Employee-grade standards (auto-detected by omp)
 
 Employee-grade standards live in **AGENTS.md** as the single source of truth. Claude Code
 loads them via a CLAUDE.md that carries a CodeGraph-first block up front, followed by an
