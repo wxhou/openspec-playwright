@@ -36,6 +36,10 @@ const CLAUDE_MD_ZH = `# 项目规范
 - ⚪ 超过 10 条消息后，编辑任何文件前强制重新读取
 
 ## 工具限制
+- 🔴 一次只发一个工具调用，等结果再决定下一步；等待/轮询用单个调用内部的循环实现
+- 🔴 单条消息并行只用于真正独立的调用，禁止复制相同调用
+- 🔴 发现自己正在重复生成相同调用 → 立即停止，重新评估
+- 🟡 长会话接近上下文上限时，复杂任务前先压缩上下文（如 \`/compact\`）
 - 🟡 搜索分层：结构性问题（定义/调用/影响/流）优先用 CodeGraph；字面文本用全文搜索；文件名模式用文件名匹配。跳过依赖目录和缓存目录（调试依赖时除外），搜子目录时按需缩小
 - 🟡 重命名覆盖：调用、类型、字符串、import、barrel file、测试 mock，不得假设一次覆盖
 - 🟡 联网调研优先 agent-reach skill
@@ -120,6 +124,10 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - ⚪ After 10+ messages: force re-read any file before editing
 
 ## Tool Constraints
+- 🔴 Send one tool call at a time, wait for the result before deciding next; implement waiting/polling as a loop inside a single call
+- 🔴 Parallel calls in one message only for genuinely independent calls; never duplicate the same call
+- 🔴 If you catch yourself generating the same call repeatedly → stop immediately, re-evaluate
+- 🟡 In long sessions near the context limit, compact context before complex tasks (e.g. \`/compact\`)
 - 🟡 Search in layers: structural queries (definitions/calls/impact/flow) prefer CodeGraph; literal text → full-text search; filename patterns → filename matching. Skip dependency and cache directories (except when debugging deps); narrow scope in subdirectories
 - 🟡 Renaming must cover: calls, types, strings, imports, barrel files, test mocks — don't assume one pass covers everything
 - 🟡 Web research via agent-reach skill

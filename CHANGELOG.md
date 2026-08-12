@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **employee-standards 新增「工具调用纪律（防循环）」**. §3 工具使用新增子节：一次只发一个工具调用、并行仅限真正独立调用、发现重复调用立即停止、长会话接近上限先压缩上下文。同步 `docs/script.js` 内嵌标准（ZH + EN）。
+
 - **init/update 对裸 `@AGENTS.md` 的 CLAUDE.md 加提示**. 检测到 CLAUDE.md 只有裸 `@AGENTS.md` 导入（openspec CLI 或用户手写、无 OPENSPEC 标记）时，行为保持不干预，但提示「CodeGraph 优先约束未写入，删除该行后重跑 openspec-pw update 可启用」。
   - `src/commands/editors.ts` — `installClaudeWrapper` 裸导入分支
   - `src/commands/update.ts` — standards 相位漂移检查
