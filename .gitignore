@@ -35,6 +35,10 @@ npm-debug.log*
 # Claude Code (auto-generated)
 **/CLAUDE.md
 .claude/
+
+# AI agent dev-local config
+/AGENTS.md
+/.mcp.json
 .omo/
 .playwright-mcp/
 
