@@ -15,7 +15,7 @@ npm install -g openspec-playwright@latest
 **必需：**
 
 1. **Node.js >= 20**
-2. **Claude Code**（带 `.claude/` 目录）和/或 **OpenCode**（带 `.opencode/` 目录）和/或 **Cline**（带 `.cline/` 或 `.clinerules/` 目录）和/或 **Cursor**（带 `.cursor/` 目录）和/或 **Pi**（项目 `.pi/` 或全局 `~/.pi/agent/`）和/或 **Oh My Pi**（项目 `.omp/` 或全局 `~/.omp/agent/`）
+2. **Claude Code**（带 `.claude/` 目录）和/或 **OpenCode**（带 `.opencode/` 目录）和/或 **Cline**（带 `.cline/` 或 `.clinerules/` 目录）和/或 **Cursor**（带 `.cursor/` 目录）和/或 **Pi**（项目 `.pi/` 或全局 `~/.pi/agent/`）和/或 **Oh My Pi**（项目 `.omp/` 或全局 `~/.omp/agent/`）和/或 **DeepSeek Harness**（项目 `.dsh/` 或全局 `~/.dsh/`）
 3. **OpenSpec** 已初始化：`npm install -g @fission-ai/openspec@latest && openspec init`
 4. **Playwright MCP**（用于测试执行 + Healer）— `openspec-pw init` 会按检测到的编辑器自动安装：
    - **Claude Code**：`claude mcp add playwright npx @playwright/mcp@latest`
@@ -24,6 +24,7 @@ npm install -g openspec-playwright@latest
    - **Cursor**：合并到 `.cursor/mcp.json` 的 `mcpServers.playwright = { "command": "npx", "args": ["@playwright/mcp@latest"] }`
    - **Oh My Pi**：合并到 `.omp/mcp.json` 的 `mcpServers.playwright = { "command": "npx", "args": ["@playwright/mcp@latest"] }`
    - **Pi**：无 MCP 客户端，跳过安装 — 浏览器探索改用 `openspec-pw explore`
+   - **DeepSeek Harness**：无简单 MCP 配置文件，跳过安装 — 在 `cordis.yml` 中手动配置 `@deepseek-ai/dsh-mcp-client`，浏览器探索改用 `openspec-pw explore`
 
 浏览器探索能力由 Playwright MCP 和 `openspec-pw explore` 内置提供，无需额外工具。
 
@@ -50,6 +51,8 @@ openspec-pw init          # 安装 Playwright E2E 集成
 **Pi**（earendil-works）— E2E 工作流由 `/opsx-e2e` 提示词模板驱动（安装为 `.pi/prompts/opsx-e2e.md`，文件名即命令名）。Pi **没有 MCP 客户端**，浏览器探索改用 `openspec-pw explore`，测试执行用 shell 跑 `npx playwright test`。Pi 原生加载 `AGENTS.md` — 无需包装文件。检测信号：项目 `.pi/` 目录或全局 `~/.pi/agent/` 配置目录。
 
 **Oh My Pi（omp）** — E2E 工作流由 `/opsx-e2e` 命令驱动（安装为 `.omp/commands/opsx-e2e.md`）。Playwright MCP 配置在 `.omp/mcp.json` 的 `mcpServers.playwright`（omp 也会继承 `.claude/` / `.cursor/` / opencode 的 MCP 配置）。omp 原生识别 `AGENTS.md` — 无需包装文件。检测信号：项目 `.omp/` 目录或全局 `~/.omp/agent/` 配置目录。
+
+**DeepSeek Harness（dsh）** — E2E 工作流由 `/opsx-e2e` skill 驱动（安装为 `.dsh/skills/opsx-e2e/SKILL.md`，即最高优先级的 `project-dsh` skill 根）。dsh 通过 `cordis.yml` 插件配置而非简单文件来配置 MCP，因此 **不自动安装** Playwright MCP — 需手动配置 `@deepseek-ai/dsh-mcp-client`，浏览器探索改用 `openspec-pw explore`。dsh 原生读取 `AGENTS.md` — 无需包装文件。检测信号：项目 `.dsh/` 目录或全局 `~/.dsh/`（DSH_HOME）目录。
 
 ## 使用
 
@@ -99,6 +102,14 @@ Skill 安装在 `.cline/skills/opsx-e2e/SKILL.md`，通过 `/opsx-e2e` 斜杠命
 
 安装为 `.omp/commands/opsx-e2e.md`（omp 原生命令，含 `name` + `description` frontmatter）。Playwright MCP 配置在 `.omp/mcp.json`；omp 也会继承 `.claude/` / `.cursor/` / `opencode.json` 中已有的 MCP 配置。
 
+### 在 DeepSeek Harness 中
+
+```bash
+/opsx-e2e <change-name>
+```
+
+安装为 `.dsh/skills/opsx-e2e/SKILL.md` — 一个 project-dsh skill（rank 100，本地最高优先级），含 `name` + `description` frontmatter，通过 `skill` 工具调用。dsh 没有简单的 MCP 配置文件，因此 Playwright MCP 需在 `cordis.yml` 中手动配置（`@deepseek-ai/dsh-mcp-client`）；浏览器探索改用 `openspec-pw explore`。
+
 ### CLI 命令
 
 ```bash
@@ -116,7 +127,7 @@ openspec-pw uninstall     # 移除项目中的集成
 ## 工作原理
 
 ```
-# 由 /opsx:e2e <change-name>（Claude Code）或 /opsx-e2e <change-name>（OpenCode/Cline/Cursor/Pi/Oh My Pi）触发
+# 由 /opsx:e2e <change-name>（Claude Code）或 /opsx-e2e <change-name>（OpenCode/Cline/Cursor/Pi/Oh My Pi/DeepSeek Harness）触发
 /opsx:e2e <change-name>
   │
   ├── 1. 选择 change → 读取 openspec/changes/<name>/specs/
@@ -150,8 +161,8 @@ openspec-pw uninstall     # 移除项目中的集成
 
 ## `openspec-pw init` 做了什么
 
-1. 检测项目中的受支持编辑器（Claude Code 和/或 OpenCode 和/或 Cline 和/或 Cursor 和/或 Pi 和/或 Oh My Pi；Pi 与 Oh My Pi 也会通过全局配置目录 `~/.pi/agent/` / `~/.omp/agent/` 检测）
-2. 为每个检测到的编辑器安装 E2E 命令（Claude Code 用 `/opsx:e2e`，OpenCode / Cline / Cursor / Pi / Oh My Pi 用 `/opsx-e2e`；Cursor 另装 Agent Skill）
+1. 检测项目中的受支持编辑器（Claude Code 和/或 OpenCode 和/或 Cline 和/或 Cursor 和/或 Pi 和/或 Oh My Pi 和/或 DeepSeek Harness；Pi、Oh My Pi 与 DeepSeek Harness 也会通过全局配置目录 `~/.pi/agent/` / `~/.omp/agent/` / `~/.dsh/` 检测）
+2. 为每个检测到的编辑器安装 E2E 命令（Claude Code 用 `/opsx:e2e`，OpenCode / Cline / Cursor / Pi / Oh My Pi / DeepSeek Harness 用 `/opsx-e2e`；Cursor 另装 Agent Skill）
 3. 生成 `tests/playwright/seed.spec.ts`、`auth.setup.ts`、`credentials.yaml`、`app-knowledge.md`、`pages/BasePage.ts`
 
 ## 首次配置清单
@@ -163,12 +174,12 @@ openspec-pw uninstall     # 移除项目中的集成
 | 1. 安装 CLI | `npm install -g openspec-playwright@latest` | 检查 Node.js 版本 `node -v`（需 >= 20） |
 | 2. 安装 OpenSpec | `npm install -g @fission-ai/openspec@latest && openspec init` | `npm cache clean -f && npm install -g @fission-ai/openspec@latest` |
 | 3. 初始化 E2E | `openspec-pw init` | 运行 `openspec-pw doctor` 查看具体缺失项 |
-| 4. 安装 Playwright MCP | `claude mcp add playwright npx @playwright/mcp@latest`（Claude），或将 `mcp.playwright` 加入 `opencode.jsonc`（OpenCode），或将 `mcpServers.playwright` 加入 `.cline/mcp.json`（Cline）/ `.cursor/mcp.json`（Cursor）/ `.omp/mcp.json`（Oh My Pi）；Pi 无 MCP 客户端，跳过 | `claude mcp list`（Claude）/ `cat opencode.jsonc`（OpenCode）/ `cat .cline/mcp.json`（Cline）/ `cat .cursor/mcp.json`（Cursor）/ `cat .omp/mcp.json`（Oh My Pi）确认安装成功 |
+| 4. 安装 Playwright MCP | `claude mcp add playwright npx @playwright/mcp@latest`（Claude），或将 `mcp.playwright` 加入 `opencode.jsonc`（OpenCode），或将 `mcpServers.playwright` 加入 `.cline/mcp.json`（Cline）/ `.cursor/mcp.json`（Cursor）/ `.omp/mcp.json`（Oh My Pi）；Pi 与 DeepSeek Harness 无简单 MCP 配置文件，跳过 | `claude mcp list`（Claude）/ `cat opencode.jsonc`（OpenCode）/ `cat .cline/mcp.json`（Cline）/ `cat .cursor/mcp.json`（Cursor）/ `cat .omp/mcp.json`（Oh My Pi）确认安装成功 |
 | 5. 安装浏览器 | `npx playwright install --with-deps` | macOS 可能需先运行 `xcode-select --install` |
 | 6. 启动开发服务器 | `npm run dev`（在另一个终端） | 确认端口，配置 `BASE_URL` |
 | 7. 验证环境 | `npx playwright test tests/playwright/seed.spec.ts` | 检查 `playwright.config.ts` 中的 `webServer` 配置 |
 | 8. 配置认证（如需要） | 见下方"认证配置" | `npx playwright test --project=setup` 调试 |
-| 9. 运行第一个 E2E | `/opsx:e2e <change-name>`（Claude）或 `/opsx-e2e <change-name>`（OpenCode/Cline/Cursor） | 查看 `openspec/reports/` 中的报告 |
+| 9. 运行第一个 E2E | `/opsx:e2e <change-name>`（Claude）或 `/opsx-e2e <change-name>`（OpenCode/Cline/Cursor/Pi/Oh My Pi/DeepSeek Harness） | 查看 `openspec/reports/` 中的报告 |
 
 ### `openspec-pw doctor` 检查清单
 
@@ -209,7 +220,7 @@ npx playwright test --project=setup
 /opsx:e2e my-feature
 ```
 
-支持 **API 登录**（推荐）和 **UI 登录**（备选）。多用户测试（管理员 vs 普通用户）在 `credentials.yaml` 中添加多个用户，运行 `/opsx:e2e`（OpenCode/Cline/Cursor/Pi/Oh My Pi 中用 `/opsx-e2e`）— 会从 specs 自动检测角色。
+支持 **API 登录**（推荐）和 **UI 登录**（备选）。多用户测试（管理员 vs 普通用户）在 `credentials.yaml` 中添加多个用户，运行 `/opsx:e2e`（OpenCode/Cline/Cursor/Pi/Oh My Pi/DeepSeek Harness 中用 `/opsx-e2e`）— 会从 specs 自动检测角色。
 
 ## 自定义
 
@@ -270,6 +281,10 @@ CLI (openspec-pw)
       ├── .omp/commands/opsx-e2e.md       → 命令文件（name + description frontmatter）
       ├── .omp/mcp.json                   → Playwright MCP (mcpServers.playwright)
       └── AGENTS.md                       → 员工级规范（omp 原生自动识别）
+  └── DeepSeek Harness (/opsx-e2e)
+      ├── .dsh/skills/opsx-e2e/SKILL.md  → Skill 文件（name + description frontmatter）
+      └── AGENTS.md                       → 员工级规范（dsh 原生自动识别）
+          （无简单 MCP 文件 — 在 cordis.yml 中配置 @deepseek-ai/dsh-mcp-client）
 
 员工级规范统一存放在 **AGENTS.md** 中。Claude Code 通过 CLAUDE.md 加载——前置 CodeGraph 优先节，
 后接 `@AGENTS.md` 导入（Claude Code 官方记载的复用 AGENTS.md 机制，默认并不读取 AGENTS.md）。

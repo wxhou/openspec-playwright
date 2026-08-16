@@ -32,6 +32,8 @@ openspec-pw init          # Install Playwright E2E integration
 
 **Oh My Pi (omp)** — E2E workflow is driven by the `/opsx-e2e` command (installed as `.omp/commands/opsx-e2e.md`). Playwright MCP is configured in `.omp/mcp.json` under `mcpServers.playwright` (omp also inherits `.claude/`/`.cursor/`/opencode MCP configs when present). omp auto-detects `AGENTS.md` — no wrapper file needed. Detected via a project `.omp/` dir or the global `~/.omp/agent/` config dir.
 
+**DeepSeek Harness (dsh)** — E2E workflow is driven by the `/opsx-e2e` skill (installed as `.dsh/skills/opsx-e2e/SKILL.md`, the highest-priority `project-dsh` skill root). dsh configures MCP via `cordis.yml` plugin config rather than a simple file, so Playwright MCP is **not** auto-installed — configure `@deepseek-ai/dsh-mcp-client` manually and use `openspec-pw explore` for browser exploration. dsh reads `AGENTS.md` natively — no wrapper file needed. Detected via a project `.dsh/` dir or the global `~/.dsh/` (DSH_HOME) dir.
+
 ## Usage
 
 ### In Claude Code
@@ -79,6 +81,15 @@ Installed as `.pi/prompts/opsx-e2e.md` — a prompt template whose filename is t
 ```
 
 Installed as `.omp/commands/opsx-e2e.md` (native omp command with `name` + `description` frontmatter). Playwright MCP is configured in `.omp/mcp.json`; omp also inherits MCP servers from `.claude/` / `.cursor/` / `opencode.json` when those are present.
+
+### In DeepSeek Harness
+
+```bash
+/opsx-e2e <change-name>
+```
+
+Installed as `.dsh/skills/opsx-e2e/SKILL.md` — a project-dsh skill (rank 100, the highest local priority) with `name` + `description` frontmatter, invoked via the `skill` tool. dsh has no simple MCP config file, so Playwright MCP is configured manually in `cordis.yml` (`@deepseek-ai/dsh-mcp-client`); browser exploration runs through `openspec-pw explore`.
+
 ### CLI Commands
 
 ```bash
@@ -97,7 +108,7 @@ openspec-pw uninstall     # Remove integration from the project
 
 ```
 /opsx:e2e <change-name>          # Claude Code
-/opsx-e2e <change-name>          # OpenCode / Cline / Cursor / Pi / Oh My Pi
+/opsx-e2e <change-name>          # OpenCode / Cline / Cursor / Pi / Oh My Pi / DeepSeek Harness
   │
   ├── 1. Select change → read openspec/changes/<name>/specs/
   │
@@ -133,7 +144,7 @@ openspec-pw uninstall     # Remove integration from the project
 **Required:**
 
 1. **Node.js >= 20**
-2. **Claude Code** (with `.claude/` directory) and/or **OpenCode** (with `.opencode/` directory) and/or **Cline** (with `.cline/` or `.clinerules/` directory) and/or **Cursor** (with `.cursor/` directory) and/or **Pi** (project `.pi/` or global `~/.pi/agent/`) and/or **Oh My Pi** (project `.omp/` or global `~/.omp/agent/`)
+2. **Claude Code** (with `.claude/` directory) and/or **OpenCode** (with `.opencode/` directory) and/or **Cline** (with `.cline/` or `.clinerules/` directory) and/or **Cursor** (with `.cursor/` directory) and/or **Pi** (project `.pi/` or global `~/.pi/agent/`) and/or **Oh My Pi** (project `.omp/` or global `~/.omp/agent/`) and/or **DeepSeek Harness** (project `.dsh/` or global `~/.dsh/`)
 3. **OpenSpec** initialized: `npm install -g @fission-ai/openspec@latest && openspec init`
 4. **Playwright MCP** (for test execution + Healer) — installed automatically by `openspec-pw init` for the detected editor:
    - **Claude Code**: `claude mcp add playwright npx @playwright/mcp@latest`
@@ -145,8 +156,8 @@ Browser exploration is provided out of the box by Playwright MCP and `openspec-p
 
 ## What `openspec-pw init` Does
 
-1. Detects supported editors in the project (Claude Code and/or OpenCode and/or Cline and/or Cursor and/or Pi and/or Oh My Pi; Pi and Oh My Pi are also detected via their global config dirs `~/.pi/agent/` / `~/.omp/agent/`)
-2. Installs the E2E command for each detected editor (`/opsx:e2e` for Claude Code, `/opsx-e2e` for OpenCode, Cline, Cursor, Pi, and Oh My Pi; Cursor also gets an Agent Skill)
+1. Detects supported editors in the project (Claude Code and/or OpenCode and/or Cline and/or Cursor and/or Pi and/or Oh My Pi and/or DeepSeek Harness; Pi, Oh My Pi, and DeepSeek Harness are also detected via their global config dirs `~/.pi/agent/` / `~/.omp/agent/` / `~/.dsh/`)
+2. Installs the E2E command for each detected editor (`/opsx:e2e` for Claude Code, `/opsx-e2e` for OpenCode, Cline, Cursor, Pi, Oh My Pi, and DeepSeek Harness; Cursor also gets an Agent Skill)
 3. Generates `tests/playwright/seed.spec.ts`, `auth.setup.ts`, `credentials.yaml`, `app-knowledge.md`, `pages/BasePage.ts`
 4. Generates `playwright.config.ts` with automatic dev script and port detection (Vite/Next/Nuxt/Astro, `.env`, and `--port`)
 
@@ -166,7 +177,7 @@ Run through these steps in order when using the E2E workflow for the first time:
 | 6. Start dev server | `npm run dev` (in a separate terminal) | Confirm port, set `BASE_URL` if non-standard |
 | 7. Validate env | `npx playwright test tests/playwright/seed.spec.ts` | Check `webServer` in `playwright.config.ts` |
 | 8. Configure auth (if needed) | See "Authentication" below | Debug with `npx playwright test --project=setup` |
-| 9. Run first E2E | `/opsx:e2e <change-name>` (Claude) or `/opsx-e2e <change-name>` (OpenCode / Cline / Cursor) | Check `openspec/reports/` for the report |
+| 9. Run first E2E | `/opsx:e2e <change-name>` (Claude) or `/opsx-e2e <change-name>` (OpenCode / Cline / Cursor / Pi / Oh My Pi / DeepSeek Harness) | Check `openspec/reports/` for the report |
 
 ### What `openspec-pw doctor` checks
 
@@ -180,7 +191,7 @@ Run through these steps in order when using the E2E workflow for the first time:
 | **OpenSpec** | directory initialized | `.spec.md` specs count |
 | **Playwright Browsers** | CLI version, Chromium binary downloaded | — |
 | **Playwright Test** | `@playwright/test` framework installed | — |
-| **Playwright MCP** | configured for each detected editor (skipped with an informational note for Pi, which has no MCP client) | — |
+| **Playwright MCP** | configured for each detected editor (skipped with an informational note for Pi and DeepSeek Harness, which have no simple MCP config file) | — |
 | **Sync** | standards in sync when initialized (drift → `openspec-pw update`) | not initialized (gated, non-blocking) |
 | **Tests** | `tests/playwright/` directory exists | `auth.setup.ts` presence |
 | **Seed Test** | — | `seed.spec.ts` presence |
@@ -233,7 +244,7 @@ npx playwright test --project=setup
 /opsx:e2e my-feature
 ```
 
-Supports **API login** (preferred) and **UI login** (fallback). For multi-user tests (admin vs user), add multiple users in `credentials.yaml` and run `/opsx:e2e` (or `/opsx-e2e` in OpenCode/Cline/Cursor) — it auto-detects roles from specs.
+Supports **API login** (preferred) and **UI login** (fallback). For multi-user tests (admin vs user), add multiple users in `credentials.yaml` and run `/opsx:e2e` (or `/opsx-e2e` in OpenCode/Cline/Cursor/Pi/Oh My Pi/DeepSeek Harness) — it auto-detects roles from specs.
 
 ## Customization
 
@@ -294,6 +305,10 @@ Editors (auto-detected by openspec-pw init)
       ├── .omp/commands/opsx-e2e.md       → Command file (name + description frontmatter)
       ├── .omp/mcp.json                   → Playwright MCP (mcpServers.playwright)
       └── AGENTS.md                       → Employee-grade standards (auto-detected by omp)
+  └── DeepSeek Harness (/opsx-e2e)
+      ├── .dsh/skills/opsx-e2e/SKILL.md  → Skill file (name + description frontmatter)
+      └── AGENTS.md                       → Employee-grade standards (auto-detected by dsh)
+          (no simple MCP file — configure @deepseek-ai/dsh-mcp-client in cordis.yml)
 
 Employee-grade standards live in **AGENTS.md** as the single source of truth. Claude Code
 loads them via a CLAUDE.md that carries a CodeGraph-first block up front, followed by an

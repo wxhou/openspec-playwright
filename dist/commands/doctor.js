@@ -188,7 +188,7 @@ export async function doctor(options = {}) {
             category: "Playwright MCP",
             name: "playwright-mcp",
             ok: false,
-            message: "no editors detected (configure .claude/, .opencode/, .cline/, .cursor/, .pi/, or .omp/)",
+            message: "no editors detected (configure .claude/, .opencode/, .cline/, .cursor/, .pi/, .omp/, or .dsh/)",
         });
     }
     else {
@@ -246,7 +246,8 @@ export async function doctor(options = {}) {
         existsSync(join(projectRoot, ".cursor", "commands", "opsx-e2e.md")) ||
         existsSync(join(projectRoot, ".cursor", "skills", "opsx-e2e", "SKILL.md")) ||
         existsSync(join(projectRoot, ".pi", "prompts", "opsx-e2e.md")) ||
-        existsSync(join(projectRoot, ".omp", "commands", "opsx-e2e.md"));
+        existsSync(join(projectRoot, ".omp", "commands", "opsx-e2e.md")) ||
+        existsSync(join(projectRoot, ".dsh", "skills", "opsx-e2e", "SKILL.md"));
     const initialized = hasCommand || hasOpenSpec;
     if (!initialized) {
         checks.push({
@@ -422,7 +423,7 @@ export async function doctor(options = {}) {
             ? detected.map((a) => {
                 return `${slashCommandForAdapter(a)} (in ${a.displayName})`;
             })
-            : ["/opsx:e2e (in Claude Code, OpenCode, Cline, Cursor, Pi, or Oh My Pi)"];
+            : ["/opsx:e2e (in Claude Code, OpenCode, Cline, Cursor, Pi, Oh My Pi, or DeepSeek Harness)"];
         console.log(chalk.gray(`  Run: ${hints.join("  or  ")} <change-name>\n`));
     }
     else {

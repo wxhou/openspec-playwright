@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **DeepSeek Harness (dsh) 支持**. 新增编辑器适配器：通过 `.dsh/skills/opsx-e2e/SKILL.md` 安装 project-dsh skill（rank 100，本地最高优先级，`name` + `description` frontmatter，经 `skill` 工具调用）。dsh 原生读 `AGENTS.md`，无需包装文件；检测信号为项目 `.dsh/` 目录或全局 `~/.dsh/`（DSH_HOME）目录。dsh 通过 `cordis.yml` 插件配置 MCP（`@deepseek-ai/dsh-mcp-client`）而非简单文件，故 `supportsMcp:false`，MCP 相位跳过、探索走 `openspec-pw explore`。
+  - `src/commands/editors.ts` — `EditorId` 扩为 7 个、`hasDsh` / `formatDshCommand` / `getDshCommandPath` / `dshAdapter`
+  - `src/commands/init.ts` / `doctor.ts` / `update.ts` — 检测列表、无编辑器提示、`hasCommand` 判定同步 dsh skill 路径
+  - `tests/editors.test.ts` — 新增 dsh 用例；既有 detectAdapters 全量用例扩为 7 个
+  - `README.md` / `README.zh-CN.md` — 编辑器支持、init 检测、doctor 表、架构树同步
+
 ## [0.3.67] - 2026-08-12
 
 ### Changed

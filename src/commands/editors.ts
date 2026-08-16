@@ -24,6 +24,11 @@
  *   - Oh My Pi: `.omp/commands/opsx-<id>.md`, name+description frontmatter,
  *              edits `.omp/mcp.json` (same shape as Cline/Cursor),
  *              auto-detects AGENTS.md. Detected via `.omp/` or `~/.omp/agent/`.
+ *   - DeepSeek Harness: `.dsh/skills/opsx-<id>/SKILL.md` (project-dsh skill,
+ *              rank 100), name+description frontmatter, NO MCP client
+ *              (supportsMcp:false — MCP is configured via cordis.yml plugin
+ *              config, not a simple file), auto-detects AGENTS.md. Detected
+ *              via `.dsh/` or `~/.dsh/` (DSH_HOME).
  */
 import {
   existsSync,
@@ -109,7 +114,8 @@ export type EditorId =
   | "cline"
   | "cursor"
   | "pi"
-  | "omp";
+  | "omp"
+  | "dsh";
 
 export interface ExtraArtifact {
   relativePath: string;
@@ -529,6 +535,56 @@ export function hasOmp(
   return (
     existsSync(join(projectRoot, ".omp")) ||
     existsSync(join(homeDir, ".omp", "agent"))
+  );
+}
+
+// ─── DeepSeek Harness adapter ────────────────────────────────────────────
+
+/**
+ * DeepSeek Harness (dsh) stores project skills in `.dsh/skills/` — the
+ * `project-dsh` local provider root, rank 100 (highest local priority).
+ * Skills are directory bundles (`<name>/SKILL.md`) with YAML frontmatter
+ * (name + description); the kebab-case name becomes the model-invocable
+ * skill name (`opsx-e2e`).
+ *
+ * Conventions follow the dsh skills subsystem (docs/subsystems/skills.md):
+ *   - Skills:   `.dsh/skills/<name>/SKILL.md`, invoked via the `skill` tool.
+ *   - Rules:    dsh reads `AGENTS.md` / `CLAUDE.md` natively (default
+ *               instructionFileCandidates) — no wrapper file needed.
+ *   - MCP:      dsh configures MCP via `cordis.yml` plugin config
+ *               (@deepseek-ai/dsh-mcp-client), not a simple mcpServers file —
+ *               the adapter declares `supportsMcp: false` so shared MCP phases
+ *               skip it (configure Playwright MCP manually in cordis.yml).
+ *   - Detected via `.dsh/` or the global `~/.dsh/` (DSH_HOME).
+ */
+export function formatDshCommand(meta: CommandMeta): string {
+  const body = transformToHyphenCommands(meta.body);
+  const skillName = `opsx-${meta.id}`;
+  return `---
+name: ${escapeYamlValue(skillName)}
+description: ${escapeYamlValue(meta.description)}
+---
+
+${body}
+`;
+}
+
+export function getDshCommandPath(id: string): string {
+  return join(".dsh", "skills", `opsx-${id}`, "SKILL.md");
+}
+
+/**
+ * True when DeepSeek Harness is in use: a project `.dsh/` dir, or the global
+ * dsh home (`~/.dsh/`, DSH_HOME). The home signal lets `openspec-pw init`
+ * detect dsh in a fresh project that has no `.dsh/` yet.
+ */
+export function hasDsh(
+  projectRoot: string,
+  homeDir = homedir(),
+): boolean {
+  return (
+    existsSync(join(projectRoot, ".dsh")) ||
+    existsSync(join(homeDir, ".dsh"))
   );
 }
 
@@ -1049,6 +1105,23 @@ export const ompAdapter: EditorAdapter = {
   },
 };
 
+export const dshAdapter: EditorAdapter = {
+  id: "dsh",
+  label: "dsh",
+  displayName: "DeepSeek Harness",
+  detect: hasDsh,
+  // dsh configures MCP via cordis.yml plugin config, not a simple file —
+  // shared MCP phases skip this adapter (configure Playwright MCP manually).
+  supportsMcp: false,
+  commandFilePath: getDshCommandPath,
+  formatCommand: formatDshCommand,
+  // dsh reads AGENTS.md natively — no wrapper file needed.
+  projectRulesPath: (root) => join(root, "AGENTS.md"),
+  isMcpInstalled: () => false,
+  installMcp: () => {},
+  removeMcp: () => {},
+};
+
 // Register the adapters now that the const arrows exist
 registerAdapter(claudeAdapter);
 registerAdapter(opencodeAdapter);
@@ -1056,3 +1129,4 @@ registerAdapter(clineAdapter);
 registerAdapter(cursorAdapter);
 registerAdapter(piAdapter);
 registerAdapter(ompAdapter);
+registerAdapter(dshAdapter);
