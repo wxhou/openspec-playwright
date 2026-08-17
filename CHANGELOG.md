@@ -26,6 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `tests/init-mcp-scope.test.ts` — fixtures 补前端信号 package.json；新增 gating 用例 3 个（纯 API 跳过 / 无 package.json 跳过 / 前端照装）
   - `README.md` / `README.zh-CN.md` — MCP 段落补充"检测到前端信号时自动安装"
 
+- **Deploy Docs 工作流双站部署**. `pages.yml` 在 GitHub Pages 部署后追加 Cloudflare Pages 直传步骤（`wrangler pages deploy`），配置 `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` 两个 repo secret 后，一次 push 自动更新 GitHub Pages 与 Cloudflare 两个站点；secrets 未配置时步骤自动跳过（不报错）。
+  - `.github/workflows/pages.yml`
+
 ### Fixed
 
 - **release 脚本 badge commit message 版本号取旧值**. `npm_package_version` 环境变量在脚本启动时快照，`npm version patch` 改版本后不刷新，导致 commit message 显示旧版本号（如 v0.3.68）。改为 `$(node -p "require('./package.json').version")` 动态读取。
