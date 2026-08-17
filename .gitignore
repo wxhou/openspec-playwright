@@ -41,6 +41,9 @@ npm-debug.log*
 /.mcp.json
 .omo/
 .playwright-mcp/
+.dsh/
+.omp/
+.pi/
 
 # OpenSpec vision check cache
 .openspec-pw/vision-cache/
