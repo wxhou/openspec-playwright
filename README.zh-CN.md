@@ -17,13 +17,15 @@ npm install -g openspec-playwright@latest
 1. **Node.js >= 20**
 2. **Claude Code**（带 `.claude/` 目录）和/或 **OpenCode**（带 `.opencode/` 目录）和/或 **Cline**（带 `.cline/` 或 `.clinerules/` 目录）和/或 **Cursor**（带 `.cursor/` 目录）和/或 **Pi**（项目 `.pi/` 或全局 `~/.pi/agent/`）和/或 **Oh My Pi**（项目 `.omp/` 或全局 `~/.omp/agent/`）和/或 **DeepSeek Harness**（项目 `.dsh/` 或全局 `~/.dsh/`）
 3. **OpenSpec** 已初始化：`npm install -g @fission-ai/openspec@latest && openspec init`
-4. **Playwright MCP**（用于测试执行 + Healer）— `openspec-pw init` 会按检测到的编辑器自动安装：
-   - **Claude Code**：`claude mcp add playwright npx @playwright/mcp@latest`
+4. **Playwright MCP**（用于测试执行 + Healer）— `openspec-pw init` 会按检测到的编辑器自动安装，**全部项目级**（写入项目内文件；Claude Code 用 `--scope project` 写项目根 `.mcp.json`，不碰全局 `~/.claude.json`）：
+   - **Claude Code**：`claude mcp add --scope project playwright npx @playwright/mcp@latest`（写入项目根 `.mcp.json`，可随版本控制供团队共享）
    - **OpenCode**：合并到 `opencode.jsonc` 的 `mcp.playwright = { type: "local", command: ["npx", "@playwright/mcp@latest"] }`
    - **Cline**：合并到 `.cline/mcp.json` 的 `mcpServers.playwright = { "command": "npx", "args": ["@playwright/mcp@latest"] }`
    - **Cursor**：合并到 `.cursor/mcp.json` 的 `mcpServers.playwright = { "command": "npx", "args": ["@playwright/mcp@latest"] }`
    - **Oh My Pi**：合并到 `.omp/mcp.json` 的 `mcpServers.playwright = { "command": "npx", "args": ["@playwright/mcp@latest"] }`
    - **Pi**：无 MCP 客户端，跳过安装 — 浏览器探索改用 `openspec-pw explore`
+
+> **旧版本迁移**：早期版本把 Claude Code 的 Playwright MCP 装到全局 user 域（`~/.claude.json`）。若你用旧版 `openspec-pw` 初始化过，全局残留仍会对所有项目生效，清理一次即可：`claude mcp remove playwright`（user 域）。注意：项目级 server 首次交互使用时 Claude Code 会弹出批准提示（`claude mcp reset-project-choices` 可重置选择）。
    - **DeepSeek Harness**：无简单 MCP 配置文件，跳过安装 — 在 `cordis.yml` 中手动配置 `@deepseek-ai/dsh-mcp-client`，浏览器探索改用 `openspec-pw explore`
 
 浏览器探索能力由 Playwright MCP 和 `openspec-pw explore` 内置提供，无需额外工具。
@@ -188,7 +190,7 @@ openspec-pw uninstall     # 移除项目中的集成
 | 1. 安装 CLI | `npm install -g openspec-playwright@latest` | 检查 Node.js 版本 `node -v`（需 >= 20） |
 | 2. 安装 OpenSpec | `npm install -g @fission-ai/openspec@latest && openspec init` | `npm cache clean -f && npm install -g @fission-ai/openspec@latest` |
 | 3. 初始化 E2E | `openspec-pw init` | 运行 `openspec-pw doctor` 查看具体缺失项 |
-| 4. 安装 Playwright MCP | `claude mcp add playwright npx @playwright/mcp@latest`（Claude），或将 `mcp.playwright` 加入 `opencode.jsonc`（OpenCode），或将 `mcpServers.playwright` 加入 `.cline/mcp.json`（Cline）/ `.cursor/mcp.json`（Cursor）/ `.omp/mcp.json`（Oh My Pi）；Pi 与 DeepSeek Harness 无简单 MCP 配置文件，跳过 | `claude mcp list`（Claude）/ `cat opencode.jsonc`（OpenCode）/ `cat .cline/mcp.json`（Cline）/ `cat .cursor/mcp.json`（Cursor）/ `cat .omp/mcp.json`（Oh My Pi）确认安装成功 |
+| 4. 安装 Playwright MCP | `claude mcp add --scope project playwright npx @playwright/mcp@latest`（Claude，写入项目根 `.mcp.json`），或将 `mcp.playwright` 加入 `opencode.jsonc`（OpenCode），或将 `mcpServers.playwright` 加入 `.cline/mcp.json`（Cline）/ `.cursor/mcp.json`（Cursor）/ `.omp/mcp.json`（Oh My Pi）；Pi 与 DeepSeek Harness 无简单 MCP 配置文件，跳过 | `cat .mcp.json`（Claude，检查 `mcpServers.playwright`）/ `cat opencode.jsonc`（OpenCode）/ `cat .cline/mcp.json`（Cline）/ `cat .cursor/mcp.json`（Cursor）/ `cat .omp/mcp.json`（Oh My Pi）确认安装成功 |
 | 5. 安装浏览器 | `npx playwright install --with-deps` | macOS 可能需先运行 `xcode-select --install` |
 | 6. 启动开发服务器 | `npm run dev`（在另一个终端） | 确认端口，配置 `BASE_URL` |
 | 7. 验证环境 | `npx playwright test tests/playwright/seed.spec.ts` | 检查 `playwright.config.ts` 中的 `webServer` 配置 |
@@ -272,7 +274,7 @@ CLI (openspec-pw)
 编辑器（由 openspec-pw init 自动检测）
   ├── Claude Code (/opsx:e2e)
   │   ├── .claude/commands/opsx/e2e.md    → 命令文件（从 templates/e2e-command.md 安装）
-  │   ├── @playwright/mcp                 → Healer Agent 工具（通过 `claude mcp add playwright …`）
+  │   ├── @playwright/mcp                 → Healer Agent 工具（通过 `claude mcp add --scope project playwright …`，写入项目根 `.mcp.json`）
   │   └── CLAUDE.md                       → CodeGraph 优先节 + 通过 `@AGENTS.md` 引入 AGENTS.md
   ├── OpenCode (/opsx-e2e)
   │   ├── .opencode/commands/opsx-e2e.md  → 命令文件（正文由 /opsx: 改写为 /opsx-）

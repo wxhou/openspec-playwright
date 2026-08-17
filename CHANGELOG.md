@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`openspec-pw init --tools` 编辑器选择**（补回：该功能已实现提交，本条目在 rebase 合并时被 0.3.67/0.3.68 归档段落吞掉，现恢复）。对齐 `openspec init --tools`：`all` / `none` / 逗号分隔 id 列表非交互式选择要配置的编辑器；无 `--tools` + TTY 弹 `@inquirer/prompts` 多选（预选已检测编辑器，可全不选 = `--tools none`）；非 TTY 回退到检测结果，零检测时报错退出并提示 `--tools`。选择列表驱动 MCP / 命令 / 规则各阶段，`--tools none` 仍生成测试脚手架；未知 id 或 `all`/`none` 与具体 id 混用报错非零退出，重复 id 去重保序，`oh-my-pi` 映射 `omp`，`dsh` 自动并入全量。
+  - `src/index.ts` — `init` 命令注册 `--tools`；action 捕获 init 抛错打印并 `exit(1)`
+  - `src/commands/editors.ts` — `resolveToolsArg` 纯函数与 `getAllAdapters()`；`installCommand` 自动建目录使未检测编辑器可装
+  - `src/commands/init.ts` — `InitOptions.tools`、`InitDeps`（prompt/isTTY/homeDir 注入）、`promptSelectEditors`；移除 `detected.length === 0` 提前 return
+  - `package.json` — 新增依赖 `@inquirer/prompts`
+  - `tests/editors-tools.test.ts`、`tests/init.test.ts` — `resolveToolsArg` 13 个用例 + `--tools` 分支/交互注入共 10 个用例
+  - `README.md` / `README.zh-CN.md` —「Selecting Editors on Init / 初始化时选择编辑器」一节
+
+- **Claude Code 的 Playwright MCP 改为 project scope**. `claude mcp add/remove` 全部加 `--scope project`，写入项目根 `.mcp.json`（可随版本控制共享），不再碰全局 `~/.claude.json`；已安装检查改为直读 `.mcp.json`（不再调用 `claude mcp list`，零 CLI 依赖且天然不混淆全局残留）。与其余编辑器（OpenCode/Cline/Cursor/Oh My Pi 本就项目级）保持一致。**行为变更**：旧版全局残留需手动 `claude mcp remove playwright` 清理；项目级 server 首次交互使用时 Claude Code 会弹批准提示。
+  - `src/commands/editors.ts` — `claudeAdapter` 三方法（`isMcpInstalled`/`installMcp`/`removeMcp`）；删除废弃的 `claudeMcpOutputIncludes`
+  - `src/commands/init.ts` — MCP 安装失败时手动命令提示含 `--scope project`，并提示旧 CLI 升级
+  - `tests/editors-claude-mcp.test.ts`（新增 6 用例）、`tests/init-mcp-scope.test.ts`（新增 2 用例）、`tests/shared/mcp.test.ts`、`tests/commands/doctor.test.ts`、`tests/commands/uninstall.test.ts` — 全部按文件读取行为重写
+  - `README.md` / `README.zh-CN.md` — MCP 段落 + 迁移说明 + First-Time Setup 表；编辑器计数适配 dsh（6→7）
+
 ## [0.3.68] - 2026-08-16
 
 ### Added

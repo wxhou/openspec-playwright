@@ -16,40 +16,53 @@ vi.mock("fs", () => ({
 }));
 
 import { execFileSync } from "child_process";
+import { readFileSync } from "fs";
 import { claudeAdapter } from "../../src/commands/editors.js";
 import { removePlaywrightMcp } from "../../src/shared/mcp.js";
 
 describe("removePlaywrightMcp", () => {
+  const readFileSyncMock = vi.mocked(readFileSync);
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("removes MCP when installed", () => {
-    vi.mocked(execFileSync)
-      .mockReturnValueOnce("playwright: npx @playwright/mcp@latest\n") // mcp list
-      .mockReturnValueOnce(""); // mcp remove
+    readFileSyncMock.mockReturnValue(
+      JSON.stringify({ mcpServers: { playwright: { command: "npx" } } }),
+    );
 
     const consoleSpy = vi.spyOn(console, "log");
     removePlaywrightMcp(claudeAdapter);
     expect(consoleSpy).toHaveBeenCalledWith("  ✓ claude: playwright MCP removed");
     consoleSpy.mockRestore();
+
+    expect(execFileSync).toHaveBeenCalledWith(
+      "claude",
+      ["mcp", "remove", "--scope", "project", "playwright"],
+      expect.objectContaining({ timeout: 10000 }),
+    );
   });
 
   it("does nothing when not installed", () => {
-    vi.mocked(execFileSync).mockReturnValue(""); // mcp list returns empty
+    readFileSyncMock.mockImplementation(() => {
+      throw new Error("ENOENT: no such file .mcp.json");
+    });
 
     const consoleSpy = vi.spyOn(console, "log");
     removePlaywrightMcp(claudeAdapter);
     expect(consoleSpy).toHaveBeenCalledWith("  - claude: playwright MCP not installed (nothing to remove)");
     consoleSpy.mockRestore();
+    expect(execFileSync).not.toHaveBeenCalled();
   });
 
   it("handles removal failure gracefully", () => {
-    vi.mocked(execFileSync)
-      .mockReturnValueOnce("playwright: npx @playwright/mcp@latest\n") // mcp list
-      .mockImplementationOnce(() => {
-        throw new Error("Removal failed");
-      });
+    readFileSyncMock.mockReturnValue(
+      JSON.stringify({ mcpServers: { playwright: { command: "npx" } } }),
+    );
+    vi.mocked(execFileSync).mockImplementation(() => {
+      throw new Error("Removal failed");
+    });
 
     const consoleSpy = vi.spyOn(console, "warn");
     removePlaywrightMcp(claudeAdapter);

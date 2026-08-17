@@ -4,7 +4,7 @@ import { resolveToolsArg } from "../src/commands/editors.js";
 // ─── resolveToolsArg (--tools flag parsing) ──────────────────────────────
 
 describe("resolveToolsArg", () => {
-  const ALL = ["claude", "opencode", "cline", "cursor", "pi", "omp"];
+  const ALL = ["claude", "opencode", "cline", "cursor", "pi", "omp", "dsh"];
 
   it("returns null when no --tools flag was provided", () => {
     expect(resolveToolsArg(undefined)).toBeNull();

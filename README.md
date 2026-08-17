@@ -169,11 +169,13 @@ openspec-pw uninstall     # Remove integration from the project
 1. **Node.js >= 20**
 2. **Claude Code** (with `.claude/` directory) and/or **OpenCode** (with `.opencode/` directory) and/or **Cline** (with `.cline/` or `.clinerules/` directory) and/or **Cursor** (with `.cursor/` directory) and/or **Pi** (project `.pi/` or global `~/.pi/agent/`) and/or **Oh My Pi** (project `.omp/` or global `~/.omp/agent/`) and/or **DeepSeek Harness** (project `.dsh/` or global `~/.dsh/`)
 3. **OpenSpec** initialized: `npm install -g @fission-ai/openspec@latest && openspec init`
-4. **Playwright MCP** (for test execution + Healer) — installed automatically by `openspec-pw init` for the detected editor:
-   - **Claude Code**: `claude mcp add playwright npx @playwright/mcp@latest`
+4. **Playwright MCP** (for test execution + Healer) — installed automatically by `openspec-pw init` for the detected editor, **project-scoped** (written to a project file; Claude Code uses `--scope project` → project-root `.mcp.json`, never your global `~/.claude.json`):
+   - **Claude Code**: `claude mcp add --scope project playwright npx @playwright/mcp@latest` (stored in project-root `.mcp.json`, usable by the whole team via version control)
    - **OpenCode**: merged into `opencode.jsonc` under `mcp.playwright = { type: "local", command: ["npx", "@playwright/mcp@latest"] }`
    - **Cline**: merged into `.cline/mcp.json` under `mcpServers.playwright = { "command": "npx", "args": ["@playwright/mcp@latest"] }`
    - **Cursor**: merged into `.cursor/mcp.json` under `mcpServers.playwright = { "command": "npx", "args": ["@playwright/mcp@latest"] }`
+
+> **Migrating from older versions**: before this change, Claude Code's Playwright MCP was installed at global user scope (`~/.claude.json`). If you initialized with an older `openspec-pw`, a stale global entry may still load everywhere. Clean it up once: `claude mcp remove playwright` (user scope). Note that project-scoped servers prompt for approval the first time they are used interactively (`claude mcp reset-project-choices` resets those choices).
 
 Browser exploration is provided out of the box by Playwright MCP and `openspec-pw explore`; no extra browser tool is needed.
 
@@ -195,7 +197,7 @@ Run through these steps in order when using the E2E workflow for the first time:
 | 1. Install CLI | `npm install -g openspec-playwright@latest` | Check Node.js version `node -v` (needs >= 20) |
 | 2. Install OpenSpec | `npm install -g @fission-ai/openspec@latest && openspec init` | `npm cache clean -f && npm install -g @fission-ai/openspec@latest` |
 | 3. Initialize E2E | `openspec-pw init` | Run `openspec-pw doctor` to see what's missing |
-| 4. Install Playwright MCP | `claude mcp add playwright npx @playwright/mcp@latest` (Claude), or add `mcp.playwright` to `opencode.jsonc` (OpenCode), or `mcpServers.playwright` in `.cline/mcp.json` / `.cursor/mcp.json` | `claude mcp list` (Claude) / `cat opencode.jsonc` (OpenCode) / `cat .cline/mcp.json` (Cline) / `cat .cursor/mcp.json` (Cursor) |
+| 4. Install Playwright MCP | `claude mcp add --scope project playwright npx @playwright/mcp@latest` (Claude, writes project-root `.mcp.json`), or add `mcp.playwright` to `opencode.jsonc` (OpenCode), or `mcpServers.playwright` in `.cline/mcp.json` / `.cursor/mcp.json` | `cat .mcp.json` (Claude, check `mcpServers.playwright`) / `cat opencode.jsonc` (OpenCode) / `cat .cline/mcp.json` (Cline) / `cat .cursor/mcp.json` (Cursor) |
 | 5. Install browsers | `npx playwright install --with-deps` | macOS may need `xcode-select --install` first |
 | 6. Start dev server | `npm run dev` (in a separate terminal) | Confirm port, set `BASE_URL` if non-standard |
 | 7. Validate env | `npx playwright test tests/playwright/seed.spec.ts` | Check `webServer` in `playwright.config.ts` |
@@ -305,7 +307,7 @@ CLI (openspec-pw)
 Editors (auto-detected by openspec-pw init)
   ├── Claude Code (/opsx:e2e)
   │   ├── .claude/commands/opsx/e2e.md   → Command file
-  │   ├── @playwright/mcp                → Healer Agent tools (via `claude mcp add playwright …`)
+  │   ├── @playwright/mcp                → Healer Agent tools (via `claude mcp add --scope project playwright …`, writes project-root `.mcp.json`)
   │   └── CLAUDE.md                      → CodeGraph 优先 block + imports AGENTS.md via `@AGENTS.md`
   ├── OpenCode (/opsx-e2e)
   │   ├── .opencode/commands/opsx-e2e.md → Command file (body rewritten from /opsx: → /opsx-)

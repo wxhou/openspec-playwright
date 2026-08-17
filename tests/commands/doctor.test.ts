@@ -13,6 +13,7 @@ vi.mock("fs", () => ({
 }));
 
 import { execFileSync } from "child_process";
+import { readFileSync } from "fs";
 import { claudeAdapter } from "../../src/commands/editors.js";
 import { isPlaywrightMcpInstalled } from "../../src/shared/mcp.js";
 
@@ -105,41 +106,37 @@ function buildChecks(
 // ─── Tests: MCP install logic ──────────────────────────────────────────────
 
 describe("isPlaywrightMcpInstalled", () => {
+  const readFileSyncMock = vi.mocked(readFileSync);
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("returns true when playwright is in mcp list output", () => {
-    vi.mocked(execFileSync).mockReturnValue(
-      "playwright: npx @playwright/mcp@latest\n",
+  it("returns true when the project .mcp.json contains playwright", () => {
+    readFileSyncMock.mockReturnValue(
+      JSON.stringify({ mcpServers: { playwright: { command: "npx" } } }),
     );
     expect(isPlaywrightMcpInstalled(claudeAdapter)).toBe(true);
-    expect(execFileSync).toHaveBeenCalledWith(
-      "claude",
-      ["mcp", "list"],
-      {
-        encoding: "utf-8",
-        timeout: 10000,
-        stdio: ["pipe", "pipe", "pipe"],
-        shell: false,
-      },
-    );
+    // Project-scope check reads the file; it never calls the claude CLI.
+    expect(execFileSync).not.toHaveBeenCalled();
   });
 
-  it("returns false when playwright is not in mcp list output", () => {
-    vi.mocked(execFileSync).mockReturnValue("other-mcp: some-command\n");
+  it("returns false when .mcp.json has other servers only", () => {
+    readFileSyncMock.mockReturnValue(
+      JSON.stringify({ mcpServers: { other: { command: "x" } } }),
+    );
     expect(isPlaywrightMcpInstalled(claudeAdapter)).toBe(false);
   });
 
-  it("returns false when claude CLI fails", () => {
-    vi.mocked(execFileSync).mockImplementation(() => {
-      throw new Error("claude not found");
+  it("returns false when .mcp.json is missing (read fails)", () => {
+    readFileSyncMock.mockImplementation(() => {
+      throw new Error("ENOENT: no such file .mcp.json");
     });
     expect(isPlaywrightMcpInstalled(claudeAdapter)).toBe(false);
   });
 
-  it("returns false when output is empty", () => {
-    vi.mocked(execFileSync).mockReturnValue("");
+  it("returns false on unparseable .mcp.json", () => {
+    readFileSyncMock.mockReturnValue("{ not json");
     expect(isPlaywrightMcpInstalled(claudeAdapter)).toBe(false);
   });
 });

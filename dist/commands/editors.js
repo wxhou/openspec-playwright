@@ -747,9 +747,6 @@ export function readEmployeeStandards(srcPath) {
 // We declare them here (not at the top) so they can reference the helper
 // functions defined in this same module. JS hoisting covers `function`
 // declarations; `const` arrows don't get hoisted, so the order matters.
-function claudeMcpOutputIncludes(output, serverName) {
-    return String(output ?? "").includes(serverName);
-}
 export const claudeAdapter = {
     id: "claude",
     label: "claude",
@@ -758,23 +755,27 @@ export const claudeAdapter = {
     commandFilePath: getClaudeCommandPath,
     formatCommand: formatClaudeCommand,
     projectRulesPath: (root) => join(root, "CLAUDE.md"),
-    isMcpInstalled(_root, serverName) {
+    isMcpInstalled(root, serverName) {
+        // Project scope: Playwright MCP lives in the project-root .mcp.json.
+        // Read the file directly instead of `claude mcp list` — zero CLI
+        // dependency, testable, and never confuses a global user-scope entry
+        // with a project-scoped one.
         try {
-            const out = execFileSync("claude", ["mcp", "list"], {
-                encoding: "utf-8",
-                timeout: TIMEOUT.MCP_LIST,
-                stdio: ["pipe", "pipe", "pipe"],
-                shell: needsShell,
-            });
-            return claudeMcpOutputIncludes(out, serverName);
+            const mcpJson = readFileSync(join(root, ".mcp.json"), "utf-8");
+            const parsed = JSON.parse(mcpJson);
+            return (typeof parsed === "object" &&
+                parsed !== null &&
+                typeof parsed.mcpServers === "object" &&
+                parsed.mcpServers !== null &&
+                Object.hasOwn(parsed.mcpServers, serverName));
         }
         catch {
-            // Command failed — assume server not installed
+            // Missing or unparseable file — server not installed
             return false;
         }
     },
     installMcp(_root, serverName, command) {
-        execFileSync("claude", ["mcp", "add", serverName, ...command], {
+        execFileSync("claude", ["mcp", "add", "--scope", "project", serverName, ...command], {
             encoding: "utf-8",
             timeout: TIMEOUT.MCP_LIST,
             stdio: ["pipe", "pipe", "pipe"],
@@ -782,7 +783,7 @@ export const claudeAdapter = {
         });
     },
     removeMcp(_root, serverName) {
-        execFileSync("claude", ["mcp", "remove", serverName], {
+        execFileSync("claude", ["mcp", "remove", "--scope", "project", serverName], {
             encoding: "utf-8",
             timeout: TIMEOUT.MCP_LIST,
             stdio: ["pipe", "pipe", "pipe"],

@@ -61,8 +61,9 @@ export async function init(options, deps = {}) {
     console.log(chalk.green("  ✓ OpenSpec initialized"));
     // 3. Detect supported editors, then resolve the explicit selection.
     // Priority: --tools flag > interactive prompt (TTY) > detected fallback.
-    // (.claude/, .opencode/, .cline/, .cursor/ in the project; Pi and Oh My Pi
-    // also detect via their global config dirs ~/.pi/agent and ~/.omp/agent)
+    // (.claude/, .opencode/, .cline/, .cursor/, .pi/, .omp/, .dsh/ in the
+    // project; Pi, Oh My Pi, and DeepSeek Harness also detect via their global
+    // config dirs ~/.pi/agent, ~/.omp/agent, and ~/.dsh)
     const detected = detectAdapters(projectRoot, deps.homeDir);
     console.log(detected.length > 0
         ? chalk.gray(`  Detected: ${detected.map((a) => a.label).join(", ")}`)
@@ -86,10 +87,10 @@ export async function init(options, deps = {}) {
             .filter((a) => a !== undefined);
     // No flag, non-TTY, and nothing detected → fail with --tools guidance.
     if (selectedIds === null && editors.length === 0) {
-        console.log(chalk.yellow("\n  ⚠ No supported editor detected (need .claude/, .opencode/, .cline/, .cursor/, .pi/, or .omp/)."));
+        console.log(chalk.yellow("\n  ⚠ No supported editor detected (need .claude/, .opencode/, .cline/, .cursor/, .pi/, .omp/, or .dsh/)."));
         console.log(chalk.gray("  For Cursor without an existing .cursor/ dir: mkdir -p .cursor\n"));
-        console.log(chalk.gray("  Pi and Oh My Pi are detected via their global config dirs (~/.pi/agent/, ~/.omp/agent/) when no project dir exists.\n"));
-        throw new Error('No supported editor detected and no --tools flag provided. Use --tools all, --tools none, or a comma-separated list: claude, opencode, cline, cursor, pi, omp (oh-my-pi aliases omp).');
+        console.log(chalk.gray("  Pi, Oh My Pi, and DeepSeek Harness are detected via their global config dirs (~/.pi/agent/, ~/.omp/agent/, ~/.dsh/) when no project dir exists.\n"));
+        throw new Error('No supported editor detected and no --tools flag provided. Use --tools all, --tools none, or a comma-separated list: claude, opencode, cline, cursor, pi, omp, dsh (oh-my-pi aliases omp).');
     }
     // 4. Install Playwright MCP for each selected editor
     if (options.mcp !== false && editors.length > 0) {
@@ -113,7 +114,10 @@ export async function init(options, deps = {}) {
                 else {
                     console.log(chalk.yellow(`  ⚠ ${adapter.label}: failed to install Playwright MCP. Run manually.`));
                     if (adapter.id === "claude") {
-                        console.log(chalk.gray("    claude mcp add playwright npx @playwright/mcp@latest"));
+                        console.log(chalk.gray("    claude mcp add --scope project playwright npx @playwright/mcp@latest"));
+                        if (e.stderr?.includes("--scope")) {
+                            console.log(chalk.gray("    (Your claude CLI rejects --scope — update Claude Code, or install without --scope manually)"));
+                        }
                     }
                     else if (adapter.id === "opencode") {
                         console.log(chalk.gray("    Add `playwright` to mcp in opencode.json / opencode.jsonc"));
@@ -202,7 +206,7 @@ export async function init(options, deps = {}) {
         console.log(chalk.bold(`\n  Restart ${editors.map((a) => a.displayName).join(" + ")} to use the updated commands.`));
     }
     console.log(chalk.bold("How it works:"));
-    console.log(chalk.gray("  /opsx:e2e (Claude), /opsx-e2e (OpenCode/Cline/Cursor/Pi/Oh My Pi) read your OpenSpec specs"));
+    console.log(chalk.gray("  /opsx:e2e (Claude), /opsx-e2e (OpenCode/Cline/Cursor/Pi/Oh My Pi/DeepSeek Harness) read your OpenSpec specs"));
     console.log(chalk.gray("  and run Playwright E2E tests through a three-agent pipeline:"));
     console.log(chalk.gray("  Planner → Generator → Healer\n"));
 }

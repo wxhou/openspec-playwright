@@ -158,9 +158,6 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     throw new Error(
       'No supported editor detected and no --tools flag provided. Use --tools all, --tools none, or a comma-separated list: claude, opencode, cline, cursor, pi, omp, dsh (oh-my-pi aliases omp).',
     );
-  }    throw new Error(
-      'No supported editor detected and no --tools flag provided. Use --tools all, --tools none, or a comma-separated list: claude, opencode, cline, cursor, pi, omp (oh-my-pi aliases omp).',
-    );
   }
 
   // 4. Install Playwright MCP for each selected editor
@@ -193,9 +190,16 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
           if (adapter.id === "claude") {
             console.log(
               chalk.gray(
-                "    claude mcp add playwright npx @playwright/mcp@latest",
+                "    claude mcp add --scope project playwright npx @playwright/mcp@latest",
               ),
             );
+            if (e.stderr?.includes("--scope")) {
+              console.log(
+                chalk.gray(
+                  "    (Your claude CLI rejects --scope — update Claude Code, or install without --scope manually)",
+                ),
+              );
+            }
           } else if (adapter.id === "opencode") {
             console.log(
               chalk.gray(
