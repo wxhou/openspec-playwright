@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `src/commands/editors.ts` — 新增 `resolveToolsArg` 纯函数与 `getAllAdapters()`；`installCommand` 已自动建目录使未检测编辑器可装
   - `src/commands/init.ts` — `InitOptions.tools`、`InitDeps`（prompt/isTTY/homeDir 注入）、`promptSelectEditors`；移除 `detected.length === 0` 提前 return（原 0 检测连脚手架都不生成）
   - `package.json` — 新增依赖 `@inquirer/prompts`
-  - `tests/editors.test.ts` — `resolveToolsArg` 13 个用例；`tests/init.test.ts` — `--tools` 分支 + 交互注入共 10 个用例
+  - `tests/editors-tools.test.ts` — `resolveToolsArg` 13 个用例；`tests/init.test.ts` — `--tools` 分支 + 交互注入共 10 个用例
   - `README.md` / `README.zh-CN.md` — CLI 注释、Usage「Selecting Editors on Init / 初始化时选择编辑器」一节
 
 ### Changed

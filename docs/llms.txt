@@ -34,7 +34,7 @@ npx playwright install --with-deps
 
 ## CLI Commands
 
-- `openspec-pw init` — Initialize integration (one-time setup)
+- `openspec-pw init` — Initialize integration (one-time setup; `--tools all|none|ids…` to select editors)
 - `openspec-pw update` — Update CLI and commands to latest version
 - `openspec-pw doctor` — Check prerequisites
 - `openspec-pw audit` — Audit tests for orphaned specs and issues
