@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **release 脚本 badge commit message 版本号取旧值**. `npm_package_version` 环境变量在脚本启动时快照，`npm version patch` 改版本后不刷新，导致 commit message 显示旧版本号（如 v0.3.68）。改为 `$(node -p "require('./package.json').version")` 动态读取。
+- **新增 `deploy:docs` 脚本固定 wrangler 版本**. wrangler 4.123+ 在非交互环境要求 `CLOUDFLARE_API_TOKEN`（OAuth 被拒），固定 `wrangler@4.119.0` 恢复 OAuth 部署。`npm run deploy:docs` 一键部署 Cloudflare 站。
+  - `package.json`
+
 ## [0.3.69] - 2026-08-17
 
 ### Added
