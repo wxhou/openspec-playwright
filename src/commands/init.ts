@@ -7,11 +7,15 @@ import { readFile } from "fs/promises";
 import {
   buildCommandMeta,
   detectAdapters,
+  getAdapter,
+  getAllAdapters,
   installCommand,
   installProjectRules,
   readEmployeeStandards,
+  resolveToolsArg,
   slashCommandForAdapter,
 } from "./editors.js";
+import type { EditorAdapter, EditorId } from "./editors.js";
 import { isPlaywrightMcpInstalled, ensurePlaywrightMcp, needsShell } from "../shared/index.js";
 
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
@@ -26,9 +30,43 @@ export interface InitOptions {
   change?: string;
   mcp?: boolean;
   ci?: boolean;
+  tools?: string;
 }
 
-export async function init(options: InitOptions) {
+export interface InitDeps {
+  /** Interactive selection prompt; defaults to @inquirer/prompts checkbox. */
+  prompt?: (
+    allEditors: EditorAdapter[],
+    detectedIds: ReadonlySet<EditorId>,
+  ) => Promise<EditorId[]>;
+  /** Override TTY detection (tests inject false here). */
+  isTTY?: boolean;
+  /** Override home dir for Pi/Oh My Pi global detection (tests inject an empty dir). */
+  homeDir?: string;
+}
+
+/**
+ * Interactive multi-select of all supported editors, pre-selecting the
+ * editors detected in the project. Dynamically imports @inquirer/prompts so
+ * non-interactive runs never load it.
+ */
+export async function promptSelectEditors(
+  allEditors: EditorAdapter[],
+  detectedIds: ReadonlySet<EditorId>,
+): Promise<EditorId[]> {
+  const { checkbox } = await import("@inquirer/prompts");
+  const selected = await checkbox({
+    message: "Select editors to configure",
+    choices: allEditors.map((a) => ({
+      name: detectedIds.has(a.id) ? `${a.displayName} (detected)` : a.displayName,
+      value: a.id,
+      checked: detectedIds.has(a.id),
+    })),
+  });
+  return selected as EditorId[];
+}
+
+export async function init(options: InitOptions, deps: InitDeps = {}) {
   console.log(chalk.blue("\n🔧 OpenSpec + Playwright E2E Setup\n"));
 
   const projectRoot = process.cwd();
@@ -68,42 +106,67 @@ export async function init(options: InitOptions) {
   }
   console.log(chalk.green("  ✓ OpenSpec initialized"));
 
-  // 3. Detect supported editors
+  // 3. Detect supported editors, then resolve the explicit selection.
+  // Priority: --tools flag > interactive prompt (TTY) > detected fallback.
   // (.claude/, .opencode/, .cline/, .cursor/, .pi/, .omp/, .dsh/ in the
   // project; Pi, Oh My Pi, and DeepSeek Harness also detect via their global
   // config dirs ~/.pi/agent, ~/.omp/agent, and ~/.dsh)
-  const detected = detectAdapters(projectRoot);
-  if (detected.length === 0) {
+  const detected = detectAdapters(projectRoot, deps.homeDir);
+  console.log(
+    detected.length > 0
+      ? chalk.gray(`  Detected: ${detected.map((a) => a.label).join(", ")}`)
+      : chalk.gray("  Detected: none"),
+  );
+
+  const isTTY = deps.isTTY ?? process.stdout.isTTY === true;
+  const prompt = deps.prompt ?? promptSelectEditors;
+  let selectedIds: EditorId[] | null;
+  try {
+    selectedIds = resolveToolsArg(options.tools);
+  } catch (err) {
+    throw new Error(`Invalid --tools value: ${(err as Error).message}`);
+  }
+  if (selectedIds === null && isTTY) {
+    selectedIds = await prompt(
+      getAllAdapters(),
+      new Set(detected.map((a) => a.id)),
+    );
+  }
+
+  const editors =
+    selectedIds === null
+      ? detected
+      : selectedIds
+          .map(getAdapter)
+          .filter((a): a is EditorAdapter => a !== undefined);
+
+  // No flag, non-TTY, and nothing detected → fail with --tools guidance.
+  if (selectedIds === null && editors.length === 0) {
     console.log(
       chalk.yellow(
         "\n  ⚠ No supported editor detected (need .claude/, .opencode/, .cline/, .cursor/, .pi/, .omp/, or .dsh/).",
       ),
     );
     console.log(
-      chalk.gray(
-        "  Run openspec-pw init from a Claude Code, OpenCode, Cline, Cursor, Pi, Oh My Pi, or DeepSeek Harness project to install commands.\n",
-      ),
-    );
-    console.log(
-      chalk.gray(
-        "  For Cursor without an existing .cursor/ dir: mkdir -p .cursor\n",
-      ),
+      chalk.gray("  For Cursor without an existing .cursor/ dir: mkdir -p .cursor\n"),
     );
     console.log(
       chalk.gray(
         "  Pi, Oh My Pi, and DeepSeek Harness are detected via their global config dirs (~/.pi/agent/, ~/.omp/agent/, ~/.dsh/) when no project dir exists.\n",
       ),
     );
-    return;
+    throw new Error(
+      'No supported editor detected and no --tools flag provided. Use --tools all, --tools none, or a comma-separated list: claude, opencode, cline, cursor, pi, omp, dsh (oh-my-pi aliases omp).',
+    );
+  }    throw new Error(
+      'No supported editor detected and no --tools flag provided. Use --tools all, --tools none, or a comma-separated list: claude, opencode, cline, cursor, pi, omp (oh-my-pi aliases omp).',
+    );
   }
-  console.log(
-    chalk.gray(`  Detected: ${detected.map((a) => a.label).join(", ")}`),
-  );
 
-  // 4. Install Playwright MCP for each detected editor
-  if (options.mcp !== false) {
+  // 4. Install Playwright MCP for each selected editor
+  if (options.mcp !== false && editors.length > 0) {
     console.log(chalk.blue("\n─── Installing Playwright MCP ───"));
-    for (const adapter of detected) {
+    for (const adapter of editors) {
       if (isPlaywrightMcpInstalled(adapter)) {
         console.log(
           chalk.green(`  ✓ ${adapter.label}: Playwright MCP already installed`),
@@ -174,12 +237,14 @@ export async function init(options: InitOptions) {
     }
   }
 
-  // 5. Install E2E command for each detected editor
-  console.log(chalk.blue("\n─── Installing E2E Commands ───"));
-  const body = await readFile(E2E_COMMAND_SRC, "utf-8");
-  const meta = buildCommandMeta(body);
-  for (const adapter of detected) {
-    installCommand(adapter, meta, projectRoot);
+  // 5. Install E2E command for each selected editor
+  if (editors.length > 0) {
+    console.log(chalk.blue("\n─── Installing E2E Commands ───"));
+    const body = await readFile(E2E_COMMAND_SRC, "utf-8");
+    const meta = buildCommandMeta(body);
+    for (const adapter of editors) {
+      installCommand(adapter, meta, projectRoot);
+    }
   }
 
 
@@ -206,10 +271,12 @@ export async function init(options: InitOptions) {
   }
 
   // 8. Install employee-grade standards (AGENTS.md + CLAUDE.md wrapper if Claude)
-  console.log(chalk.blue("\n─── Installing Employee Standards ───"));
-  const standards = readEmployeeStandards(EMPLOYEE_STANDARDS_SRC);
-  if (standards) {
-    installProjectRules(projectRoot, standards, detected);
+  if (editors.length > 0) {
+    console.log(chalk.blue("\n─── Installing Employee Standards ───"));
+    const standards = readEmployeeStandards(EMPLOYEE_STANDARDS_SRC);
+    if (standards) {
+      installProjectRules(projectRoot, standards, editors);
+    }
   }
 
   // 9. Summary
@@ -256,21 +323,23 @@ export async function init(options: InitOptions) {
       chalk.gray("  6. Build code index (optional): codegraph init"),
     );
   }
-  for (const adapter of detected) {
-    const slashCmd = slashCommandForAdapter(adapter);
+  if (editors.length > 0) {
+    for (const adapter of editors) {
+      const slashCmd = slashCommandForAdapter(adapter);
+      console.log(
+        chalk.gray(`  • In ${adapter.label}, run: ${slashCmd} <change-name>`),
+      );
+    }
     console.log(
-      chalk.gray(`  • In ${adapter.label}, run: ${slashCmd} <change-name>`),
+      chalk.gray("  • Or: openspec-pw doctor to verify setup\n"),
+    );
+
+    console.log(
+      chalk.bold(
+        `\n  Restart ${editors.map((a) => a.displayName).join(" + ")} to use the updated commands.`,
+      ),
     );
   }
-  console.log(
-    chalk.gray("  • Or: openspec-pw doctor to verify setup\n"),
-  );
-
-  console.log(
-    chalk.bold(
-      `\n  Restart ${detected.map((a) => a.displayName).join(" + ")} to use the updated commands.`,
-    ),
-  );
 
   console.log(chalk.bold("How it works:"));
   console.log(

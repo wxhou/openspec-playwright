@@ -33,7 +33,7 @@ npm install -g openspec-playwright@latest
 ```bash
 # 在项目目录下
 openspec init              # 初始化 OpenSpec
-openspec-pw init          # 安装 Playwright E2E 集成
+openspec-pw init          # 安装 Playwright E2E 集成（--tools 可选编辑器）
 ```
 
 > **注意**：运行 `openspec-pw init` 后，手动安装 Playwright 浏览器：`npx playwright install --with-deps`
@@ -110,10 +110,24 @@ Skill 安装在 `.cline/skills/opsx-e2e/SKILL.md`，通过 `/opsx-e2e` 斜杠命
 
 安装为 `.dsh/skills/opsx-e2e/SKILL.md` — 一个 project-dsh skill（rank 100，本地最高优先级），含 `name` + `description` frontmatter，通过 `skill` 工具调用。dsh 没有简单的 MCP 配置文件，因此 Playwright MCP 需在 `cordis.yml` 中手动配置（`@deepseek-ai/dsh-mcp-client`）；浏览器探索改用 `openspec-pw explore`。
 
+### 初始化时选择编辑器
+
+`openspec-pw init` 默认自动检测项目中的编辑器并全部配置。如需只装一部分（或不装），用 `--tools` —— 语义与 `openspec init --tools` 一致：
+
+```bash
+openspec-pw init --tools claude,cursor   # 只配置 Claude Code 与 Cursor
+openspec-pw init --tools all             # 配置所有受支持编辑器
+openspec-pw init --tools none            # 不配置编辑器，只生成脚手架
+```
+
+受支持 id：`claude`、`opencode`、`cline`、`cursor`、`pi`、`omp`、`dsh`（`oh-my-pi` 是 `omp` 的别名）。id 大小写不敏感、重复自动去重、`all`/`none` 不能与具体 id 混用。被 `--tools` 指定的编辑器即使未被检测到也会配置（会自动创建其配置目录）。
+
+未提供 `--tools` 时：TTY 终端弹出交互式多选（预选已检测的编辑器）；非交互终端回退到检测结果。`--tools` 与 `--no-mcp` 正交：前者选择*哪些*编辑器，后者决定*是否*为它们安装 Playwright MCP。
+
 ### CLI 命令
 
 ```bash
-openspec-pw init          # 初始化集成（一次性设置）
+openspec-pw init          # 初始化集成（--tools all|none|ids… 可选编辑器）
 openspec-pw update        # 更新 CLI 和命令到最新版本
 openspec-pw doctor        # 检查前置条件 (Node, Playwright, OpenSpec, 配置, 测试) + 应用服务器诊断
 openspec-pw audit         # 检查测试文件是否有孤儿文件和配置问题

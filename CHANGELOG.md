@@ -17,6 +17,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.67] - 2026-08-12
 
+### Added
+
+- **`openspec-pw init --tools` 编辑器选择**. 对齐 `openspec init --tools`：`all` / `none` / 逗号分隔 id 列表非交互式选择要配置的编辑器；无 `--tools` + TTY 弹 `@inquirer/prompts` 多选（预选已检测编辑器，可全不选 = `--tools none`）；非 TTY 回退到检测结果，零检测时报错退出并提示 `--tools`。选择列表驱动 MCP / 命令 / 规则各阶段，`--tools none` 仍生成测试脚手架；未知 id 或 `all`/`none` 与具体 id 混用报错非零退出，重复 id 去重保序，`oh-my-pi` 映射 `omp`。`--tools` 与 `--no-mcp` 正交。
+  - `src/index.ts` — `init` 命令注册 `--tools`；action 捕获 init 抛错打印并 `exit(1)`（原未知 id 场景 exit 0）
+  - `src/commands/editors.ts` — 新增 `resolveToolsArg` 纯函数与 `getAllAdapters()`；`installCommand` 已自动建目录使未检测编辑器可装
+  - `src/commands/init.ts` — `InitOptions.tools`、`InitDeps`（prompt/isTTY/homeDir 注入）、`promptSelectEditors`；移除 `detected.length === 0` 提前 return（原 0 检测连脚手架都不生成）
+  - `package.json` — 新增依赖 `@inquirer/prompts`
+  - `tests/editors.test.ts` — `resolveToolsArg` 13 个用例；`tests/init.test.ts` — `--tools` 分支 + 交互注入共 10 个用例
+  - `README.md` / `README.zh-CN.md` — CLI 注释、Usage「Selecting Editors on Init / 初始化时选择编辑器」一节
+
 ### Changed
 
 - **employee-standards 新增「工具调用纪律（防循环）」**. §3 工具使用新增子节：一次只发一个工具调用、并行仅限真正独立调用、发现重复调用立即停止、长会话接近上限先压缩上下文。同步 `docs/script.js` 内嵌标准（ZH + EN）。

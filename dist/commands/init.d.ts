@@ -1,9 +1,25 @@
+import type { EditorAdapter, EditorId } from "./editors.js";
 export interface InitOptions {
     change?: string;
     mcp?: boolean;
     ci?: boolean;
+    tools?: string;
 }
-export declare function init(options: InitOptions): Promise<void>;
+export interface InitDeps {
+    /** Interactive selection prompt; defaults to @inquirer/prompts checkbox. */
+    prompt?: (allEditors: EditorAdapter[], detectedIds: ReadonlySet<EditorId>) => Promise<EditorId[]>;
+    /** Override TTY detection (tests inject false here). */
+    isTTY?: boolean;
+    /** Override home dir for Pi/Oh My Pi global detection (tests inject an empty dir). */
+    homeDir?: string;
+}
+/**
+ * Interactive multi-select of all supported editors, pre-selecting the
+ * editors detected in the project. Dynamically imports @inquirer/prompts so
+ * non-interactive runs never load it.
+ */
+export declare function promptSelectEditors(allEditors: EditorAdapter[], detectedIds: ReadonlySet<EditorId>): Promise<EditorId[]>;
+export declare function init(options: InitOptions, deps?: InitDeps): Promise<void>;
 export declare function generateSeedTest(projectRoot: string): Promise<void>;
 export declare function generateAppKnowledge(projectRoot: string): Promise<void>;
 export declare function generateSharedPages(projectRoot: string): Promise<void>;

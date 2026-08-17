@@ -15,7 +15,7 @@ npm install -g openspec-playwright@latest
 ```bash
 # In your project directory
 openspec init              # Initialize OpenSpec
-openspec-pw init          # Install Playwright E2E integration
+openspec-pw init          # Install Playwright E2E integration (--tools to pick editors)
 ```
 
 ## Supported AI Coding Assistants
@@ -90,10 +90,33 @@ Installed as `.omp/commands/opsx-e2e.md` (native omp command with `name` + `desc
 
 Installed as `.dsh/skills/opsx-e2e/SKILL.md` — a project-dsh skill (rank 100, the highest local priority) with `name` + `description` frontmatter, invoked via the `skill` tool. dsh has no simple MCP config file, so Playwright MCP is configured manually in `cordis.yml` (`@deepseek-ai/dsh-mcp-client`); browser exploration runs through `openspec-pw explore`.
 
+### Selecting Editors on Init
+
+`openspec-pw init` normally auto-detects the editors in your project and
+configures all of them. To install only a subset (or none), use `--tools` —
+matching the semantics of `openspec init --tools`:
+
+```bash
+openspec-pw init --tools claude,cursor   # only Claude Code and Cursor
+openspec-pw init --tools all             # every supported editor
+openspec-pw init --tools none            # no editors; scaffold only
+```
+
+Supported ids: `claude`, `opencode`, `cline`, `cursor`, `pi`, `omp`, `dsh`
+(`oh-my-pi` is accepted as an alias for `omp`). Ids are case-insensitive,
+repeats are de-duplicated, and `all`/`none` cannot be mixed with specific
+ids. A `--tools` id is configured even when the editor is not detected
+(its config directory is created).
+
+Without `--tools`, an interactive multi-select is shown on TTY terminals
+(pre-selecting detected editors); on non-interactive terminals the
+configured editors fall back to the detected ones. `--tools` is
+documented as orthogonal to `--no-mcp`: the former picks *which* editors,
+the latter *whether* to install the Playwright MCP server for them.
 ### CLI Commands
 
 ```bash
-openspec-pw init          # Initialize integration (one-time setup)
+openspec-pw init          # Initialize integration (--tools all|none|ids… to select editors)
 openspec-pw update        # Update CLI and commands to latest version
 openspec-pw doctor        # Check prerequisites (Node, Playwright, OpenSpec, config, tests) + app server diagnostics
 openspec-pw audit         # Audit tests for orphaned specs and issues

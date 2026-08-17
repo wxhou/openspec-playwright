@@ -1,5 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from "fs";
+import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll, vi } from "vitest";
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+} from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 
@@ -237,5 +244,212 @@ describe("template regressions", () => {
     expect(seed).toContain("page.request.get(BASE_URL)");
     expect(basePage).toContain("const BASE_URL = process.env.BASE_URL;");
     expect(basePage).toContain("path.startsWith('http') || !BASE_URL ? path");
+  });
+});
+
+// ─── init --tools selection ────────────────────────────────────────────
+
+describe("init tool selection", () => {
+  let tmpRoot: string;
+  let cwdSpy: ReturnType<typeof import("vitest")["vi"]["spyOn"]>;
+  const blankHome = join(tmpdir(), "ospw-pw-blank-home-" + Date.now());
+
+  const COMMAND_FILES: Record<string, string> = {
+    claude: ".claude/commands/opsx/e2e.md",
+    opencode: ".opencode/commands/opsx-e2e.md",
+    cline: ".cline/skills/opsx-e2e/SKILL.md",
+    cursor: ".cursor/commands/opsx-e2e.md",
+    pi: ".pi/prompts/opsx-e2e.md",
+    omp: ".omp/commands/opsx-e2e.md",
+  };
+
+  beforeAll(() => {
+    mkdirSync(blankHome, { recursive: true });
+  });
+
+  beforeEach(() => {
+    tmpRoot = mkdtempSync(join(tmpdir(), "ospw-pw-init-sel-"));
+    mkdirSync(join(tmpRoot, "openspec"), { recursive: true });
+    // init() resolves the project root from process.cwd() — point it at the temp project.
+    cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(tmpRoot);
+  });
+
+  afterEach(() => {
+    cwdSpy.mockRestore();
+    rmSync(tmpRoot, { recursive: true, force: true });
+  });
+
+  afterAll(() => {
+    rmSync(blankHome, { recursive: true, force: true });
+  });
+
+  it("--tools none skips editors but still generates the scaffold", async () => {
+    const { init } = await import("../../src/commands/init.js");
+    // No mcp:false — with zero editors the MCP phase must not run at all,
+    // so this also proves the MCP loop is skipped (no claude mcp side effects).
+    await init({ tools: "none" });
+    expect(existsSync(join(tmpRoot, ".claude"))).toBe(false);
+    expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(false);
+    expect(existsSync(join(tmpRoot, "tests/playwright/seed.spec.ts"))).toBe(true);
+    expect(existsSync(join(tmpRoot, "tests/playwright/auth.setup.ts"))).toBe(true);
+    expect(existsSync(join(tmpRoot, "tests/playwright/credentials.yaml"))).toBe(true);
+    expect(existsSync(join(tmpRoot, "tests/playwright/pages/BasePage.ts"))).toBe(true);
+    expect(existsSync(join(tmpRoot, "tests/playwright/app-knowledge.md"))).toBe(true);
+    expect(existsSync(join(tmpRoot, "playwright.config.ts"))).toBe(true);
+  });
+
+  it("--tools all installs every supported editor", async () => {
+    const { init } = await import("../../src/commands/init.js");
+    await init({ tools: "all", mcp: false });
+    for (const rel of Object.values(COMMAND_FILES)) {
+      expect(existsSync(join(tmpRoot, rel))).toBe(true);
+    }
+    expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(true);
+  });
+
+  it("--tools with a list configures exactly those editors", async () => {
+    const { init } = await import("../../src/commands/init.js");
+    await init({ tools: "claude,cursor", mcp: false });
+    expect(existsSync(join(tmpRoot, COMMAND_FILES.claude))).toBe(true);
+    expect(existsSync(join(tmpRoot, COMMAND_FILES.cursor))).toBe(true);
+    expect(existsSync(join(tmpRoot, COMMAND_FILES.opencode))).toBe(false);
+    expect(existsSync(join(tmpRoot, COMMAND_FILES.cline))).toBe(false);
+  });
+
+  it("accepts the oh-my-pi alias for omp", async () => {
+    const { init } = await import("../../src/commands/init.js");
+    await init({ tools: "oh-my-pi", mcp: false });
+    expect(existsSync(join(tmpRoot, COMMAND_FILES.omp))).toBe(true);
+    expect(existsSync(join(tmpRoot, COMMAND_FILES.claude))).toBe(false);
+  });
+
+  it("throws on unknown ids without writing any files", async () => {
+    const { init } = await import("../../src/commands/init.js");
+    await expect(init({ tools: "claude,wat", mcp: false })).rejects.toThrow(
+      /wat/,
+    );
+    expect(existsSync(join(tmpRoot, "tests"))).toBe(false);
+    expect(existsSync(join(tmpRoot, ".claude"))).toBe(false);
+  });
+
+  it("falls back to detected editors when not a TTY and no --tools flag", async () => {
+    const { init } = await import("../../src/commands/init.js");
+    // Detect exactly one editor: Cursor.
+    mkdirSync(join(tmpRoot, ".cursor"), { recursive: true });
+    await init({ mcp: false }, { isTTY: false, homeDir: blankHome });
+    // Detected Cursor is configured via the non-interactive fallback…
+    expect(existsSync(join(tmpRoot, COMMAND_FILES.cursor))).toBe(true);
+    // …and nothing undetected is.
+    expect(existsSync(join(tmpRoot, COMMAND_FILES.claude))).toBe(false);
+    expect(existsSync(join(tmpRoot, COMMAND_FILES.opencode))).toBe(false);
+  });
+
+  it("fails with --tools guidance when nothing is detected and not a TTY", async () => {
+    const { init } = await import("../../src/commands/init.js");
+    await expect(
+      init({ mcp: false }, { isTTY: false, homeDir: blankHome }),
+    ).rejects.toThrow(/--tools/);
+  });
+});
+
+// ─── init interactive prompt selection ────────────────────────────────
+
+describe("init interactive prompt selection", () => {
+  let tmpRoot: string;
+  let cwdSpy: ReturnType<typeof import("vitest")["vi"]["spyOn"]>;
+
+  beforeEach(() => {
+    tmpRoot = mkdtempSync(join(tmpdir(), "ospw-pw-init-prompt-"));
+    mkdirSync(join(tmpRoot, "openspec"), { recursive: true });
+    // Detect exactly one editor: Cursor.
+    mkdirSync(join(tmpRoot, ".cursor"), { recursive: true });
+    cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(tmpRoot);
+  });
+
+  afterEach(() => {
+    cwdSpy.mockRestore();
+    rmSync(tmpRoot, { recursive: true, force: true });
+  });
+
+  it("pre-selects detected editors and installs only the confirmed selection", async () => {
+    const { init } = await import("../../src/commands/init.js");
+    const receivedDetected = new Set<string>();
+    const fakePrompt = async (
+      allEditors: Array<{ id: string }>,
+      detected: ReadonlySet<string>,
+    ) => {
+      // All 6 editors are offered — never fewer than the full registry.
+      expect(allEditors.length).toBe(6);
+      // Detected Cursor is pre-selected.
+      expect(detected.has("cursor")).toBe(true);
+      detected.forEach((id) => receivedDetected.add(id));
+      // User overrides the pre-selection and picks only Claude.
+      return ["claude"];
+    };
+
+    await init({ mcp: false }, { isTTY: true, prompt: fakePrompt });
+
+    expect(receivedDetected.has("cursor")).toBe(true);
+    // Only the confirmed selection is installed.
+    expect(existsSync(join(tmpRoot, ".claude/commands/opsx/e2e.md"))).toBe(true);
+    expect(existsSync(join(tmpRoot, ".cursor/commands/opsx-e2e.md"))).toBe(false);
+    expect(existsSync(join(tmpRoot, ".opencode"))).toBe(false);
+  });
+
+  it("an empty interactive selection behaves like --tools none", async () => {
+    const { init } = await import("../../src/commands/init.js");
+    await init({ mcp: false }, { isTTY: true, prompt: async () => [] });
+
+    expect(existsSync(join(tmpRoot, ".claude"))).toBe(false);
+    expect(existsSync(join(tmpRoot, ".cursor"))).toBe(true); // created by us only
+    expect(existsSync(join(tmpRoot, "tests/playwright/seed.spec.ts"))).toBe(true);
+  });
+});
+
+describe("init interactive prompt with no detected editors", () => {
+  let tmpRoot: string;
+  let cwdSpy: ReturnType<typeof import("vitest")["vi"]["spyOn"]>;
+  const blankHome = join(tmpdir(), "ospw-pw-blank-home-prompt-" + Date.now());
+
+  beforeAll(() => {
+    mkdirSync(blankHome, { recursive: true });
+  });
+
+  beforeEach(() => {
+    tmpRoot = mkdtempSync(join(tmpdir(), "ospw-pw-init-nodetect-"));
+    mkdirSync(join(tmpRoot, "openspec"), { recursive: true });
+    cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(tmpRoot);
+  });
+
+  afterEach(() => {
+    cwdSpy.mockRestore();
+    rmSync(tmpRoot, { recursive: true, force: true });
+  });
+
+  afterAll(() => {
+    rmSync(blankHome, { recursive: true, force: true });
+  });
+
+  it("still prompts with all editors and none pre-selected, then configures the confirmation", async () => {
+    const { init } = await import("../../src/commands/init.js");
+    const seenDetected = new Set<string>();
+    const fakePrompt = async (
+      allEditors: Array<{ id: string }>,
+      detected: ReadonlySet<string>,
+    ) => {
+      // All 6 editors offered despite zero detections…
+      expect(allEditors.length).toBe(6);
+      // …with nothing pre-selected.
+      expect(detected.size).toBe(0);
+      detected.forEach((id) => seenDetected.add(id));
+      return ["cursor"];
+    };
+
+    await init({ mcp: false }, { isTTY: true, homeDir: blankHome, prompt: fakePrompt });
+
+    expect(seenDetected.size).toBe(0);
+    // The confirmation is installed even though nothing was detected.
+    expect(existsSync(join(tmpRoot, ".cursor/commands/opsx-e2e.md"))).toBe(true);
+    expect(existsSync(join(tmpRoot, ".claude"))).toBe(false);
   });
 });

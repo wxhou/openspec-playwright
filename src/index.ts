@@ -8,6 +8,7 @@ import { readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { Command } from "commander";
+import chalk from "chalk";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -29,10 +30,19 @@ program
   .option("-c, --change <name>", "default change name", "default")
   .option("--no-mcp", "skip Playwright MCP configuration")
   .option("--ci", "generate GitHub Actions CI workflow")
+  .option(
+    "--tools <tools>",
+    'Select editors to configure non-interactively: "all", "none", or a comma-separated list (claude,opencode,cline,cursor,pi,omp; oh-my-pi aliases omp)',
+  )
   .action(async (opts) => {
     const { init } = await import("./commands/init.js");
     const { checkForUpdate } = await import("./shared/version-check.js");
-    await init(opts);
+    try {
+      await init(opts);
+    } catch (err) {
+      console.error(chalk.red(`\n  ✗ ${(err as Error).message}\n`));
+      process.exit(1);
+    }
     await checkForUpdate(pkg.version);
   });
 

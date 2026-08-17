@@ -41,6 +41,7 @@ import {
   piAdapter,
   ompAdapter,
   readOpenSpecBlock,
+  resolveToolsArg,
   transformToHyphenCommands,
 } from "../src/commands/editors.js";
 
@@ -1250,3 +1251,4 @@ describe("installCommand (Oh My Pi)", () => {
     expect(content).toContain("Do the E2E thing");
   });
 });
+ (feat(init): --tools flag selects editors to configure)
