@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { readFile } from "fs/promises";
 import { buildCommandMeta, detectAdapters, getAdapter, getAllAdapters, installCommand, installProjectRules, readEmployeeStandards, resolveToolsArg, slashCommandForAdapter, } from "./editors.js";
-import { isPlaywrightMcpInstalled, ensurePlaywrightMcp, needsShell } from "../shared/index.js";
+import { isPlaywrightMcpInstalled, ensurePlaywrightMcp, needsShell, hasFrontendSignal } from "../shared/index.js";
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
 const E2E_COMMAND_SRC = fileURLToPath(new URL("../../templates/e2e-command.md", import.meta.url));
 const EMPLOYEE_STANDARDS_SRC = fileURLToPath(new URL("../../employee-standards.md", import.meta.url));
@@ -148,6 +148,9 @@ export async function init(options, deps = {}) {
             installCommand(adapter, meta, projectRoot);
         }
     }
+    // 5b. Detect a frontend signal before generating test files (step 6).
+    // Only controls a guidance hint in the Summary — generation is unchanged.
+    const frontendSignal = hasFrontendSignal(projectRoot);
     // 6. Generate seed test
     console.log(chalk.blue("\n─── Generating Seed Test ───"));
     await generateSeedTest(projectRoot);
@@ -196,6 +199,10 @@ export async function init(options, deps = {}) {
     }
     if (codegraphInstalled && !existsSync(join(projectRoot, ".codegraph"))) {
         console.log(chalk.gray("  6. Build code index (optional): codegraph init"));
+    }
+    if (frontendSignal === false) {
+        console.log(chalk.gray("  • If your frontend lives in a subdirectory (monorepo): run openspec-pw init in the app directory (one Playwright config per app)"));
+        console.log(chalk.gray("  • If this is an API-only project: use Playwright's request fixture for API tests and point BASE_URL at the API address"));
     }
     if (editors.length > 0) {
         for (const adapter of editors) {

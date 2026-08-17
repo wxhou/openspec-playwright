@@ -2,6 +2,7 @@ import { chromium, Browser, BrowserContext, Page } from "playwright";
 import chalk from "chalk";
 import { existsSync, readFileSync, writeFileSync, renameSync } from "fs";
 import { join } from "path";
+import { detectAppServer } from "../shared/index.js";
 
 export interface ExploreOptions {
   parallel?: number;
@@ -22,7 +23,7 @@ export interface RouteResult {
 }
 
 interface ParsedExplorationFile {
-  baseUrl: string;
+  baseUrl?: string;
   routes: Array<{
     path: string;
     auth: string;
@@ -45,9 +46,12 @@ function atomicWrite(filePath: string, content: string): void {
 
 // ── Parsing ────────────────────────────────────────────────────────────────────
 
-function parseExplorationFile(content: string): ParsedExplorationFile {
+export function parseExplorationFile(content: string): ParsedExplorationFile {
+  // Pure function: no file-system access. Absence of a BASE_URL line is
+  // reported as undefined; the caller resolves the fallback via
+  // detectAppServer (env > recorded > detection > localhost:3000).
   const baseUrlMatch = content.match(/BASE_URL:\s*(\S+)/);
-  const baseUrl = baseUrlMatch ? baseUrlMatch[1].trim() : "http://localhost:3000";
+  const baseUrl = baseUrlMatch ? baseUrlMatch[1].trim() : undefined;
 
   const routes: ParsedExplorationFile["routes"] = [];
   // More permissive regex: match any column count, allow spaces in route path
@@ -287,6 +291,21 @@ async function runSequential(
   return results;
 }
 
+/**
+ * Resolve the exploration base URL. Priority: env BASE_URL > recorded
+ * BASE_URL in app-exploration.md > detectAppServer detection chain (script
+ * port / vite config / .env / framework default / seed) > localhost:3000.
+ * Extracted from explore() so the precedence contract is unit-testable
+ * (explore() itself launches a browser).
+ */
+export function resolveExploreBaseUrl(
+  projectRoot: string,
+  recordedBaseUrl: string | undefined,
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  return env.BASE_URL ?? recordedBaseUrl ?? detectAppServer(projectRoot, env).baseUrl;
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────────
 
 export async function explore(options: ExploreOptions) {
@@ -336,7 +355,7 @@ export async function explore(options: ExploreOptions) {
     process.exit(1);
   }
 
-  const baseUrl = process.env.BASE_URL ?? parsed.baseUrl;
+  const baseUrl = resolveExploreBaseUrl(projectRoot, parsed.baseUrl);
   const paths = parsed.routes.map((r) => r.path);
 
   console.log(chalk.blue("─── Dry Run ───"));

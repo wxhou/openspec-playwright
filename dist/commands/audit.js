@@ -2,7 +2,7 @@ import { execFileSync } from "child_process";
 import { existsSync, readdirSync, readFileSync, } from "fs";
 import { join } from "path";
 import chalk from "chalk";
-import { SHARED_FILE_NAMES, TIMEOUT, needsShell } from "../shared/index.js";
+import { SHARED_FILE_NAMES, TIMEOUT, needsShell, detectAppServer } from "../shared/index.js";
 export async function audit() {
     const projectRoot = process.cwd();
     const testsDir = join(projectRoot, "tests", "playwright");
@@ -13,7 +13,7 @@ export async function audit() {
     console.log(chalk.blue("\n🔍 OpenSpec Playwright: Audit\n"));
     const results = [];
     // 1. Get sitemap routes
-    const sitemapResult = await getSitemapRoutes();
+    const sitemapResult = await getSitemapRoutes(projectRoot);
     const allRoutes = sitemapResult.routes;
     if (sitemapResult.note) {
         console.log(chalk.gray(`  ℹ ${sitemapResult.note}`));
@@ -123,9 +123,12 @@ export async function audit() {
     console.log();
 }
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-async function getSitemapRoutes() {
-    const baseUrl = process.env.BASE_URL || "http://localhost:3000";
-    const hasBaseUrl = !!process.env.BASE_URL;
+export async function getSitemapRoutes(projectRoot) {
+    // detectAppServer already prefers process.env.BASE_URL and falls back
+    // through the full detection chain (script port → vite config → .env →
+    // framework default → seed → localhost:3000).
+    const { baseUrl, baseUrlSource } = detectAppServer(projectRoot);
+    const hasBaseUrl = baseUrlSource === "BASE_URL env";
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), TIMEOUT.OPENSPEC_LIST);
@@ -152,7 +155,7 @@ async function getSitemapRoutes() {
     catch (err) {
         const reason = hasBaseUrl
             ? `fetch failed: ${err.message}`
-            : `no BASE_URL set, tried default ${baseUrl}`;
+            : `no BASE_URL set, fell back to ${baseUrl} (${baseUrlSource})`;
         return {
             routes: [],
             note: `sitemap.xml unreachable; route coverage check skipped (${reason})`,

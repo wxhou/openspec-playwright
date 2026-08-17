@@ -453,3 +453,66 @@ describe("init interactive prompt with no detected editors", () => {
     expect(existsSync(join(tmpRoot, ".claude"))).toBe(false);
   });
 });
+
+// ─── init frontend signal hint ─────────────────────────────────────────
+
+describe("init frontend signal hint", () => {
+  let tmpRoot: string;
+  let cwdSpy: ReturnType<typeof import("vitest")["vi"]["spyOn"]>;
+  let logSpy: ReturnType<typeof import("vitest")["vi"]["spyOn"]>;
+  const logs: string[] = [];
+
+  beforeEach(() => {
+    tmpRoot = mkdtempSync(join(tmpdir(), "ospw-pw-init-frontend-"));
+    mkdirSync(join(tmpRoot, "openspec"), { recursive: true });
+    cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(tmpRoot);
+    logs.length = 0;
+    logSpy = vi.spyOn(console, "log").mockImplementation((...args: unknown[]) => {
+      logs.push(args.join(" "));
+    });
+  });
+
+  afterEach(() => {
+    cwdSpy.mockRestore();
+    logSpy.mockRestore();
+    rmSync(tmpRoot, { recursive: true, force: true });
+  });
+
+  it("prints the two-line hint for a project without a frontend signal", async () => {
+    writeFileSync(
+      join(tmpRoot, "package.json"),
+      JSON.stringify({ dependencies: { express: "^4.0.0" }, scripts: { dev: "node server.js" } }),
+    );
+    const { init } = await import("../../src/commands/init.js");
+    await init({ tools: "none" });
+    expect(logs.some((l) => l.includes("request fixture"))).toBe(true);
+    expect(logs.some((l) => l.includes("app directory"))).toBe(true);
+    // Hint does not affect the install flow.
+    expect(existsSync(join(tmpRoot, "tests/playwright/seed.spec.ts"))).toBe(true);
+  });
+
+  it("prints no hint when a frontend signal is present", async () => {
+    writeFileSync(join(tmpRoot, "package.json"), JSON.stringify({ scripts: { dev: "vite" } }));
+    const { init } = await import("../../src/commands/init.js");
+    await init({ tools: "none" });
+    expect(logs.some((l) => l.includes("request fixture"))).toBe(false);
+  });
+
+  it("prints no hint when findNpmRoot descends to a frontend app (monorepo)", async () => {
+    const appDir = join(tmpRoot, "apps", "web");
+    mkdirSync(appDir, { recursive: true });
+    writeFileSync(join(tmpRoot, "package.json"), JSON.stringify({ private: true, workspaces: ["apps/*"] }));
+    writeFileSync(join(appDir, "package.json"), JSON.stringify({ scripts: { dev: "vite" } }));
+    const { init } = await import("../../src/commands/init.js");
+    await init({ tools: "none" });
+    expect(logs.some((l) => l.includes("request fixture"))).toBe(false);
+  });
+
+  it("skips the hint and still scaffolds when no package.json exists", async () => {
+    const { init } = await import("../../src/commands/init.js");
+    await init({ tools: "none" });
+    expect(logs.some((l) => l.includes("request fixture"))).toBe(false);
+    expect(existsSync(join(tmpRoot, "tests/playwright/seed.spec.ts"))).toBe(true);
+    expect(existsSync(join(tmpRoot, "playwright.config.ts"))).toBe(true);
+  });
+});

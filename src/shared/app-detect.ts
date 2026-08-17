@@ -162,6 +162,39 @@ function frameworkDefaultPort(pkg: PackageJson, command = ""): { port: number; s
   return undefined;
 }
 
+// Frontend framework dependency keys — exact key match on deps/devDeps
+// (substring would false-hit vitest/nextra). Scoped packages use their full
+// name (e.g. "@angular/core"). Keep the framework set in sync with
+// frameworkDefaultPort above (vite/astro/next/nuxt subset) — one module,
+// one maintenance point.
+const FRONTEND_FRAMEWORK_DEPS = [
+  "react", "next", "vue", "nuxt", "svelte", "sveltekit", "astro",
+  "angular", "solid", "preact", "remix", "vite", "@angular/core",
+];
+
+// Frontend dev-command keywords — substring match on scripts.dev (command
+// text is naturally matched by inclusion).
+const FRONTEND_DEV_COMMAND_KEYWORDS = ["vite", "next", "nuxt", "svelte-kit", "astro"];
+
+/**
+ * Detect whether the project has frontend code: reads the package.json
+ * located by findNpmRoot (same source as detectAppServer, so monorepo
+ * conclusions match — a nested app is treated consistently by both).
+ * Returns null when no readable package.json is found at the located root —
+ * callers skip the hint in that case (detection skipped, not "no frontend").
+ */
+export function hasFrontendSignal(projectRoot: string): boolean | null {
+  const npmRoot = findNpmRoot(projectRoot);
+  const pkg = readPackageJson(join(npmRoot, "package.json"));
+  if (!pkg) return null;
+
+  for (const name of FRONTEND_FRAMEWORK_DEPS) {
+    if (dependencyExists(pkg, name)) return true;
+  }
+  const dev = pkg.scripts?.dev ?? "";
+  return FRONTEND_DEV_COMMAND_KEYWORDS.some((kw) => dev.includes(kw));
+}
+
 export function detectAppServer(projectRoot: string, env: NodeJS.ProcessEnv = process.env): AppServerDetection {
   const npmRoot = findNpmRoot(projectRoot);
   const packageJsonPath = join(npmRoot, "package.json");

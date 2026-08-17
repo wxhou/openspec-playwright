@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`openspec-pw init` 无前端项目引导提示**. 生成测试文件前轻量检测前端信号：读 `findNpmRoot` 定位的 `package.json`（与 `detectAppServer` 同源，monorepo 下探一致），deps/devDeps **精确键名匹配**前端框架关键词（react/next/vue/nuxt/svelte/sveltekit/astro/angular/solid/preact/remix/vite/@angular/core——substring 会误命中 vitest/nextra），`scripts.dev` substring 匹配 vite/next/nuxt/svelte-kit/astro。无前端信号时在 Summary Next steps 打印两行"如果…"并列建议（monorepo 子目录 → 在应用目录运行 init；纯 API → Playwright `request` fixture + `BASE_URL` 指向 API），不影响生成行为与 exit code；无 package.json 时跳过检测不提示（webServer fallback 行为不变）。
+  - `src/shared/app-detect.ts` — 新增 `hasFrontendSignal`（`boolean | null`：null = 无 package.json 跳过检测），框架关键词常量与 `frameworkDefaultPort` 同模块并注释关系
+  - `src/commands/init.ts` — 生成前检测 + Summary 提示（灰色，与 Next steps 同格式）
+  - `tests/shared/app-detect.test.ts` / `tests/init.test.ts` — 信号匹配（含 vitest 不误命中、monorepo 下探）与提示输出用例
+  - `README.md` / `README.zh-CN.md` — init 行为说明补充一行
+
+- **`audit` / `explore` 的 BASE_URL 解析统一走 `detectAppServer` 检测链**. 此前两命令在无 `BASE_URL` 时硬编码回退 `localhost:3000`（与 `doctor` 的完整检测结论不一致——vite/astro 等项目 audit 拿错 sitemap、explore 打不开页面）。现统一为 env `BASE_URL` →（explore）探索文件记录的 `BASE_URL:` → 检测链（scripts `--port` / vite.config / .env / 框架默认端口 / seed）→ `localhost:3000` 兜底；CLI 侧 `3000` 字面量从 3 处收敛到 1 处（`detectAppServer` 链尾）。`parseExplorationFile` 保持纯函数（无 `BASE_URL:` 行返回 `undefined`），命令级决议提取为可测的 `resolveExploreBaseUrl`；audit 失败消息改报真实来源（`fell back to X (source)`）。行为向后兼容：设了 `BASE_URL` 结果不变；模板（auth.setup/teardown/playwright.config/e2e-test）的独立 `|| 3000` 不动（测试时运行的独立文件，用户契约）。
+  - `src/commands/audit.ts` — `getSitemapRoutes(projectRoot)` 改用 `detectAppServer`（导出以便测试）
+  - `src/commands/explore.ts` — `parseExplorationFile` 导出 + `baseUrl?: string`；新增导出 `resolveExploreBaseUrl`
+  - `tests/commands/audit.test.ts`（新增 4 用例）、`tests/commands/explore.test.ts`（新增 6 用例）——两命令首次测试覆盖
+  - `openspec/specs/cli/base-url/spec.md` — 新增 capability 契约（env > 文件 > 检测 > 兜底）
+
 ### Fixed
 
 - **release 脚本 badge commit message 版本号取旧值**. `npm_package_version` 环境变量在脚本启动时快照，`npm version patch` 改版本后不刷新，导致 commit message 显示旧版本号（如 v0.3.68）。改为 `$(node -p "require('./package.json').version")` 动态读取。

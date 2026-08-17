@@ -180,6 +180,7 @@ openspec-pw uninstall     # 移除项目中的集成
 1. 检测项目中的受支持编辑器（Claude Code 和/或 OpenCode 和/或 Cline 和/或 Cursor 和/或 Pi 和/或 Oh My Pi 和/或 DeepSeek Harness；Pi、Oh My Pi 与 DeepSeek Harness 也会通过全局配置目录 `~/.pi/agent/` / `~/.omp/agent/` / `~/.dsh/` 检测）
 2. 为每个检测到的编辑器安装 E2E 命令（Claude Code 用 `/opsx:e2e`，OpenCode / Cline / Cursor / Pi / Oh My Pi / DeepSeek Harness 用 `/opsx-e2e`；Cursor 另装 Agent Skill）
 3. 生成 `tests/playwright/seed.spec.ts`、`auth.setup.ts`、`credentials.yaml`、`app-knowledge.md`、`pages/BasePage.ts`
+4. 检测前端信号（定位到的 `package.json` 含前端框架依赖或前端 dev 命令）；未检测到时在 Summary 打印引导提示——monorepo 去应用目录运行 `openspec-pw init`，纯 API 项目用 Playwright `request` fixture
 
 ## 首次配置清单
 

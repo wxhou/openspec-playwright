@@ -10,5 +10,6 @@ export {
   findNpmRoot,
   chooseDevScript,
   parsePort,
+  hasFrontendSignal,
 } from "./app-detect.js";
 export type { AppServerDetection } from "./app-detect.js";
