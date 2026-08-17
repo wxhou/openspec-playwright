@@ -21,7 +21,7 @@ program
     .option("-c, --change <name>", "default change name", "default")
     .option("--no-mcp", "skip Playwright MCP configuration")
     .option("--ci", "generate GitHub Actions CI workflow")
-    .option("--tools <tools>", 'Select editors to configure non-interactively: "all", "none", or a comma-separated list (claude,opencode,cline,cursor,pi,omp; oh-my-pi aliases omp)')
+    .option("--tools <tools>", 'Select editors to configure non-interactively: "all", "none", or a comma-separated list (claude,opencode,cline,cursor,pi,omp,dsh; oh-my-pi aliases omp)')
     .action(async (opts) => {
     const { init } = await import("./commands/init.js");
     const { checkForUpdate } = await import("./shared/version-check.js");

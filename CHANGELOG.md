@@ -23,6 +23,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `tests/editors-claude-mcp.test.ts`（新增 6 用例）、`tests/init-mcp-scope.test.ts`（新增 2 用例）、`tests/shared/mcp.test.ts`、`tests/commands/doctor.test.ts`、`tests/commands/uninstall.test.ts` — 全部按文件读取行为重写
   - `README.md` / `README.zh-CN.md` — MCP 段落 + 迁移说明 + First-Time Setup 表；编辑器计数适配 dsh（6→7）
 
+### Fixed
+
+- **`--tools` 帮助文本遗漏 `dsh`**. `openspec-pw init --tools` 的帮助文本只列了 `claude,opencode,cline,cursor,pi,omp`，漏掉有效 editor id `dsh`（DeepSeek Harness），与 `resolveToolsArg` 实际接受值及 init 错误提示不一致。已补全。
+  - `src/index.ts`
+
 ## [0.3.68] - 2026-08-16
 
 ### Added
