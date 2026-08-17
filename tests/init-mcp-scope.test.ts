@@ -21,6 +21,12 @@ describe("init Claude MCP project scope", () => {
   beforeEach(() => {
     root = mkdtempSync(join(tmpdir(), "ospw-pw-init-mcp-"));
     mkdirSync(join(root, "openspec"), { recursive: true });
+    // A real frontend project — without a frontend signal the MCP phase is
+    // skipped by design (see mcp-gate-frontend).
+    writeFileSync(
+      join(root, "package.json"),
+      JSON.stringify({ scripts: { dev: "vite" } }),
+    );
     cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(root);
     mockedExecFileSync.mockReset();
   });
@@ -60,5 +66,66 @@ describe("init Claude MCP project scope", () => {
       (call) => call[0] === "claude" && call[1]?.[1] === "add",
     );
     expect(claudeAdd).toBe(false);
+  });
+});
+
+// ─── init MCP install gated on frontend signal ────────────────────────
+
+describe("init MCP frontend gate", () => {
+  let root: string;
+  let cwdSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), "ospw-pw-init-mcp-gate-"));
+    mkdirSync(join(root, "openspec"), { recursive: true });
+    cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(root);
+    mockedExecFileSync.mockReset();
+  });
+
+  afterEach(() => {
+    cwdSpy.mockRestore();
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  const claudeMcpAddCalls = () =>
+    mockedExecFileSync.mock.calls.filter(
+      (call) =>
+        call[0] === "claude" &&
+        call[1]?.[0] === "mcp" &&
+        call[1]?.[1] === "add",
+    );
+
+  it("skips MCP install for a pure API project", async () => {
+    writeFileSync(
+      join(root, "package.json"),
+      JSON.stringify({ scripts: { dev: "node server.js" } }),
+    );
+    const logs: string[] = [];
+    const logSpy = vi
+      .spyOn(console, "log")
+      .mockImplementation((...args: unknown[]) => logs.push(args.join(" ")));
+    try {
+      await init({ tools: "claude" });
+      expect(claudeMcpAddCalls()).toHaveLength(0);
+      expect(logs.some((l) => l.includes("skipping Playwright MCP"))).toBe(
+        true,
+      );
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+
+  it("skips MCP install when no package.json exists", async () => {
+    await init({ tools: "claude" });
+    expect(claudeMcpAddCalls()).toHaveLength(0);
+  });
+
+  it("installs MCP when a frontend signal is present", async () => {
+    writeFileSync(
+      join(root, "package.json"),
+      JSON.stringify({ scripts: { dev: "vite" } }),
+    );
+    await init({ tools: "claude" });
+    expect(claudeMcpAddCalls().length).toBeGreaterThan(0);
   });
 });

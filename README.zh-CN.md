@@ -17,7 +17,7 @@ npm install -g openspec-playwright@latest
 1. **Node.js >= 20**
 2. **Claude Code**（带 `.claude/` 目录）和/或 **OpenCode**（带 `.opencode/` 目录）和/或 **Cline**（带 `.cline/` 或 `.clinerules/` 目录）和/或 **Cursor**（带 `.cursor/` 目录）和/或 **Pi**（项目 `.pi/` 或全局 `~/.pi/agent/`）和/或 **Oh My Pi**（项目 `.omp/` 或全局 `~/.omp/agent/`）和/或 **DeepSeek Harness**（项目 `.dsh/` 或全局 `~/.dsh/`）
 3. **OpenSpec** 已初始化：`npm install -g @fission-ai/openspec@latest && openspec init`
-4. **Playwright MCP**（用于测试执行 + Healer）— `openspec-pw init` 会按检测到的编辑器自动安装，**全部项目级**（写入项目内文件；Claude Code 用 `--scope project` 写项目根 `.mcp.json`，不碰全局 `~/.claude.json`）：
+4. **Playwright MCP**（用于测试执行 + Healer）— `openspec-pw init` 会在检测到前端信号时按编辑器自动安装（纯 API 项目跳过——API 测试用 `request` fixture），**全部项目级**（写入项目内文件；Claude Code 用 `--scope project` 写项目根 `.mcp.json`，不碰全局 `~/.claude.json`）：
    - **Claude Code**：`claude mcp add --scope project playwright npx @playwright/mcp@latest`（写入项目根 `.mcp.json`，可随版本控制供团队共享）
    - **OpenCode**：合并到 `opencode.jsonc` 的 `mcp.playwright = { type: "local", command: ["npx", "@playwright/mcp@latest"] }`
    - **Cline**：合并到 `.cline/mcp.json` 的 `mcpServers.playwright = { "command": "npx", "args": ["@playwright/mcp@latest"] }`

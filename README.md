@@ -169,7 +169,7 @@ openspec-pw uninstall     # Remove integration from the project
 1. **Node.js >= 20**
 2. **Claude Code** (with `.claude/` directory) and/or **OpenCode** (with `.opencode/` directory) and/or **Cline** (with `.cline/` or `.clinerules/` directory) and/or **Cursor** (with `.cursor/` directory) and/or **Pi** (project `.pi/` or global `~/.pi/agent/`) and/or **Oh My Pi** (project `.omp/` or global `~/.omp/agent/`) and/or **DeepSeek Harness** (project `.dsh/` or global `~/.dsh/`)
 3. **OpenSpec** initialized: `npm install -g @fission-ai/openspec@latest && openspec init`
-4. **Playwright MCP** (for test execution + Healer) — installed automatically by `openspec-pw init` for the detected editor, **project-scoped** (written to a project file; Claude Code uses `--scope project` → project-root `.mcp.json`, never your global `~/.claude.json`):
+4. **Playwright MCP** (for test execution + Healer) — installed automatically by `openspec-pw init` when a frontend signal is detected (skipped for API-only projects — API tests use the `request` fixture), **project-scoped** (written to a project file; Claude Code uses `--scope project` → project-root `.mcp.json`, never your global `~/.claude.json`):
    - **Claude Code**: `claude mcp add --scope project playwright npx @playwright/mcp@latest` (stored in project-root `.mcp.json`, usable by the whole team via version control)
    - **OpenCode**: merged into `opencode.jsonc` under `mcp.playwright = { type: "local", command: ["npx", "@playwright/mcp@latest"] }`
    - **Cline**: merged into `.cline/mcp.json` under `mcpServers.playwright = { "command": "npx", "args": ["@playwright/mcp@latest"] }`

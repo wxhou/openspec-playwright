@@ -160,8 +160,14 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     );
   }
 
-  // 4. Install Playwright MCP for each selected editor
-  if (options.mcp !== false && editors.length > 0) {
+  // 3b. Detect a frontend signal — computed once, reused for the MCP
+  // install gate (step 4) and the Summary guidance hint.
+  const frontendSignal = hasFrontendSignal(projectRoot);
+
+  // 4. Install Playwright MCP for each selected editor — only when a
+  // frontend signal was detected (API-only projects test via the request
+  // fixture and don't need the browser MCP; --mcp=false still overrides).
+  if (options.mcp !== false && editors.length > 0 && frontendSignal === true) {
     console.log(chalk.blue("\n─── Installing Playwright MCP ───"));
     for (const adapter of editors) {
       if (isPlaywrightMcpInstalled(adapter)) {
@@ -239,6 +245,12 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
         }
       }
     }
+  } else if (options.mcp !== false && editors.length > 0) {
+    console.log(
+      chalk.gray(
+        "  - No frontend signal detected — skipping Playwright MCP (API tests use the request fixture)",
+      ),
+    );
   }
 
   // 5. Install E2E command for each selected editor
@@ -251,10 +263,6 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     }
   }
 
-
-  // 5b. Detect a frontend signal before generating test files (step 6).
-  // Only controls a guidance hint in the Summary — generation is unchanged.
-  const frontendSignal = hasFrontendSignal(projectRoot);
 
   // 6. Generate seed test
   console.log(chalk.blue("\n─── Generating Seed Test ───"));

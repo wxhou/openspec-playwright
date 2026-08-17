@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `tests/commands/audit.test.ts`（新增 4 用例）、`tests/commands/explore.test.ts`（新增 6 用例）——两命令首次测试覆盖
   - `openspec/specs/cli/base-url/spec.md` — 新增 capability 契约（env > 文件 > 检测 > 兜底）
 
+- **Playwright MCP 仅在有前端信号时自动安装**. `init` 第 4 步由无条件安装改为 `hasFrontendSignal === true` 才装（纯 API / 无 package.json 项目跳过并打印灰色说明——API 测试走 `request` fixture，不需要浏览器 MCP），与无前端引导提示语义对齐。检测计算上移（MCP gate 与 Summary 提示共用一处）。**非破坏性**：已安装的 MCP 不被移除，`--mcp=false` 覆盖不变；E2E 命令安装不受影响（API 项目仍装命令）。
+  - `src/commands/init.ts` — `frontendSignal` 上移 + MCP 步骤 gate + 跳过说明
+  - `tests/init-mcp-scope.test.ts` — fixtures 补前端信号 package.json；新增 gating 用例 3 个（纯 API 跳过 / 无 package.json 跳过 / 前端照装）
+  - `README.md` / `README.zh-CN.md` — MCP 段落补充"检测到前端信号时自动安装"
+
 ### Fixed
 
 - **release 脚本 badge commit message 版本号取旧值**. `npm_package_version` 环境变量在脚本启动时快照，`npm version patch` 改版本后不刷新，导致 commit message 显示旧版本号（如 v0.3.68）。改为 `$(node -p "require('./package.json').version")` 动态读取。
