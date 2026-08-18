@@ -1,4 +1,5 @@
 import { existsSync, lstatSync, readdirSync, readFileSync } from "fs";
+import { homedir } from "os";
 import { createRequire } from "node:module";
 import { join } from "path";
 import { execFileSync } from "child_process";
@@ -211,6 +212,25 @@ export async function doctor(options = {}) {
                 ok: installed,
                 message: installed ? "installed" : `not configured for ${adapter.label}`,
             });
+            // Claude Code MCP moved to project scope (0.3.69): isMcpInstalled only
+            // reads the project .mcp.json, so a legacy user-scope entry from older
+            // versions is invisible here. Surface it — Claude Code would load both.
+            if (adapter.id === "claude" && installed) {
+                try {
+                    const globalCfg = JSON.parse(readFileSync(join(homedir(), ".claude.json"), "utf-8"));
+                    if (globalCfg?.mcpServers?.playwright) {
+                        checks.push({
+                            category: "Playwright MCP",
+                            name: "playwright-mcp-legacy-global",
+                            ok: true,
+                            message: "legacy user-scope playwright MCP found — remove with: claude mcp remove playwright",
+                        });
+                    }
+                }
+                catch {
+                    // no ~/.claude.json or unparseable — nothing to report
+                }
+            }
         }
         // Cursor-specific: command + skill readiness (spec requirement)
         const cursor = adapters.find((a) => a.id === "cursor");

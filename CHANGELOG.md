@@ -35,11 +35,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **新增 `deploy:docs` 脚本固定 wrangler 版本**. wrangler 4.123+ 在非交互环境要求 `CLOUDFLARE_API_TOKEN`（OAuth 被拒），固定 `wrangler@4.119.0` 恢复 OAuth 部署。`npm run deploy:docs` 一键部署 Cloudflare 站。
   - `package.json`
 
-### Fixed
-
 - **CLAUDE.md 为 symlink 时 init/update 覆盖 AGENTS.md 标准**. 项目用官方 symlink 方式复用 AGENTS.md（`CLAUDE.md -> AGENTS.md`，如 deepseek-harness）时，`installClaudeWrapper` 写 CLAUDE.md 会**跟随 symlink 覆盖 AGENTS.md**：init 先正确写入完整标准，随后 wrapper 又把它替换成 CodeGraph 优先段（还产生 `@AGENTS.md` 自引用）；update 每次重复「写入→覆盖」循环，永远无法收敛。修复：`installClaudeWrapper` 用 `lstatSync` 检测 symlink 直接跳过（标准已在 AGENTS.md，无需 wrapper）；update 漂移检查对 symlink 的 CLAUDE.md 视为非 stale（AGENTS.md 检查已覆盖）；doctor 的 `standards-claude` 对 symlink 记 `ok:true`（covered by standards-agents），不再误报。
   - `src/commands/editors.ts`、`src/commands/update.ts`、`src/commands/doctor.ts`
   - `tests/editors.test.ts` — symlink 场景 2 用例（skip on win32）+ update/doctor 源码守卫 2 用例
+
+- **`--no-skill` 不再静默跳过标准漂移检查**. 原 `update --no-skill` 跳过整个命令+标准相位，AGENTS.md/CLAUDE.md 漂移被无声忽略。现标准同步独立执行（提取 `fetchLatestBundle`/`syncEmployeeStandards`），`--no-skill` 只跳过命令/模板安装并明确提示。
+  - `src/commands/update.ts`
+
+- **docs/script.js 内嵌标准一致性测试**. 新增 `tests/docs-sync.test.ts` 16 个锚点用例（ZH/EN），`employee-standards.md` 变更忘同步 docs 网页内嵌副本时测试失败——0.3.65 的漂移不再复发（编写时即抓到两处真实措辞漂移）。
+  - `tests/docs-sync.test.ts`
+
+- **release 自动归档 CHANGELOG**. `scripts/bump-docs.js` 顺带把 `[Unreleased]` 归档为 `vX.Y.Z - 今日`（无 Unreleased 则跳过），release 脚本同步 `git add CHANGELOG.md`——0.3.64 的漏归档不再可能。
+  - `scripts/bump-docs.js`、`package.json`
+
+- **doctor 检出旧版全局 playwright MCP 残留**. Claude Code MCP 改项目级（0.3.69）后，旧版 user-scope 残留（`~/.claude.json`）对项目级检查不可见。doctor 在项目级已装时读取全局配置，发现残留记提示性 `ok:true` 并给出 `claude mcp remove playwright` 清理命令。
+  - `src/commands/doctor.ts`
 
 ## [0.3.69] - 2026-08-17
 

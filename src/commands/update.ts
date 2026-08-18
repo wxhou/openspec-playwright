@@ -172,35 +172,11 @@ export async function update(options: UpdateOptions) {
     }
   }
 
-  // 2. Update commands for all detected editors
+  // 2. Update commands/templates (skipped by --no-skill) + standards (always)
   if (options.skill !== false) {
     console.log(chalk.blue("\n─── Updating Commands ───"));
     try {
-      const tmpDir = join(tmpdir(), "openspec-e2e-update");
-      rmSync(tmpDir, { recursive: true, force: true });
-      mkdirSync(tmpDir, { recursive: true });
-
-      // execFile with args array is safe with shell: true — Node quotes
-      // each argument, so paths with spaces (OneDrive, CJK user names)
-      // are passed verbatim to the shell.
-      await execFileAsync(
-        "npm",
-        ["pack", "openspec-playwright", "--pack-destination", tmpDir],
-        { timeout: 30000, shell: needsShell },
-      );
-
-      // Find the latest tarball by mtime
-      const tgzFiles = readdirSync(tmpDir)
-        .filter(
-          (f) => f.startsWith("openspec-playwright-") && f.endsWith(".tgz"),
-        )
-        .map((f) => ({ name: f, mtime: statSync(join(tmpDir, f)).mtimeMs }))
-        .sort((a, b) => b.mtime - a.mtime);
-      if (tgzFiles.length === 0) throw new Error("No tarball found");
-      const tarballPath = join(tmpDir, tgzFiles[0].name);
-
-      // Extract tarball
-      await tar.extract({ file: tarballPath, cwd: tmpDir, strip: 1 });
+      const tmpDir = await fetchLatestBundle();
 
       // Read e2e command content from template
       const commandSrc = join(tmpDir, "templates", "e2e-command.md");
@@ -257,89 +233,10 @@ export async function update(options: UpdateOptions) {
       // Sync project templates (BasePage.ts, seed.spec.ts)
       syncProjectTemplates(tmpDir, projectRoot);
 
-      // Update employee-grade standards in project rules files (AGENTS.md + CLAUDE.md).
-      // Drift-aware: only rewrite a rules file when its OPENSPEC block differs
-      // from the bundled template; matching content is left untouched (no mtime
-      // change). AGENTS.md is the SSOT (always written by installProjectRules);
-      // CLAUDE.md is the Claude wrapper (only written when Claude is detected).
-      const standardsSrc = join(tmpDir, "employee-standards.md");
-      if (existsSync(standardsSrc)) {
-        const standards = readFileSync(standardsSrc, "utf-8");
-
-        if (detected.length === 0) {
-          console.log(
-            chalk.gray(
-              "  - No supported editor (.claude, .opencode, .cline, .cursor, .pi, .omp, or .dsh) found, skipping standards sync",
-            ),
-          );
-        } else {
-          // AGENTS.md is the single source of truth and is always written by
-          // installProjectRules regardless of which editors are detected — so it
-          // is always checked here (covers claude-only projects). A present file
-          // with no OPENSPEC marker needs the block appended (tool-owned).
-          const agentsPath = join(projectRoot, "AGENTS.md");
-          let agentsStale = !existsSync(agentsPath);
-          if (!agentsStale) {
-            const fileContent = readFileSync(agentsPath, "utf-8");
-            agentsStale =
-              !fileContent.includes(OPENSPEC_START) ||
-              compareBlock(fileContent, standards).stale;
-          }
-
-          // CLAUDE.md wrapper is only written when Claude is detected. A bare
-          // `@AGENTS.md` import without markers is left untouched (added by the
-          // openspec CLI or the user) — not stale.
-          let claudeStale = false;
-          if (detected.some((a) => a.id === "claude")) {
-            const claudePath = join(projectRoot, "CLAUDE.md");
-            // A symlinked CLAUDE.md (→ AGENTS.md, the official reuse pattern)
-            // is what Claude Code reads; the AGENTS.md check above already
-            // tracks its content drift, and rewriting a wrapper would overwrite
-            // the standards through the symlink. Not stale.
-            if (existsSync(claudePath) && lstatSync(claudePath).isSymbolicLink()) {
-              console.log(
-                chalk.gray(
-                  "  - CLAUDE.md is a symlink to AGENTS.md — drift tracked via AGENTS.md",
-                ),
-              );
-            } else {
-              claudeStale = !existsSync(claudePath);
-              if (!claudeStale) {
-                const fileContent = readFileSync(claudePath, "utf-8");
-                if (!fileContent.includes(OPENSPEC_START)) {
-                  claudeStale = !/^@AGENTS\.md\r?$/m.test(fileContent);
-                  if (!claudeStale) {
-                    console.log(
-                      chalk.yellow(
-                        "  ⚠ CLAUDE.md 是裸 @AGENTS.md 导入（无 OPENSPEC 标记），CodeGraph 优先约束未写入。如需启用：删除该行后重跑 openspec-pw update。",
-                      ),
-                    );
-                  }
-                } else {
-                  claudeStale = compareBlock(
-                    fileContent,
-                    claudeWrapperStandardsContent(),
-                  ).stale;
-                }
-              }
-            }
-          }
-
-          const anyStale = agentsStale || claudeStale;
-          if (anyStale) {
-            console.log(
-              chalk.gray(
-                "  检测到非模板内容将被覆盖 — OPENSPEC block differs from bundled version",
-              ),
-            );
-            installProjectRules(projectRoot, standards, detected);
-          } else {
-            console.log(
-              chalk.green("  ✓ employee-grade standards already in sync"),
-            );
-          }
-        }
-      }
+      // Standards sync (drift-aware). Under --no-skill this phase still runs
+      // via the else branch below — the flag only scopes command/template
+      // installation, not standards.
+      syncEmployeeStandards(tmpDir, projectRoot, detected);
 
       rmSync(tmpDir, { recursive: true, force: true });
       console.log(chalk.green("  ✓ Commands & templates updated to latest"));
@@ -359,6 +256,19 @@ export async function update(options: UpdateOptions) {
         console.log(chalk.red(`  ✗ Failed to update: ${msg2}`));
         console.log(chalk.gray("    Run manually: npm install -g openspec-playwright@latest"));
       }
+    }
+  } else {
+    // --no-skill skips command/template installation only — the standards
+    // drift check is not a skill and must not be silently skipped.
+    console.log(chalk.gray("  - --no-skill: commands and templates left untouched"));
+    console.log(chalk.blue("\n─── Standards Sync ───"));
+    try {
+      const tmpDir = await fetchLatestBundle();
+      syncEmployeeStandards(tmpDir, projectRoot, detectAdapters(projectRoot));
+      rmSync(tmpDir, { recursive: true, force: true });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.log(chalk.yellow(`  ⚠ Standards sync failed: ${msg}`));
     }
   }
 
@@ -476,6 +386,131 @@ async function checkVersionShadow(): Promise<void> {
       "         then re-run: openspec-pw update (or: npm install -D openspec-playwright@latest)",
     ),
   );
+}
+
+/**
+ * Fetch the latest published bundle into a fresh tmp dir via `npm pack` and
+ * extract it. Returns the tmp dir path (commands/templates/standards live in
+ * it). Shared by the full phase and the `--no-skill` standards-only path.
+ */
+async function fetchLatestBundle(): Promise<string> {
+  const tmpDir = join(tmpdir(), "openspec-e2e-update");
+  rmSync(tmpDir, { recursive: true, force: true });
+  mkdirSync(tmpDir, { recursive: true });
+
+  // execFile with args array is safe with shell: true — Node quotes
+  // each argument, so paths with spaces (OneDrive, CJK user names)
+  // are passed verbatim to the shell.
+  await execFileAsync(
+    "npm",
+    ["pack", "openspec-playwright", "--pack-destination", tmpDir],
+    { timeout: 30000, shell: needsShell },
+  );
+
+  const tgzFiles = readdirSync(tmpDir)
+    .filter((f) => f.startsWith("openspec-playwright-") && f.endsWith(".tgz"))
+    .map((f) => ({ name: f, mtime: statSync(join(tmpDir, f)).mtimeMs }))
+    .sort((a, b) => b.mtime - a.mtime);
+  if (tgzFiles.length === 0) throw new Error("No tarball found");
+
+  await tar.extract({ file: join(tmpDir, tgzFiles[0].name), cwd: tmpDir, strip: 1 });
+  return tmpDir;
+}
+
+/**
+ * Drift-aware sync of employee-grade standards into AGENTS.md (SSOT) and the
+ * CLAUDE.md wrapper (when Claude is detected). Extracted so it can also run
+ * under `--no-skill` — standards sync is not a skill install and must not be
+ * silently skipped by that flag.
+ */
+function syncEmployeeStandards(
+  tmpDir: string,
+  projectRoot: string,
+  detected: ReturnType<typeof detectAdapters>,
+): void {
+  // Update employee-grade standards in project rules files (AGENTS.md + CLAUDE.md).
+  // Drift-aware: only rewrite a rules file when its OPENSPEC block differs
+  // from the bundled template; matching content is left untouched (no mtime
+  // change). AGENTS.md is the SSOT (always written by installProjectRules);
+  // CLAUDE.md is the Claude wrapper (only written when Claude is detected).
+  const standardsSrc = join(tmpDir, "employee-standards.md");
+  if (!existsSync(standardsSrc)) return;
+  const standards = readFileSync(standardsSrc, "utf-8");
+
+  if (detected.length === 0) {
+    console.log(
+      chalk.gray(
+        "  - No supported editor (.claude, .opencode, .cline, .cursor, .pi, .omp, or .dsh) found, skipping standards sync",
+      ),
+    );
+    return;
+  }
+
+  // AGENTS.md is the single source of truth and is always written by
+  // installProjectRules regardless of which editors are detected — so it
+  // is always checked here (covers claude-only projects). A present file
+  // with no OPENSPEC marker needs the block appended (tool-owned).
+  const agentsPath = join(projectRoot, "AGENTS.md");
+  let agentsStale = !existsSync(agentsPath);
+  if (!agentsStale) {
+    const fileContent = readFileSync(agentsPath, "utf-8");
+    agentsStale =
+      !fileContent.includes(OPENSPEC_START) ||
+      compareBlock(fileContent, standards).stale;
+  }
+
+  // CLAUDE.md wrapper is only written when Claude is detected. A bare
+  // `@AGENTS.md` import without markers is left untouched (added by the
+  // openspec CLI or the user) — not stale.
+  let claudeStale = false;
+  if (detected.some((a) => a.id === "claude")) {
+    const claudePath = join(projectRoot, "CLAUDE.md");
+    // A symlinked CLAUDE.md (→ AGENTS.md, the official reuse pattern)
+    // is what Claude Code reads; the AGENTS.md check above already
+    // tracks its content drift, and rewriting a wrapper would overwrite
+    // the standards through the symlink. Not stale.
+    if (existsSync(claudePath) && lstatSync(claudePath).isSymbolicLink()) {
+      console.log(
+        chalk.gray(
+          "  - CLAUDE.md is a symlink to AGENTS.md — drift tracked via AGENTS.md",
+        ),
+      );
+    } else {
+      claudeStale = !existsSync(claudePath);
+      if (!claudeStale) {
+        const fileContent = readFileSync(claudePath, "utf-8");
+        if (!fileContent.includes(OPENSPEC_START)) {
+          claudeStale = !/^@AGENTS\.md\r?$/m.test(fileContent);
+          if (!claudeStale) {
+            console.log(
+              chalk.yellow(
+                "  ⚠ CLAUDE.md 是裸 @AGENTS.md 导入（无 OPENSPEC 标记），CodeGraph 优先约束未写入。如需启用：删除该行后重跑 openspec-pw update。",
+              ),
+            );
+          }
+        } else {
+          claudeStale = compareBlock(
+            fileContent,
+            claudeWrapperStandardsContent(),
+          ).stale;
+        }
+      }
+    }
+  }
+
+  const anyStale = agentsStale || claudeStale;
+  if (anyStale) {
+    console.log(
+      chalk.gray(
+        "  检测到非模板内容将被覆盖 — OPENSPEC block differs from bundled version",
+      ),
+    );
+    installProjectRules(projectRoot, standards, detected);
+  } else {
+    console.log(
+      chalk.green("  ✓ employee-grade standards already in sync"),
+    );
+  }
 }
 
 // Sync project-level templates

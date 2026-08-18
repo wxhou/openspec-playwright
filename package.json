@@ -16,7 +16,7 @@
     "test:run": "vitest run",
     "test:smoke": "npm run build && vitest run tests/smoke.test.ts",
     "prepublishOnly": "npm run build",
-    "release": "npm version patch && node scripts/bump-docs.js && npm run build && git add docs/index.html && (git diff --cached --quiet || git commit -m \"docs: bump version badge to v$(node -p \"require('./package.json').version\")\") && git push && git push --tags",
+    "release": "npm version patch && node scripts/bump-docs.js && npm run build && git add docs/index.html CHANGELOG.md && (git diff --cached --quiet || git commit -m \"docs: bump version badge to v$(node -p \"require('./package.json').version\")\") && git push && git push --tags",
     "deploy:docs": "npx -y wrangler@4.119.0 pages deploy docs --project-name openspec-playwright"
   },
   "dependencies": {
