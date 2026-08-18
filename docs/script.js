@@ -29,12 +29,6 @@ const CLAUDE_MD_ZH = `# 项目规范
 - mock 数据/fixture → 参见数据编撰禁令
 - 涉及 API 定义 → 查阅真实 OpenAPI/MCP 定义并标注来源
 
-## 上下文管理
-- 🟡 超过 500 行文件：分次读取或编辑前重新读取完整内容
-- 🟡 上下文压缩恢复后：git status → 重读 proposal/design/tasks → 对照 design 检查 → lint+typecheck → 继续
-- 禁止跨 change 改动，禁止顺手清理其他 open change → 告知用户，由用户决定
-- ⚪ 超过 10 条消息后，编辑任何文件前强制重新读取
-
 ## 工具限制
 - 🔴 一次只发一个工具调用，等结果再决定下一步；等待/轮询用单个调用内部的循环实现
 - 🔴 单条消息并行只用于真正独立的调用，禁止复制相同调用
@@ -116,12 +110,6 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - If linter/typechecker missing → tell user and suggest installing
 - Mock data / fixtures → see Data Fabrication section below
 - API definitions → consult real OpenAPI/MCP definitions and cite sources
-
-## Context Management
-- 🟡 Files over 500 lines: read in parts or re-read fully before editing
-- 🟡 After context compression: git status → re-read proposal/design/tasks → check implementation against design → lint+typecheck → continue
-- No跨-change edits during \`/opsx:apply <X>\`, no "cleanup" other open changes
-- ⚪ After 10+ messages: force re-read any file before editing
 
 ## Tool Constraints
 - 🔴 Send one tool call at a time, wait for the result before deciding next; implement waiting/polling as a loop inside a single call
