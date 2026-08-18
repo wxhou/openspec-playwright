@@ -5,8 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
+## [0.3.72] - 2026-08-18
 ### Changed
 
 - **employee-standards 删除 §2 上下文管理**. 章节整体移除（500 行分次读取、压缩恢复协议、跨 change 改动禁令等 6 条规则），后续章节重编号（3→2、4→3、5→4、6→5、7→6），§5→§4 / §7→§6 交叉引用同步更新。同步 `AGENTS.md`（git 忽略，磁盘生效）与 `docs/script.js` 内嵌标准（ZH + EN），docs-sync 测试章节计数 8→7。
