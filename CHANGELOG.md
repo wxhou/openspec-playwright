@@ -5,8 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
+## [0.3.71] - 2026-08-18
 ### Added
 
 - **`openspec-pw init` 无前端项目引导提示**. 生成测试文件前轻量检测前端信号：读 `findNpmRoot` 定位的 `package.json`（与 `detectAppServer` 同源，monorepo 下探一致），deps/devDeps **精确键名匹配**前端框架关键词（react/next/vue/nuxt/svelte/sveltekit/astro/angular/solid/preact/remix/vite/@angular/core——substring 会误命中 vitest/nextra），`scripts.dev` substring 匹配 vite/next/nuxt/svelte-kit/astro。无前端信号时在 Summary Next steps 打印两行"如果…"并列建议（monorepo 子目录 → 在应用目录运行 init；纯 API → Playwright `request` fixture + `BASE_URL` 指向 API），不影响生成行为与 exit code；无 package.json 时跳过检测不提示（webServer fallback 行为不变）。
