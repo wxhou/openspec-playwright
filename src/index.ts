@@ -114,7 +114,9 @@ program
   .option("--json", "Output results as JSON")
   .action(async (changeName, opts) => {
     const { coverage } = await import("./commands/coverage.js");
+    const { checkForUpdate } = await import("./shared/version-check.js");
     await coverage(changeName, opts);
+    await checkForUpdate(pkg.version);
   });
 
 program
@@ -125,6 +127,9 @@ program
   .action(async (changeName, opts) => {
     const { flake } = await import("./commands/flake.js");
     await flake(changeName, opts);
+    // No checkForUpdate — flake --gate HIGH runs in CI on every PR; the
+    // 0–10s npm view latency hurts CI for no benefit (CI auto-updates
+    // the CLI via npm install, not via interactive hints).
   });
 
 program

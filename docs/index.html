@@ -781,8 +781,9 @@
         <div class="qs-step">
           <div class="qs-num">03</div>
           <div>
-            <div class="qs-label"><span class="qs-step-zh">安装 Playwright MCP</span><span class="qs-step-en" style="display:none;">Install Playwright MCP</span></div>
-            <div class="qs-cmd">claude mcp add playwright npx @playwright/mcp@latest</div>
+            <div class="qs-label"><span class="qs-step-zh">安装 Playwright MCP（可选）</span><span class="qs-step-en" style="display:none;">Install Playwright MCP (optional)</span></div>
+            <div class="qs-cmd">claude mcp add --scope project playwright npx @playwright/mcp@latest</div>
+            <div style="margin-top: 6px; font-size: 0.78rem; color: var(--muted);"><span class="qs-fn-zh">新版 <code>openspec-pw init</code> 在检测到前端项目时会自动安装；纯 API 项目无需 MCP，用 Playwright <code>request</code> fixture 即可。</span><span class="qs-fn-en" style="display:none;">Recent <code>openspec-pw init</code> installs it when a frontend is detected; pure-API projects skip MCP and use the Playwright <code>request</code> fixture.</span></div>
           </div>
         </div>
         <div class="qs-step">

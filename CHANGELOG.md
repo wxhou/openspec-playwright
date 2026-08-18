@@ -12,6 +12,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **employee-standards 删除 §2 上下文管理**. 章节整体移除（500 行分次读取、压缩恢复协议、跨 change 改动禁令等 6 条规则），后续章节重编号（3→2、4→3、5→4、6→5、7→6），§5→§4 / §7→§6 交叉引用同步更新。同步 `AGENTS.md`（git 忽略，磁盘生效）与 `docs/script.js` 内嵌标准（ZH + EN），docs-sync 测试章节计数 8→7。
   - `employee-standards.md`、`docs/script.js`、`tests/docs-sync.test.ts`
 
+- **`editors.ts` 引入 `defineAdapter` 工厂**. 7 个适配器对象字面量改用 `defineAdapter({...})` 构造：默认 `supportsMcp: true`、`projectRulesPath` 默认 `<root>/AGENTS.md`、`isMcpInstalled/installMcp/removeMcp` 默认 no-op。`claudeAdapter` 显式声明 `CLAUDE.md` 覆盖默认；`piAdapter` / `dshAdapter` 设 `supportsMcp: false` 后删三处 no-op；其余适配器省略冗余 `projectRulesPath`。**行为完全不变**，全部 181 个 editors 测试通过；新增 `EditorAdapterInit` 接口明示 required vs optional 字段。文件 1236 → 1279 行（+43：factory 注释 + JSDoc 抵消了去重收益，可读性提升为主要价值）。
+  - `src/commands/editors.ts` — 新增 `EditorAdapterInit` interface + `defineAdapter` 函数；7 个适配器重写
+
+- **`coverage` 末尾补 `checkForUpdate`**. 与 `init` / `doctor` / `audit` / `explore` / `migrate` / `uninstall` 对齐（`flake` 故意不加 —— `flake --gate HIGH` 是 CI 主用例，每次 PR 多 0–10s `npm view` 延迟无收益，CI runner 通过 `npm install` 更新）。`checkForUpdate` 已有 24h 缓存 + never-throws + 非阻塞执行，加到交互式命令不影响 CI 性能（首次最多多 10s 网络）。
+  - `src/index.ts` — `coverage` action 末尾追加 `await checkForUpdate(pkg.version);`；`flake` 注释说明跳过原因
+
+### Added
+
+- **`migrate.ts` 单测补全**. 132 行的迁移函数原本零测试，现新增 7 个用例覆盖全部分支：无 `tests/playwright/` 目录 → yellow message；0 old 文件 → "Nothing to migrate"；正常迁移 → 调 `mkdirSync({ recursive: true })` + `renameSync`；`--dry-run` → 不调 `renameSync`；目标存在无 `--force` → skip + warning；`--force` 覆盖 → 调 `renameSync` 一次；**TOCTOU**（`readdirSync` 返回文件名但 `existsSync(oldPath)` 返 false）→ "not found, skipping"。用 `vi.mock("fs", ...)` + `vi.spyOn(process, "cwd")` 隔离，不依赖真实文件系统。
+  - `tests/commands/migrate.test.ts`（新增 7 用例）
+
+### Fixed
+
+- **`docs/index.html` quickstart 第 03 步命令漂移修复**. 命令串补 `--scope project`（与 `README.md` line 173 对齐），避免用户安装到 global scope；该步骤标为"可选"，并新增小字注释说明新版 `openspec-pw init` **在检测到前端项目时**自动安装 MCP（详见 0.3.70 `feat(init): gate Playwright MCP install on frontend signal`）—— 纯 API 项目跳过 MCP，用 Playwright `request` fixture；保留该步骤仅服务老用户迁移。
+  - `docs/index.html` — quickstart 第 03 步命令 + label 改"可选" + 小字注释
+
 ## [0.3.71] - 2026-08-18
 ### Added
 

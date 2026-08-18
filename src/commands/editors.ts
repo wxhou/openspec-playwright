@@ -159,6 +159,60 @@ export interface EditorAdapter {
   extraArtifacts?(meta: CommandMeta): ExtraArtifact[];
 }
 
+/**
+ * Input shape for `defineAdapter` — declares the contract for an editor
+ * adapter with sensible defaults for the no-MCP-client case (Pi, dsh).
+ * All required-by-behavior fields are still required; optional ones
+ * (supportsMcp, projectRulesPath, isMcpInstalled, installMcp, removeMcp)
+ * fall back to defaults.
+ */
+export interface EditorAdapterInit {
+  id: EditorId;
+  label: string;
+  displayName: string;
+  detect: EditorAdapter["detect"];
+  commandFilePath: EditorAdapter["commandFilePath"];
+  formatCommand: EditorAdapter["formatCommand"];
+  /** Optional: true by default; set false for editors without an MCP client. */
+  supportsMcp?: boolean;
+  /** Optional: defaults to `<root>/AGENTS.md`. Override for Claude (CLAUDE.md). */
+  projectRulesPath?: EditorAdapter["projectRulesPath"];
+  /** Required when supportsMcp !== false. Defaults to `() => false`. */
+  isMcpInstalled?: EditorAdapter["isMcpInstalled"];
+  /** Required when supportsMcp !== false. Defaults to a no-op. */
+  installMcp?: EditorAdapter["installMcp"];
+  /** Required when supportsMcp !== false. Defaults to a no-op. */
+  removeMcp?: EditorAdapter["removeMcp"];
+  registerInstructions?: EditorAdapter["registerInstructions"];
+  extraArtifacts?: EditorAdapter["extraArtifacts"];
+}
+
+const noop = () => {};
+const alwaysFalse = () => false;
+
+/**
+ * Build an `EditorAdapter` from a partial init object. Fills in
+ * defaults so each adapter only declares what's actually different.
+ */
+export function defineAdapter(init: EditorAdapterInit): EditorAdapter {
+  return {
+    id: init.id,
+    label: init.label,
+    displayName: init.displayName,
+    detect: init.detect,
+    commandFilePath: init.commandFilePath,
+    formatCommand: init.formatCommand,
+    supportsMcp: init.supportsMcp ?? true,
+    projectRulesPath:
+      init.projectRulesPath ?? ((root) => join(root, "AGENTS.md")),
+    isMcpInstalled: init.isMcpInstalled ?? alwaysFalse,
+    installMcp: init.installMcp ?? noop,
+    removeMcp: init.removeMcp ?? noop,
+    registerInstructions: init.registerInstructions,
+    extraArtifacts: init.extraArtifacts,
+  };
+}
+
 // ─── Claude Code adapter ─────────────────────────────────────────────────
 
 export function formatClaudeCommand(meta: CommandMeta): string {
@@ -1032,13 +1086,14 @@ export function readEmployeeStandards(srcPath: string): string {
 // functions defined in this same module. JS hoisting covers `function`
 // declarations; `const` arrows don't get hoisted, so the order matters.
 
-export const claudeAdapter: EditorAdapter = {
+export const claudeAdapter: EditorAdapter = defineAdapter({
   id: "claude",
   label: "claude",
   displayName: "Claude Code",
   detect: hasClaudeCode,
   commandFilePath: getClaudeCommandPath,
   formatCommand: formatClaudeCommand,
+  // Claude Code reads CLAUDE.md directly — override the AGENTS.md default.
   projectRulesPath: (root) => join(root, "CLAUDE.md"),
   isMcpInstalled(root, serverName) {
     // Project scope: Playwright MCP lives in the project-root .mcp.json.
@@ -1084,16 +1139,16 @@ export const claudeAdapter: EditorAdapter = {
       },
     );
   },
-};
+});
 
-export const opencodeAdapter: EditorAdapter = {
+export const opencodeAdapter: EditorAdapter = defineAdapter({
   id: "opencode",
   label: "opencode",
   displayName: "OpenCode",
   detect: hasOpenCode,
   commandFilePath: getOpenCodeCommandPath,
   formatCommand: formatOpenCodeCommand,
-  projectRulesPath: (root) => join(root, "AGENTS.md"),
+  // AGENTS.md is the default; not declared explicitly.
   isMcpInstalled(projectRoot, serverName) {
     const config = findOpenCodeConfig(projectRoot);
     if (!config) return false;
@@ -1122,18 +1177,16 @@ export const opencodeAdapter: EditorAdapter = {
   registerInstructions(projectRoot, instructions) {
     setOpenCodeValue(projectRoot, ["instructions"], instructions);
   },
-};
+});
 
-export const clineAdapter: EditorAdapter = {
+export const clineAdapter: EditorAdapter = defineAdapter({
   id: "cline",
   label: "cline",
   displayName: "Cline",
   detect: hasCline,
   commandFilePath: getClineCommandPath,
   formatCommand: formatClineCommand,
-  // Cline auto-detects AGENTS.md — no wrapper file needed. The SSOT
-  // (AGENTS.md) is created by installProjectRules regardless of adapter.
-  projectRulesPath: (root) => join(root, "AGENTS.md"),
+  // Cline auto-detects AGENTS.md — that's the default.
   isMcpInstalled(projectRoot, serverName) {
     return isMcpServerInFile(clineMcpPath(projectRoot), serverName);
   },
@@ -1143,17 +1196,16 @@ export const clineAdapter: EditorAdapter = {
   removeMcp(projectRoot, serverName) {
     removeMcpServerFromFile(clineMcpPath(projectRoot), serverName);
   },
-};
+});
 
-export const cursorAdapter: EditorAdapter = {
+export const cursorAdapter: EditorAdapter = defineAdapter({
   id: "cursor",
   label: "cursor",
   displayName: "Cursor",
   detect: hasCursor,
   commandFilePath: getCursorCommandPath,
   formatCommand: formatCursorCommand,
-  // Cursor auto-detects AGENTS.md — no .mdc wrapper needed.
-  projectRulesPath: (root) => join(root, "AGENTS.md"),
+  // Cursor auto-detects AGENTS.md — that's the default.
   isMcpInstalled(projectRoot, serverName) {
     return isMcpServerInFile(cursorMcpPath(projectRoot), serverName);
   },
@@ -1171,9 +1223,9 @@ export const cursorAdapter: EditorAdapter = {
       },
     ];
   },
-};
+});
 
-export const piAdapter: EditorAdapter = {
+export const piAdapter: EditorAdapter = defineAdapter({
   id: "pi",
   label: "pi",
   displayName: "Pi",
@@ -1182,22 +1234,17 @@ export const piAdapter: EditorAdapter = {
   supportsMcp: false,
   commandFilePath: getPiCommandPath,
   formatCommand: formatPiCommand,
-  // Pi loads AGENTS.md natively (walking up from cwd) — no wrapper file.
-  projectRulesPath: (root) => join(root, "AGENTS.md"),
-  isMcpInstalled: () => false,
-  installMcp: () => {},
-  removeMcp: () => {},
-};
+  // Pi loads AGENTS.md natively (walking up from cwd) — that's the default.
+});
 
-export const ompAdapter: EditorAdapter = {
+export const ompAdapter: EditorAdapter = defineAdapter({
   id: "omp",
   label: "omp",
   displayName: "Oh My Pi",
   detect: hasOmp,
   commandFilePath: getOmpCommandPath,
   formatCommand: formatOmpCommand,
-  // omp reads AGENTS.md natively — no wrapper file needed.
-  projectRulesPath: (root) => join(root, "AGENTS.md"),
+  // omp reads AGENTS.md natively — that's the default.
   isMcpInstalled(projectRoot, serverName) {
     return isMcpServerInFile(ompMcpPath(projectRoot), serverName);
   },
@@ -1207,9 +1254,9 @@ export const ompAdapter: EditorAdapter = {
   removeMcp(projectRoot, serverName) {
     removeMcpServerFromFile(ompMcpPath(projectRoot), serverName);
   },
-};
+});
 
-export const dshAdapter: EditorAdapter = {
+export const dshAdapter: EditorAdapter = defineAdapter({
   id: "dsh",
   label: "dsh",
   displayName: "DeepSeek Harness",
@@ -1219,12 +1266,8 @@ export const dshAdapter: EditorAdapter = {
   supportsMcp: false,
   commandFilePath: getDshCommandPath,
   formatCommand: formatDshCommand,
-  // dsh reads AGENTS.md natively — no wrapper file needed.
-  projectRulesPath: (root) => join(root, "AGENTS.md"),
-  isMcpInstalled: () => false,
-  installMcp: () => {},
-  removeMcp: () => {},
-};
+  // dsh reads AGENTS.md natively — that's the default.
+});
 
 // Register the adapters now that the const arrows exist
 registerAdapter(claudeAdapter);

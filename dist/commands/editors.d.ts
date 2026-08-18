@@ -58,6 +58,38 @@ export interface EditorAdapter {
     /** Optional: secondary files written alongside commandFilePath (Cursor skill). */
     extraArtifacts?(meta: CommandMeta): ExtraArtifact[];
 }
+/**
+ * Input shape for `defineAdapter` — declares the contract for an editor
+ * adapter with sensible defaults for the no-MCP-client case (Pi, dsh).
+ * All required-by-behavior fields are still required; optional ones
+ * (supportsMcp, projectRulesPath, isMcpInstalled, installMcp, removeMcp)
+ * fall back to defaults.
+ */
+export interface EditorAdapterInit {
+    id: EditorId;
+    label: string;
+    displayName: string;
+    detect: EditorAdapter["detect"];
+    commandFilePath: EditorAdapter["commandFilePath"];
+    formatCommand: EditorAdapter["formatCommand"];
+    /** Optional: true by default; set false for editors without an MCP client. */
+    supportsMcp?: boolean;
+    /** Optional: defaults to `<root>/AGENTS.md`. Override for Claude (CLAUDE.md). */
+    projectRulesPath?: EditorAdapter["projectRulesPath"];
+    /** Required when supportsMcp !== false. Defaults to `() => false`. */
+    isMcpInstalled?: EditorAdapter["isMcpInstalled"];
+    /** Required when supportsMcp !== false. Defaults to a no-op. */
+    installMcp?: EditorAdapter["installMcp"];
+    /** Required when supportsMcp !== false. Defaults to a no-op. */
+    removeMcp?: EditorAdapter["removeMcp"];
+    registerInstructions?: EditorAdapter["registerInstructions"];
+    extraArtifacts?: EditorAdapter["extraArtifacts"];
+}
+/**
+ * Build an `EditorAdapter` from a partial init object. Fills in
+ * defaults so each adapter only declares what's actually different.
+ */
+export declare function defineAdapter(init: EditorAdapterInit): EditorAdapter;
 export declare function formatClaudeCommand(meta: CommandMeta): string;
 export declare function getClaudeCommandPath(id: string): string;
 export declare function hasClaudeCode(projectRoot: string): boolean;
