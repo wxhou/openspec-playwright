@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "fs";
 import { tmpdir } from "os";
@@ -35,6 +37,7 @@ import {
   hasPi,
   hasOmp,
   installCommand,
+  installClaudeWrapper,
   installProjectRules,
   listCommandArtifactPaths,
   opencodeAdapter,
@@ -1248,5 +1251,65 @@ describe("installCommand (Oh My Pi)", () => {
     const content = readFileSync(dest, "utf-8");
     expect(content).toContain("name: opsx-e2e");
     expect(content).toContain("Do the E2E thing");
+  });
+});
+
+// ─── installClaudeWrapper: symlinked CLAUDE.md ─────────────────────────────
+// CLAUDE.md → AGENTS.md is the officially documented reuse pattern. Writing a
+// wrapper through the symlink would overwrite the standards that live in
+// AGENTS.md (regression: init/update used to replace the full standards block
+// with just the CodeGraph-first wrapper content).
+
+describe.skipIf(
+  process.platform === "win32",
+)("installClaudeWrapper with symlinked CLAUDE.md", () => {
+  it("skips the wrapper and preserves the AGENTS.md standards block", () => {
+    writeFileSync(
+      join(tmpRoot, "AGENTS.md"),
+      "# proj\n\n<!-- OPENSPEC:START -->\n\nFULL STANDARDS\n\n<!-- OPENSPEC:END -->\n",
+    );
+    symlinkSync("AGENTS.md", join(tmpRoot, "CLAUDE.md"));
+
+    installClaudeWrapper(tmpRoot);
+
+    // Same file through the symlink: the full standards survive, no wrapper.
+    const content = readFileSync(join(tmpRoot, "CLAUDE.md"), "utf-8");
+    expect(content).toContain("FULL STANDARDS");
+    expect(content).not.toContain("CodeGraph 优先");
+    expect(lstatSync(join(tmpRoot, "CLAUDE.md")).isSymbolicLink()).toBe(true);
+  });
+
+  it("installProjectRules keeps the symlink intact and standards complete", () => {
+    writeFileSync(join(tmpRoot, "AGENTS.md"), "# proj\n");
+    symlinkSync("AGENTS.md", join(tmpRoot, "CLAUDE.md"));
+
+    installProjectRules(tmpRoot, "FULL STANDARDS", [claudeAdapter]);
+
+    const agents = readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8");
+    expect(agents).toContain("FULL STANDARDS");
+    expect(agents).not.toContain("CodeGraph 优先");
+    expect(lstatSync(join(tmpRoot, "CLAUDE.md")).isSymbolicLink()).toBe(true);
+  });
+});
+
+describe("update.ts: symlinked CLAUDE.md drift check (source guard)", () => {
+  it("drift check skips a symlinked CLAUDE.md before comparing to the wrapper", () => {
+    const src = readFileSync(
+      new URL("../src/commands/update.ts", import.meta.url).pathname,
+      "utf-8",
+    );
+    expect(src).toMatch(
+      /existsSync\(claudePath\) && lstatSync\(claudePath\)\.isSymbolicLink\(\)/,
+    );
+  });
+
+  it("doctor reports standards-claude as covered when CLAUDE.md is a symlink", () => {
+    const src = readFileSync(
+      new URL("../src/commands/doctor.ts", import.meta.url).pathname,
+      "utf-8",
+    );
+    expect(src).toMatch(
+      /existsSync\(claudePath\) && lstatSync\(claudePath\)\.isSymbolicLink\(\)/,
+    );
   });
 });

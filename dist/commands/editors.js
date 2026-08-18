@@ -30,7 +30,7 @@
  *              config, not a simple file), auto-detects AGENTS.md. Detected
  *              via `.dsh/` or `~/.dsh/` (DSH_HOME).
  */
-import { existsSync, mkdirSync, rmSync, writeFileSync, readFileSync, } from "fs";
+import { existsSync, lstatSync, mkdirSync, rmSync, writeFileSync, readFileSync, } from "fs";
 import { execFileSync } from "node:child_process";
 import { homedir } from "os";
 import { join, dirname, basename, resolve as pathResolve } from "path";
@@ -662,6 +662,17 @@ export function claudeWrapperStandardsContent() {
  */
 export function installClaudeWrapper(projectRoot) {
     const dest = join(projectRoot, "CLAUDE.md");
+    // CLAUDE.md symlinked (typically → AGENTS.md, the officially documented
+    // reuse pattern): AGENTS.md itself is what Claude Code reads, and
+    // installProjectRules already keeps the full standards in it. Writing a
+    // wrapper here would overwrite them through the symlink (and the wrapper's
+    // @AGENTS.md import would self-reference). Skip instead.
+    if (existsSync(dest)) {
+        if (lstatSync(dest).isSymbolicLink()) {
+            console.log(chalk.gray("  - CLAUDE.md is a symlink to AGENTS.md — standards live there, no wrapper needed"));
+            return;
+        }
+    }
     // No-op if our full wrapper (CodeGraph block + @AGENTS.md import) is already
     // in place — content-equal, so a user edit inside the markers is detected.
     // A bare @AGENTS.md without our markers (added by openspec CLI or the user)

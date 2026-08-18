@@ -35,6 +35,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **新增 `deploy:docs` 脚本固定 wrangler 版本**. wrangler 4.123+ 在非交互环境要求 `CLOUDFLARE_API_TOKEN`（OAuth 被拒），固定 `wrangler@4.119.0` 恢复 OAuth 部署。`npm run deploy:docs` 一键部署 Cloudflare 站。
   - `package.json`
 
+### Fixed
+
+- **CLAUDE.md 为 symlink 时 init/update 覆盖 AGENTS.md 标准**. 项目用官方 symlink 方式复用 AGENTS.md（`CLAUDE.md -> AGENTS.md`，如 deepseek-harness）时，`installClaudeWrapper` 写 CLAUDE.md 会**跟随 symlink 覆盖 AGENTS.md**：init 先正确写入完整标准，随后 wrapper 又把它替换成 CodeGraph 优先段（还产生 `@AGENTS.md` 自引用）；update 每次重复「写入→覆盖」循环，永远无法收敛。修复：`installClaudeWrapper` 用 `lstatSync` 检测 symlink 直接跳过（标准已在 AGENTS.md，无需 wrapper）；update 漂移检查对 symlink 的 CLAUDE.md 视为非 stale（AGENTS.md 检查已覆盖）；doctor 的 `standards-claude` 对 symlink 记 `ok:true`（covered by standards-agents），不再误报。
+  - `src/commands/editors.ts`、`src/commands/update.ts`、`src/commands/doctor.ts`
+  - `tests/editors.test.ts` — symlink 场景 2 用例（skip on win32）+ update/doctor 源码守卫 2 用例
+
 ## [0.3.69] - 2026-08-17
 
 ### Added

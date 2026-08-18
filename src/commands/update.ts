@@ -10,6 +10,7 @@ import {
   rmSync,
   readdirSync,
   statSync,
+  lstatSync,
 } from "fs";
 import { tmpdir } from "os";
 import { promisify } from "util";
@@ -291,23 +292,35 @@ export async function update(options: UpdateOptions) {
           let claudeStale = false;
           if (detected.some((a) => a.id === "claude")) {
             const claudePath = join(projectRoot, "CLAUDE.md");
-            claudeStale = !existsSync(claudePath);
-            if (!claudeStale) {
-              const fileContent = readFileSync(claudePath, "utf-8");
-              if (!fileContent.includes(OPENSPEC_START)) {
-                claudeStale = !/^@AGENTS\.md\r?$/m.test(fileContent);
-                if (!claudeStale) {
-                  console.log(
-                    chalk.yellow(
-                      "  ⚠ CLAUDE.md 是裸 @AGENTS.md 导入（无 OPENSPEC 标记），CodeGraph 优先约束未写入。如需启用：删除该行后重跑 openspec-pw update。",
-                    ),
-                  );
+            // A symlinked CLAUDE.md (→ AGENTS.md, the official reuse pattern)
+            // is what Claude Code reads; the AGENTS.md check above already
+            // tracks its content drift, and rewriting a wrapper would overwrite
+            // the standards through the symlink. Not stale.
+            if (existsSync(claudePath) && lstatSync(claudePath).isSymbolicLink()) {
+              console.log(
+                chalk.gray(
+                  "  - CLAUDE.md is a symlink to AGENTS.md — drift tracked via AGENTS.md",
+                ),
+              );
+            } else {
+              claudeStale = !existsSync(claudePath);
+              if (!claudeStale) {
+                const fileContent = readFileSync(claudePath, "utf-8");
+                if (!fileContent.includes(OPENSPEC_START)) {
+                  claudeStale = !/^@AGENTS\.md\r?$/m.test(fileContent);
+                  if (!claudeStale) {
+                    console.log(
+                      chalk.yellow(
+                        "  ⚠ CLAUDE.md 是裸 @AGENTS.md 导入（无 OPENSPEC 标记），CodeGraph 优先约束未写入。如需启用：删除该行后重跑 openspec-pw update。",
+                      ),
+                    );
+                  }
+                } else {
+                  claudeStale = compareBlock(
+                    fileContent,
+                    claudeWrapperStandardsContent(),
+                  ).stale;
                 }
-              } else {
-                claudeStale = compareBlock(
-                  fileContent,
-                  claudeWrapperStandardsContent(),
-                ).stale;
               }
             }
           }

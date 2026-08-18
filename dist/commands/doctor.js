@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from "fs";
+import { existsSync, lstatSync, readdirSync, readFileSync } from "fs";
 import { createRequire } from "node:module";
 import { join } from "path";
 import { execFileSync } from "child_process";
@@ -293,7 +293,18 @@ export async function doctor(options = {}) {
         // `@AGENTS.md` import without markers is left untouched — not stale.
         if (adapters.some((a) => a.id === "claude")) {
             const claudePath = join(projectRoot, "CLAUDE.md");
-            if (!existsSync(claudePath)) {
+            // A symlinked CLAUDE.md (→ AGENTS.md, the official reuse pattern) is
+            // covered by the standards-agents check above — comparing it against
+            // the wrapper expectation would false-positive.
+            if (existsSync(claudePath) && lstatSync(claudePath).isSymbolicLink()) {
+                checks.push({
+                    category: "Sync",
+                    name: "standards-claude",
+                    ok: true,
+                    message: "CLAUDE.md symlinks AGENTS.md — covered by standards-agents",
+                });
+            }
+            else if (!existsSync(claudePath)) {
                 checks.push({
                     category: "Sync",
                     name: "standards-claude",
