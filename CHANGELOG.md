@@ -5,8 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
+## [0.3.73] - 2026-08-19
 ### Added
 
 - **`init` / `update` 末尾新增 CodeGraph 索引同步提示**. 检测到项目存在 `.codegraph/` 目录时，在命令末尾提示 `codegraph sync` 与 `codegraph install --target=auto --location=local`（代码变更后保持索引与 hook 同步）；`init` 原有「CLI 已装但未索引 → `codegraph init`」提示保留，与刷新提示构成互斥分支，共用 Next steps 第 6 步位置。纯提示，不影响生成行为与 exit code。
