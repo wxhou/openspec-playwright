@@ -5,6 +5,8 @@ export {
   removePlaywrightMcp,
 } from "./mcp.js";
 export { needsShell } from "./platform.js";
+export { detectCodeGraphStatus, codegraphHintLines } from "./codegraph.js";
+export type { CodeGraphStatus } from "./codegraph.js";
 export {
   detectAppServer,
   findNpmRoot,

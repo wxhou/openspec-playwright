@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { readFile } from "fs/promises";
 import { buildCommandMeta, detectAdapters, getAdapter, getAllAdapters, installCommand, installProjectRules, readEmployeeStandards, resolveToolsArg, slashCommandForAdapter, } from "./editors.js";
-import { isPlaywrightMcpInstalled, ensurePlaywrightMcp, needsShell, hasFrontendSignal } from "../shared/index.js";
+import { isPlaywrightMcpInstalled, ensurePlaywrightMcp, needsShell, hasFrontendSignal, detectCodeGraphStatus, codegraphHintLines, } from "../shared/index.js";
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
 const E2E_COMMAND_SRC = fileURLToPath(new URL("../../templates/e2e-command.md", import.meta.url));
 const EMPLOYEE_STANDARDS_SRC = fileURLToPath(new URL("../../employee-standards.md", import.meta.url));
@@ -190,20 +190,17 @@ export async function init(options, deps = {}) {
     console.log(chalk.gray("  3. Set credentials: export E2E_USERNAME=xxx E2E_PASSWORD=yyy"));
     console.log(chalk.gray("  4. Run auth setup: npx playwright test --project=setup"));
     console.log(chalk.gray("  5. Page objects: extend tests/playwright/pages/BasePage.ts for shared selectors"));
-    // Optional: detect CodeGraph (installed but project not indexed yet).
-    // Indexing stays the user's decision — this is a hint, not a setup step.
-    let codegraphInstalled = false;
-    try {
-        execFileSync(process.platform === "win32" ? "where" : "which", ["codegraph"], {
-            stdio: "ignore",
-        });
-        codegraphInstalled = true;
-    }
-    catch {
-        /* codegraph not installed — skip the hint */
-    }
-    if (codegraphInstalled && !existsSync(join(projectRoot, ".codegraph"))) {
-        console.log(chalk.gray("  6. Build code index (optional): codegraph init"));
+    // Optional: CodeGraph hints — suggest `codegraph init` when the CLI is
+    // installed but the project is not indexed, or `codegraph sync` +
+    // (when the MCP is missing) `codegraph install` to refresh an existing
+    // index. Hints only, never setup.
+    const cg = detectCodeGraphStatus(projectRoot);
+    const hints = codegraphHintLines(cg);
+    if (hints.length > 0) {
+        console.log(chalk.gray(`  6. ${hints[0]}`));
+        for (const line of hints.slice(1)) {
+            console.log(chalk.gray(`     ${line}`));
+        }
     }
     if (frontendSignal === false) {
         console.log(chalk.gray("  • If your frontend lives in a subdirectory (monorepo): run openspec-pw init in the app directory (one Playwright config per app)"));

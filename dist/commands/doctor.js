@@ -5,7 +5,7 @@ import { join } from "path";
 import { execFileSync } from "child_process";
 import chalk from "chalk";
 import { detectAdapters, slashCommandForAdapter, claudeWrapperStandardsContent } from "../commands/editors.js";
-import { detectAppServer, isPlaywrightMcpInstalled, needsShell } from "../shared/index.js";
+import { detectAppServer, isPlaywrightMcpInstalled, needsShell, detectCodeGraphStatus } from "../shared/index.js";
 import { bundledStandardsPath, compareBlock, OPENSPEC_START } from "../shared/drift.js";
 export async function doctor(options = {}) {
     const checks = [];
@@ -412,6 +412,67 @@ export async function doctor(options = {}) {
             ? `responded ${reachable.status ?? "ok"}`
             : `${reachable.message} (diagnostic only; Playwright webServer may start it)`,
     });
+    // CodeGraph — optional third-party tooling; failures are warnings, never fatal
+    const cg = detectCodeGraphStatus(projectRoot);
+    // CLI version probe (only when the CLI is on PATH)
+    let cgVersion = "not found";
+    if (cg.cliInstalled) {
+        try {
+            cgVersion = execFileSync("codegraph", ["--version"], {
+                encoding: "utf-8",
+                shell: needsShell,
+            }).trim();
+        }
+        catch {
+            cgVersion = "not found";
+        }
+    }
+    checks.push({
+        category: "CodeGraph",
+        name: "codegraph-cli",
+        ok: cg.cliInstalled,
+        message: cgVersion,
+    });
+    let indexOk;
+    let indexMsg;
+    if (cg.indexed) {
+        indexOk = true;
+        indexMsg = "initialized";
+    }
+    else if (cg.cliInstalled) {
+        indexOk = false;
+        indexMsg = "not initialized (run: codegraph init)";
+    }
+    else {
+        indexOk = true;
+        indexMsg = "not used";
+    }
+    checks.push({
+        category: "CodeGraph",
+        name: "codegraph-index",
+        ok: indexOk,
+        message: indexMsg,
+    });
+    let mcpOk;
+    let mcpMsg;
+    if (!cg.indexed) {
+        mcpOk = true;
+        mcpMsg = "n/a";
+    }
+    else if (cg.mcpInstalledAdapters.length > 0) {
+        mcpOk = true;
+        mcpMsg = `installed: ${cg.mcpInstalledAdapters.join(", ")}`;
+    }
+    else {
+        mcpOk = false;
+        mcpMsg = "missing (run: codegraph install --target=auto --location=local)";
+    }
+    checks.push({
+        category: "CodeGraph",
+        name: "codegraph-mcp",
+        ok: mcpOk,
+        message: mcpMsg,
+    });
     const OPTIONAL_NAMES = new Set([
         "engines",
         "specs",
@@ -420,6 +481,9 @@ export async function doctor(options = {}) {
         "dev-script",
         "base-url",
         "reachable",
+        "codegraph-cli",
+        "codegraph-index",
+        "codegraph-mcp",
     ]);
     const allOk = checks.filter((c) => !c.ok && !OPTIONAL_NAMES.has(c.name)).length === 0;
     if (options.json) {

@@ -7,7 +7,7 @@ import { promisify } from "util";
 import chalk from "chalk";
 import * as tar from "tar";
 import { buildCommandMeta, detectAdapters, installCommand, installProjectRules, claudeWrapperStandardsContent, } from "./editors.js";
-import { isPlaywrightMcpInstalled, ensurePlaywrightMcp, needsShell } from "../shared/index.js";
+import { isPlaywrightMcpInstalled, ensurePlaywrightMcp, needsShell, detectCodeGraphStatus, codegraphHintLines, } from "../shared/index.js";
 import { compareBlock, OPENSPEC_START } from "../shared/drift.js";
 const execFileAsync = promisify(execFile);
 export async function update(options) {
@@ -223,6 +223,17 @@ export async function update(options) {
     }
     else {
         console.log(chalk.bold("\n  No supported editor detected — nothing to restart."));
+    }
+    // CodeGraph hints — suggest `codegraph init` when the CLI is installed but
+    // the project is not indexed, or `codegraph sync` (+ install hooks when the
+    // MCP is missing) to refresh an existing index. Hints only, never setup.
+    const cg = detectCodeGraphStatus(projectRoot);
+    const hints = codegraphHintLines(cg);
+    if (hints.length > 0) {
+        console.log(chalk.gray(`\n  ${hints[0]}`));
+        for (const line of hints.slice(1)) {
+            console.log(chalk.gray(`  ${line}`));
+        }
     }
 }
 /**

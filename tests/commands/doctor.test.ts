@@ -10,12 +10,46 @@ vi.mock("fs", () => ({
   existsSync: vi.fn(),
   readdirSync: vi.fn(),
   readFileSync: vi.fn(),
+  lstatSync: vi.fn(),
 }));
 
+// Mock the shared CodeGraph detection so doctor's CodeGraph category is
+// deterministic without probing the real CLI / index / editor configs.
+vi.mock("../../src/shared/index.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/shared/index.js")>();
+  return {
+    ...actual,
+    detectCodeGraphStatus: vi.fn(),
+  };
+});
+
+// Mock editor detection so the Playwright MCP check sees a healthy editor
+// (otherwise "no editors detected" fails the hard playwright-mcp check).
+vi.mock("../../src/commands/editors.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/commands/editors.js")>();
+  return {
+    ...actual,
+    detectAdapters: vi.fn(),
+  };
+});
+
+// Mock standards drift so the Sync checks pass when running the full doctor()
+// (AGENTS.md / CLAUDE.md are treated as in-sync).
+vi.mock("../../src/shared/drift.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/shared/drift.js")>();
+  return {
+    ...actual,
+    compareBlock: vi.fn(() => ({ stale: false })),
+    bundledStandardsPath: vi.fn(() => "/bundled/employee-standards.md"),
+  };
+});
+
 import { execFileSync } from "child_process";
-import { readFileSync } from "fs";
-import { claudeAdapter } from "../../src/commands/editors.js";
+import { readFileSync, existsSync, readdirSync, lstatSync } from "fs";
+import { claudeAdapter, detectAdapters } from "../../src/commands/editors.js";
 import { isPlaywrightMcpInstalled } from "../../src/shared/mcp.js";
+import { detectCodeGraphStatus } from "../../src/shared/index.js";
+import { doctor } from "../../src/commands/doctor.js";
 
 // ─── allOk computation (mirrors doctor.ts logic) ─────────────────────────────
 
@@ -265,5 +299,189 @@ describe("doctor check logic", () => {
       expect(typeof check.ok).toBe("boolean");
       expect(typeof check.message).toBe("string");
     }
+  });
+});
+
+// ─── CodeGraph category ─────────────────────────────────────────────────────
+// Runs the real doctor() with detectCodeGraphStatus mocked. CodeGraph is an
+// optional third-party tool: its checks are warnings (yellow ⚠) and must never
+// flip allOk / the --json exit code.
+
+describe("doctor CodeGraph category", () => {
+  const detectMock = vi.mocked(detectCodeGraphStatus);
+  const execMock = vi.mocked(execFileSync);
+  const existsMock = vi.mocked(existsSync);
+  const readdirMock = vi.mocked(readdirSync);
+  const readFileMock = vi.mocked(readFileSync);
+  const lstatMock = vi.mocked(lstatSync);
+  const detectAdaptersMock = vi.mocked(detectAdapters);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Default: everything else healthy so only CodeGraph state drives the result.
+    detectMock.mockReturnValue({
+      cliInstalled: false,
+      indexed: false,
+      mcpInstalledAdapters: [],
+    });
+    // Healthy hard prerequisites: node/npm/playwright CLIs, config, openspec,
+    // tests dir, and a detected editor so the Playwright MCP check passes.
+    execMock.mockImplementation((cmd: string) => {
+      if (cmd === "node" || cmd === "npm" || cmd === "npx") return "v22.0.0";
+      return "";
+    });
+    existsMock.mockImplementation((p: Parameters<typeof existsSync>[0]) => {
+      const s = String(p);
+      return (
+        s.endsWith("playwright.config.ts") ||
+        s.endsWith("openspec") ||
+        s.endsWith("tests/playwright") ||
+        s.endsWith("AGENTS.md") ||
+        s.endsWith("CLAUDE.md")
+      );
+    });
+    readdirMock.mockReturnValue([] as never);
+    // .mcp.json → playwright MCP installed; AGENTS.md/CLAUDE.md → in-sync
+    // (compareBlock is mocked to stale:false, so content just needs markers).
+    readFileMock.mockImplementation((p: Parameters<typeof readFileSync>[0]) => {
+      const s = String(p);
+      if (s.endsWith(".mcp.json")) {
+        return JSON.stringify({ mcpServers: { playwright: { command: "npx" } } });
+      }
+      return "<!-- OPENSPEC:START -->\ncontent\n<!-- OPENSPEC:END -->";
+    });
+    lstatMock.mockReturnValue({ isSymbolicLink: () => false } as never);
+    detectAdaptersMock.mockReturnValue([claudeAdapter]);
+  });
+
+  it("emits the CodeGraph category with cli/index/mcp checks in text output", async () => {
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((...args) => {
+      logs.push(args.join(" "));
+    });
+    try {
+      await doctor();
+    } finally {
+      spy.mockRestore();
+    }
+    const text = logs.join("\n");
+    expect(text).toContain("─── CodeGraph ───");
+    expect(text).toContain("codegraph-cli: not found");
+    expect(text).toContain("codegraph-index: not used");
+    expect(text).toContain("codegraph-mcp: n/a");
+  });
+
+  it("reports version, initialized index, and installed adapters when present", async () => {
+    detectMock.mockReturnValue({
+      cliInstalled: true,
+      indexed: true,
+      mcpInstalledAdapters: ["claude", "cursor"],
+    });
+    execMock.mockImplementation((cmd: string) => {
+      if (cmd === "codegraph") return "v1.2.3";
+      return "v22.0.0";
+    });
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((...args) => {
+      logs.push(args.join(" "));
+    });
+    try {
+      await doctor();
+    } finally {
+      spy.mockRestore();
+    }
+    const text = logs.join("\n");
+    expect(text).toContain("codegraph-cli: v1.2.3");
+    expect(text).toContain("codegraph-index: initialized");
+    expect(text).toContain("codegraph-mcp: installed: claude, cursor");
+  });
+
+  it("warns with remediation when CLI present but no index", async () => {
+    detectMock.mockReturnValue({
+      cliInstalled: true,
+      indexed: false,
+      mcpInstalledAdapters: [],
+    });
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((...args) => {
+      logs.push(args.join(" "));
+    });
+    try {
+      await doctor();
+    } finally {
+      spy.mockRestore();
+    }
+    const text = logs.join("\n");
+    expect(text).toContain("codegraph-index: not initialized (run: codegraph init)");
+  });
+
+  it("warns with remediation when indexed but MCP missing", async () => {
+    detectMock.mockReturnValue({
+      cliInstalled: true,
+      indexed: true,
+      mcpInstalledAdapters: [],
+    });
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((...args) => {
+      logs.push(args.join(" "));
+    });
+    try {
+      await doctor();
+    } finally {
+      spy.mockRestore();
+    }
+    const text = logs.join("\n");
+    expect(text).toContain(
+      "codegraph-mcp: missing (run: codegraph install --target=auto --location=local)",
+    );
+  });
+
+  it("--json includes the CodeGraph checks", async () => {
+    detectMock.mockReturnValue({
+      cliInstalled: true,
+      indexed: true,
+      mcpInstalledAdapters: ["claude"],
+    });
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((...args) => {
+      logs.push(args.join(" "));
+    });
+    try {
+      await doctor({ json: true });
+    } finally {
+      spy.mockRestore();
+    }
+    const parsed = JSON.parse(logs.join("\n"));
+    const cg = parsed.checks.filter((c: { category: string }) => c.category === "CodeGraph");
+    expect(cg.map((c: { name: string }) => c.name)).toEqual([
+      "codegraph-cli",
+      "codegraph-index",
+      "codegraph-mcp",
+    ]);
+  });
+
+  it("--json exit code stays 0 when CodeGraph is missing (allOk unaffected)", async () => {
+    // Indexed but MCP empty → codegraph-mcp is a failing optional check.
+    detectMock.mockReturnValue({
+      cliInstalled: true,
+      indexed: true,
+      mcpInstalledAdapters: [],
+    });
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((...args) => {
+      logs.push(args.join(" "));
+    });
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+      throw new Error("process.exit called");
+    });
+    try {
+      await doctor({ json: true });
+    } finally {
+      spy.mockRestore();
+      exitSpy.mockRestore();
+    }
+    const parsed = JSON.parse(logs.join("\n"));
+    expect(parsed.ok).toBe(true);
+    expect(exitSpy).not.toHaveBeenCalled();
   });
 });

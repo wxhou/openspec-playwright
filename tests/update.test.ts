@@ -352,3 +352,16 @@ describe("update.ts: drift coverage regression guards", () => {
     expect(src).toMatch(/extra\.relativePath/);
   });
 });
+
+describe("update.ts: CodeGraph gap-aware hints", () => {
+  it("renders hints via shared codegraphHintLines (single source of truth)", () => {
+    const src = readFileSync(
+      new URL("../src/commands/update.ts", import.meta.url).pathname,
+      "utf-8",
+    );
+    // The hint content lives in shared/codegraph.ts — update.ts must not
+    // inline its own copy (drift guard).
+    expect(src).toMatch(/codegraphHintLines\(cg\)/);
+    expect(src).not.toMatch(/Refresh code index: codegraph sync/);
+  });
+});

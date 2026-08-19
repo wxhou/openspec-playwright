@@ -128,3 +128,19 @@ describe("init command validation", () => {
     expect(exists).toBe(true);
   });
 });
+
+describe("init.ts: CodeGraph gap-aware hints", () => {
+  it("renders hints via shared codegraphHintLines (single source of truth)", async () => {
+    // This file mocks fs — read the real source via importActual.
+    const { readFileSync: realReadFileSync } =
+      await vi.importActual<typeof import("fs")>("fs");
+    const src = realReadFileSync(
+      new URL("../../src/commands/init.ts", import.meta.url).pathname,
+      "utf-8",
+    );
+    // The hint content lives in shared/codegraph.ts — init.ts must not
+    // inline its own copy (drift guard).
+    expect(src).toMatch(/codegraphHintLines\(cg\)/);
+    expect(src).not.toMatch(/Refresh code index: codegraph sync/);
+  });
+});

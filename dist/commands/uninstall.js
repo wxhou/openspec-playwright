@@ -2,7 +2,7 @@ import { existsSync, rmSync, readdirSync, rmdirSync, } from "fs";
 import { join, dirname } from "path";
 import chalk from "chalk";
 import { buildCommandMeta, cleanProjectRules, detectAdapters, listCommandArtifactPaths, } from "./editors.js";
-import { removePlaywrightMcp } from "../shared/index.js";
+import { removePlaywrightMcp, detectCodeGraphStatus } from "../shared/index.js";
 export async function uninstall() {
     console.log(chalk.blue("\n🗑️  Uninstalling OpenSpec + Playwright E2E\n"));
     const projectRoot = process.cwd();
@@ -61,6 +61,12 @@ export async function uninstall() {
     console.log(chalk.blue("\n─── Summary ───"));
     console.log(chalk.green("  ✓ Uninstall complete!\n"));
     console.log(chalk.gray("  Note: Run openspec-pw doctor to verify clean removal.\n"));
+    // CodeGraph MCP is a codegraph-owned asset — never touch it here, only
+    // point the user at the removal command.
+    const cg = detectCodeGraphStatus(projectRoot);
+    if (cg.mcpInstalledAdapters.length > 0) {
+        console.log(chalk.gray("  Note: codegraph MCP remains in your agents — remove with: codegraph uninstall"));
+    }
 }
 function cleanupEmptyDirs(dir, stopAt) {
     while (dir !== stopAt && dir.length > stopAt.length) {

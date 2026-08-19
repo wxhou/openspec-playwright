@@ -16,7 +16,14 @@ import {
   slashCommandForAdapter,
 } from "./editors.js";
 import type { EditorAdapter, EditorId } from "./editors.js";
-import { isPlaywrightMcpInstalled, ensurePlaywrightMcp, needsShell, hasFrontendSignal } from "../shared/index.js";
+import {
+  isPlaywrightMcpInstalled,
+  ensurePlaywrightMcp,
+  needsShell,
+  hasFrontendSignal,
+  detectCodeGraphStatus,
+  codegraphHintLines,
+} from "../shared/index.js";
 
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
 const E2E_COMMAND_SRC = fileURLToPath(
@@ -323,21 +330,17 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
       "  5. Page objects: extend tests/playwright/pages/BasePage.ts for shared selectors",
     ),
   );
-  // Optional: detect CodeGraph (installed but project not indexed yet).
-  // Indexing stays the user's decision — this is a hint, not a setup step.
-  let codegraphInstalled = false;
-  try {
-    execFileSync(process.platform === "win32" ? "where" : "which", ["codegraph"], {
-      stdio: "ignore",
-    });
-    codegraphInstalled = true;
-  } catch {
-    /* codegraph not installed — skip the hint */
-  }
-  if (codegraphInstalled && !existsSync(join(projectRoot, ".codegraph"))) {
-    console.log(
-      chalk.gray("  6. Build code index (optional): codegraph init"),
-    );
+  // Optional: CodeGraph hints — suggest `codegraph init` when the CLI is
+  // installed but the project is not indexed, or `codegraph sync` +
+  // (when the MCP is missing) `codegraph install` to refresh an existing
+  // index. Hints only, never setup.
+  const cg = detectCodeGraphStatus(projectRoot);
+  const hints = codegraphHintLines(cg);
+  if (hints.length > 0) {
+    console.log(chalk.gray(`  6. ${hints[0]}`));
+    for (const line of hints.slice(1)) {
+      console.log(chalk.gray(`     ${line}`));
+    }
   }
   if (frontendSignal === false) {
     console.log(
