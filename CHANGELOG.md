@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`init` / `update` 末尾新增 CodeGraph 索引同步提示**. 检测到项目存在 `.codegraph/` 目录时，在命令末尾提示 `codegraph sync` 与 `codegraph install --target=auto --location=local`（代码变更后保持索引与 hook 同步）；`init` 原有「CLI 已装但未索引 → `codegraph init`」提示保留，与刷新提示构成互斥分支，共用 Next steps 第 6 步位置。纯提示，不影响生成行为与 exit code。
+  - `src/commands/init.ts` — codegraph 提示块扩展 `else if` 分支
+  - `src/commands/update.ts` — Summary 末尾（Restart 提示后）追加 codegraph 提示
+
+- **`doctor` 新增 CodeGraph 检查项 + `init`/`update` 提示缺口化 + `uninstall` 清理提示**. 共享检测模块 `detectCodeGraphStatus`（CLI 可用性 / `.codegraph/` 索引 / codegraph MCP 是否装入 agents）统一驱动四个命令：`doctor` 新增 `─── CodeGraph ───` 类别（`codegraph-cli` / `codegraph-index` / `codegraph-mcp`，全为可选检查，失败黄 ⚠ 不改变 `--json` 退出码，缺失时给出 `codegraph init` / `codegraph install --target=auto --location=local` 修复命令）；`init`/`update` 提示改为缺口感知（MCP 已装只提示 `codegraph sync`，MCP 缺失才提示 install，无索引但有 CLI 提示 `codegraph init`）；`uninstall` 检测到 codegraph MCP 已装时提示 `codegraph uninstall`（不删 `.codegraph/`，那是 codegraph 资产）。
+  - `src/shared/codegraph.ts`（新增）、`src/shared/index.ts`
+  - `src/commands/doctor.ts`、`src/commands/init.ts`、`src/commands/update.ts`、`src/commands/uninstall.ts`
+  - `tests/shared/codegraph.test.ts`（新增）、`tests/commands/doctor.test.ts`、`tests/init.test.ts`、`tests/update.test.ts`、`tests/commands/uninstall.test.ts`
+
+- **CLAUDE.md 工作流提示**. `claudeWrapperStandardsContent` 在 OPENSPEC 块中新增「**工作流**：优先使用 OpenSpec 工作流（/opsx 命令），而非 plan mode」提示，`init`/`update` 写入 CLAUDE.md 时自动带上（仅 CLAUDE.md，AGENTS.md 不受影响）。
+  - `src/commands/editors.ts`
+
+- **CLAUDE.md CodeGraph 优先块文案精简**. `CODE_GRAPH_FIRST_BLOCK` 从 ~130 字压缩到 ~100 字：拆短句、去冗余词（存在→有、定位定义→定义、不要→别、分号→括号），8 个语义点（触发条件/任务类型/默认动作/直接用结果/禁止 grep/grep 例外/禁止子 agent/兜底）全部保留。已初始化项目的 CLAUDE.md 会 drift，下次 `update` 自动重写。
+  - `src/commands/editors.ts`
+
 ## [0.3.72] - 2026-08-18
 ### Changed
 

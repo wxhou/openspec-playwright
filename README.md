@@ -207,7 +207,7 @@ Run through these steps in order when using the E2E workflow for the first time:
 
 ### What `openspec-pw doctor` checks
 
-`openspec-pw doctor` verifies prerequisites across 9 categories and exits non-zero if any **required** check fails.
+`openspec-pw doctor` verifies prerequisites across 10 categories and exits non-zero if any **required** check fails.
 
 | Category | Required checks | Optional checks |
 |---|---|---|
@@ -222,6 +222,7 @@ Run through these steps in order when using the E2E workflow for the first time:
 | **Tests** | `tests/playwright/` directory exists | `auth.setup.ts` presence |
 | **Seed Test** | — | `seed.spec.ts` presence |
 | **App Server** | — | dev script, base URL, reachability |
+| **CodeGraph** | — | CLI availability, index presence, MCP installation (warnings, non-blocking) |
 
 Run with `--json` for machine-readable output.
 
@@ -309,7 +310,7 @@ Editors (auto-detected by openspec-pw init)
   ├── Claude Code (/opsx:e2e)
   │   ├── .claude/commands/opsx/e2e.md   → Command file
   │   ├── @playwright/mcp                → Healer Agent tools (via `claude mcp add --scope project playwright …`, writes project-root `.mcp.json`)
-  │   └── CLAUDE.md                      → CodeGraph 优先 block + imports AGENTS.md via `@AGENTS.md`
+  │   └── CLAUDE.md                      → CodeGraph 优先 block + workflow hint + imports AGENTS.md via `@AGENTS.md`
   ├── OpenCode (/opsx-e2e)
   │   ├── .opencode/commands/opsx-e2e.md → Command file (body rewritten from /opsx: → /opsx-)
   │   ├── opencode.jsonc                 → Playwright MCP (mcp.playwright) + instructions routing
@@ -337,14 +338,14 @@ Editors (auto-detected by openspec-pw init)
           (no simple MCP file — configure @deepseek-ai/dsh-mcp-client in cordis.yml)
 
 Employee-grade standards live in **AGENTS.md** as the single source of truth. Claude Code
-loads them via a CLAUDE.md that carries a CodeGraph-first block up front, followed by an
-`@AGENTS.md` import — Claude Code's documented mechanism for reusing AGENTS.md, which it does
-not read by default. Import position is unconstrained ("anywhere in your CLAUDE.md"); the only
-rule is the `@` line must not sit inside backticks or a code block. The import line sits outside
-the OPENSPEC:START/END comments (stripped before context injection), so the markers act as the
-tool-owned boundary while the import is honored. OpenCode registers AGENTS.md in
-`opencode.jsonc` under `instructions`. Cline and Cursor auto-detect `AGENTS.md` natively — no wrapper
-file needed.
+loads them via a CLAUDE.md that carries a CodeGraph-first block and an OpenSpec-workflow
+hint up front, followed by an `@AGENTS.md` import — Claude Code's documented mechanism for
+reusing AGENTS.md, which it does not read by default. Import position is unconstrained
+("anywhere in your CLAUDE.md"); the only rule is the `@` line must not sit inside backticks
+or a code block. The import line sits outside the OPENSPEC:START/END comments (stripped
+before context injection), so the markers act as the tool-owned boundary while the import is
+honored. OpenCode registers AGENTS.md in `opencode.jsonc` under `instructions`. Cline and
+Cursor auto-detect `AGENTS.md` natively — no wrapper file needed.
 
 Test Assets (tests/playwright/)
   ├── seed.spec.ts         → Env validation

@@ -200,7 +200,7 @@ openspec-pw uninstall     # 移除项目中的集成
 
 ### `openspec-pw doctor` 检查清单
 
-`openspec-pw doctor` 在 9 个类别中验证前置条件，**必需**项失败时退出码非零。
+`openspec-pw doctor` 在 10 个类别中验证前置条件，**必需**项失败时退出码非零。
 
 | 类别 | 必需检查项 | 可选检查项 |
 |---|---|---|
@@ -215,6 +215,7 @@ openspec-pw uninstall     # 移除项目中的集成
 | **测试目录** | `tests/playwright/` 目录存在 | `auth.setup.ts` 是否存在 |
 | **种子测试** | — | `seed.spec.ts` 是否存在 |
 | **应用服务器** | — | 开发脚本、基础 URL、可达性 |
+| **CodeGraph** | — | CLI 可用性、索引存在、MCP 安装（警告，不阻断） |
 
 加 `--json` 参数输出机器可读格式。
 
@@ -276,7 +277,7 @@ CLI (openspec-pw)
   ├── Claude Code (/opsx:e2e)
   │   ├── .claude/commands/opsx/e2e.md    → 命令文件（从 templates/e2e-command.md 安装）
   │   ├── @playwright/mcp                 → Healer Agent 工具（通过 `claude mcp add --scope project playwright …`，写入项目根 `.mcp.json`）
-  │   └── CLAUDE.md                       → CodeGraph 优先节 + 通过 `@AGENTS.md` 引入 AGENTS.md
+  │   └── CLAUDE.md                       → CodeGraph 优先节 + 工作流提示 + 通过 `@AGENTS.md` 引入 AGENTS.md
   ├── OpenCode (/opsx-e2e)
   │   ├── .opencode/commands/opsx-e2e.md  → 命令文件（正文由 /opsx: 改写为 /opsx-）
   │   ├── opencode.jsonc                  → Playwright MCP (mcp.playwright) + 指令路由
@@ -303,8 +304,8 @@ CLI (openspec-pw)
       └── AGENTS.md                       → 员工级规范（dsh 原生自动识别）
           （无简单 MCP 文件 — 在 cordis.yml 中配置 @deepseek-ai/dsh-mcp-client）
 
-员工级规范统一存放在 **AGENTS.md** 中。Claude Code 通过 CLAUDE.md 加载——前置 CodeGraph 优先节，
-后接 `@AGENTS.md` 导入（Claude Code 官方记载的复用 AGENTS.md 机制，默认并不读取 AGENTS.md）。
+员工级规范统一存放在 **AGENTS.md** 中。Claude Code 通过 CLAUDE.md 加载——前置 CodeGraph 优先节与
+OpenSpec 工作流提示，后接 `@AGENTS.md` 导入（Claude Code 官方记载的复用 AGENTS.md 机制，默认并不读取 AGENTS.md）。
 导入位置无约束（官方原文 "anywhere in your CLAUDE.md"），唯一要求是 `@` 行不能放在反引号或代码块内。
 导入行位于 OPENSPEC:START/END 注释之外（注释在注入上下文前被剥离），marker 作为工具领地边界、
 导入仍生效；OpenCode 在 `opencode.jsonc` 的 `instructions` 中注册 AGENTS.md；
