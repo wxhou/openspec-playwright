@@ -914,12 +914,12 @@ export function installOpenSpecBlock(
  */
 const CODE_GRAPH_FIRST_BLOCK = `## CodeGraph 优先 🔴
 
-存在 \`.codegraph/\` 时：结构性任务（定位定义、调用链、影响面、流程）**默认第一步**调用 \`codegraph_explore\`，直接用结果回答，不要先 grep/read；grep/read 仅用于字面文本、已打开文件、或结果不足时补查。不派子 agent 重建索引。无 \`.codegraph/\` 跳过。`;
+有 \`.codegraph/\` 时：结构性任务（定义/调用链/影响面/流程）默认第一步用 \`codegraph_explore\`，直接用结果回答，别先 grep/read（仅字面文本、已打开文件、结果不足时补查）。不派子 agent 重建索引。无 \`.codegraph/\` 跳过。`;
 
 /**
  * The expected OPENSPEC block content for a thin CLAUDE.md wrapper
- * (CodeGraph-first guidance + `@AGENTS.md` import). Exported so drift
- * detection / update can compare against it.
+ * (CodeGraph-first guidance + workflow hint + `@AGENTS.md` import). Exported
+ * so drift detection / update can compare against it.
  *
  * The `@AGENTS.md` line is Claude Code's documented way to reuse AGENTS.md
  * inside CLAUDE.md — AGENTS.md is NOT read by default ("Claude Code reads
@@ -937,7 +937,7 @@ const CODE_GRAPH_FIRST_BLOCK = `## CodeGraph 优先 🔴
  *   line inside them is still honored.
  */
 export function claudeWrapperStandardsContent(): string {
-  return `${CODE_GRAPH_FIRST_BLOCK}\n\n@AGENTS.md\n`;
+  return `${CODE_GRAPH_FIRST_BLOCK}\n\n**工作流**：优先使用 OpenSpec 工作流（/opsx 命令），而非 plan mode。\n\n@AGENTS.md\n`;
 }
 
 /**

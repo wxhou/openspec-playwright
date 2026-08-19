@@ -254,8 +254,8 @@ export declare function blockMatchesExpected(projectRoot: string, adapter: Edito
 export declare function installOpenSpecBlock(projectRoot: string, standardsContent: string, adapter?: EditorAdapter): void;
 /**
  * The expected OPENSPEC block content for a thin CLAUDE.md wrapper
- * (CodeGraph-first guidance + `@AGENTS.md` import). Exported so drift
- * detection / update can compare against it.
+ * (CodeGraph-first guidance + workflow hint + `@AGENTS.md` import). Exported
+ * so drift detection / update can compare against it.
  *
  * The `@AGENTS.md` line is Claude Code's documented way to reuse AGENTS.md
  * inside CLAUDE.md — AGENTS.md is NOT read by default ("Claude Code reads

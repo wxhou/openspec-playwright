@@ -338,6 +338,7 @@ describe("installProjectRules routing", () => {
     const claudeContent = readFileSync(join(tmpRoot, "CLAUDE.md"), "utf-8");
     expect(claudeContent).toContain("@AGENTS.md");
     expect(claudeContent).toContain("CodeGraph 优先");
+    expect(claudeContent).toContain("工作流");
     expect(claudeContent).not.toContain(standards);
 
     // No opencode config (OpenCode not detected).
@@ -975,6 +976,7 @@ describe("installProjectRules", () => {
     expect(block).not.toBeNull();
     expect(block).toContain("@AGENTS.md");
     expect(block).toContain("CodeGraph 优先");
+    expect(block).toContain("工作流");
   });
 
   it("readOpenSpecBlock returns null when the file has no markers", () => {
