@@ -39,6 +39,7 @@ jobs:
         run: npm audit --audit-level=high
 
       - name: Check file size limits
+        shell: bash
         run: |
           # Enforce a max line count per file to prevent runaway files.
           # Scans our own source only; skips vendored/cached deps.
