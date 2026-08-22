@@ -67,4 +67,29 @@ describe("audit getSitemapRoutes", () => {
     expect(result.routes).toEqual([]);
     expect(result.note).toContain("returned 404");
   });
+
+  it("silently skips malformed <loc> entries", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () =>
+        "<urlset><url><loc>not a url</loc></url><url><loc>http://localhost:9999/home</loc></url></urlset>",
+    });
+    const result = await getSitemapRoutes(tmpDir);
+    expect(result.routes).toEqual(["/home"]);
+    expect(result.note).toBeNull();
+  });
+
+  it("caps parsed sitemap routes at 50 entries", async () => {
+    const locs = Array.from({ length: 60 }, (_, i) =>
+      `<url><loc>http://localhost:9999/route-${i}</loc></url>`,
+    ).join("");
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => `<urlset>${locs}</urlset>`,
+    });
+    const result = await getSitemapRoutes(tmpDir);
+    expect(result.routes).toHaveLength(50);
+  });
 });

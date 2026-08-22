@@ -304,7 +304,7 @@ async function fetchLatestBundle() {
  * under `--no-skill` — standards sync is not a skill install and must not be
  * silently skipped by that flag.
  */
-function syncEmployeeStandards(tmpDir, projectRoot, detected) {
+export function syncEmployeeStandards(tmpDir, projectRoot, detected) {
     // Update employee-grade standards in project rules files (AGENTS.md + CLAUDE.md).
     // Drift-aware: only rewrite a rules file when its OPENSPEC block differs
     // from the bundled template; matching content is left untouched (no mtime

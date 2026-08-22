@@ -441,7 +441,7 @@ async function fetchLatestBundle(): Promise<string> {
  * under `--no-skill` — standards sync is not a skill install and must not be
  * silently skipped by that flag.
  */
-function syncEmployeeStandards(
+export function syncEmployeeStandards(
   tmpDir: string,
   projectRoot: string,
   detected: ReturnType<typeof detectAdapters>,

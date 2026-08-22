@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`audit` / `update` 测试盲点清剿**. 覆盖率实测 audit.ts 15% / update.ts 23%（总体 63%）后补齐最大缺口。新增 mock-heavy 测试文件两个：`tests/commands/audit.main.test.ts`（9 用例覆盖 `audit()` 主函数 7 相位——无 tests/playwright 早退、sitemap 失败 note、orphaned spec 含空列表守卫、URL 不在 sitemap、prefix 豁免不误报、缺 auth.setup、old-style 位置、healthy + shared 跳过；fs/child_process/fetch 全 mock，readdirSync 按 `withFileTypes` 分发 Dirent/string 两形态）与 `tests/update.standards.test.ts`（7 用例——`update()` not-initialized 早退零副作用，`syncEmployeeStandards` 无编辑器跳过 / 模板缺失静默 / symlink CLAUDE.md 经 AGENTS.md 追踪 / stale 重写调 installProjectRules / in-sync 短路 / 裸 `@AGENTS.md` 导入警告）。现有真实文件系统测试文件不动语义：`tests/commands/audit.test.ts` 仅追加 2 个 `getSitemapRoutes` 边缘用例（malformed `<loc>` 静默跳过、50 条截断）。
+- **`syncEmployeeStandards` 导出**（一行可见性变更）. update.ts 私有函数加 `export` 以便直测（项目 export-for-testability 惯例）；经 `update()` 间接测试不可行——该函数在 CLI 更新网络 phase 之后才可达。无行为影响。
+  - `src/commands/update.ts` — `function syncEmployeeStandards` → `export function syncEmployeeStandards`
+  - `tests/commands/audit.main.test.ts`（新增）、`tests/commands/audit.test.ts`（+2）、`tests/update.standards.test.ts`（新增）
+
 ## [0.3.73] - 2026-08-19
 ### Added
 
