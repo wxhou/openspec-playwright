@@ -212,30 +212,26 @@ const CRITICAL_PACKAGE_FILES = [
 
 (distExists ? describe : describe.skip)("npm package contents", () => {
   let tarballPath: string;
+  // Cross-platform pack destination — hardcoded "/tmp/" breaks on Windows
+  // (resolves to <cwd-drive>:\tmp\ which does not exist).
+  const packDir = mkdtempSync(join(tmpdir(), "ospw-smoke-pack-"));
 
   it("npm pack produces a tarball", () => {
-    // Remove stale tarballs to avoid picking old ones
-    const existing = readdirSync("/tmp/").filter((f) =>
-      f.startsWith("openspec-playwright-") && f.endsWith(".tgz"),
-    );
-    for (const f of existing) {
-      try { rmSync(`/tmp/${f}`); } catch { /* ignore */ }
-    }
-    execSync("npm pack --pack-destination /tmp/", { cwd: ROOT });
-    const files = readdirSync("/tmp/").filter((f) =>
+    execSync(`npm pack --pack-destination "${packDir}"`, { cwd: ROOT });
+    const files = readdirSync(packDir).filter((f) =>
       f.startsWith("openspec-playwright-") && f.endsWith(".tgz"),
     );
     expect(files.length).toBeGreaterThan(0);
-    tarballPath = `/tmp/${files[0]}`;
+    tarballPath = join(packDir, files[0]);
   });
 
   it("tarball contains all critical files", () => {
     if (!tarballPath) {
-      execSync("npm pack --pack-destination /tmp/", { cwd: ROOT });
-      const files = readdirSync("/tmp/").filter((f) =>
+      execSync(`npm pack --pack-destination "${packDir}"`, { cwd: ROOT });
+      const files = readdirSync(packDir).filter((f) =>
         f.startsWith("openspec-playwright-") && f.endsWith(".tgz"),
       );
-      tarballPath = `/tmp/${files[0]}`;
+      tarballPath = join(packDir, files[0]);
     }
     const listOutput = execSync(`tar tf "${tarballPath}"`, {
       encoding: "utf-8",
