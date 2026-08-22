@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **CI verify 矩阵扩展至三平台**. `ubuntu(20,22) + macos@22 + windows@22` 共 4 jobs，全局 CLI 的平台路径（`needsShell`、`where`/`which`）首次被 CI 验证；文件行数检查步骤显式 `shell: bash`（windows runner 默认 pwsh 解析不了 heredoc bash）。首跑暴露 27 个 Windows 失败全部为测试侧路径可移植性问题（src 零改动）：`new URL().pathname` 在 win32 产生 `D:\D:\` 前缀 → `fileURLToPath()`；正则断言假设 `/` 分隔符 vs `join()` 反斜杠；bsdtar CRLF 输出 → `split(/\r?\n/)`；mock fixture 硬编码前向斜杠路径 vs `join()` 产出；migrate 测试字符串拼接改 `join()` 构造。
+  - `.github/workflows/ci.yml`、8 个测试文件
+- **依赖刷新 + build 脚本可移植化**. in-range 全量升级（71 packages：playwright 1.62 / eslint 10.9 / vitest 4.1.11 / prettier / @inquirer 等）；commander **12→15** 零改动全绿（用面仅核心 API：47 处 name/version/command/option/action/parse）；build 脚本 `rm -rf dist/ && tsc` → `node -e fs.rmSync(...) && tsc`（Windows cmd.exe 下 POSIX 命令必炸）。**刻意不升**：chalk 6（engines node>=22 超 engines 下限 20，与 Node 20 矩阵腿冲突）、typescript 7（新一代编译器生态未稳，待 @typescript-eslint 明确支持后单独跟进）、@types/node 26（types 高于 engines 下限会引入运行时不存在的 API）。
+  - `package.json`、`package-lock.json`
+
 ### Added
 
 - **`audit` / `update` 测试盲点清剿**. 覆盖率实测 audit.ts 15% / update.ts 23%（总体 63%）后补齐最大缺口。新增 mock-heavy 测试文件两个：`tests/commands/audit.main.test.ts`（9 用例覆盖 `audit()` 主函数 7 相位——无 tests/playwright 早退、sitemap 失败 note、orphaned spec 含空列表守卫、URL 不在 sitemap、prefix 豁免不误报、缺 auth.setup、old-style 位置、healthy + shared 跳过；fs/child_process/fetch 全 mock，readdirSync 按 `withFileTypes` 分发 Dirent/string 两形态）与 `tests/update.standards.test.ts`（7 用例——`update()` not-initialized 早退零副作用，`syncEmployeeStandards` 无编辑器跳过 / 模板缺失静默 / symlink CLAUDE.md 经 AGENTS.md 追踪 / stale 重写调 installProjectRules / in-sync 短路 / 裸 `@AGENTS.md` 导入警告）。现有真实文件系统测试文件不动语义：`tests/commands/audit.test.ts` 仅追加 2 个 `getSitemapRoutes` 边缘用例（malformed `<loc>` 静默跳过、50 条截断）。
