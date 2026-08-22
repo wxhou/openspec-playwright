@@ -331,7 +331,8 @@ describe("doctor CodeGraph category", () => {
       return "";
     });
     existsMock.mockImplementation((p: Parameters<typeof existsSync>[0]) => {
-      const s = String(p);
+      // Normalize separators — join() emits backslashes on Windows.
+      const s = String(p).replace(/\\/g, "/");
       return (
         s.endsWith("playwright.config.ts") ||
         s.endsWith("openspec") ||

@@ -9,6 +9,7 @@ vi.mock("fs", () => ({
 }));
 
 import { existsSync, readdirSync, mkdirSync, renameSync } from "fs";
+import { join } from "path";
 import { migrate } from "../../src/commands/migrate.js";
 
 const existsSyncMock = vi.mocked(existsSync);
@@ -20,6 +21,9 @@ describe("migrate", () => {
   let cwdSpy: ReturnType<typeof vi.spyOn>;
   let logSpy: ReturnType<typeof vi.spyOn>;
   const root = "/tmp/fake-project";
+  // Build expected paths with join() — migrate.ts uses join() internally,
+  // which emits backslash separators on Windows.
+  const testsDir = join(root, "tests", "playwright");
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -37,7 +41,7 @@ describe("migrate", () => {
 
     await migrate({});
 
-    expect(existsSyncMock).toHaveBeenCalledWith(`${root}/tests/playwright`);
+    expect(existsSyncMock).toHaveBeenCalledWith(`${testsDir}`);
     expect(readdirSyncMock).not.toHaveBeenCalled();
     expect(renameSyncMock).not.toHaveBeenCalled();
     expect(mkdirSyncMock).not.toHaveBeenCalled();
@@ -49,7 +53,7 @@ describe("migrate", () => {
   it("prints Nothing-to-migrate message when no old files remain", async () => {
     // First existsSync → tests/playwright exists; subsequent per-item calls return false
     existsSyncMock.mockImplementation((p) =>
-      String(p) === `${root}/tests/playwright`,
+      String(p) === `${testsDir}`,
     );
     readdirSyncMock.mockReturnValue([
       "seed.spec.ts",
@@ -59,7 +63,7 @@ describe("migrate", () => {
 
     await migrate({});
 
-    expect(readdirSyncMock).toHaveBeenCalledWith(`${root}/tests/playwright`);
+    expect(readdirSyncMock).toHaveBeenCalledWith(`${testsDir}`);
     expect(renameSyncMock).not.toHaveBeenCalled();
 
     const messages = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
@@ -70,8 +74,8 @@ describe("migrate", () => {
     // tests/playwright dir + oldPath exist; newPath does not (default mock)
     existsSyncMock.mockImplementation((p) => {
       const path = String(p);
-      if (path === `${root}/tests/playwright`) return true;
-      if (path === `${root}/tests/playwright/my-change.spec.ts`) return true;
+      if (path === `${testsDir}`) return true;
+      if (path === `${join(root, "tests", "playwright", "my-change.spec.ts")}`) return true;
       return false;
     });
     readdirSyncMock.mockReturnValue(["my-change.spec.ts"] as unknown as string[]);
@@ -80,17 +84,17 @@ describe("migrate", () => {
 
     // changes/ and changes/my-change/ created recursively
     expect(mkdirSyncMock).toHaveBeenCalledWith(
-      `${root}/tests/playwright/changes`,
+      `${join(root, "tests", "playwright", "changes")}`,
       { recursive: true },
     );
     expect(mkdirSyncMock).toHaveBeenCalledWith(
-      `${root}/tests/playwright/changes/my-change`,
+      `${join(root, "tests", "playwright", "changes", "my-change")}`,
       { recursive: true },
     );
     expect(renameSyncMock).toHaveBeenCalledTimes(1);
     expect(renameSyncMock).toHaveBeenCalledWith(
-      `${root}/tests/playwright/my-change.spec.ts`,
-      `${root}/tests/playwright/changes/my-change/my-change.spec.ts`,
+      `${join(root, "tests", "playwright", "my-change.spec.ts")}`,
+      `${join(root, "tests", "playwright", "changes", "my-change", "my-change.spec.ts")}`,
     );
   });
 
@@ -112,11 +116,11 @@ describe("migrate", () => {
     existsSyncMock.mockImplementation((p) => {
       const path = String(p);
       // tests/playwright dir exists
-      if (path === `${root}/tests/playwright`) return true;
+      if (path === `${testsDir}`) return true;
       // old file exists
-      if (path === `${root}/tests/playwright/foo.spec.ts`) return true;
+      if (path === `${join(root, "tests", "playwright", "foo.spec.ts")}`) return true;
       // target also exists → conflict
-      if (path === `${root}/tests/playwright/changes/foo/foo.spec.ts`) return true;
+      if (path === `${join(root, "tests", "playwright", "changes", "foo", "foo.spec.ts")}`) return true;
       return false;
     });
     readdirSyncMock.mockReturnValue(["foo.spec.ts"] as unknown as string[]);
@@ -133,9 +137,9 @@ describe("migrate", () => {
   it("overwrites target when --force is set", async () => {
     existsSyncMock.mockImplementation((p) => {
       const path = String(p);
-      if (path === `${root}/tests/playwright`) return true;
-      if (path === `${root}/tests/playwright/foo.spec.ts`) return true;
-      if (path === `${root}/tests/playwright/changes/foo/foo.spec.ts`) return true;
+      if (path === `${testsDir}`) return true;
+      if (path === `${join(root, "tests", "playwright", "foo.spec.ts")}`) return true;
+      if (path === `${join(root, "tests", "playwright", "changes", "foo", "foo.spec.ts")}`) return true;
       return false;
     });
     readdirSyncMock.mockReturnValue(["foo.spec.ts"] as unknown as string[]);
@@ -144,8 +148,8 @@ describe("migrate", () => {
 
     expect(renameSyncMock).toHaveBeenCalledTimes(1);
     expect(renameSyncMock).toHaveBeenCalledWith(
-      `${root}/tests/playwright/foo.spec.ts`,
-      `${root}/tests/playwright/changes/foo/foo.spec.ts`,
+      `${join(root, "tests", "playwright", "foo.spec.ts")}`,
+      `${join(root, "tests", "playwright", "changes", "foo", "foo.spec.ts")}`,
     );
   });
 
@@ -154,7 +158,7 @@ describe("migrate", () => {
     existsSyncMock.mockImplementation((p) => {
       const path = String(p);
       // tests/playwright dir itself exists
-      if (path === `${root}/tests/playwright`) return true;
+      if (path === `${testsDir}`) return true;
       // oldPath is gone — simulate file deletion between readdirSync and existsSync
       return false;
     });

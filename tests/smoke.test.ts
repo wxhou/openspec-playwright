@@ -236,9 +236,10 @@ const CRITICAL_PACKAGE_FILES = [
     const listOutput = execSync(`tar tf "${tarballPath}"`, {
       encoding: "utf-8",
     });
+    // bsdtar on Windows emits CRLF line endings — strip them.
     const pkgFiles = listOutput
-      .split("\n")
-      .map((f) => f.replace(/^package\//, ""))
+      .split(/\r?\n/)
+      .map((f) => f.replace(/^package\//, "").trim())
       .filter(Boolean);
 
     for (const file of CRITICAL_PACKAGE_FILES) {

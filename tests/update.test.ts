@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
+import { fileURLToPath } from "url";
 
 // ─── syncCredentials ──────────────────────────────────────────────────────────
 
@@ -196,7 +197,7 @@ describe("update.ts: npm spawn calls (execFile, no shell)", () => {
     // Read the source and confirm: no execSync string interpolation,
     // execFile used with explicit args array.
     const src = readFileSync(
-      new URL("../src/commands/update.ts", import.meta.url).pathname,
+      fileURLToPath(new URL("../src/commands/update.ts", import.meta.url)),
       "utf-8",
     );
 
@@ -213,7 +214,7 @@ describe("update.ts: npm spawn calls (execFile, no shell)", () => {
 
   it("npm pack uses args array (safe for Windows paths with spaces)", async () => {
     const src = readFileSync(
-      new URL("../src/commands/update.ts", import.meta.url).pathname,
+      fileURLToPath(new URL("../src/commands/update.ts", import.meta.url)),
       "utf-8",
     );
     // The old form: `npm pack openspec-playwright --pack-destination ${tmpDir}`
@@ -224,7 +225,7 @@ describe("update.ts: npm spawn calls (execFile, no shell)", () => {
 
   it("catch blocks print err.message so users see real errors", async () => {
     const src = readFileSync(
-      new URL("../src/commands/update.ts", import.meta.url).pathname,
+      fileURLToPath(new URL("../src/commands/update.ts", import.meta.url)),
       "utf-8",
     );
     // New form: `catch (err)` that uses err.message
@@ -301,7 +302,7 @@ describe("update.ts: drift-aware no-op", () => {
 describe("update.ts: --no-mcp registered + --no-cli recursion", () => {
   it("index.ts registers --no-mcp for the update command", () => {
     const src = readFileSync(
-      new URL("../src/index.ts", import.meta.url).pathname,
+      fileURLToPath(new URL("../src/index.ts", import.meta.url)),
       "utf-8",
     );
     expect(src).toMatch(/\.option\("--no-mcp",/);
@@ -309,7 +310,7 @@ describe("update.ts: --no-mcp registered + --no-cli recursion", () => {
 
   it("update re-executes with --no-cli after a CLI update (self-restart)", () => {
     const src = readFileSync(
-      new URL("../src/commands/update.ts", import.meta.url).pathname,
+      fileURLToPath(new URL("../src/commands/update.ts", import.meta.url)),
       "utf-8",
     );
     // The self-restart must spawn `openspec-pw update --no-cli` so the new
@@ -325,7 +326,7 @@ describe("update.ts: --no-mcp registered + --no-cli recursion", () => {
 describe("update.ts: drift coverage regression guards", () => {
   it("AGENTS.md is always checked (SSOT) — not only via detected adapters", () => {
     const src = readFileSync(
-      new URL("../src/commands/update.ts", import.meta.url).pathname,
+      fileURLToPath(new URL("../src/commands/update.ts", import.meta.url)),
       "utf-8",
     );
     // AGENTS.md path is always evaluated for staleness
@@ -337,7 +338,7 @@ describe("update.ts: drift coverage regression guards", () => {
 
   it("no-marker AGENTS.md is treated as stale (needs append)", () => {
     const src = readFileSync(
-      new URL("../src/commands/update.ts", import.meta.url).pathname,
+      fileURLToPath(new URL("../src/commands/update.ts", import.meta.url)),
       "utf-8",
     );
     expect(src).toMatch(/!fileContent\.includes\(OPENSPEC_START\) \|\|/);
@@ -345,7 +346,7 @@ describe("update.ts: drift coverage regression guards", () => {
 
   it("Cursor skill extraArtifacts are included in command drift check", () => {
     const src = readFileSync(
-      new URL("../src/commands/update.ts", import.meta.url).pathname,
+      fileURLToPath(new URL("../src/commands/update.ts", import.meta.url)),
       "utf-8",
     );
     expect(src).toMatch(/adapter\.extraArtifacts\?\.\(meta\)/);
@@ -356,7 +357,7 @@ describe("update.ts: drift coverage regression guards", () => {
 describe("update.ts: CodeGraph gap-aware hints", () => {
   it("renders hints via shared codegraphHintLines (single source of truth)", () => {
     const src = readFileSync(
-      new URL("../src/commands/update.ts", import.meta.url).pathname,
+      fileURLToPath(new URL("../src/commands/update.ts", import.meta.url)),
       "utf-8",
     );
     // The hint content lives in shared/codegraph.ts — update.ts must not

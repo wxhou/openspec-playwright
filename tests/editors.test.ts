@@ -10,6 +10,7 @@ import {
   writeFileSync,
 } from "fs";
 import { tmpdir } from "os";
+import { fileURLToPath } from "url";
 import { join } from "path";
 import {
   blockMatchesExpected,
@@ -1297,7 +1298,7 @@ describe.skipIf(
 describe("update.ts: symlinked CLAUDE.md drift check (source guard)", () => {
   it("drift check skips a symlinked CLAUDE.md before comparing to the wrapper", () => {
     const src = readFileSync(
-      new URL("../src/commands/update.ts", import.meta.url).pathname,
+      fileURLToPath(new URL("../src/commands/update.ts", import.meta.url)),
       "utf-8",
     );
     expect(src).toMatch(
@@ -1307,7 +1308,7 @@ describe("update.ts: symlinked CLAUDE.md drift check (source guard)", () => {
 
   it("doctor reports standards-claude as covered when CLAUDE.md is a symlink", () => {
     const src = readFileSync(
-      new URL("../src/commands/doctor.ts", import.meta.url).pathname,
+      fileURLToPath(new URL("../src/commands/doctor.ts", import.meta.url)),
       "utf-8",
     );
     expect(src).toMatch(

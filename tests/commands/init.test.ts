@@ -15,6 +15,7 @@ vi.mock("fs", () => ({
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
+import { fileURLToPath } from "url";
 
 describe("init command validation", () => {
   beforeEach(() => {
@@ -135,7 +136,7 @@ describe("init.ts: CodeGraph gap-aware hints", () => {
     const { readFileSync: realReadFileSync } =
       await vi.importActual<typeof import("fs")>("fs");
     const src = realReadFileSync(
-      new URL("../../src/commands/init.ts", import.meta.url).pathname,
+      fileURLToPath(new URL("../../src/commands/init.ts", import.meta.url)),
       "utf-8",
     );
     // The hint content lives in shared/codegraph.ts — init.ts must not

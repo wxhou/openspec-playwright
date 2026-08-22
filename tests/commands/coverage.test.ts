@@ -161,7 +161,8 @@ describe("analyzeChange", () => {
   it("returns 0% coverage when no test files exist", async () => {
     const { analyzeChange } = await importCoverage();
     vi.mocked(existsSync).mockImplementation((p) => {
-      const path = String(p);
+      // Normalize separators — join() emits backslashes on Windows.
+      const path = String(p).replace(/\\/g, "/");
       if (path.includes("openspec/changes/my-change/specs")) return true;
       if (path.includes("tests/playwright/changes")) return false;
       if (path === "/project/tests/playwright") return true;

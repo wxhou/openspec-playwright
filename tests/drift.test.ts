@@ -78,6 +78,9 @@ describe("bundled template path resolution", () => {
   });
 
   it("resolves templates relative to the package root", () => {
-    expect(bundledTemplatePath("templates/e2e-command.md")).toMatch(/templates\/e2e-command\.md$/);
+    // Normalize separators so the assertion holds on win32 backslash paths.
+    expect(bundledTemplatePath("templates/e2e-command.md").replace(/\\/g, "/")).toMatch(
+      /templates\/e2e-command\.md$/,
+    );
   });
 });
