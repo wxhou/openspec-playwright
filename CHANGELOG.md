@@ -5,8 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
+## [0.3.74] - 2026-08-24
 ### Changed
 
 - **`editors.ts` 拆分为 `editors/` 目录（纯重构，行为不变）**. 1279 行单文件逼近 CI 1500 行门禁（余量仅 221），实现下沉为职责单一的子模块：`types.ts`（类型+defineAdapter 工厂）、`shared.ts`（YAML/mcpServers helpers）、`tool-selection.ts`（--tools 解析）、`project-rules.ts`（规则块管理）、`registry.ts`（注册表+安装 helper）、`adapters/<editor>.ts` ×7（每编辑器的 format/path/detect 函数与 adapter 实例合体）。**`editors.ts` 保留为薄门面**（~119 行纯 re-export）：实验证实 Node ESM / TS nodenext 不支持目录 index 自动解析，删除单文件会让现有 `"./editors.js"` 导入 TS2307，故门面保留以维持调用方 import 零改动；re-export 顺序即 adapter 自注册顺序（claude→opencode→cline→cursor→pi→omp→dsh），由 editors-tools ALL 断言守护。`registerAdapter` 从模块私有改为 registry 导出（内部 API）。
