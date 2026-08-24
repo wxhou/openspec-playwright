@@ -5,6 +5,9 @@ export default defineConfig({
     include: ['tests/**/*.test.ts'],
     globals: true,
     environment: 'node',
+    // Several suites spawn external processes (npx openspec, npm pack);
+    // the 5s default flakes under parallel load and on slower CI runners.
+    testTimeout: 30000,
   },
   coverage: {
     provider: 'v8',
