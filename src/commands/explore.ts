@@ -69,7 +69,7 @@ export function parseExplorationFile(content: string): ParsedExplorationFile {
   return { baseUrl, routes, rawContent: content };
 }
 
-function updateExplorationFile(
+export function updateExplorationFile(
   original: ParsedExplorationFile,
   results: RouteResult[],
 ): string {
@@ -108,7 +108,7 @@ function updateExplorationFile(
   return updatedLines.join("\n");
 }
 
-function appendFailureSection(
+export function appendFailureSection(
   content: string,
   results: RouteResult[],
 ): string {
