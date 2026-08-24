@@ -14,7 +14,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `src/commands/editors/` — 新增 12 个文件，最大 project-rules.ts 313 行
   - 第 N 个编辑器的新增模式定型：新增 adapters/<editor>.ts + registry 注册顺序一处
 
-### Changed
 
 - **CI verify 矩阵扩展至三平台**. `ubuntu(20,22) + macos@22 + windows@22` 共 4 jobs，全局 CLI 的平台路径（`needsShell`、`where`/`which`）首次被 CI 验证；文件行数检查步骤显式 `shell: bash`（windows runner 默认 pwsh 解析不了 heredoc bash）。首跑暴露 27 个 Windows 失败全部为测试侧路径可移植性问题（src 零改动）：`new URL().pathname` 在 win32 产生 `D:\D:\` 前缀 → `fileURLToPath()`；正则断言假设 `/` 分隔符 vs `join()` 反斜杠；bsdtar CRLF 输出 → `split(/\r?\n/)`；mock fixture 硬编码前向斜杠路径 vs `join()` 产出；migrate 测试字符串拼接改 `join()` 构造。
   - `.github/workflows/ci.yml`、8 个测试文件
