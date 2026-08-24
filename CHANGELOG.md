@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`editors.ts` 拆分为 `editors/` 目录（纯重构，行为不变）**. 1279 行单文件逼近 CI 1500 行门禁（余量仅 221），实现下沉为职责单一的子模块：`types.ts`（类型+defineAdapter 工厂）、`shared.ts`（YAML/mcpServers helpers）、`tool-selection.ts`（--tools 解析）、`project-rules.ts`（规则块管理）、`registry.ts`（注册表+安装 helper）、`adapters/<editor>.ts` ×7（每编辑器的 format/path/detect 函数与 adapter 实例合体）。**`editors.ts` 保留为薄门面**（~119 行纯 re-export）：实验证实 Node ESM / TS nodenext 不支持目录 index 自动解析，删除单文件会让现有 `"./editors.js"` 导入 TS2307，故门面保留以维持调用方 import 零改动；re-export 顺序即 adapter 自注册顺序（claude→opencode→cline→cursor→pi→omp→dsh），由 editors-tools ALL 断言守护。`registerAdapter` 从模块私有改为 registry 导出（内部 API）。
+  - `src/commands/editors.ts` — 1279 行 → 119 行门面
+  - `src/commands/editors/` — 新增 12 个文件，最大 project-rules.ts 313 行
+  - 第 N 个编辑器的新增模式定型：新增 adapters/<editor>.ts + registry 注册顺序一处
+
+### Changed
+
 - **CI verify 矩阵扩展至三平台**. `ubuntu(20,22) + macos@22 + windows@22` 共 4 jobs，全局 CLI 的平台路径（`needsShell`、`where`/`which`）首次被 CI 验证；文件行数检查步骤显式 `shell: bash`（windows runner 默认 pwsh 解析不了 heredoc bash）。首跑暴露 27 个 Windows 失败全部为测试侧路径可移植性问题（src 零改动）：`new URL().pathname` 在 win32 产生 `D:\D:\` 前缀 → `fileURLToPath()`；正则断言假设 `/` 分隔符 vs `join()` 反斜杠；bsdtar CRLF 输出 → `split(/\r?\n/)`；mock fixture 硬编码前向斜杠路径 vs `join()` 产出；migrate 测试字符串拼接改 `join()` 构造。
   - `.github/workflows/ci.yml`、8 个测试文件
 - **依赖刷新 + build 脚本可移植化**. in-range 全量升级（71 packages：playwright 1.62 / eslint 10.9 / vitest 4.1.11 / prettier / @inquirer 等）；commander **12→15** 零改动全绿（用面仅核心 API：47 处 name/version/command/option/action/parse）；build 脚本 `rm -rf dist/ && tsc` → `node -e fs.rmSync(...) && tsc`（Windows cmd.exe 下 POSIX 命令必炸）。**刻意不升**：chalk 6（engines node>=22 超 engines 下限 20，与 Node 20 矩阵腿冲突）、typescript 7（新一代编译器生态未稳，待 @typescript-eslint 明确支持后单独跟进）、@types/node 26（types 高于 engines 下限会引入运行时不存在的 API）。

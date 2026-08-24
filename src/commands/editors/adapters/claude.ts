@@ -1,0 +1,93 @@
+/**
+ * Claude Code adapter: `.claude/commands/opsx/<id>.md` with full
+ * frontmatter; reads CLAUDE.md directly (thin wrapper installed by
+ * project-rules). Playwright MCP installs at project scope — written to
+ * the project-root `.mcp.json` via `claude mcp add --scope project`.
+ */
+import { existsSync, readFileSync } from "fs";
+import { execFileSync } from "node:child_process";
+import { join } from "path";
+import { TIMEOUT } from "../../../shared/constants.js";
+import { needsShell } from "../../../shared/platform.js";
+import { defineAdapter, type EditorAdapter, type CommandMeta } from "../types.js";
+import { escapeYamlValue, formatTagsArray } from "../shared.js";
+import { registerAdapter } from "../registry.js";
+
+// ─── Claude Code adapter ─────────────────────────────────────────────────
+
+export function formatClaudeCommand(meta: CommandMeta): string {
+  return `---
+name: ${escapeYamlValue(meta.name)}
+description: ${escapeYamlValue(meta.description)}
+category: ${escapeYamlValue(meta.category)}
+tags: ${formatTagsArray(meta.tags)}
+---
+
+${meta.body}
+`;
+}
+
+export function getClaudeCommandPath(id: string): string {
+  return join(".claude", "commands", "opsx", `${id}.md`);
+}
+
+export function hasClaudeCode(projectRoot: string): boolean {
+  return existsSync(join(projectRoot, ".claude"));
+}
+
+export const claudeAdapter: EditorAdapter = defineAdapter({
+  id: "claude",
+  label: "claude",
+  displayName: "Claude Code",
+  detect: hasClaudeCode,
+  commandFilePath: getClaudeCommandPath,
+  formatCommand: formatClaudeCommand,
+  // Claude Code reads CLAUDE.md directly — override the AGENTS.md default.
+  projectRulesPath: (root) => join(root, "CLAUDE.md"),
+  isMcpInstalled(root, serverName) {
+    // Project scope: Playwright MCP lives in the project-root .mcp.json.
+    // Read the file directly instead of `claude mcp list` — zero CLI
+    // dependency, testable, and never confuses a global user-scope entry
+    // with a project-scoped one.
+    try {
+      const mcpJson = readFileSync(join(root, ".mcp.json"), "utf-8");
+      const parsed = JSON.parse(mcpJson);
+      return (
+        typeof parsed === "object" &&
+        parsed !== null &&
+        typeof parsed.mcpServers === "object" &&
+        parsed.mcpServers !== null &&
+        Object.hasOwn(parsed.mcpServers, serverName)
+      );
+    } catch {
+      // Missing or unparseable file — server not installed
+      return false;
+    }
+  },
+  installMcp(_root, serverName, command) {
+    execFileSync(
+      "claude",
+      ["mcp", "add", "--scope", "project", serverName, ...command],
+      {
+        encoding: "utf-8",
+        timeout: TIMEOUT.MCP_LIST,
+        stdio: ["pipe", "pipe", "pipe"],
+        shell: needsShell,
+      },
+    );
+  },
+  removeMcp(_root, serverName) {
+    execFileSync(
+      "claude",
+      ["mcp", "remove", "--scope", "project", serverName],
+      {
+        encoding: "utf-8",
+        timeout: TIMEOUT.MCP_LIST,
+        stdio: ["pipe", "pipe", "pipe"],
+        shell: needsShell,
+      },
+    );
+  },
+});
+
+registerAdapter(claudeAdapter);
