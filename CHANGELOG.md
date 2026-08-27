@@ -9,7 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **employee-standards §0 约定下新增 OpenSpec 命令帮助行**. 「约定」后加一行：**OpenSpec 命令**用法不确定时先跑 `npx openspec --help` 查看可用命令。同步 `AGENTS.md`（git 忽略，磁盘生效）与 `docs/script.js` 内嵌标准（ZH + EN），docs-sync 新增 2 个 `npx openspec --help` 锚点用例。
+- **CLAUDE.md CodeGraph 优先块措辞再优化**. `CODE_GRAPH_FIRST_BLOCK` 去条件前置（「有 \`.codegraph/\` 时：」）改为祈使主句，否定式「别先 grep/read」改正向限定「grep/read 仅作补充」，8 个语义点（触发/任务类型/默认动作/直接用结果/grep 例外/禁子 agent/无索引跳过）全部保留。已初始化项目 CLAUDE.md 会 drift，下次 `update` 自动重写。
+  - `src/commands/editors/project-rules.ts`
+
+- **employee-standards §0 约定下新增 OpenSpec 命令帮助行**. 「约定」后加一行：**OpenSpec 命令**跑 `npx openspec --help` 查看可用命令（无条件祈使）。同步 `AGENTS.md`（git 忽略，磁盘生效）与 `docs/script.js` 内嵌标准（ZH + EN），docs-sync 新增 2 个锚点用例。
   - `employee-standards.md`、`docs/script.js`、`tests/docs-sync.test.ts`
 
 ## [0.3.74] - 2026-08-24
