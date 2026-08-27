@@ -13,6 +13,9 @@ export declare function isMcpInstalled(adapter: EditorAdapter, serverName: strin
 export declare function ensureMcp(adapter: EditorAdapter, serverName: string, command: string[]): void;
 /** Remove an MCP server from this editor. Does not throw if missing. */
 export declare function removeMcp(adapter: EditorAdapter, serverName: string): void;
-export declare function isPlaywrightMcpInstalled(adapter: EditorAdapter): boolean;
-export declare function ensurePlaywrightMcp(adapter: EditorAdapter): void;
+/** Official test-runner MCP server — bundled `playwright` CLI subcommand. */
+export declare const TEST_RUNNER_MCP_SERVER = "playwright-test";
 export declare function removePlaywrightMcp(adapter: EditorAdapter): void;
+export declare function isTestRunnerMcpInstalled(adapter: EditorAdapter): boolean;
+export declare function ensureTestRunnerMcp(adapter: EditorAdapter): void;
+export declare function removeTestRunnerMcp(adapter: EditorAdapter): void;

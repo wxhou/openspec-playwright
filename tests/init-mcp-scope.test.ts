@@ -49,14 +49,45 @@ describe("init Claude MCP project scope", () => {
     const args = claudeAdd![1] as string[];
     expect(args).toContain("--scope");
     expect(args).toContain("project");
-    expect(args).toContain("playwright");
+    // Single-server layout: the installed server is the official test-runner.
+    // `claude mcp add --scope project <server> <cmd...>` — server at index 4.
+    expect(args[4]).toBe("playwright-test");
+    // The legacy browser-control server is NOT installed alongside
+    // (playwright-test is a superset — installing both would duplicate
+    // 78 browser_* tools in every session).
+    expect(args).not.toContain("npx @playwright/mcp@latest");
   });
 
-  it("skips reinstall when the project .mcp.json already has playwright", async () => {
+  it("installs only playwright-test when a legacy playwright entry exists", async () => {
     writeFileSync(
       join(root, ".mcp.json"),
       JSON.stringify({
         mcpServers: { playwright: { command: "npx" } },
+      }),
+    );
+
+    await init({ tools: "claude" });
+
+    const addCalls = mockedExecFileSync.mock.calls.filter(
+      (call) => call[0] === "claude" && call[1]?.[1] === "add",
+    );
+    // Only the test-runner server is installed; the legacy playwright entry
+    // is neither re-added nor removed (cleanup is uninstall's job).
+    // `claude mcp add --scope project <server> <cmd...>` — server at index 4.
+    const servers = addCalls.map((c) => (c[1] as string[])[4]);
+    expect(servers).toEqual(["playwright-test"]);
+  });
+
+  it("skips install when .mcp.json already has playwright-test", async () => {
+    writeFileSync(
+      join(root, ".mcp.json"),
+      JSON.stringify({
+        mcpServers: {
+          "playwright-test": {
+            command: "npx",
+            args: ["playwright", "run-test-mcp-server"],
+          },
+        },
       }),
     );
 

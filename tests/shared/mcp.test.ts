@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync, writeFileSync } from "fs";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 
@@ -9,10 +9,11 @@ vi.mock("child_process", () => ({
 }));
 
 import { execFileSync } from "child_process";
-import { claudeAdapter, opencodeAdapter } from "../../src/commands/editors.js";
 import {
-  isPlaywrightMcpInstalled,
-  ensurePlaywrightMcp,
+  claudeAdapter,
+  clineAdapter,
+} from "../../src/commands/editors.js";
+import {
   removePlaywrightMcp,
 } from "../../src/shared/mcp.js";
 
@@ -41,95 +42,6 @@ function writeMcpJson(servers: Record<string, unknown>) {
     JSON.stringify({ mcpServers: servers }, null, 2),
   );
 }
-
-describe("isPlaywrightMcpInstalled (claude, project scope)", () => {
-  it("returns true when the project .mcp.json contains playwright", () => {
-    writeMcpJson({ playwright: { command: "npx" } });
-    expect(isPlaywrightMcpInstalled(claudeAdapter)).toBe(true);
-    // Project scope reads the file; never consults the claude CLI.
-    expect(mockedExecFileSync).not.toHaveBeenCalled();
-  });
-
-  it("returns false when .mcp.json is missing", () => {
-    expect(isPlaywrightMcpInstalled(claudeAdapter)).toBe(false);
-  });
-
-  it("returns false when .mcp.json has other servers only", () => {
-    writeMcpJson({ other: { command: "x" } });
-    expect(isPlaywrightMcpInstalled(claudeAdapter)).toBe(false);
-  });
-
-  it("returns false (not throw) on unparseable .mcp.json", () => {
-    writeFileSync(join(tmp, ".mcp.json"), "{ not json");
-    expect(isPlaywrightMcpInstalled(claudeAdapter)).toBe(false);
-  });
-
-  it("returns true/false for opencodeAdapter based on a real opencode.jsonc", () => {
-    writeFileSync(
-      join(tmp, "opencode.jsonc"),
-      JSON.stringify(
-        {
-          mcp: {
-            playwright: {
-              type: "local",
-              command: ["npx", "@playwright/mcp@latest"],
-            },
-          },
-        },
-        null,
-        2,
-      ),
-    );
-    expect(isPlaywrightMcpInstalled(opencodeAdapter)).toBe(true);
-
-    // Drop the mcp key; the facade should now report false.
-    writeFileSync(
-      join(tmp, "opencode.jsonc"),
-      JSON.stringify({ $schema: "https://opencode.ai/config.json" }, null, 2),
-    );
-    expect(isPlaywrightMcpInstalled(opencodeAdapter)).toBe(false);
-  });
-});
-
-describe("ensurePlaywrightMcp", () => {
-  it("does nothing when the project .mcp.json already has playwright", () => {
-    writeMcpJson({ playwright: { command: "npx" } });
-    const consoleSpy = vi.spyOn(console, "log");
-    ensurePlaywrightMcp(claudeAdapter);
-    expect(consoleSpy).toHaveBeenCalledWith(
-      "  ✓ claude: playwright MCP already installed",
-    );
-    consoleSpy.mockRestore();
-    expect(mockedExecFileSync).not.toHaveBeenCalled();
-  });
-
-  it("installs with --scope project when not installed", () => {
-    // No .mcp.json → not installed → runs `claude mcp add`.
-    const consoleSpy = vi.spyOn(console, "log");
-    ensurePlaywrightMcp(claudeAdapter);
-    expect(mockedExecFileSync).toHaveBeenCalledWith(
-      "claude",
-      ["mcp", "add", "--scope", "project", "playwright", "npx", "@playwright/mcp@latest"],
-      expect.objectContaining({ timeout: 10000 }),
-    );
-    expect(consoleSpy).toHaveBeenCalledWith("  ✓ claude: playwright MCP installed");
-    consoleSpy.mockRestore();
-  });
-
-  it("throws when installation fails", () => {
-    mockedExecFileSync.mockImplementation(() => {
-      throw new Error("Installation failed");
-    });
-    const consoleSpy = vi.spyOn(console, "warn");
-    expect(() => ensurePlaywrightMcp(claudeAdapter)).toThrow(
-      "Installation failed",
-    );
-    expect(consoleSpy).toHaveBeenCalledWith(
-      "  ⚠ claude: failed to install playwright MCP",
-    );
-    consoleSpy.mockRestore();
-  });
-});
 
 describe("removePlaywrightMcp", () => {
   it("removes with --scope project when installed", () => {
@@ -166,5 +78,82 @@ describe("removePlaywrightMcp", () => {
       "  ⚠ claude: failed to remove playwright MCP",
     );
     consoleSpy.mockRestore();
+  });
+});
+// ─── Test-runner MCP (playwright-test) ──────────────────────────────────────
+
+import {
+  TEST_RUNNER_MCP_SERVER,
+  isTestRunnerMcpInstalled,
+  ensureTestRunnerMcp,
+  removeTestRunnerMcp,
+} from "../../src/shared/mcp.js";
+
+// claudeAdapter.installMcp shells out to `claude mcp add` (mocked above), so
+// file-level ensure/remove assertions use clineAdapter, which writes
+// .cline/mcp.json directly.
+describe("test-runner MCP (playwright-test)", () => {
+  it("exposes the official server name and command", () => {
+    expect(TEST_RUNNER_MCP_SERVER).toBe("playwright-test");
+  });
+
+  it("detects an existing playwright-test entry without touching the CLI", () => {
+    writeMcpJson({
+      "playwright-test": {
+        command: "npx",
+        args: ["playwright", "run-test-mcp-server"],
+      },
+    });
+    expect(isTestRunnerMcpInstalled(claudeAdapter)).toBe(true);
+    expect(mockedExecFileSync).not.toHaveBeenCalled();
+  });
+
+  it("ensureTestRunnerMcp backfills idempotently into .cline/mcp.json", () => {
+    mkdirSync(join(tmp, ".cline"), { recursive: true });
+    writeFileSync(
+      join(tmp, ".cline", "mcp.json"),
+      JSON.stringify({ mcpServers: { playwright: { command: "npx" } } }, null, 2),
+    );
+    ensureTestRunnerMcp(clineAdapter);
+    ensureTestRunnerMcp(clineAdapter); // second call: already installed
+
+    const cfg = JSON.parse(
+      readFileSync(join(tmp, ".cline", "mcp.json"), "utf-8"),
+    );
+    expect(Object.keys(cfg.mcpServers).sort()).toEqual([
+      "playwright",
+      "playwright-test",
+    ]);
+    expect(cfg.mcpServers["playwright-test"]).toEqual({
+      command: "npx",
+      args: ["playwright", "run-test-mcp-server"],
+    });
+    // playwright entry untouched by the backfill
+    expect(cfg.mcpServers.playwright).toEqual({ command: "npx" });
+  });
+
+  it("removeTestRunnerMcp removes only the playwright-test entry", () => {
+    mkdirSync(join(tmp, ".cline"), { recursive: true });
+    writeFileSync(
+      join(tmp, ".cline", "mcp.json"),
+      JSON.stringify(
+        {
+          mcpServers: {
+            playwright: { command: "npx" },
+            "playwright-test": { command: "npx" },
+            codegraph: { command: "x" },
+          },
+        },
+        null,
+        2,
+      ),
+    );
+    removeTestRunnerMcp(clineAdapter);
+    const cfg = JSON.parse(
+      readFileSync(join(tmp, ".cline", "mcp.json"), "utf-8"),
+    );
+    expect(cfg.mcpServers["playwright-test"]).toBeUndefined();
+    expect(cfg.mcpServers.playwright).toBeDefined();
+    expect(cfg.mcpServers.codegraph).toBeDefined();
   });
 });

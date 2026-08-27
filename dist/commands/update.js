@@ -7,7 +7,7 @@ import { promisify } from "util";
 import chalk from "chalk";
 import * as tar from "tar";
 import { buildCommandMeta, detectAdapters, installCommand, installProjectRules, claudeWrapperStandardsContent, } from "./editors.js";
-import { isPlaywrightMcpInstalled, ensurePlaywrightMcp, needsShell, detectCodeGraphStatus, codegraphHintLines, } from "../shared/index.js";
+import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, hasFrontendSignal, needsShell, detectCodeGraphStatus, codegraphHintLines, } from "../shared/index.js";
 import { compareBlock, OPENSPEC_START } from "../shared/drift.js";
 const execFileAsync = promisify(execFile);
 export async function update(options) {
@@ -184,24 +184,28 @@ export async function update(options) {
             console.log(chalk.yellow(`  ⚠ Standards sync failed: ${msg}`));
         }
     }
-    // 2b. Install Playwright MCP if not present (per detected editor)
+    // 2b. Install the Playwright test-runner MCP if not present (per detected
+    // editor). Single project-scoped server matching the official
+    // `playwright init-agents` layout: `playwright-test` exposes both browser_*
+    // tools and the test_run/test_debug/test_list workflow tools. Frontend
+    // gate mirrors init — API-only projects don't need the browser MCP.
     if (options.mcp !== false) {
         const mcpEditors = detectAdapters(projectRoot);
-        if (mcpEditors.length > 0) {
+        if (mcpEditors.length > 0 && hasFrontendSignal(projectRoot) === true) {
             console.log(chalk.blue("\n─── Installing Playwright MCP ───"));
             for (const adapter of mcpEditors) {
-                if (isPlaywrightMcpInstalled(adapter)) {
-                    console.log(chalk.green(`  ✓ ${adapter.label}: Playwright MCP already installed`));
+                if (isTestRunnerMcpInstalled(adapter)) {
+                    console.log(chalk.green(`  ✓ ${adapter.label}: Test-runner MCP already installed`));
                     continue;
                 }
                 try {
-                    ensurePlaywrightMcp(adapter);
+                    ensureTestRunnerMcp(adapter);
                     if (adapter.supportsMcp !== false) {
                         console.log(chalk.gray(`  (Restart ${adapter.label} to activate)`));
                     }
                 }
                 catch {
-                    console.log(chalk.yellow(`  ⚠ ${adapter.label}: Failed to install Playwright MCP`));
+                    console.log(chalk.yellow(`  ⚠ ${adapter.label}: Failed to install Test-runner MCP`));
                     console.log(chalk.gray(`    Install manually (see ${adapter.label} docs).`));
                 }
             }
