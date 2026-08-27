@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **employee-standards §0 约定下新增 OpenSpec 命令帮助行**. 「约定」后加一行：**OpenSpec 命令**用法不确定时先跑 `npx openspec --help` 查看可用命令。同步 `AGENTS.md`（git 忽略，磁盘生效）与 `docs/script.js` 内嵌标准（ZH + EN），docs-sync 新增 2 个 `npx openspec --help` 锚点用例。
+  - `employee-standards.md`、`docs/script.js`、`tests/docs-sync.test.ts`
+
 ## [0.3.74] - 2026-08-24
 ### Changed
 

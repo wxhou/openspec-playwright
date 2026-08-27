@@ -17,6 +17,7 @@ const zh = scriptJs.match(/CLAUDE_MD_ZH = `([\s\S]*?)`;/)?.[1] ?? "";
 const en = scriptJs.match(/CLAUDE_MD_EN = `([\s\S]*?)`;/)?.[1] ?? "";
 
 const ZH_ANCHORS: [string, string][] = [
+  ["§0 openspec help", "npx openspec --help"],
   ["§1 lint gate", "每次编辑后自动执行"],
   ["§1 过时的直接删", "过时的直接删"],
   ["§1 1500 行上限", "代码文件行数上限 1500"],
@@ -28,6 +29,7 @@ const ZH_ANCHORS: [string, string][] = [
 ];
 
 const EN_ANCHORS: [string, string][] = [
+  ["§0 openspec help", "npx openspec --help"],
   ["§1 lint gate", "lint+typecheck runs after every edit"],
   ["§1 delete obsolete", "Delete obsolete code outright"],
   ["§1 1500 line cap", "Code file line limit 1500"],

@@ -33,7 +33,7 @@ export function parseExplorationFile(content) {
     }
     return { baseUrl, routes, rawContent: content };
 }
-function updateExplorationFile(original, results) {
+export function updateExplorationFile(original, results) {
     const lines = original.rawContent.split("\n");
     const updatedLines = [];
     for (const line of lines) {
@@ -65,7 +65,7 @@ function updateExplorationFile(original, results) {
     }
     return updatedLines.join("\n");
 }
-function appendFailureSection(content, results) {
+export function appendFailureSection(content, results) {
     // Remove any existing failure section so re-runs replace, not duplicate.
     // Matches "## Exploration Failures" up to the next "## " header (or EOF).
     const lines = content.split("\n");

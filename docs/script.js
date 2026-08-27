@@ -1,5 +1,6 @@
 const CLAUDE_MD_ZH = `# 项目规范
 - 动手前读 \`openspec/config.yaml\`（技术栈、结构、约定、约束等），无内容则忽略
+- 不确定 OpenSpec 命令用法时，先跑 \`npx openspec --help\` 查看
 - 用中文回复用户
 - 优先级：🔴 CRITICAL（违反→静默 bug/安全漏洞，停下确认后执行）｜🟡 IMPORTANT（偏离说明理由，谨慎执行）｜⚪ STANDARD（按标准执行）
 
@@ -83,6 +84,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 
 const CLAUDE_MD_EN = `# Project Guidelines
 - Read \`openspec/config.yaml\` first (tech stack, structure, conventions, constraints, etc.); ignore if absent
+- When unsure of OpenSpec command usage, run \`npx openspec --help\` first
 - Priority: 🔴 CRITICAL (violation → silent bug/security hole, stop and confirm before acting)｜🟡 IMPORTANT (deviations need justification, proceed with caution)｜⚪ STANDARD (follow as standard practice)
 
 ## Code Quality

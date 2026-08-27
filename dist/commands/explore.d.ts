@@ -25,6 +25,8 @@ interface ParsedExplorationFile {
     rawContent: string;
 }
 export declare function parseExplorationFile(content: string): ParsedExplorationFile;
+export declare function updateExplorationFile(original: ParsedExplorationFile, results: RouteResult[]): string;
+export declare function appendFailureSection(content: string, results: RouteResult[]): string;
 /**
  * Resolve the exploration base URL. Priority: env BASE_URL > recorded
  * BASE_URL in app-exploration.md > detectAppServer detection chain (script
