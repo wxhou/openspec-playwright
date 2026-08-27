@@ -6,7 +6,7 @@
 
 **约定**：动手前先读 `openspec/config.yaml`（技术栈、结构、约定、约束等），无内容则忽略。
 
-**OpenSpec 命令**：用法不确定时，先跑 `npx openspec --help` 查看可用命令。
+**OpenSpec 命令**：跑 `npx openspec --help` 查看可用命令。
 
 **语言**：用中文回复用户。
 
