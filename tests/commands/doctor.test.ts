@@ -47,27 +47,16 @@ vi.mock("../../src/shared/drift.js", async (importOriginal) => {
 import { execFileSync } from "child_process";
 import { readFileSync, existsSync, readdirSync, lstatSync } from "fs";
 import { claudeAdapter, detectAdapters } from "../../src/commands/editors.js";
-import { isPlaywrightMcpInstalled } from "../../src/shared/mcp.js";
 import { detectCodeGraphStatus } from "../../src/shared/index.js";
-import { doctor } from "../../src/commands/doctor.js";
+import { doctor, isOptionalCheck } from "../../src/commands/doctor.js";
 
-// ─── allOk computation (mirrors doctor.ts logic) ─────────────────────────────
-
-const OPTIONAL_NAMES = new Set([
-  "engines",
-  "specs",
-  "auth-setup",
-  "seed",
-  "dev-script",
-  "base-url",
-  "reachable",
-]);
+// ─── allOk computation (uses the real isOptionalCheck from doctor.ts) ───────
 
 function computeAllOk(
   checks: Array<{ ok: boolean; name: string }>,
 ): boolean {
   return (
-    checks.filter((c) => !c.ok && !OPTIONAL_NAMES.has(c.name)).length === 0
+    checks.filter((c) => !c.ok && !isOptionalCheck(c.name)).length === 0
   );
 }
 
@@ -137,44 +126,6 @@ function buildChecks(
   }));
 }
 
-// ─── Tests: MCP install logic ──────────────────────────────────────────────
-
-describe("isPlaywrightMcpInstalled", () => {
-  const readFileSyncMock = vi.mocked(readFileSync);
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("returns true when the project .mcp.json contains playwright", () => {
-    readFileSyncMock.mockReturnValue(
-      JSON.stringify({ mcpServers: { playwright: { command: "npx" } } }),
-    );
-    expect(isPlaywrightMcpInstalled(claudeAdapter)).toBe(true);
-    // Project-scope check reads the file; it never calls the claude CLI.
-    expect(execFileSync).not.toHaveBeenCalled();
-  });
-
-  it("returns false when .mcp.json has other servers only", () => {
-    readFileSyncMock.mockReturnValue(
-      JSON.stringify({ mcpServers: { other: { command: "x" } } }),
-    );
-    expect(isPlaywrightMcpInstalled(claudeAdapter)).toBe(false);
-  });
-
-  it("returns false when .mcp.json is missing (read fails)", () => {
-    readFileSyncMock.mockImplementation(() => {
-      throw new Error("ENOENT: no such file .mcp.json");
-    });
-    expect(isPlaywrightMcpInstalled(claudeAdapter)).toBe(false);
-  });
-
-  it("returns false on unparseable .mcp.json", () => {
-    readFileSyncMock.mockReturnValue("{ not json");
-    expect(isPlaywrightMcpInstalled(claudeAdapter)).toBe(false);
-  });
-});
-
 // ─── Tests: allOk computation ──────────────────────────────────────────────
 
 describe("doctor check logic", () => {
@@ -223,9 +174,16 @@ describe("doctor check logic", () => {
     expect(computeAllOk(checks)).toBe(false);
   });
 
-  it("mcp missing → ok is false", () => {
-    const checks = buildChecks({ "playwright-mcp": false });
-    expect(computeAllOk(checks)).toBe(false);
+  it("test-runner MCP missing is optional → ok is still true", () => {
+    const checks = buildChecks().concat([
+      {
+        category: "Playwright MCP",
+        name: "test-runner-mcp-claude",
+        ok: false,
+        message: "not configured for claude (run openspec-pw update)",
+      },
+    ]);
+    expect(computeAllOk(checks)).toBe(true);
   });
 
   it("tests directory missing → ok is false", () => {
@@ -342,12 +300,19 @@ describe("doctor CodeGraph category", () => {
       );
     });
     readdirMock.mockReturnValue([] as never);
-    // .mcp.json → playwright MCP installed; AGENTS.md/CLAUDE.md → in-sync
+    // .mcp.json → test-runner MCP installed; AGENTS.md/CLAUDE.md → in-sync
     // (compareBlock is mocked to stale:false, so content just needs markers).
     readFileMock.mockImplementation((p: Parameters<typeof readFileSync>[0]) => {
       const s = String(p);
       if (s.endsWith(".mcp.json")) {
-        return JSON.stringify({ mcpServers: { playwright: { command: "npx" } } });
+        return JSON.stringify({
+          mcpServers: {
+            "playwright-test": {
+              command: "npx",
+              args: ["playwright", "run-test-mcp-server"],
+            },
+          },
+        });
       }
       return "<!-- OPENSPEC:START -->\ncontent\n<!-- OPENSPEC:END -->";
     });
@@ -484,5 +449,73 @@ describe("doctor CodeGraph category", () => {
     const parsed = JSON.parse(logs.join("\n"));
     expect(parsed.ok).toBe(true);
     expect(exitSpy).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Tests: new optional checks (test-runner MCP + playwright-cli) ──────────
+
+describe("doctor new optional checks (allOk mirror)", () => {
+  it("missing test-runner MCP for an adapter is optional → ok stays true", () => {
+    const checks = buildChecks().concat([
+      {
+        category: "Playwright MCP",
+        name: "test-runner-mcp-claude",
+        ok: false,
+        message: "not configured for claude (run openspec-pw update)",
+      },
+    ]);
+    expect(computeAllOk(checks)).toBe(true);
+  });
+
+  it("missing playwright-cli is optional → ok stays true", () => {
+    const checks = buildChecks().concat([
+      {
+        category: "Playwright MCP",
+        name: "playwright-cli",
+        ok: false,
+        message: "not installed (optional token-efficient browser CLI for agents)",
+      },
+    ]);
+    expect(computeAllOk(checks)).toBe(true);
+  });
+
+  it("required checks failing alongside optional ones still fails", () => {
+    const checks = buildChecks({ npm: false }).concat([
+      {
+        category: "Playwright MCP",
+        name: "test-runner-mcp-claude",
+        ok: false,
+        message: "not configured",
+      },
+    ]);
+    expect(computeAllOk(checks)).toBe(false);
+  });
+});
+
+// ─── Tests: doctor integration for the new checks ───────────────────────────
+
+describe("doctor integration: test-runner + playwright-cli checks", () => {
+  it("reports test-runner-mcp and playwright-cli without affecting exit code", async () => {
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+      throw new Error("process.exit called");
+    });
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      await doctor({ json: true });
+    } catch {
+      // optional — the assertion below is the real check
+    }
+    const logged = logSpy.mock.calls.map((c) => String(c[0])).join("\n");
+    // Both new check names appear in the JSON output
+    expect(logged).toContain("test-runner-mcp-");
+    expect(logged).toContain("playwright-cli");
+    // Missing optional checks must not trip the exit
+    expect(logged).toContain('"ok": true');
+    exitSpyCleanup();
+    logSpy.mockRestore();
+
+    function exitSpyCleanup() {
+      exitSpy.mockRestore();
+    }
   });
 });

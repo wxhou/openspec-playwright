@@ -17,12 +17,13 @@ npm install -g openspec-playwright@latest
 1. **Node.js >= 20**
 2. **Claude Code**（带 `.claude/` 目录）和/或 **OpenCode**（带 `.opencode/` 目录）和/或 **Cline**（带 `.cline/` 或 `.clinerules/` 目录）和/或 **Cursor**（带 `.cursor/` 目录）和/或 **Pi**（项目 `.pi/` 或全局 `~/.pi/agent/`）和/或 **Oh My Pi**（项目 `.omp/` 或全局 `~/.omp/agent/`）和/或 **DeepSeek Harness**（项目 `.dsh/` 或全局 `~/.dsh/`）
 3. **OpenSpec** 已初始化：`npm install -g @fission-ai/openspec@latest && openspec init`
-4. **Playwright MCP**（用于测试执行 + Healer）— `openspec-pw init` 会在检测到前端信号时按编辑器自动安装（纯 API 项目跳过——API 测试用 `request` fixture），**全部项目级**（写入项目内文件；Claude Code 用 `--scope project` 写项目根 `.mcp.json`，不碰全局 `~/.claude.json`）：
-   - **Claude Code**：`claude mcp add --scope project playwright npx @playwright/mcp@latest`（写入项目根 `.mcp.json`，可随版本控制供团队共享）
-   - **OpenCode**：合并到 `opencode.jsonc` 的 `mcp.playwright = { type: "local", command: ["npx", "@playwright/mcp@latest"] }`
-   - **Cline**：合并到 `.cline/mcp.json` 的 `mcpServers.playwright = { "command": "npx", "args": ["@playwright/mcp@latest"] }`
-   - **Cursor**：合并到 `.cursor/mcp.json` 的 `mcpServers.playwright = { "command": "npx", "args": ["@playwright/mcp@latest"] }`
-   - **Oh My Pi**：合并到 `.omp/mcp.json` 的 `mcpServers.playwright = { "command": "npx", "args": ["@playwright/mcp@latest"] }`
+4. **Playwright MCP**（用于测试执行 + Healer）— `openspec-pw init` 会在检测到前端信号时按编辑器自动安装（纯 API 项目跳过——API 测试用 `request` fixture），**全部项目级**（写入项目内文件；Claude Code 用 `--scope project` 写项目根 `.mcp.json`，不碰全局 `~/.claude.json`）。安装**单个** server，与 Playwright 官方 `playwright init-agents` 布局一致：
+   - `playwright-test` — 官方 test-runner server（`npx playwright run-test-mcp-server`，`playwright` 包自带）。是 `@playwright/mcp` 的**超集**：一个条目同时暴露 `browser_*` 浏览器工具（探索 + Healer 页面检查）和结构化的 `test_run` / `test_debug` / `test_list` 工作流工具（Healer 闭环）。
+   - **Claude Code**：`claude mcp add --scope project playwright-test npx playwright run-test-mcp-server`（写入项目根 `.mcp.json`，可随版本控制供团队共享）
+   - **OpenCode**：合并到 `opencode.jsonc` 的 `mcp["playwright-test"] = { type: "local", command: ["npx", "playwright", "run-test-mcp-server"] }`
+   - **Cline**：合并到 `.cline/mcp.json` 的 `mcpServers["playwright-test"] = { "command": "npx", "args": ["playwright", "run-test-mcp-server"] }`
+   - **Cursor**：合并到 `.cursor/mcp.json` 的 `mcpServers["playwright-test"] = { "command": "npx", "args": ["playwright", "run-test-mcp-server"] }`
+   - **Oh My Pi**：合并到 `.omp/mcp.json` 的 `mcpServers["playwright-test"] = { "command": "npx", "args": ["playwright", "run-test-mcp-server"] }`
    - **Pi**：无 MCP 客户端，跳过安装 — 浏览器探索改用 `openspec-pw explore`
 
 > **旧版本迁移**：早期版本把 Claude Code 的 Playwright MCP 装到全局 user 域（`~/.claude.json`）。若你用旧版 `openspec-pw` 初始化过，全局残留仍会对所有项目生效，清理一次即可：`claude mcp remove playwright`（user 域）。注意：项目级 server 首次交互使用时 Claude Code 会弹出批准提示（`claude mcp reset-project-choices` 可重置选择）。
@@ -44,15 +45,15 @@ openspec-pw init          # 安装 Playwright E2E 集成（--tools 可选编辑�
 
 **Claude Code**（Anthropic）— E2E 工作流由 `探索 + 测试执行` 两步组成：Playwright MCP + `openspec-pw explore`。
 
-**OpenCode**（SST）— E2E 工作流由 `/opsx-e2e` 命令驱动（按 OpenSpec 惯例使用连字符），使用相同的浏览器探索 + Playwright MCP 技术栈。Playwright MCP 通过 `opencode.jsonc` 的 `mcp.playwright` 配置。
+**OpenCode**（SST）— E2E 工作流由 `/opsx-e2e` 命令驱动（按 OpenSpec 惯例使用连字符），使用相同的浏览器探索 + Playwright MCP 技术栈。Playwright MCP 通过 `opencode.jsonc` 的 `mcp["playwright-test"]` 配置。
 
-**Cline** — E2E 工作流由 `/opsx-e2e` skill 驱动（安装为 `.cline/skills/opsx-e2e/SKILL.md`），使用相同的浏览器探索 + Playwright MCP 技术栈。Playwright MCP 通过 `.cline/mcp.json` 的 `mcpServers.playwright` 配置。Cline 原生自动识别 `AGENTS.md` 作为项目规则 — 无需包装文件。
+**Cline** — E2E 工作流由 `/opsx-e2e` skill 驱动（安装为 `.cline/skills/opsx-e2e/SKILL.md`），使用相同的浏览器探索 + Playwright MCP 技术栈。Playwright MCP 通过 `.cline/mcp.json` 的 `mcpServers["playwright-test"]` 配置。Cline 原生自动识别 `AGENTS.md` 作为项目规则 — 无需包装文件。
 
-**Cursor** — E2E 工作流双份安装：斜杠命令 `.cursor/commands/opsx-e2e.md`（纯 markdown，`$1` = change 名）+ Agent Skill `.cursor/skills/opsx-e2e/SKILL.md`（`disable-model-invocation: true`）。调用 `/opsx-e2e`。Playwright MCP 合并进 `.cursor/mcp.json` 的 `mcpServers.playwright`。Cursor 原生识别 `AGENTS.md`。Skill 名为 `opsx-e2e`（不是 OpenSpec 的 `openspec-*` 前缀）。若要用 Cursor 但还没有 `.cursor/`：`mkdir -p .cursor`。
+**Cursor** — E2E 工作流双份安装：斜杠命令 `.cursor/commands/opsx-e2e.md`（纯 markdown，`$1` = change 名）+ Agent Skill `.cursor/skills/opsx-e2e/SKILL.md`（`disable-model-invocation: true`）。调用 `/opsx-e2e`。Playwright MCP 合并进 `.cursor/mcp.json` 的 `mcpServers["playwright-test"]`。Cursor 原生识别 `AGENTS.md`。Skill 名为 `opsx-e2e`（不是 OpenSpec 的 `openspec-*` 前缀）。若要用 Cursor 但还没有 `.cursor/`：`mkdir -p .cursor`。
 
 **Pi**（earendil-works）— E2E 工作流由 `/opsx-e2e` 提示词模板驱动（安装为 `.pi/prompts/opsx-e2e.md`，文件名即命令名）。Pi **没有 MCP 客户端**，浏览器探索改用 `openspec-pw explore`，测试执行用 shell 跑 `npx playwright test`。Pi 原生加载 `AGENTS.md` — 无需包装文件。检测信号：项目 `.pi/` 目录或全局 `~/.pi/agent/` 配置目录。
 
-**Oh My Pi（omp）** — E2E 工作流由 `/opsx-e2e` 命令驱动（安装为 `.omp/commands/opsx-e2e.md`）。Playwright MCP 配置在 `.omp/mcp.json` 的 `mcpServers.playwright`（omp 也会继承 `.claude/` / `.cursor/` / opencode 的 MCP 配置）。omp 原生识别 `AGENTS.md` — 无需包装文件。检测信号：项目 `.omp/` 目录或全局 `~/.omp/agent/` 配置目录。
+**Oh My Pi（omp）** — E2E 工作流由 `/opsx-e2e` 命令驱动（安装为 `.omp/commands/opsx-e2e.md`）。Playwright MCP 配置在 `.omp/mcp.json` 的 `mcpServers["playwright-test"]`（omp 也会继承 `.claude/` / `.cursor/` / opencode 的 MCP 配置）。omp 原生识别 `AGENTS.md` — 无需包装文件。检测信号：项目 `.omp/` 目录或全局 `~/.omp/agent/` 配置目录。
 
 **DeepSeek Harness（dsh）** — E2E 工作流由 `/opsx-e2e` skill 驱动（安装为 `.dsh/skills/opsx-e2e/SKILL.md`，即最高优先级的 `project-dsh` skill 根）。dsh 通过 `cordis.yml` 插件配置而非简单文件来配置 MCP，因此 **不自动安装** Playwright MCP — 需手动配置 `@deepseek-ai/dsh-mcp-client`，浏览器探索改用 `openspec-pw explore`。dsh 原生读取 `AGENTS.md` — 无需包装文件。检测信号：项目 `.dsh/` 目录或全局 `~/.dsh/`（DSH_HOME）目录。
 
@@ -191,7 +192,7 @@ openspec-pw uninstall     # 移除项目中的集成
 | 1. 安装 CLI | `npm install -g openspec-playwright@latest` | 检查 Node.js 版本 `node -v`（需 >= 20） |
 | 2. 安装 OpenSpec | `npm install -g @fission-ai/openspec@latest && openspec init` | `npm cache clean -f && npm install -g @fission-ai/openspec@latest` |
 | 3. 初始化 E2E | `openspec-pw init` | 运行 `openspec-pw doctor` 查看具体缺失项 |
-| 4. 安装 Playwright MCP | `claude mcp add --scope project playwright npx @playwright/mcp@latest`（Claude，写入项目根 `.mcp.json`），或将 `mcp.playwright` 加入 `opencode.jsonc`（OpenCode），或将 `mcpServers.playwright` 加入 `.cline/mcp.json`（Cline）/ `.cursor/mcp.json`（Cursor）/ `.omp/mcp.json`（Oh My Pi）；Pi 与 DeepSeek Harness 无简单 MCP 配置文件，跳过 | `cat .mcp.json`（Claude，检查 `mcpServers.playwright`）/ `cat opencode.jsonc`（OpenCode）/ `cat .cline/mcp.json`（Cline）/ `cat .cursor/mcp.json`（Cursor）/ `cat .omp/mcp.json`（Oh My Pi）确认安装成功 |
+| 4. 安装 Playwright MCP | `claude mcp add --scope project playwright-test npx playwright run-test-mcp-server`（Claude，写入项目根 `.mcp.json`），或将 `mcp["playwright-test"]` 加入 `opencode.jsonc`（OpenCode），或将 `mcpServers["playwright-test"]` 加入 `.cline/mcp.json`（Cline）/ `.cursor/mcp.json`（Cursor）/ `.omp/mcp.json`（Oh My Pi）；Pi 与 DeepSeek Harness 无简单 MCP 配置文件，跳过 | `cat .mcp.json`（Claude，检查 `mcpServers["playwright-test"]`）/ `cat opencode.jsonc`（OpenCode）/ `cat .cline/mcp.json`（Cline）/ `cat .cursor/mcp.json`（Cursor）/ `cat .omp/mcp.json`（Oh My Pi）确认安装成功 |
 | 5. 安装浏览器 | `npx playwright install --with-deps` | macOS 可能需先运行 `xcode-select --install` |
 | 6. 启动开发服务器 | `npm run dev`（在另一个终端） | 确认端口，配置 `BASE_URL` |
 | 7. 验证环境 | `npx playwright test tests/playwright/seed.spec.ts` | 检查 `playwright.config.ts` 中的 `webServer` 配置 |
@@ -210,7 +211,7 @@ openspec-pw uninstall     # 移除项目中的集成
 | **OpenSpec** | 目录已初始化 | `.spec.md` 规范文件数量 |
 | **Playwright 浏览器** | CLI 版本、Chromium 二进制已下载 | — |
 | **Playwright 测试框架** | `@playwright/test` 已安装 | — |
-| **Playwright MCP** | 每个检测到的编辑器均已配置（Pi 无 MCP 客户端，跳过并以信息性提示记录） | — |
+| **Playwright MCP** | 每个检测到的编辑器均已配置 test-runner server（Pi 无 MCP 客户端，跳过并以信息性提示记录） | `playwright-cli`（PATH 上的 @playwright/cli）——可选 ⚠，不阻断 |
 | **Sync** | 已初始化时标准同步（漂移 → `openspec-pw update`） | 未初始化（闸门，不阻断） |
 | **测试目录** | `tests/playwright/` 目录存在 | `auth.setup.ts` 是否存在 |
 | **种子测试** | — | `seed.spec.ts` 是否存在 |
@@ -276,20 +277,20 @@ CLI (openspec-pw)
 编辑器（由 openspec-pw init 自动检测）
   ├── Claude Code (/opsx:e2e)
   │   ├── .claude/commands/opsx/e2e.md    → 命令文件（从 templates/e2e-command.md 安装）
-  │   ├── @playwright/mcp                 → Healer Agent 工具（通过 `claude mcp add --scope project playwright …`，写入项目根 `.mcp.json`）
+  │   ├── playwright-test server         → Healer Agent 工具（通过 `claude mcp add --scope project playwright-test …`，写入项目根 `.mcp.json`）
   │   └── CLAUDE.md                       → CodeGraph 优先节 + 工作流提示 + 通过 `@AGENTS.md` 引入 AGENTS.md
   ├── OpenCode (/opsx-e2e)
   │   ├── .opencode/commands/opsx-e2e.md  → 命令文件（正文由 /opsx: 改写为 /opsx-）
-  │   ├── opencode.jsonc                  → Playwright MCP (mcp.playwright) + 指令路由
+  │   ├── opencode.jsonc                  → Playwright MCP (mcp["playwright-test"]) + 指令路由
   │   └── AGENTS.md                       → 员工级规范（单一数据源）
   ├── Cline (/opsx-e2e)
   │   ├── .cline/skills/opsx-e2e/SKILL.md → Skill 文件（正文由 /opsx: 改写为 /opsx-）
-  │   ├── .cline/mcp.json                 → Playwright MCP (mcpServers.playwright)
+  │   ├── .cline/mcp.json                 → Playwright MCP (mcpServers["playwright-test"])
   │   └── AGENTS.md                       → 员工级规范（Cline 原生自动识别）
   ├── Cursor (/opsx-e2e)
   │   ├── .cursor/commands/opsx-e2e.md    → 斜杠命令（纯 MD，$1 = change 名）
   │   ├── .cursor/skills/opsx-e2e/SKILL.md → Skill（disable-model-invocation: true）
-  │   ├── .cursor/mcp.json                → Playwright MCP (mcpServers.playwright)
+  │   ├── .cursor/mcp.json                → Playwright MCP (mcpServers["playwright-test"])
   │   └── AGENTS.md                       → 员工级规范（Cursor 原生自动识别）
   ├── Pi (/opsx-e2e)
   │   ├── .pi/prompts/opsx-e2e.md         → 提示词模板（文件名 = 命令名）
@@ -297,7 +298,7 @@ CLI (openspec-pw)
   │       （无 MCP 客户端 — 探索改用 `openspec-pw explore`）
   └── Oh My Pi (/opsx-e2e)
       ├── .omp/commands/opsx-e2e.md       → 命令文件（name + description frontmatter）
-      ├── .omp/mcp.json                   → Playwright MCP (mcpServers.playwright)
+      ├── .omp/mcp.json                   → Playwright MCP (mcpServers["playwright-test"])
       └── AGENTS.md                       → 员工级规范（omp 原生自动识别）
   └── DeepSeek Harness (/opsx-e2e)
       ├── .dsh/skills/opsx-e2e/SKILL.md  → Skill 文件（name + description frontmatter）
@@ -323,7 +324,7 @@ Cline 与 Cursor 原生自动识别 `AGENTS.md`，无需包装文件。
   ├── app-exploration.md → 本次 change 的路由 + 已验证选择器
   └── test-plan.md       → 本次 change 的测试用例
 
-Healer Agent (@playwright/mcp)
+Healer Agent (playwright-test MCP server)
   └── browser_snapshot, browser_navigate, browser_run_code 等
 ```
 

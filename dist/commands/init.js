@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { readFile } from "fs/promises";
 import { buildCommandMeta, detectAdapters, getAdapter, getAllAdapters, installCommand, installProjectRules, readEmployeeStandards, resolveToolsArg, slashCommandForAdapter, } from "./editors.js";
-import { isPlaywrightMcpInstalled, ensurePlaywrightMcp, needsShell, hasFrontendSignal, detectCodeGraphStatus, codegraphHintLines, } from "../shared/index.js";
+import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, TEST_RUNNER_MCP_SERVER, needsShell, hasFrontendSignal, detectCodeGraphStatus, codegraphHintLines, } from "../shared/index.js";
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
 const E2E_COMMAND_SRC = fileURLToPath(new URL("../../templates/e2e-command.md", import.meta.url));
 const EMPLOYEE_STANDARDS_SRC = fileURLToPath(new URL("../../employee-standards.md", import.meta.url));
@@ -95,18 +95,22 @@ export async function init(options, deps = {}) {
     // 3b. Detect a frontend signal — computed once, reused for the MCP
     // install gate (step 4) and the Summary guidance hint.
     const frontendSignal = hasFrontendSignal(projectRoot);
-    // 4. Install Playwright MCP for each selected editor — only when a
-    // frontend signal was detected (API-only projects test via the request
-    // fixture and don't need the browser MCP; --mcp=false still overrides).
+    // 4. Install the Playwright test-runner MCP for each selected editor —
+    // only when a frontend signal was detected (API-only projects test via
+    // the request fixture and don't need the browser MCP; --mcp=false still
+    // overrides). Single project-scoped server, matching the official
+    // `playwright init-agents` layout: `playwright-test`
+    // (npx playwright run-test-mcp-server) is a superset — it exposes both
+    // browser_* tools and the test_run/test_debug/test_list workflow tools.
     if (options.mcp !== false && editors.length > 0 && frontendSignal === true) {
         console.log(chalk.blue("\n─── Installing Playwright MCP ───"));
         for (const adapter of editors) {
-            if (isPlaywrightMcpInstalled(adapter)) {
-                console.log(chalk.green(`  ✓ ${adapter.label}: Playwright MCP already installed`));
+            if (isTestRunnerMcpInstalled(adapter)) {
+                console.log(chalk.green(`  ✓ ${adapter.label}: Test-runner MCP already installed`));
                 continue;
             }
             try {
-                ensurePlaywrightMcp(adapter);
+                ensureTestRunnerMcp(adapter);
                 if (adapter.supportsMcp !== false) {
                     console.log(chalk.gray(`  (Restart ${adapter.label} to activate)`));
                 }
@@ -114,30 +118,16 @@ export async function init(options, deps = {}) {
             catch (err) {
                 const e = err;
                 if (e.stderr?.includes("already exists")) {
-                    console.log(chalk.green(`  ✓ ${adapter.label}: Playwright MCP already installed`));
+                    console.log(chalk.green(`  ✓ ${adapter.label}: Test-runner MCP already installed`));
                 }
                 else {
-                    console.log(chalk.yellow(`  ⚠ ${adapter.label}: failed to install Playwright MCP. Run manually.`));
+                    console.log(chalk.yellow(`  ⚠ ${adapter.label}: failed to install Test-runner MCP. Run manually.`));
+                    console.log(chalk.gray(`    Add "${TEST_RUNNER_MCP_SERVER}" (npx playwright run-test-mcp-server) to the editor's mcpServers config`));
                     if (adapter.id === "claude") {
-                        console.log(chalk.gray("    claude mcp add --scope project playwright npx @playwright/mcp@latest"));
+                        console.log(chalk.gray("    claude mcp add --scope project playwright-test npx playwright run-test-mcp-server"));
                         if (e.stderr?.includes("--scope")) {
                             console.log(chalk.gray("    (Your claude CLI rejects --scope — update Claude Code, or install without --scope manually)"));
                         }
-                    }
-                    else if (adapter.id === "opencode") {
-                        console.log(chalk.gray("    Add `playwright` to mcp in opencode.json / opencode.jsonc"));
-                    }
-                    else if (adapter.id === "cline") {
-                        console.log(chalk.gray("    Add `playwright` to mcpServers in .cline/mcp.json"));
-                    }
-                    else if (adapter.id === "omp") {
-                        console.log(chalk.gray("    Add `playwright` to mcpServers in .omp/mcp.json"));
-                    }
-                    else if (adapter.id === "pi") {
-                        console.log(chalk.gray("    Pi has no MCP client — use `openspec-pw explore` for browser exploration"));
-                    }
-                    else {
-                        console.log(chalk.gray("    Add `playwright` to mcpServers in .cursor/mcp.json"));
                     }
                     console.log(chalk.gray(`    (Restart ${adapter.label} to activate the MCP server)`));
                 }

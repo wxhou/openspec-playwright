@@ -70,3 +70,59 @@ describe("removePlaywrightMcp", () => {
     consoleSpy.mockRestore();
   });
 });
+
+// ─── Test-runner MCP removal (playwright-test) ─────────────────────────────
+
+import { removeTestRunnerMcp } from "../../src/shared/mcp.js";
+
+describe("removeTestRunnerMcp", () => {
+  const readFileSyncMock = vi.mocked(readFileSync);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // clearAllMocks keeps implementations — reset the CLI mock fully so an
+    // earlier failing-removal mockImplementation doesn't leak into here.
+    vi.mocked(execFileSync).mockReset();
+  });
+
+  it("removes the playwright-test entry when installed", () => {
+    readFileSyncMock.mockReturnValue(
+      JSON.stringify({
+        mcpServers: {
+          playwright: { command: "npx" },
+          "playwright-test": {
+            command: "npx",
+            args: ["playwright", "run-test-mcp-server"],
+          },
+        },
+      }),
+    );
+
+    const consoleSpy = vi.spyOn(console, "log");
+    removeTestRunnerMcp(claudeAdapter);
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "  ✓ claude: playwright-test MCP removed",
+    );
+    consoleSpy.mockRestore();
+
+    expect(execFileSync).toHaveBeenCalledWith(
+      "claude",
+      ["mcp", "remove", "--scope", "project", "playwright-test"],
+      expect.objectContaining({ timeout: 10000 }),
+    );
+  });
+
+  it("does nothing when playwright-test is not installed", () => {
+    readFileSyncMock.mockReturnValue(
+      JSON.stringify({ mcpServers: { playwright: { command: "npx" } } }),
+    );
+
+    const consoleSpy = vi.spyOn(console, "log");
+    removeTestRunnerMcp(claudeAdapter);
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "  - claude: playwright-test MCP not installed (nothing to remove)",
+    );
+    consoleSpy.mockRestore();
+    expect(execFileSync).not.toHaveBeenCalled();
+  });
+});

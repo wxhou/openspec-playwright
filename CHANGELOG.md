@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **MCP 收敛为官方 test-runner server（playwright-test）**. `init`/`update` 的 MCP 相位在前端信号 gate 下安装**单个**项目级 server：官方 `playwright-test`（`npx playwright run-test-mcp-server`，playwright 包自带子命令，零新增依赖），与 Playwright 官方 `playwright init-agents` 布局一致。实测该 server 是 @playwright/mcp 的**超集**（87 工具：78 browser_* + 3 test_* + 6 generator/planner）——单 server 免去双装的 78 个重复 browser 工具（估 20-40K token/会话）。`uninstall` 移除 test-runner 条目并清理历史 `playwright` 条目；已装项目重跑 update 幂等补齐。`doctor` 的 per-adapter MCP 检查改为 `test-runner-mcp-<editor>`（可选，缺失黄 ⚠ 提示 update），新增 `playwright-cli` PATH 感知（与编辑器无关，0.x 仅探测）。`templates/e2e-command.md` Healer 段接入结构化工具语义（`test_list → test_debug`（id 来自 test_list）`→ 修 → test_run`（locations 定向单测），shell 回退）+ guardrails 出口（单错误循环；测试正确但持续失败 → `test.fixme()` + 注释说明 ACTUAL vs EXPECTED；自主修复路径内禁止放宽断言——Phase 3 人工决策合法）。openspec change: `add-test-runner-mcp`。
+  - `src/shared/mcp.ts`、`src/shared/index.ts`、`src/commands/init.ts`、`src/commands/update.ts`、`src/commands/uninstall.ts`、`src/commands/doctor.ts`
+  - `templates/e2e-command.md`
+  - `tests/shared/mcp.test.ts`（+4）、`tests/init-mcp-scope.test.ts`（单 server 收敛 2 用例）、`tests/update.test.ts`（+1 源码守卫）、`tests/commands/uninstall.test.ts`（+2）、`tests/commands/doctor.test.ts`（镜像同步 +4）
+  - `README.md`、`README.zh-CN.md`
+
 ### Changed
+
+- **清理死代码（review 修复）**. 单 server 收敛后 `isPlaywrightMcpInstalled` / `ensurePlaywrightMcp` / `PLAYWRIGHT_MCP_COMMAND` 已无生产调用者，按 AGENTS.md §1「过时的直接删」清除；`removePlaywrightMcp` 保留供 `uninstall` 清理历史 `playwright` 条目。同步移除 `src/shared/index.ts` re-export 与 `tests/shared/mcp.test.ts` 中相应测试块。
+  - `src/shared/mcp.ts`、`src/shared/index.ts`、`tests/shared/mcp.test.ts`
 
 - **CLAUDE.md CodeGraph 优先块措辞再优化**. `CODE_GRAPH_FIRST_BLOCK` 去条件前置（「有 \`.codegraph/\` 时：」）改为祈使主句，否定式「别先 grep/read」改正向限定「grep/read 仅作补充」，8 个语义点（触发/任务类型/默认动作/直接用结果/grep 例外/禁子 agent/无索引跳过）全部保留。已初始化项目 CLAUDE.md 会 drift，下次 `update` 自动重写。
   - `src/commands/editors/project-rules.ts`

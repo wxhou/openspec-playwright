@@ -24,8 +24,9 @@ import {
   claudeWrapperStandardsContent,
 } from "./editors.js";
 import {
-  isPlaywrightMcpInstalled,
-  ensurePlaywrightMcp,
+  ensureTestRunnerMcp,
+  isTestRunnerMcpInstalled,
+  hasFrontendSignal,
   needsShell,
   detectCodeGraphStatus,
   codegraphHintLines,
@@ -278,26 +279,32 @@ export async function update(options: UpdateOptions) {
     }
   }
 
-  // 2b. Install Playwright MCP if not present (per detected editor)
+  // 2b. Install the Playwright test-runner MCP if not present (per detected
+  // editor). Single project-scoped server matching the official
+  // `playwright init-agents` layout: `playwright-test` exposes both browser_*
+  // tools and the test_run/test_debug/test_list workflow tools. Frontend
+  // gate mirrors init — API-only projects don't need the browser MCP.
   if (options.mcp !== false) {
     const mcpEditors = detectAdapters(projectRoot);
-    if (mcpEditors.length > 0) {
+    if (mcpEditors.length > 0 && hasFrontendSignal(projectRoot) === true) {
       console.log(chalk.blue("\n─── Installing Playwright MCP ───"));
       for (const adapter of mcpEditors) {
-        if (isPlaywrightMcpInstalled(adapter)) {
+        if (isTestRunnerMcpInstalled(adapter)) {
           console.log(
-            chalk.green(`  ✓ ${adapter.label}: Playwright MCP already installed`),
+            chalk.green(`  ✓ ${adapter.label}: Test-runner MCP already installed`),
           );
           continue;
         }
         try {
-          ensurePlaywrightMcp(adapter);
+          ensureTestRunnerMcp(adapter);
           if (adapter.supportsMcp !== false) {
             console.log(chalk.gray(`  (Restart ${adapter.label} to activate)`));
           }
         } catch {
           console.log(
-            chalk.yellow(`  ⚠ ${adapter.label}: Failed to install Playwright MCP`),
+            chalk.yellow(
+              `  ⚠ ${adapter.label}: Failed to install Test-runner MCP`,
+            ),
           );
           console.log(
             chalk.gray(

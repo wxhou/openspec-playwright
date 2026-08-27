@@ -366,3 +366,20 @@ describe("update.ts: CodeGraph gap-aware hints", () => {
     expect(src).not.toMatch(/Refresh code index: codegraph sync/);
   });
 });
+
+describe("update.ts: single MCP server install (playwright-test)", () => {
+  it("MCP phase installs the official test-runner server with frontend gate", () => {
+    const src = readFileSync(
+      fileURLToPath(new URL("../src/commands/update.ts", import.meta.url)),
+      "utf-8",
+    );
+    // The official test-runner server is the only installed MCP server
+    expect(src).toMatch(/ensureTestRunnerMcp/);
+    expect(src).toMatch(/isTestRunnerMcpInstalled/);
+    // Single-server layout: the legacy browser-control server is NOT
+    // installed by update (it's a superset — 78 browser_* tools duplicated).
+    expect(src).not.toMatch(/ensurePlaywrightMcp/);
+    // Frontend gate mirrors init: API-only projects skip MCP install
+    expect(src).toMatch(/hasFrontendSignal\(projectRoot\) === true/);
+  });
+});

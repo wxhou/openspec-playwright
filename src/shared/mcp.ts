@@ -59,16 +59,25 @@ export function removeMcp(adapter: EditorAdapter, serverName: string): void {
 
 // ─── Playwright MCP conveniences ────────────────────────────────────────
 
-const PLAYWRIGHT_MCP_COMMAND = ["npx", "@playwright/mcp@latest"];
+/** Official test-runner MCP server — bundled `playwright` CLI subcommand. */
+export const TEST_RUNNER_MCP_SERVER = "playwright-test";
+const TEST_RUNNER_MCP_COMMAND = ["npx", "playwright", "run-test-mcp-server"];
 
-export function isPlaywrightMcpInstalled(adapter: EditorAdapter): boolean {
-  return isMcpInstalled(adapter, "playwright");
-}
-
-export function ensurePlaywrightMcp(adapter: EditorAdapter): void {
-  ensureMcp(adapter, "playwright", PLAYWRIGHT_MCP_COMMAND);
-}
-
+// Kept for backward compatibility with projects that still have a
+// legacy `@playwright/mcp` entry from older openspec-pw versions — uninstall
+// uses this to clean the stale entry out of the project's mcp config.
 export function removePlaywrightMcp(adapter: EditorAdapter): void {
   removeMcp(adapter, "playwright");
+}
+
+export function isTestRunnerMcpInstalled(adapter: EditorAdapter): boolean {
+  return isMcpInstalled(adapter, TEST_RUNNER_MCP_SERVER);
+}
+
+export function ensureTestRunnerMcp(adapter: EditorAdapter): void {
+  ensureMcp(adapter, TEST_RUNNER_MCP_SERVER, TEST_RUNNER_MCP_COMMAND);
+}
+
+export function removeTestRunnerMcp(adapter: EditorAdapter): void {
+  removeMcp(adapter, TEST_RUNNER_MCP_SERVER);
 }

@@ -22,15 +22,15 @@ openspec-pw init          # Install Playwright E2E integration (--tools to pick 
 
 **Claude Code** (Anthropic) — E2E workflow is driven by the `/opsx:e2e` command using a browser exploration tool (Playwright MCP or `openspec-pw explore`) + Playwright MCP (test execution).
 
-**OpenCode** (SST) — E2E workflow is driven by the `/opsx-e2e` command (hyphenated per OpenSpec convention) using the same browser exploration + Playwright MCP stack. Playwright MCP is configured under `mcp.playwright` in `opencode.jsonc`.
+**OpenCode** (SST) — E2E workflow is driven by the `/opsx-e2e` command (hyphenated per OpenSpec convention) using the same browser exploration + Playwright MCP stack. Playwright MCP is configured under `mcp["playwright-test"]` in `opencode.jsonc`.
 
-**Cline** — E2E workflow is driven by the `/opsx-e2e` skill (installed as `.cline/skills/opsx-e2e/SKILL.md`) using the same browser exploration + Playwright MCP stack. Playwright MCP is configured in `.cline/mcp.json` under `mcpServers.playwright`. Cline auto-detects `AGENTS.md` as project rules — no wrapper file needed.
+**Cline** — E2E workflow is driven by the `/opsx-e2e` skill (installed as `.cline/skills/opsx-e2e/SKILL.md`) using the same browser exploration + Playwright MCP stack. Playwright MCP is configured in `.cline/mcp.json` under `mcpServers["playwright-test"]`. Cline auto-detects `AGENTS.md` as project rules — no wrapper file needed.
 
-**Cursor** — E2E workflow is dual-installed: slash command at `.cursor/commands/opsx-e2e.md` (plain markdown, `$1` = change name) and Agent Skill at `.cursor/skills/opsx-e2e/SKILL.md` (`disable-model-invocation: true`). Invoke `/opsx-e2e`. Playwright MCP is merged into `.cursor/mcp.json` under `mcpServers.playwright`. Cursor auto-detects `AGENTS.md`. Skill name is `opsx-e2e` (not OpenSpec's `openspec-*` skill prefix). If you want Cursor support but have no `.cursor/` yet: `mkdir -p .cursor`.
+**Cursor** — E2E workflow is dual-installed: slash command at `.cursor/commands/opsx-e2e.md` (plain markdown, `$1` = change name) and Agent Skill at `.cursor/skills/opsx-e2e/SKILL.md` (`disable-model-invocation: true`). Invoke `/opsx-e2e`. Playwright MCP is merged into `.cursor/mcp.json` under `mcpServers["playwright-test"]`. Cursor auto-detects `AGENTS.md`. Skill name is `opsx-e2e` (not OpenSpec's `openspec-*` skill prefix). If you want Cursor support but have no `.cursor/` yet: `mkdir -p .cursor`.
 
 **Pi** (earendil-works) — E2E workflow is driven by the `/opsx-e2e` prompt template (installed as `.pi/prompts/opsx-e2e.md`; the filename becomes the command name). Pi has **no MCP client**, so browser exploration runs through `openspec-pw explore` and test execution through `npx playwright test` in the shell. Pi loads `AGENTS.md` natively — no wrapper file needed. Detected via a project `.pi/` dir or the global `~/.pi/agent/` config dir.
 
-**Oh My Pi (omp)** — E2E workflow is driven by the `/opsx-e2e` command (installed as `.omp/commands/opsx-e2e.md`). Playwright MCP is configured in `.omp/mcp.json` under `mcpServers.playwright` (omp also inherits `.claude/`/`.cursor/`/opencode MCP configs when present). omp auto-detects `AGENTS.md` — no wrapper file needed. Detected via a project `.omp/` dir or the global `~/.omp/agent/` config dir.
+**Oh My Pi (omp)** — E2E workflow is driven by the `/opsx-e2e` command (installed as `.omp/commands/opsx-e2e.md`). Playwright MCP is configured in `.omp/mcp.json` under `mcpServers["playwright-test"]` (omp also inherits `.claude/`/`.cursor/`/opencode MCP configs when present). omp auto-detects `AGENTS.md` — no wrapper file needed. Detected via a project `.omp/` dir or the global `~/.omp/agent/` config dir.
 
 **DeepSeek Harness (dsh)** — E2E workflow is driven by the `/opsx-e2e` skill (installed as `.dsh/skills/opsx-e2e/SKILL.md`, the highest-priority `project-dsh` skill root). dsh configures MCP via `cordis.yml` plugin config rather than a simple file, so Playwright MCP is **not** auto-installed — configure `@deepseek-ai/dsh-mcp-client` manually and use `openspec-pw explore` for browser exploration. dsh reads `AGENTS.md` natively — no wrapper file needed. Detected via a project `.dsh/` dir or the global `~/.dsh/` (DSH_HOME) dir.
 
@@ -169,11 +169,12 @@ openspec-pw uninstall     # Remove integration from the project
 1. **Node.js >= 20**
 2. **Claude Code** (with `.claude/` directory) and/or **OpenCode** (with `.opencode/` directory) and/or **Cline** (with `.cline/` or `.clinerules/` directory) and/or **Cursor** (with `.cursor/` directory) and/or **Pi** (project `.pi/` or global `~/.pi/agent/`) and/or **Oh My Pi** (project `.omp/` or global `~/.omp/agent/`) and/or **DeepSeek Harness** (project `.dsh/` or global `~/.dsh/`)
 3. **OpenSpec** initialized: `npm install -g @fission-ai/openspec@latest && openspec init`
-4. **Playwright MCP** (for test execution + Healer) — installed automatically by `openspec-pw init` when a frontend signal is detected (skipped for API-only projects — API tests use the `request` fixture), **project-scoped** (written to a project file; Claude Code uses `--scope project` → project-root `.mcp.json`, never your global `~/.claude.json`):
-   - **Claude Code**: `claude mcp add --scope project playwright npx @playwright/mcp@latest` (stored in project-root `.mcp.json`, usable by the whole team via version control)
-   - **OpenCode**: merged into `opencode.jsonc` under `mcp.playwright = { type: "local", command: ["npx", "@playwright/mcp@latest"] }`
-   - **Cline**: merged into `.cline/mcp.json` under `mcpServers.playwright = { "command": "npx", "args": ["@playwright/mcp@latest"] }`
-   - **Cursor**: merged into `.cursor/mcp.json` under `mcpServers.playwright = { "command": "npx", "args": ["@playwright/mcp@latest"] }`
+4. **Playwright MCP** (for test execution + Healer) — installed automatically by `openspec-pw init` when a frontend signal is detected (skipped for API-only projects — API tests use the `request` fixture), **project-scoped** (written to a project file; Claude Code uses `--scope project` → project-root `.mcp.json`, never your global `~/.claude.json`). A single server matching the official `playwright init-agents` layout:
+   - `playwright-test` — official test-runner server (`npx playwright run-test-mcp-server`, bundled with the `playwright` package). Superset of `@playwright/mcp`: one entry exposes both `browser_*` tools (exploration + Healer page inspection) and the structured `test_run` / `test_debug` / `test_list` workflow tools for the Healer loop.
+   - **Claude Code**: `claude mcp add --scope project playwright-test npx playwright run-test-mcp-server` (stored in project-root `.mcp.json`, usable by the whole team via version control)
+   - **OpenCode**: merged into `opencode.jsonc` under `mcp["playwright-test"] = { type: "local", command: ["npx", "playwright", "run-test-mcp-server"] }`
+   - **Cline**: merged into `.cline/mcp.json` under `mcpServers["playwright-test"] = { "command": "npx", "args": ["playwright", "run-test-mcp-server"] }`
+   - **Cursor**: merged into `.cursor/mcp.json` under `mcpServers["playwright-test"] = { "command": "npx", "args": ["playwright", "run-test-mcp-server"] }`
 
 > **Migrating from older versions**: before this change, Claude Code's Playwright MCP was installed at global user scope (`~/.claude.json`). If you initialized with an older `openspec-pw`, a stale global entry may still load everywhere. Clean it up once: `claude mcp remove playwright` (user scope). Note that project-scoped servers prompt for approval the first time they are used interactively (`claude mcp reset-project-choices` resets those choices).
 
@@ -198,7 +199,7 @@ Run through these steps in order when using the E2E workflow for the first time:
 | 1. Install CLI | `npm install -g openspec-playwright@latest` | Check Node.js version `node -v` (needs >= 20) |
 | 2. Install OpenSpec | `npm install -g @fission-ai/openspec@latest && openspec init` | `npm cache clean -f && npm install -g @fission-ai/openspec@latest` |
 | 3. Initialize E2E | `openspec-pw init` | Run `openspec-pw doctor` to see what's missing |
-| 4. Install Playwright MCP | `claude mcp add --scope project playwright npx @playwright/mcp@latest` (Claude, writes project-root `.mcp.json`), or add `mcp.playwright` to `opencode.jsonc` (OpenCode), or `mcpServers.playwright` in `.cline/mcp.json` / `.cursor/mcp.json` | `cat .mcp.json` (Claude, check `mcpServers.playwright`) / `cat opencode.jsonc` (OpenCode) / `cat .cline/mcp.json` (Cline) / `cat .cursor/mcp.json` (Cursor) |
+| 4. Install Playwright MCP | `claude mcp add --scope project playwright-test npx playwright run-test-mcp-server` (Claude, writes project-root `.mcp.json`), or add `mcp["playwright-test"]` to `opencode.jsonc` (OpenCode), or `mcpServers["playwright-test"]` in `.cline/mcp.json` / `.cursor/mcp.json` | `cat .mcp.json` (Claude, check `mcpServers["playwright-test"]`) / `cat opencode.jsonc` (OpenCode) / `cat .cline/mcp.json` (Cline) / `cat .cursor/mcp.json` (Cursor) |
 | 5. Install browsers | `npx playwright install --with-deps` | macOS may need `xcode-select --install` first |
 | 6. Start dev server | `npm run dev` (in a separate terminal) | Confirm port, set `BASE_URL` if non-standard |
 | 7. Validate env | `npx playwright test tests/playwright/seed.spec.ts` | Check `webServer` in `playwright.config.ts` |
@@ -217,7 +218,7 @@ Run through these steps in order when using the E2E workflow for the first time:
 | **OpenSpec** | directory initialized | `.spec.md` specs count |
 | **Playwright Browsers** | CLI version, Chromium binary downloaded | — |
 | **Playwright Test** | `@playwright/test` framework installed | — |
-| **Playwright MCP** | configured for each detected editor (skipped with an informational note for Pi and DeepSeek Harness, which have no simple MCP config file) | — |
+| **Playwright MCP** | test-runner server configured for each detected editor (skipped with an informational note for Pi and DeepSeek Harness, which have no simple MCP config file) | `playwright-cli` (@playwright/cli on PATH) — optional ⚠, never block |
 | **Sync** | standards in sync when initialized (drift → `openspec-pw update`) | not initialized (gated, non-blocking) |
 | **Tests** | `tests/playwright/` directory exists | `auth.setup.ts` presence |
 | **Seed Test** | — | `seed.spec.ts` presence |
@@ -309,20 +310,20 @@ CLI (openspec-pw)
 Editors (auto-detected by openspec-pw init)
   ├── Claude Code (/opsx:e2e)
   │   ├── .claude/commands/opsx/e2e.md   → Command file
-  │   ├── @playwright/mcp                → Healer Agent tools (via `claude mcp add --scope project playwright …`, writes project-root `.mcp.json`)
+  │   ├── playwright-test server         → Healer Agent tools (via `claude mcp add --scope project playwright-test …`, writes project-root `.mcp.json`)
   │   └── CLAUDE.md                      → CodeGraph 优先 block + workflow hint + imports AGENTS.md via `@AGENTS.md`
   ├── OpenCode (/opsx-e2e)
   │   ├── .opencode/commands/opsx-e2e.md → Command file (body rewritten from /opsx: → /opsx-)
-  │   ├── opencode.jsonc                 → Playwright MCP (mcp.playwright) + instructions routing
+  │   ├── opencode.jsonc                 → Playwright MCP (mcp["playwright-test"]) + instructions routing
   │   └── AGENTS.md                      → Employee-grade standards (SSOT)
   ├── Cline (/opsx-e2e)
   │   ├── .cline/skills/opsx-e2e/SKILL.md → Skill file (body rewritten from /opsx: → /opsx-)
-  │   ├── .cline/mcp.json                 → Playwright MCP (mcpServers.playwright)
+  │   ├── .cline/mcp.json                 → Playwright MCP (mcpServers["playwright-test"])
   │   └── AGENTS.md                       → Employee-grade standards (auto-detected by Cline)
   ├── Cursor (/opsx-e2e)
   │   ├── .cursor/commands/opsx-e2e.md    → Slash command (plain MD, $1 = change name)
   │   ├── .cursor/skills/opsx-e2e/SKILL.md → Skill (disable-model-invocation: true)
-  │   ├── .cursor/mcp.json                → Playwright MCP (mcpServers.playwright)
+  │   ├── .cursor/mcp.json                → Playwright MCP (mcpServers["playwright-test"])
   │   └── AGENTS.md                       → Employee-grade standards (auto-detected by Cursor)
   ├── Pi (/opsx-e2e)
   │   ├── .pi/prompts/opsx-e2e.md         → Prompt template (filename = command name)
@@ -330,7 +331,7 @@ Editors (auto-detected by openspec-pw init)
   │       (no MCP client — exploration via `openspec-pw explore`)
   └── Oh My Pi (/opsx-e2e)
       ├── .omp/commands/opsx-e2e.md       → Command file (name + description frontmatter)
-      ├── .omp/mcp.json                   → Playwright MCP (mcpServers.playwright)
+      ├── .omp/mcp.json                   → Playwright MCP (mcpServers["playwright-test"])
       └── AGENTS.md                       → Employee-grade standards (auto-detected by omp)
   └── DeepSeek Harness (/opsx-e2e)
       ├── .dsh/skills/opsx-e2e/SKILL.md  → Skill file (name + description frontmatter)
@@ -359,7 +360,7 @@ Exploration (openspec/changes/<name>/specs/playwright/)
   ├── app-exploration.md → This change's routes + verified selectors
   └── test-plan.md       → This change's test cases
 
-Healer Agent (@playwright/mcp)
+Healer Agent (playwright-test MCP server)
   └── browser_snapshot, browser_navigate, browser_run_code, etc.
 ```
 

@@ -12,7 +12,11 @@ import {
   detectAdapters,
   listCommandArtifactPaths,
 } from "./editors.js";
-import { removePlaywrightMcp, detectCodeGraphStatus } from "../shared/index.js";
+import {
+  removePlaywrightMcp,
+  removeTestRunnerMcp,
+  detectCodeGraphStatus,
+} from "../shared/index.js";
 
 export async function uninstall() {
   console.log(chalk.blue("\n🗑️  Uninstalling OpenSpec + Playwright E2E\n"));
@@ -22,10 +26,12 @@ export async function uninstall() {
   // Body unused — only need paths from commandFilePath / extraArtifacts
   const meta = buildCommandMeta("");
 
-  // 1. Remove Playwright MCP for each detected editor
+  // 1. Remove Playwright MCP servers for each detected editor — both the
+  // browser-control server and the official test-runner server.
   console.log(chalk.blue("\n─── Removing Playwright MCP ───"));
   for (const adapter of detected) {
     removePlaywrightMcp(adapter);
+    removeTestRunnerMcp(adapter);
   }
 
   // 2. Remove E2E command (+ extraArtifacts) for each detected editor

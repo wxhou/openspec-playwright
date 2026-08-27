@@ -5,11 +5,31 @@ import { join } from "path";
 import { execFileSync } from "child_process";
 import chalk from "chalk";
 import { detectAdapters, slashCommandForAdapter, claudeWrapperStandardsContent } from "../commands/editors.js";
-import { detectAppServer, isPlaywrightMcpInstalled, needsShell, detectCodeGraphStatus } from "../shared/index.js";
+import { detectAppServer, isTestRunnerMcpInstalled, needsShell, detectCodeGraphStatus } from "../shared/index.js";
 import { bundledStandardsPath, compareBlock, OPENSPEC_START } from "../shared/drift.js";
 
 export interface DoctorOptions {
   json?: boolean;
+}
+
+const OPTIONAL_NAMES = new Set([
+  "engines",
+  "specs",
+  "auth-setup",
+  "seed",
+  "dev-script",
+  "base-url",
+  "reachable",
+  "codegraph-cli",
+  "codegraph-index",
+  "codegraph-mcp",
+  "playwright-cli",
+]);
+
+// Per-editor optional checks can't be enumerated by exact name — match
+// the test-runner MCP checks (one per detected adapter) by prefix.
+export function isOptionalCheck(name: string): boolean {
+  return OPTIONAL_NAMES.has(name) || name.startsWith("test-runner-mcp-");
 }
 
 export async function doctor(options: DoctorOptions = {}) {
@@ -219,18 +239,25 @@ export async function doctor(options: DoctorOptions = {}) {
         });
         continue;
       }
-      const installed = isPlaywrightMcpInstalled(adapter);
+      // Single project-scoped MCP server (official test-runner layout):
+      // playwright-test supersedes the @playwright/mcp browser-control
+      // server. Optional check — missing means a stale install; run update.
+      const testRunnerInstalled = isTestRunnerMcpInstalled(adapter);
       checks.push({
         category: "Playwright MCP",
-        name: `playwright-mcp-${adapter.label}`,
-        ok: installed,
-        message: installed ? "installed" : `not configured for ${adapter.label}`,
+        name: `test-runner-mcp-${adapter.label}`,
+        ok: testRunnerInstalled,
+        message: testRunnerInstalled
+          ? "installed"
+          : `not configured for ${adapter.label} (run openspec-pw update)`,
       });
 
-      // Claude Code MCP moved to project scope (0.3.69): isMcpInstalled only
-      // reads the project .mcp.json, so a legacy user-scope entry from older
-      // versions is invisible here. Surface it — Claude Code would load both.
-      if (adapter.id === "claude" && installed) {
+      // Claude Code MCP moved to project scope (0.3.69): a legacy user-scope
+      // playwright entry in ~/.claude.json is invisible to the project-level
+      // check above. With the single-server layout the project server is
+      // `playwright-test`, so any user-scope `playwright` entry is legacy —
+      // surface it (Claude Code would load it into every session).
+      if (adapter.id === "claude") {
         try {
           const globalCfg = JSON.parse(
             readFileSync(join(homedir(), ".claude.json"), "utf-8"),
@@ -281,6 +308,28 @@ export async function doctor(options: DoctorOptions = {}) {
       });
     }
   }
+
+  // @playwright/cli — awareness only (0.x, no semver promise; never a
+  // dependency). Editor-independent, hence outside the adapter branch.
+  let cliAvailable = false;
+  try {
+    execFileSync(
+      process.platform === "win32" ? "where" : "which",
+      ["playwright-cli"],
+      { stdio: "ignore", shell: needsShell },
+    );
+    cliAvailable = true;
+  } catch {
+    /* not installed — optional */
+  }
+  checks.push({
+    category: "Playwright MCP",
+    name: "playwright-cli",
+    ok: cliAvailable,
+    message: cliAvailable
+      ? "available"
+      : "not installed (optional token-efficient browser CLI for agents)",
+  });
 
   // Sync — employee standards drift (AGENTS.md / CLAUDE.md OPENSPEC blocks)
   // Gated on "initialized": a project that never ran init is `ok:true` so CI
@@ -506,19 +555,7 @@ export async function doctor(options: DoctorOptions = {}) {
     message: mcpMsg,
   });
 
-  const OPTIONAL_NAMES = new Set([
-    "engines",
-    "specs",
-    "auth-setup",
-    "seed",
-    "dev-script",
-    "base-url",
-    "reachable",
-    "codegraph-cli",
-    "codegraph-index",
-    "codegraph-mcp",
-  ]);
-  const allOk = checks.filter((c) => !c.ok && !OPTIONAL_NAMES.has(c.name)).length === 0;
+  const allOk = checks.filter((c) => !c.ok && !isOptionalCheck(c.name)).length === 0;
 
   if (options.json) {
     console.log(
@@ -541,7 +578,7 @@ export async function doctor(options: DoctorOptions = {}) {
     }
     if (check.ok) {
       console.log(chalk.green(`  ✓ ${check.name}: ${check.message}`));
-    } else if (OPTIONAL_NAMES.has(check.name)) {
+    } else if (isOptionalCheck(check.name)) {
       console.log(chalk.yellow(`  ⚠ ${check.name}: ${check.message}`));
     } else {
       console.log(chalk.red(`  ✗ ${check.name}: ${check.message}`));

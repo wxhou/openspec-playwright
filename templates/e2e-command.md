@@ -24,7 +24,7 @@
 > **Full regression is opt-in only.** Run `npx playwright test` for one spec file or full suite. Do NOT use `--only-changed` unless the user explicitly requests it.
 > **Roles**: Planner (Steps 4–5) → test-plan.md; Generator (Step 6) → `.spec.ts` + Page Objects; Healer (Step 9) → repairs failures via MCP.
 
-Browser exploration is tool-agnostic: Playwright MCP or `openspec-pw explore --parallel N`.
+Browser exploration is tool-agnostic: the `playwright-test` MCP server's browser tools or `openspec-pw explore --parallel N`.
 
 ## Testing Principles
 
@@ -252,7 +252,7 @@ When tests fail → **Healer** (3 phases):
 
 2-5. **Selector repair**: Pick highest-stability candidate: `getByRole` > `getByText/getByLabel` > `locator('#id')` > `locator('.class')` > `locator('nth-child')`.
 
-2-6. **Fix + verify**: Apply fix → `npx playwright test --grep "<test-name>"` → if passes, log to app-knowledge.md (Selector Fixes / Assertion Fixes). Max 3 heal attempts per test.
+2-6. **Fix + verify**: Apply fix → verify via the test-runner MCP tools when available (`test_list` → `test_debug` (pass the test id from `test_list`) → repair → `test_run` with `locations` scoped to the single test file for structured results; fall back to `npx playwright test --grep "<test-name>"` if the playwright-test MCP server is not configured) → if passes, log to app-knowledge.md (Selector Fixes / Assertion Fixes). Max 3 heal attempts per test. **One error per round**: fix a single error, re-run, then address the next.
 
 2-7. **Log**: Append healed selector/assertion to `app-knowledge.md`. Auto-de-duplicate by Route + Old Selector (selectors) or Test + Old Assertion (assertions).
 
@@ -265,6 +265,10 @@ Options: (a) Fix app, (b) Update spec, (c) Update assertion, (d) Skip
 ```
 
 Wait for user input. Track escalation attempts — if 3 consecutive Phase 3 with no progress, STOP and flag.
+
+**Healer guardrails** (non-negotiable during autonomous repair; aligned with the official Playwright healer):
+- **One error per round**: fix a single error, re-run (`test_run` or `npx playwright test --grep`), then move to the next. Never batch multiple repairs.
+- **Honest failure exit**: if the test logic is verified correct and the failure persists, the product behavior is wrong — mark the test `test.fixme()` with a comment before the failing step explaining ACTUAL vs EXPECTED behavior. During autonomous repair, **never** loosen assertions, edit expected values, or delete checks to make a failing test pass. (Updating assertions or specs remains a legitimate *human* Phase 3 decision — option (c) below.)
 
 **Post-heal**: After all Phase 2 tests healed, run `npx playwright test --only-changed` as pre-commit guard.
 
