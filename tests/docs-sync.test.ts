@@ -26,6 +26,9 @@ const ZH_ANCHORS: [string, string][] = [
   ["§6 章节标题", "浏览器验证证据链"],
   ["§6 截图≠行为", "仅截图不算通过"],
   ["§6 临时脚本转正", "转正为 Playwright 测试或删除"],
+  ["§7 测试策略", "测试策略"],
+  ["§7 覆盖义务", "必须被某层测试覆盖"],
+  ["§7 验收定义", "不以全 mock 的单测链冒充验收"],
 ];
 
 const EN_ANCHORS: [string, string][] = [
@@ -36,6 +39,9 @@ const EN_ANCHORS: [string, string][] = [
   ["§6 section title", "Browser Verification Evidence Chain"],
   ["§6 screenshot ≠ behavior", "Screenshot ≠ behavior proof"],
   ["§6 temp scripts", "Temporary scripts with assertions"],
+  ["§7 testing strategy", "Testing Strategy"],
+  ["§7 coverage duty", "must be covered by some test layer"],
+  ["§7 acceptance definition", "all-mock unit chain as acceptance"],
 ];
 
 describe("docs/script.js embedded standards stay in sync", () => {
@@ -57,7 +63,7 @@ describe("docs/script.js embedded standards stay in sync", () => {
     // Section HEADINGS drift in wording between the full standards and the
     // condensed copy, so match by number coverage instead of exact titles.
     const sectionCount = (standards.match(/^## \d+\./gm) ?? []).length;
-    expect(sectionCount).toBeGreaterThanOrEqual(7); // §0..§6
+    expect(sectionCount).toBeGreaterThanOrEqual(8); // §0..§7
     // The condensed ZH copy carries all major sections as headings too.
     const zhHeadings = (zh.match(/^## /gm) ?? []).length;
     expect(zhHeadings).toBeGreaterThanOrEqual(sectionCount - 1);
