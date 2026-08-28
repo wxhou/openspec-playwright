@@ -36,5 +36,5 @@ export { formatDshCommand, getDshCommandPath, hasDsh, dshAdapter, } from "./edit
 // Tool selection (--tools flag parsing)
 export { resolveToolsArg } from "./editors/tool-selection.js";
 // Project rules file management (AGENTS.md SSOT + CLAUDE.md wrapper)
-export { readOpenSpecBlock, blockMatchesExpected, installOpenSpecBlock, claudeWrapperStandardsContent, installClaudeWrapper, installProjectRules, cleanProjectRules, readEmployeeStandards, } from "./editors/project-rules.js";
+export { readOpenSpecBlock, blockMatchesExpected, installOpenSpecBlock, claudeWrapperStandardsContent, installClaudeWrapper, installProjectRules, migrateLegacyMarkers, cleanProjectRules, readEmployeeStandards, } from "./editors/project-rules.js";
 //# sourceMappingURL=editors.js.map

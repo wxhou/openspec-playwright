@@ -4,7 +4,7 @@ import { join } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { readFile } from "fs/promises";
-import { buildCommandMeta, detectAdapters, detectProjectAdapters, getAdapter, getAllAdapters, installCommand, installProjectRules, readEmployeeStandards, resolveToolsArg, slashCommandForAdapter, } from "./editors.js";
+import { buildCommandMeta, detectAdapters, detectProjectAdapters, getAdapter, getAllAdapters, installCommand, installProjectRules, migrateLegacyMarkers, readEmployeeStandards, resolveToolsArg, slashCommandForAdapter, } from "./editors.js";
 import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, TEST_RUNNER_MCP_SERVER, needsShell, hasFrontendSignal, detectCodeGraphStatus, codegraphHintLines, } from "../shared/index.js";
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
 const E2E_COMMAND_SRC = fileURLToPath(new URL("../../templates/e2e-command.md", import.meta.url));
@@ -169,6 +169,9 @@ export async function init(options, deps = {}) {
         console.log(chalk.blue("\n─── Installing Employee Standards ───"));
         const standards = readEmployeeStandards(EMPLOYEE_STANDARDS_SRC);
         if (standards) {
+            // Migrate surviving legacy OPENSPEC blocks first (same ordering rule as
+            // syncEmployeeStandards — migration precedes any marker judgment).
+            migrateLegacyMarkers(projectRoot, editors.length > 0, editors.some((a) => a.id === "claude"));
             installProjectRules(projectRoot, standards, editors);
         }
     }

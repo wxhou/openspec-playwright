@@ -809,7 +809,7 @@ describe("installCommand (Cline)", () => {
 
 describe("cleanProjectRules", () => {
   const MARKER_BLOCK = (content: string) =>
-    `<!-- OPENSPEC:START -->\n\n${content}\n\n<!-- OPENSPEC:END -->`;
+    `<!-- OPENSPEC-PW:START -->\n\n${content}\n\n<!-- OPENSPEC-PW:END -->`;
 
   it("removes markers from AGENTS.md for any adapter (SSOT)", () => {
     writeFileSync(
@@ -818,7 +818,7 @@ describe("cleanProjectRules", () => {
     );
     cleanProjectRules(opencodeAdapter, tmpRoot);
     const after = readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8");
-    expect(after).not.toContain("OPENSPEC:START");
+    expect(after).not.toContain("OPENSPEC-PW:START");
     expect(after).not.toContain("standards body");
     // Project header outside markers must survive.
     expect(after).toContain("# Project");
@@ -836,8 +836,8 @@ describe("cleanProjectRules", () => {
     cleanProjectRules(claudeAdapter, tmpRoot);
     const agents = readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8");
     const claude = readFileSync(join(tmpRoot, "CLAUDE.md"), "utf-8");
-    expect(agents).not.toContain("OPENSPEC:START");
-    expect(claude).not.toContain("OPENSPEC:START");
+    expect(agents).not.toContain("OPENSPEC-PW:START");
+    expect(claude).not.toContain("OPENSPEC-PW:START");
     expect(claude).not.toContain("@AGENTS.md");
     expect(claude).toContain("# My Rules");
   });
@@ -854,11 +854,26 @@ describe("cleanProjectRules", () => {
     cleanProjectRules(opencodeAdapter, tmpRoot);
     // AGENTS.md cleaned, CLAUDE.md untouched.
     expect(readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8")).not.toContain(
-      "OPENSPEC:START",
+      "OPENSPEC-PW:START",
     );
     expect(readFileSync(join(tmpRoot, "CLAUDE.md"), "utf-8")).toContain(
-      "OPENSPEC:START",
+      "OPENSPEC-PW:START",
     );
+  });
+
+  it("uninstall also removes a surviving legacy OPENSPEC: block (pre-migration project)", () => {
+    // MARKER_BLOCK writes the new OPENSPEC-PW namespace; this fixture keeps
+    // the legacy one on purpose — uninstall must clean both namespaces.
+    writeFileSync(
+      join(tmpRoot, "AGENTS.md"),
+      `# Project\n\n<!-- OPENSPEC:START -->\nold standards body\n<!-- OPENSPEC:END -->\n\nuser tail\n`,
+    );
+    cleanProjectRules(claudeAdapter, tmpRoot);
+    const agents = readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8");
+    expect(agents).not.toContain("OPENSPEC:START");
+    expect(agents).not.toContain("old standards body");
+    expect(agents).toContain("# Project");
+    expect(agents).toContain("user tail");
   });
 
   it("collapses surrounding blank lines instead of leaving 3+ gaps", () => {
@@ -894,11 +909,11 @@ describe("cleanProjectRules", () => {
   });
 
   it("handles CRLF line endings in marker block", () => {
-    const crlf = `# Project\r\n\r\n<!-- OPENSPEC:START -->\r\n\r\nstandards body\r\n\r\n<!-- OPENSPEC:END -->\r\n`;
+    const crlf = `# Project\r\n\r\n<!-- OPENSPEC-PW:START -->\r\n\r\nstandards body\r\n\r\n<!-- OPENSPEC-PW:END -->\r\n`;
     writeFileSync(join(tmpRoot, "AGENTS.md"), crlf);
     cleanProjectRules(claudeAdapter, tmpRoot);
     const after = readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8");
-    expect(after).not.toContain("OPENSPEC:START");
+    expect(after).not.toContain("OPENSPEC-PW:START");
     expect(after).toContain("# Project");
   });
 
@@ -923,7 +938,7 @@ describe("cleanProjectRules", () => {
     cleanProjectRules(clineAdapter, tmpRoot);
     // AGENTS.md markers must be removed.
     const after = readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8");
-    expect(after).not.toContain("OPENSPEC:START");
+    expect(after).not.toContain("OPENSPEC-PW:START");
     expect(after).toContain("# Project");
     // CLAUDE.md must NOT be created — Cline auto-detects AGENTS.md natively.
     expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(false);
@@ -941,7 +956,7 @@ describe("installProjectRules", () => {
     installProjectRules(tmpRoot, STANDARDS, detected);
     expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(true);
     const content = readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8");
-    expect(content).toContain("OPENSPEC:START");
+    expect(content).toContain("OPENSPEC-PW:START");
     expect(content).toContain(STANDARDS);
   });
 
@@ -1269,7 +1284,7 @@ describe.skipIf(
   it("skips the wrapper and preserves the AGENTS.md standards block", () => {
     writeFileSync(
       join(tmpRoot, "AGENTS.md"),
-      "# proj\n\n<!-- OPENSPEC:START -->\n\nFULL STANDARDS\n\n<!-- OPENSPEC:END -->\n",
+      "# proj\n\n<!-- OPENSPEC-PW:START -->\n\nFULL STANDARDS\n\n<!-- OPENSPEC-PW:END -->\n",
     );
     symlinkSync("AGENTS.md", join(tmpRoot, "CLAUDE.md"));
 

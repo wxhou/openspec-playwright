@@ -6,6 +6,9 @@
 import { existsSync, lstatSync, rmSync, readFileSync, writeFileSync, } from "fs";
 import { join, basename } from "path";
 import chalk from "chalk";
+// The marker constants hold no regex metacharacters, so they are safe to
+// interpolate into the RegExp below.
+import { OPENSPEC_START, OPENSPEC_END, LEGACY_OPENSPEC_START, LEGACY_OPENSPEC_END, hasLegacyTerritoryStart, } from "../../shared/drift.js";
 import { claudeAdapter } from "./adapters/claude.js";
 import { opencodeAdapter, readOpenCodeInstructions } from "./adapters/opencode.js";
 // ─── Project rules file (CLAUDE.md / AGENTS.md) ──────────────────────────
@@ -19,11 +22,11 @@ export function readOpenSpecBlock(projectRoot, adapter) {
     if (!existsSync(dest))
         return null;
     const content = readFileSync(dest, "utf-8");
-    const startIdx = content.indexOf("<!-- OPENSPEC:START -->");
-    const endIdx = content.indexOf("<!-- OPENSPEC:END -->");
+    const startIdx = content.indexOf(OPENSPEC_START);
+    const endIdx = content.indexOf(OPENSPEC_END);
     if (startIdx === -1 || endIdx === -1)
         return null;
-    return content.slice(startIdx + "<!-- OPENSPEC:START -->".length, endIdx).trim();
+    return content.slice(startIdx + OPENSPEC_START.length, endIdx).trim();
 }
 /**
  * Whether a rules file's OPENSPEC block matches the expected content.
@@ -39,14 +42,14 @@ export function blockMatchesExpected(projectRoot, adapter, expected) {
 /**
  * Install employee-grade standards into the editor's rules file
  * (CLAUDE.md for Claude, AGENTS.md for OpenCode, Cline, and Cursor). Wraps content in
- * `<!-- OPENSPEC:START -->` / `<!-- OPENSPEC:END -->` markers so future
+ * `<!-- OPENSPEC-PW:START -->` / `<!-- OPENSPEC-PW:END -->` markers so future
  * updates can replace the block without touching the rest of the file.
  */
 export function installOpenSpecBlock(projectRoot, standardsContent, adapter = claudeAdapter) {
     const dest = adapter.projectRulesPath(projectRoot);
     const fileLabel = basename(dest);
-    const markerStart = "<!-- OPENSPEC:START -->";
-    const markerEnd = "<!-- OPENSPEC:END -->";
+    const markerStart = OPENSPEC_START;
+    const markerEnd = OPENSPEC_END;
     if (!existsSync(dest)) {
         const projName = projectRoot.split("/").pop() ?? "Project";
         const content = `# ${projName}\n\n${markerStart}\n\n${standardsContent.trim()}\n\n${markerEnd}\n`;
@@ -140,12 +143,12 @@ export function claudeWrapperStandardsContent() {
 /**
  * Install a thin CLAUDE.md that imports AGENTS.md.
  *
- * Uses the same OPENSPEC:START/END markers as the full standards block so
+ * Uses the same OPENSPEC-PW:START/END markers as the full standards block so
  * `cleanProjectRules` can remove it uniformly. The CodeGraph-first block is
  * written directly into CLAUDE.md (before the @AGENTS.md import) so Claude
  * Code picks it up without depending on the import.
  *
- * Also handles migration: if CLAUDE.md has an existing OPENSPEC:START block
+ * Also handles migration: if CLAUDE.md has an existing legacy OPENSPEC:START block
  * (old format that wrote standards directly to CLAUDE.md), calling
  * `installOpenSpecBlock` replaces the content with the CodeGraph block +
  * `@AGENTS.md` import.
@@ -169,7 +172,7 @@ export function installClaudeWrapper(projectRoot) {
     // is left untouched — but tell the user CodeGraph-first won't be written.
     if (existsSync(dest)) {
         const existing = readFileSync(dest, "utf-8");
-        const hasMarkers = existing.includes("<!-- OPENSPEC:START -->");
+        const hasMarkers = existing.includes(OPENSPEC_START);
         if (!hasMarkers && /^@AGENTS\.md\r?$/m.test(existing)) {
             console.log(chalk.yellow("  ⚠ CLAUDE.md 是裸 @AGENTS.md 导入（无 OPENSPEC 标记），CodeGraph 优先约束未写入。如需启用：删除该行后重跑 openspec-pw update。"));
             return;
@@ -179,7 +182,7 @@ export function installClaudeWrapper(projectRoot) {
         }
     }
     // Delegate to installOpenSpecBlock which handles create/update/append
-    // with OPENSPEC:START/END markers.
+    // with OPENSPEC-PW:START/END markers.
     installOpenSpecBlock(projectRoot, claudeWrapperStandardsContent(), claudeAdapter);
 }
 /**
@@ -223,13 +226,18 @@ function removeMarkersFromFile(dest, fileLabel) {
         return;
     }
     const existing = readFileSync(dest, "utf-8");
-    if (!existing.includes("<!-- OPENSPEC:START -->")) {
+    // Both namespaces: our OPENSPEC-PW block and any surviving legacy
+    // OPENSPEC: block (pre-migration installs). Uninstall must clean both.
+    if (!existing.includes(OPENSPEC_START) && !hasLegacyTerritoryStart(existing)) {
         console.log(chalk.gray(`  - No OpenSpec markers found in ${fileLabel}`));
         return;
     }
     // Remove markers and their content, consuming surrounding whitespace.
     // Then collapse runs of 3+ blank lines to at most 2 for a clean result.
-    let updated = existing.replace(/\s*<!-- OPENSPEC:START -->[\s\S]*?<!-- OPENSPEC:END -->\s*/g, "\n\n").replace(/\n{3,}/g, "\n\n").trim();
+    let updated = existing
+        .replace(new RegExp(`\\s*${OPENSPEC_START}[\\s\\S]*?${OPENSPEC_END}\\s*`, "g"), "\n\n")
+        .replace(new RegExp(`\\s*${LEGACY_OPENSPEC_START}[\\s\\S]*?${LEGACY_OPENSPEC_END}\\s*`, "g"), "\n\n")
+        .replace(/\n{3,}/g, "\n\n").trim();
     // Delete empty file rather than leaving a ghost.
     if (updated === "") {
         rmSync(dest);
@@ -242,5 +250,84 @@ function removeMarkersFromFile(dest, fileLabel) {
 /** Read the employee-grade standards source file (empty string if missing). */
 export function readEmployeeStandards(srcPath) {
     return existsSync(srcPath) ? readFileSync(srcPath, "utf-8") : "";
+}
+// ─── Legacy marker migration ──────────────────────────────────────────────
+// The official `@fission-ai/openspec` CLI deletes any root AGENTS.md/CLAUDE.md
+// block wrapped in plain OPENSPEC:START/END markers ("legacy cleanup"), which
+// used to wipe our standards block. Our markers moved to the OPENSPEC-PW
+// namespace; these helpers migrate surviving legacy blocks in place.
+/** Our content signatures inside legacy blocks — an official legacy init
+ * block never contains them, so it is never claimed by mistake. The wrapper
+ * accepts either marker: the current wrapper carries "@AGENTS.md", but the
+ * April-2026 format (v0.1.38–v0.3.2) wrote the FULL standards directly into
+ * CLAUDE.md — that block is ours too, and must migrate (else update would
+ * append a new wrapper next to it instead of replacing it). */
+const LEGACY_MAIN_SIGNATURE = "Employee-Grade Standards";
+const LEGACY_WRAPPER_SIGNATURES = ["@AGENTS.md", "Employee-Grade Standards"];
+/**
+ * Swap legacy markers for OPENSPEC-PW markers in one write (no half-migrated
+ * state). Block content is preserved verbatim. Returns null when the file
+ * has no locatable legacy territory: no legacy START (a lone legacy END
+ * cannot be bounded safely), or the signature gate fails (not our block).
+ */
+function migrateLegacyMarkersInContent(content, signatures) {
+    if (!hasLegacyTerritoryStart(content))
+        return null;
+    const startIdx = content.indexOf(LEGACY_OPENSPEC_START);
+    const endIdx = content.indexOf(LEGACY_OPENSPEC_END);
+    const matches = (inner) => signatures.some((s) => inner.includes(s));
+    if (endIdx !== -1 && endIdx > startIdx) {
+        const inner = content.slice(startIdx + LEGACY_OPENSPEC_START.length, endIdx);
+        if (!matches(inner))
+            return null;
+    }
+    else {
+        // Lone START (truncated): our content must appear after it.
+        if (!matches(content.slice(startIdx)))
+            return null;
+    }
+    // String replace swaps only the first occurrence — markers are unique.
+    return content
+        .replace(LEGACY_OPENSPEC_START, OPENSPEC_START)
+        .replace(LEGACY_OPENSPEC_END, OPENSPEC_END);
+}
+/**
+ * Migrate legacy OPENSPEC markers in AGENTS.md (and CLAUDE.md wrapper) to the
+ * OPENSPEC-PW namespace. Gates:
+ *   - hasPwArtifacts: without openspec-pw command artifacts the legacy block
+ *     is an official relic, not our territory — untouched (uninstall removes it).
+ *   - claudeAuthorized: the CLAUDE.md wrapper is only touched for claude.
+ *   - signature: block content must match ours (see signatures above).
+ * Returns true when any file was migrated.
+ */
+export function migrateLegacyMarkers(projectRoot, hasPwArtifacts, claudeAuthorized) {
+    if (!hasPwArtifacts)
+        return false;
+    let migrated = false;
+    const agentsPath = join(projectRoot, "AGENTS.md");
+    if (existsSync(agentsPath)) {
+        const content = readFileSync(agentsPath, "utf-8");
+        const next = migrateLegacyMarkersInContent(content, [LEGACY_MAIN_SIGNATURE]);
+        if (next !== null) {
+            writeFileSync(agentsPath, next);
+            console.log(chalk.green("  ✓ AGENTS.md: migrated markers to OPENSPEC-PW (immune to openspec legacy cleanup)"));
+            migrated = true;
+        }
+    }
+    if (claudeAuthorized) {
+        const claudePath = join(projectRoot, "CLAUDE.md");
+        // Symlinked wrapper (→ AGENTS.md): AGENTS.md carries the migration; see
+        // syncEmployeeStandards for why rewriting through the symlink is unsafe.
+        if (existsSync(claudePath) && !lstatSync(claudePath).isSymbolicLink()) {
+            const content = readFileSync(claudePath, "utf-8");
+            const next = migrateLegacyMarkersInContent(content, LEGACY_WRAPPER_SIGNATURES);
+            if (next !== null) {
+                writeFileSync(claudePath, next);
+                console.log(chalk.green("  ✓ CLAUDE.md: migrated markers to OPENSPEC-PW (immune to openspec legacy cleanup)"));
+                migrated = true;
+            }
+        }
+    }
+    return migrated;
 }
 //# sourceMappingURL=project-rules.js.map

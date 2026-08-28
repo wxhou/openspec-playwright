@@ -14,7 +14,7 @@ export declare function blockMatchesExpected(projectRoot: string, adapter: Edito
 /**
  * Install employee-grade standards into the editor's rules file
  * (CLAUDE.md for Claude, AGENTS.md for OpenCode, Cline, and Cursor). Wraps content in
- * `<!-- OPENSPEC:START -->` / `<!-- OPENSPEC:END -->` markers so future
+ * `<!-- OPENSPEC-PW:START -->` / `<!-- OPENSPEC-PW:END -->` markers so future
  * updates can replace the block without touching the rest of the file.
  */
 export declare function installOpenSpecBlock(projectRoot: string, standardsContent: string, adapter?: EditorAdapter): void;
@@ -42,12 +42,12 @@ export declare function claudeWrapperStandardsContent(): string;
 /**
  * Install a thin CLAUDE.md that imports AGENTS.md.
  *
- * Uses the same OPENSPEC:START/END markers as the full standards block so
+ * Uses the same OPENSPEC-PW:START/END markers as the full standards block so
  * `cleanProjectRules` can remove it uniformly. The CodeGraph-first block is
  * written directly into CLAUDE.md (before the @AGENTS.md import) so Claude
  * Code picks it up without depending on the import.
  *
- * Also handles migration: if CLAUDE.md has an existing OPENSPEC:START block
+ * Also handles migration: if CLAUDE.md has an existing legacy OPENSPEC:START block
  * (old format that wrote standards directly to CLAUDE.md), calling
  * `installOpenSpecBlock` replaces the content with the CodeGraph block +
  * `@AGENTS.md` import.
@@ -67,3 +67,13 @@ export declare function installProjectRules(projectRoot: string, standardsConten
 export declare function cleanProjectRules(adapter: EditorAdapter, projectRoot: string): void;
 /** Read the employee-grade standards source file (empty string if missing). */
 export declare function readEmployeeStandards(srcPath: string): string;
+/**
+ * Migrate legacy OPENSPEC markers in AGENTS.md (and CLAUDE.md wrapper) to the
+ * OPENSPEC-PW namespace. Gates:
+ *   - hasPwArtifacts: without openspec-pw command artifacts the legacy block
+ *     is an official relic, not our territory — untouched (uninstall removes it).
+ *   - claudeAuthorized: the CLAUDE.md wrapper is only touched for claude.
+ *   - signature: block content must match ours (see signatures above).
+ * Returns true when any file was migrated.
+ */
+export declare function migrateLegacyMarkers(projectRoot: string, hasPwArtifacts: boolean, claudeAuthorized: boolean): boolean;

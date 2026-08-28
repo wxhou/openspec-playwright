@@ -310,8 +310,8 @@ describe("installProjectRules (Cursor only)", () => {
 // ─── installOpenSpecBlock: truncated-marker repair ────────────────────────
 
 describe("installOpenSpecBlock truncated-marker repair", () => {
-  const M_START = "<!-- OPENSPEC:START -->";
-  const M_END = "<!-- OPENSPEC:END -->";
+  const M_START = "<!-- OPENSPEC-PW:START -->";
+  const M_END = "<!-- OPENSPEC-PW:END -->";
 
   it("repairs a lone START marker (no END) instead of skipping", () => {
     const dest = join(tmpRoot, "AGENTS.md");

@@ -310,9 +310,15 @@ CLI (openspec-pw)
 员工级规范统一存放在 **AGENTS.md** 中。Claude Code 通过 CLAUDE.md 加载——前置 CodeGraph 优先节与
 OpenSpec 工作流提示，后接 `@AGENTS.md` 导入（Claude Code 官方记载的复用 AGENTS.md 机制，默认并不读取 AGENTS.md）。
 导入位置无约束（官方原文 "anywhere in your CLAUDE.md"），唯一要求是 `@` 行不能放在反引号或代码块内。
-导入行位于 OPENSPEC:START/END 注释之外（注释在注入上下文前被剥离），marker 作为工具领地边界、
+导入行位于 OPENSPEC-PW:START/END 注释之外（注释在注入上下文前被剥离），marker 作为工具领地边界、
 导入仍生效；OpenCode 在 `opencode.jsonc` 的 `instructions` 中注册 AGENTS.md；
 Cline 与 Cursor 原生自动识别 `AGENTS.md`，无需包装文件。
+
+> **与官方 `@fission-ai/openspec` CLI 共存**：官方 `openspec update` 内置「legacy 清理」，会删除根
+> AGENTS.md/CLAUDE.md 中以普通 `OPENSPEC:START/END` 包裹的块（2026-08-28 曾因此误删本工具的规范块）。
+> openspec-pw 的块使用专属 `OPENSPEC-PW:` 命名空间，官方匹配器不可见（已对照官方 v1.11.0 实测）。
+> 本 change 之前安装的项目会在下次 `openspec-pw update`/`init` 时自动迁移标记；若块已被官方清掉，
+> `openspec-pw update` 会黄色警告，跑 `openspec-pw init` 即可恢复。
 
 测试资产 (tests/playwright/)
   ├── seed.spec.ts        → 环境验证

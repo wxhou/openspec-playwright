@@ -12,6 +12,7 @@ import {
   getAllAdapters,
   installCommand,
   installProjectRules,
+  migrateLegacyMarkers,
   readEmployeeStandards,
   resolveToolsArg,
   slashCommandForAdapter,
@@ -276,6 +277,13 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     console.log(chalk.blue("\n─── Installing Employee Standards ───"));
     const standards = readEmployeeStandards(EMPLOYEE_STANDARDS_SRC);
     if (standards) {
+      // Migrate surviving legacy OPENSPEC blocks first (same ordering rule as
+      // syncEmployeeStandards — migration precedes any marker judgment).
+      migrateLegacyMarkers(
+        projectRoot,
+        editors.length > 0,
+        editors.some((a) => a.id === "claude"),
+      );
       installProjectRules(projectRoot, standards, editors);
     }
   }

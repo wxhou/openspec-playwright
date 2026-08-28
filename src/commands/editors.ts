@@ -116,6 +116,7 @@ export {
   claudeWrapperStandardsContent,
   installClaudeWrapper,
   installProjectRules,
+  migrateLegacyMarkers,
   cleanProjectRules,
   readEmployeeStandards,
 } from "./editors/project-rules.js";
