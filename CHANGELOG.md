@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.79] - 2026-08-28
 
 - **移除 DeepSeek Harness（dsh）编辑器支持**. 官方 OpenSpec CLI 的工作流命令分发不覆盖 dsh（deepseek-harness 实测：官方 `openspec update` 只覆盖 Claude Code / Oh My Pi / OpenCode / Pi）——dsh 里只有 openspec-pw 装的 `opsx-e2e` 技能，OpenSpec 核心工作流（propose→apply→verify→archive）无入口，体验半截。编辑器支持收窄为 6 个：`claude`、`opencode`、`cline`、`cursor`、`pi`、`omp`。**退役清理**：`uninstall` 新增无条件退役段——探测精确路径 `.dsh/skills/opsx-e2e/`（openspec-pw 在 `.dsh` 下拥有过的全部领土）并删除，dsh-only 项目（零其他编辑器）连带清理 AGENTS.md 规范块；用户自装的 `.dsh/skills/` 下其他 skill 不受影响。**加回条件**：官方 OpenSpec 支持 dsh 后恢复 adapter（git 历史可完整找回；届时需连带还原 init-tool-selection spec 的「Retired editor id fails」场景）。dsh-only 项目跑 `update` 的 AGENTS.md 规范块维护不受影响（领土语义按标记判断）。`--tools dsh` 报 unknown id 错误。openspec change: `remove-dsh-support`。
   - 删除：`src/commands/editors/adapters/dsh.ts`；修改：`src/commands/editors/{types,registry}.ts`、`src/commands/editors.ts`、`src/commands/{doctor,update,init,uninstall,index}.ts`
