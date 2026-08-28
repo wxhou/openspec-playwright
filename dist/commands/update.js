@@ -6,9 +6,9 @@ import { tmpdir } from "os";
 import { promisify } from "util";
 import chalk from "chalk";
 import * as tar from "tar";
-import { buildCommandMeta, getAllAdapters, hasCommandArtifacts, installCommand, installOpenSpecBlock, installClaudeWrapper, claudeAdapter, claudeWrapperStandardsContent, opencodeAdapter, } from "./editors.js";
+import { buildCommandMeta, getAllAdapters, hasCommandArtifacts, installCommand, installOpenSpecBlock, installClaudeWrapper, migrateLegacyMarkers, claudeAdapter, claudeWrapperStandardsContent, opencodeAdapter, } from "./editors.js";
 import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, hasFrontendSignal, needsShell, detectCodeGraphStatus, codegraphHintLines, } from "../shared/index.js";
-import { compareBlock, OPENSPEC_START } from "../shared/drift.js";
+import { compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
 const execFileAsync = promisify(execFile);
 export async function update(options) {
     console.log(chalk.blue("\n🔄 Updating OpenSpec + Playwright E2E\n"));
@@ -169,7 +169,7 @@ export async function update(options) {
             // via the else branch below — the flag only scopes command/template
             // installation, not standards. CLAUDE.md wrapper is gated on the
             // claude editor's command-artifact authorization.
-            syncEmployeeStandards(tmpDir, projectRoot, hasCommandArtifacts(projectRoot, claudeAdapter));
+            syncEmployeeStandards(tmpDir, projectRoot, hasCommandArtifacts(projectRoot, claudeAdapter), authorized.length > 0);
             rmSync(tmpDir, { recursive: true, force: true });
             console.log(chalk.green("  ✓ Commands & templates updated to latest"));
         }
@@ -200,7 +200,7 @@ export async function update(options) {
         console.log(chalk.blue("\n─── Standards Sync ───"));
         try {
             const tmpDir = await fetchLatestBundle();
-            syncEmployeeStandards(tmpDir, projectRoot, hasCommandArtifacts(projectRoot, claudeAdapter));
+            syncEmployeeStandards(tmpDir, projectRoot, hasCommandArtifacts(projectRoot, claudeAdapter), getAllAdapters().some((a) => hasCommandArtifacts(projectRoot, a)));
             rmSync(tmpDir, { recursive: true, force: true });
         }
         catch (err) {
@@ -351,7 +351,7 @@ async function fetchLatestBundle() {
  * under `--no-skill` — standards sync is not a skill install and must not be
  * silently skipped by that flag.
  */
-export function syncEmployeeStandards(tmpDir, projectRoot, claudeAuthorized) {
+export function syncEmployeeStandards(tmpDir, projectRoot, claudeAuthorized, hasPwArtifacts) {
     // Update employee-grade standards in project rules files (AGENTS.md + CLAUDE.md).
     // Drift-aware: only rewrite a rules file when its OPENSPEC block differs
     // from the bundled template; matching content is left untouched (no mtime
@@ -364,6 +364,11 @@ export function syncEmployeeStandards(tmpDir, projectRoot, claudeAuthorized) {
     if (!existsSync(standardsSrc))
         return;
     const standards = readFileSync(standardsSrc, "utf-8");
+    // Migrate surviving legacy OPENSPEC blocks FIRST — every marker judgment
+    // below reads the migrated file. (Ordering is load-bearing: a legacy
+    // wrapper's inner @AGENTS.md line would otherwise false-match the
+    // bare-import check before migration fixes it.)
+    migrateLegacyMarkers(projectRoot, hasPwArtifacts, claudeAuthorized);
     const agentsPath = join(projectRoot, "AGENTS.md");
     let agentsStale = false;
     let agentsInTerritory = false;
@@ -373,7 +378,18 @@ export function syncEmployeeStandards(tmpDir, projectRoot, claudeAuthorized) {
     else {
         const fileContent = readFileSync(agentsPath, "utf-8");
         if (!fileContent.includes(OPENSPEC_START)) {
-            console.log(chalk.gray('  - AGENTS.md has no OPENSPEC block — run "openspec-pw init" to install employee standards'));
+            if (hasPwArtifacts && !hasLegacyTerritoryStart(fileContent)) {
+                // Territorial block vanished (e.g. wiped by the official openspec
+                // CLI's legacy cleanup) — loud warning, not a gray info line.
+                console.log(chalk.yellow("\n  ⚠ AGENTS.md has no OPENSPEC-PW block — the employee-grade standards block is missing."));
+                console.log(chalk.yellow("    This can happen when the official `openspec update` legacy cleanup removes"));
+                console.log(chalk.yellow("    blocks wrapped in plain OPENSPEC:START/END markers (shared namespace)."));
+                console.log(chalk.yellow('    Restore: run "openspec-pw init".'));
+                console.log(chalk.yellow('    If the removal was intentional, run "openspec-pw uninstall" to stop these warnings.'));
+            }
+            else {
+                console.log(chalk.gray('  - AGENTS.md has no OPENSPEC block — run "openspec-pw init" to install employee standards'));
+            }
         }
         else {
             agentsInTerritory = true;

@@ -11,8 +11,27 @@
 import { fileURLToPath } from "url";
 import { join } from "path";
 
-export const OPENSPEC_START = "<!-- OPENSPEC:START -->";
-export const OPENSPEC_END = "<!-- OPENSPEC:END -->";
+// openspec-pw-owned territory markers. The "-PW" namespace cannot match the
+// official `@fission-ai/openspec` legacy cleanup, which deletes any root
+// AGENTS.md/CLAUDE.md block wrapped in plain `OPENSPEC:START/END` markers
+// (it wiped our standards block — 2026-08-28 incident).
+export const OPENSPEC_START = "<!-- OPENSPEC-PW:START -->";
+export const OPENSPEC_END = "<!-- OPENSPEC-PW:END -->";
+
+// Pre-migration markers shared with the official CLI (it deletes them as
+// "legacy"). Direct references are allowed ONLY in the migration code,
+// uninstall cleanup, and tests — detection predicates go through the helpers
+// below so no other call site needs to know the legacy strings.
+export const LEGACY_OPENSPEC_START = "<!-- OPENSPEC:START -->";
+export const LEGACY_OPENSPEC_END = "<!-- OPENSPEC:END -->";
+
+export function hasLegacyTerritoryStart(content: string): boolean {
+  return content.includes(LEGACY_OPENSPEC_START);
+}
+
+export function hasLegacyTerritoryEnd(content: string): boolean {
+  return content.includes(LEGACY_OPENSPEC_END);
+}
 
 export interface DriftResult {
   /** true when the file's OPENSPEC block differs from the expected content */

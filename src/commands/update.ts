@@ -23,6 +23,7 @@ import {
   installCommand,
   installOpenSpecBlock,
   installClaudeWrapper,
+  migrateLegacyMarkers,
   claudeAdapter,
   claudeWrapperStandardsContent,
   opencodeAdapter,
@@ -35,7 +36,7 @@ import {
   detectCodeGraphStatus,
   codegraphHintLines,
 } from "../shared/index.js";
-import { compareBlock, OPENSPEC_START } from "../shared/drift.js";
+import { compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
 
 // `execFile` accepts stdio at runtime but the @types/node interface
 // doesn't expose it (the field lives on CommonSpawnOptions, which
@@ -276,6 +277,7 @@ export async function update(options: UpdateOptions) {
         tmpDir,
         projectRoot,
         hasCommandArtifacts(projectRoot, claudeAdapter),
+        authorized.length > 0,
       );
 
       rmSync(tmpDir, { recursive: true, force: true });
@@ -319,6 +321,7 @@ export async function update(options: UpdateOptions) {
         tmpDir,
         projectRoot,
         hasCommandArtifacts(projectRoot, claudeAdapter),
+        getAllAdapters().some((a) => hasCommandArtifacts(projectRoot, a)),
       );
       rmSync(tmpDir, { recursive: true, force: true });
     } catch (err) {
@@ -539,6 +542,7 @@ export function syncEmployeeStandards(
   tmpDir: string,
   projectRoot: string,
   claudeAuthorized: boolean,
+  hasPwArtifacts: boolean,
 ): void {
   // Update employee-grade standards in project rules files (AGENTS.md + CLAUDE.md).
   // Drift-aware: only rewrite a rules file when its OPENSPEC block differs
@@ -552,6 +556,12 @@ export function syncEmployeeStandards(
   if (!existsSync(standardsSrc)) return;
   const standards = readFileSync(standardsSrc, "utf-8");
 
+  // Migrate surviving legacy OPENSPEC blocks FIRST — every marker judgment
+  // below reads the migrated file. (Ordering is load-bearing: a legacy
+  // wrapper's inner @AGENTS.md line would otherwise false-match the
+  // bare-import check before migration fixes it.)
+  migrateLegacyMarkers(projectRoot, hasPwArtifacts, claudeAuthorized);
+
   const agentsPath = join(projectRoot, "AGENTS.md");
   let agentsStale = false;
   let agentsInTerritory = false;
@@ -564,11 +574,39 @@ export function syncEmployeeStandards(
   } else {
     const fileContent = readFileSync(agentsPath, "utf-8");
     if (!fileContent.includes(OPENSPEC_START)) {
-      console.log(
-        chalk.gray(
-          '  - AGENTS.md has no OPENSPEC block — run "openspec-pw init" to install employee standards',
-        ),
-      );
+      if (hasPwArtifacts && !hasLegacyTerritoryStart(fileContent)) {
+        // Territorial block vanished (e.g. wiped by the official openspec
+        // CLI's legacy cleanup) — loud warning, not a gray info line.
+        console.log(
+          chalk.yellow(
+            "\n  ⚠ AGENTS.md has no OPENSPEC-PW block — the employee-grade standards block is missing.",
+          ),
+        );
+        console.log(
+          chalk.yellow(
+            "    This can happen when the official `openspec update` legacy cleanup removes",
+          ),
+        );
+        console.log(
+          chalk.yellow(
+            "    blocks wrapped in plain OPENSPEC:START/END markers (shared namespace).",
+          ),
+        );
+        console.log(
+          chalk.yellow('    Restore: run "openspec-pw init".'),
+        );
+        console.log(
+          chalk.yellow(
+            '    If the removal was intentional, run "openspec-pw uninstall" to stop these warnings.',
+          ),
+        );
+      } else {
+        console.log(
+          chalk.gray(
+            '  - AGENTS.md has no OPENSPEC block — run "openspec-pw init" to install employee standards',
+          ),
+        );
+      }
     } else {
       agentsInTerritory = true;
       agentsStale = compareBlock(fileContent, standards).stale;

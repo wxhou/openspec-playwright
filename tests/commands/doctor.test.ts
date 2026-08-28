@@ -321,7 +321,7 @@ describe("doctor CodeGraph category", () => {
           },
         });
       }
-      return "<!-- OPENSPEC:START -->\ncontent\n<!-- OPENSPEC:END -->";
+      return "<!-- OPENSPEC-PW:START -->\ncontent\n<!-- OPENSPEC-PW:END -->";
     });
     lstatMock.mockReturnValue({ isSymbolicLink: () => false } as never);
     detectAdaptersMock.mockReturnValue([claudeAdapter]);
@@ -567,7 +567,7 @@ describe("doctor authorization tiers", () => {
         });
       }
       if (s.endsWith("AGENTS.md") || s.endsWith("CLAUDE.md")) {
-        return "<!-- OPENSPEC:START -->\ncontent\n<!-- OPENSPEC:END -->";
+        return "<!-- OPENSPEC-PW:START -->\ncontent\n<!-- OPENSPEC-PW:END -->";
       }
       return "";
     });
@@ -637,7 +637,7 @@ describe("doctor authorization tiers", () => {
     expect(mcp?.authorized).toBe(true);
   });
 
-  it("no-marker AGENTS.md reports ok:true and never suggests update", async () => {
+  it("wiped-marker AGENTS.md with pw artifacts is ok:false and points at init (not update)", async () => {
     existingPaths.add(join(fixtureRoot, "AGENTS.md").replace(/\\/g, "/"));
     existingPaths.add(join(fixtureRoot, ".claude", "commands", "opsx", "e2e.md").replace(/\\/g, "/"));
     readFileMock.mockImplementation((p: Parameters<typeof readFileSync>[0]) => {
@@ -648,9 +648,28 @@ describe("doctor authorization tiers", () => {
     });
     const checks = await doctorJsonChecks();
     const agents = checks.find((c) => c.name === "standards-agents");
-    expect(agents?.ok).toBe(true);
+    // Territorial check flipped (marker-namespace): an authorized project whose
+    // AGENTS.md lost the block is a failure — repairable by init (loop closes).
+    expect(agents?.ok).toBe(false);
     expect(agents?.message).toContain("restore via");
     expect(agents?.message).not.toContain("run openspec-pw update");
+  });
+
+  it("surviving legacy OPENSPEC block stays ok:true with a migration info line", async () => {
+    existingPaths.add(join(fixtureRoot, "AGENTS.md").replace(/\\/g, "/"));
+    existingPaths.add(join(fixtureRoot, ".claude", "commands", "opsx", "e2e.md").replace(/\\/g, "/"));
+    readFileMock.mockImplementation((p: Parameters<typeof readFileSync>[0]) => {
+      const s = String(p);
+      if (s.endsWith(".mcp.json")) return "{}";
+      if (s.endsWith("AGENTS.md")) {
+        return "preamble\n<!-- OPENSPEC:START -->\nofficial legacy guidance\n<!-- OPENSPEC:END -->";
+      }
+      return "";
+    });
+    const checks = await doctorJsonChecks();
+    const agents = checks.find((c) => c.name === "standards-agents");
+    expect(agents?.ok).toBe(true);
+    expect(agents?.message).toContain("migrate markers");
   });
 
   it("missing AGENTS.md with no command artifacts → not initialized, ok:true", async () => {
@@ -666,6 +685,14 @@ describe("doctor authorization tiers", () => {
     vi.mocked(drift.compareBlock).mockReturnValueOnce({ stale: true });
     existingPaths.add(join(fixtureRoot, "AGENTS.md").replace(/\\/g, "/"));
     existingPaths.add(join(fixtureRoot, "openspec").replace(/\\/g, "/"));
+    readFileMock.mockImplementation((p: Parameters<typeof readFileSync>[0]) => {
+      const s = String(p);
+      if (s.endsWith(".mcp.json")) return "{}";
+      if (s.endsWith("AGENTS.md")) {
+        return "preamble\n<!-- OPENSPEC-PW:START -->\noutdated content\n<!-- OPENSPEC-PW:END -->";
+      }
+      return "";
+    });
     const checks = await doctorJsonChecks();
     const agents = checks.find((c) => c.name === "standards-agents");
     expect(agents?.ok).toBe(false);

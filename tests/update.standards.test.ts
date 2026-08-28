@@ -40,6 +40,7 @@ vi.mock("../src/commands/editors.js", async (importOriginal) => {
 import {
   existsSync,
   readFileSync,
+  writeFileSync,
   lstatSync,
 } from "fs";
 import { execFile } from "node:child_process";
@@ -141,25 +142,102 @@ describe("syncEmployeeStandards", () => {
   it("returns silently when the bundled standards template is missing", () => {
     existingPaths.clear();
 
-    syncEmployeeStandards(tmpDir, root, false);
+    syncEmployeeStandards(tmpDir, root, false, true);
 
     expect(logText()).toBe("");
     expect(installOpenSpecBlockMock).not.toHaveBeenCalled();
   });
 
-  it("skips AGENTS.md write-back when it has no OPENSPEC block (标记即领土) — even with editors detected", () => {
+  it("warns loudly when AGENTS.md has no marker at all and pw artifacts exist (accident shape)", () => {
     existingPaths.add(agentsPath);
     contentsByPath.set(agentsPath, "user-authored rules without markers\n");
 
-    syncEmployeeStandards(tmpDir, root, false);
+    syncEmployeeStandards(tmpDir, root, false, true);
 
-    expect(logText()).toContain("has no OPENSPEC block");
+    expect(logText()).toContain("⚠ AGENTS.md has no OPENSPEC-PW block");
+    expect(logText()).toContain("openspec update` legacy cleanup");
+    expect(logText()).toContain('Restore: run "openspec-pw init"');
+    expect(logText()).toContain("openspec-pw uninstall");
     expect(installOpenSpecBlockMock).not.toHaveBeenCalled();
     expect(installClaudeWrapperMock).not.toHaveBeenCalled();
   });
 
+  it("keeps the gray hint for projects without pw artifacts (pure official project)", () => {
+    existingPaths.add(agentsPath);
+    contentsByPath.set(agentsPath, "user-authored rules without markers\n");
+
+    syncEmployeeStandards(tmpDir, root, false, false);
+
+    expect(logText()).toContain("has no OPENSPEC block");
+    expect(logText()).not.toContain("⚠ AGENTS.md has no OPENSPEC-PW block");
+    expect(installOpenSpecBlockMock).not.toHaveBeenCalled();
+  });
+
+  it("a surviving legacy block (signature mismatch) stays a gray info line, not migrated", () => {
+    existingPaths.add(agentsPath);
+    contentsByPath.set(
+      agentsPath,
+      `preamble\n<!-- OPENSPEC:START -->\nofficial legacy guidance\n<!-- OPENSPEC:END -->\n`,
+    );
+
+    syncEmployeeStandards(tmpDir, root, false, true);
+
+    expect(logText()).toContain("has no OPENSPEC block");
+    expect(logText()).not.toContain("⚠ AGENTS.md has no OPENSPEC-PW block");
+    expect(readFileSyncMock).not.toHaveBeenCalledWith("migrated"); // no write attempted
+  });
+
+  it("migrates a surviving legacy block first, then drift-refreshes it (no warning)", () => {
+    // writeFileSync mock must feed contentsByPath so the post-migration drift
+    // check reads the migrated file — this asserts the migrate→drift chain.
+    vi.mocked(writeFileSync).mockImplementation((p, c) => {
+      contentsByPath.set(String(p), String(c));
+      existingPaths.add(String(p));
+    });
+    existingPaths.add(agentsPath);
+    contentsByPath.set(
+      agentsPath,
+      `preamble\n<!-- OPENSPEC:START -->\n# AI Coding Assistant Employee-Grade Standards\n\noutdated v0.3.76 body\n<!-- OPENSPEC:END -->\n`,
+    );
+
+    syncEmployeeStandards(tmpDir, root, false, true);
+
+    expect(logText()).toContain("migrated markers to OPENSPEC-PW");
+    expect(logText()).not.toContain("⚠ AGENTS.md has no OPENSPEC-PW block");
+    // Migration ran before any marker judgment; the stale migrated block is
+    // then refreshed by the regular drift path.
+    expect(installOpenSpecBlockMock).toHaveBeenCalledTimes(1);
+    expect(installOpenSpecBlockMock).toHaveBeenCalledWith(root, STANDARDS, expect.anything());
+  });
+
+  it("migrates a legacy CLAUDE.md wrapper before the bare-import check could misjudge it", () => {
+    // Ordering is load-bearing: a legacy wrapper contains a bare @AGENTS.md
+    // line; if the bare-import check ran before migration, it would
+    // false-match and skip the wrapper — the migration must go first.
+    vi.mocked(writeFileSync).mockImplementation((p, c) => {
+      contentsByPath.set(String(p), String(c));
+      existingPaths.add(String(p));
+    });
+    agentsInSync();
+    existingPaths.add(claudePath);
+    contentsByPath.set(
+      claudePath,
+      `# proj\n\n<!-- OPENSPEC:START -->\n\n## CodeGraph 优先\n\n旧版 wrapper\n\n@AGENTS.md\n\n<!-- OPENSPEC:END -->\n`,
+    );
+
+    syncEmployeeStandards(tmpDir, root, true, true);
+
+    expect(logText()).toContain("CLAUDE.md: migrated markers to OPENSPEC-PW");
+    // The bare-import warning must NOT fire — migration fixed the wrapper first.
+    // (The migrated legacy wrapper content then goes through the regular drift
+    // check and is refreshed to the current template — installClaudeWrapper
+    // firing once is the expected convergence, not a misjudgment.)
+    expect(logText()).not.toContain("裸 @AGENTS.md 导入");
+    expect(installClaudeWrapperMock).toHaveBeenCalledTimes(1);
+  });
+
   it("skips AGENTS.md write-back when the file is missing — regardless of detected editors", () => {
-    syncEmployeeStandards(tmpDir, root, false);
+    syncEmployeeStandards(tmpDir, root, false, true);
 
     expect(logText()).toContain("AGENTS.md not found");
     expect(installOpenSpecBlockMock).not.toHaveBeenCalled();
@@ -173,7 +251,7 @@ describe("syncEmployeeStandards", () => {
       `${OPENSPEC_START}\noutdated standards body\n${OPENSPEC_END}`,
     );
 
-    syncEmployeeStandards(tmpDir, root, false);
+    syncEmployeeStandards(tmpDir, root, false, true);
 
     expect(logText()).toContain("OPENSPEC block differs");
     expect(installOpenSpecBlockMock).toHaveBeenCalledTimes(1);
@@ -187,7 +265,7 @@ describe("syncEmployeeStandards", () => {
   it("short-circuits when AGENTS.md is already in sync", () => {
     agentsInSync();
 
-    syncEmployeeStandards(tmpDir, root, false);
+    syncEmployeeStandards(tmpDir, root, false, true);
 
     expect(logText()).toContain("already in sync");
     expect(installOpenSpecBlockMock).not.toHaveBeenCalled();
@@ -198,7 +276,7 @@ describe("syncEmployeeStandards", () => {
     existingPaths.add(claudePath);
     symlinks.set(claudePath, true);
 
-    syncEmployeeStandards(tmpDir, root, true);
+    syncEmployeeStandards(tmpDir, root, true, true);
 
     expect(logText()).toContain("drift tracked via AGENTS.md");
     expect(logText()).toContain("already in sync");
@@ -210,7 +288,7 @@ describe("syncEmployeeStandards", () => {
     existingPaths.add(claudePath);
     contentsByPath.set(claudePath, "my project notes\n@AGENTS.md\nmore notes\n");
 
-    syncEmployeeStandards(tmpDir, root, true);
+    syncEmployeeStandards(tmpDir, root, true, true);
 
     expect(logText()).toContain("裸 @AGENTS.md 导入");
     expect(installClaudeWrapperMock).not.toHaveBeenCalled();
@@ -219,11 +297,11 @@ describe("syncEmployeeStandards", () => {
   it("gates the CLAUDE.md wrapper on claude command-artifact authorization", () => {
     agentsInSync();
     // CLAUDE.md missing + claude NOT authorized → wrapper is not created
-    syncEmployeeStandards(tmpDir, root, false);
+    syncEmployeeStandards(tmpDir, root, false, true);
     expect(installClaudeWrapperMock).not.toHaveBeenCalled();
 
     // claude authorized + wrapper missing → installed
-    syncEmployeeStandards(tmpDir, root, true);
+    syncEmployeeStandards(tmpDir, root, true, true);
     expect(installClaudeWrapperMock).toHaveBeenCalledTimes(1);
   });
 });

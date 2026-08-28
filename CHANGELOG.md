@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+- **专属标记命名空间 `OPENSPEC-PW:` + 存量自动迁移（防官方 openspec CLI 误删）**. 事故：官方 `@fission-ai/openspec` v1.11.0 的 `openspec update` 内置 legacy 清理，按标记字符串把根 AGENTS.md/CLAUDE.md 中任何 `OPENSPEC:START/END` 块当「旧版官方遗留」交互确认（default yes）后整块移除——两工具共用标记导致员工规范块被误杀（2026-08-28 code-review-tool 实测）。修复分三层：① **根因消除**——openspec-pw 领土块迁移到专属 `OPENSPEC-PW:START/END` 命名空间（不含官方匹配的 `OPENSPEC:` 子串，已对官方 v1.11.0 全部 6 条匹配路径核验失配，`--force` 清理实测新标记块幸存、旧标记对照组被清）；② **存量自动迁移**——update/init 先行调用 `migrateLegacyMarkers`：授权工件 + 块内我方签名（`Employee-Grade Standards` / `@AGENTS.md`）双门槛下，原地替换标记字符串（内容逐字不动，单次写入无半迁态；仅剩旧 END 不迁移落入告警路径；纯官方遗迹不碰），未跑过官方 update 的存量项目直接 `openspec-pw update` 即自动迁移；③ **检测层**——块消失时 update 黄色多行警告（谓词 = 授权工件在 && 无新标记 && 无旧 START，纯官方项目不误报；附 init 恢复与 uninstall 退出路径），doctor `standards-agents` 翻转：「有授权工件 && 无任何标记」从 `ok:true` 改为 `ok:false`（消息指向 init——append 分支可修，环闭合，不回归 0.3.76 的 doctor→update 死循环；有旧标记未迁移为 `ok:true` 信息行）。⚠ `doctor --json` 行为变更：该检查项可翻转并影响 exit code（CI 中跑 doctor 的项目会变红——特性）。`uninstall` 双标记清理（新旧都删）；旧标记字符串收敛在 drift.ts（`LEGACY_*` 常量 + `hasLegacyTerritoryStart/End` 共享谓词），直接引用仅限迁移/卸载/测试，旧标记识别带退役计划（未来版本移除）。标记即领土语义不变（检测≠授权、零新状态、共享文件不自动重写——恢复必须显式 init）。openspec change: `marker-namespace`。
+  - `src/shared/drift.ts`、`src/commands/editors/project-rules.ts`、`src/commands/update.ts`、`src/commands/doctor.ts`、`src/commands/init.ts`、`src/commands/editors.ts`
+  - `tests/migrate-markers.test.ts`（新）、`tests/{editors,editors-dsh-cursor,update.standards,update,drift}.test.ts`、`tests/commands/doctor.test.ts`
+  - `README.md`、`README.zh-CN.md`（共存注意事项）、根 `CLAUDE.md`/`AGENTS.md`（自吃狗粮迁移）
+
 ## [0.3.77] - 2026-08-28
 
 - **前端信号分层检测 + monorepo workspace 感知**. 修复 monorepo 前端信号盲区：根 package.json 无前端依赖的 pnpm/npm workspace（前端在 `apps/*`，根有可运行 script 把 `findNpmRoot` 钉在根）此前被误判「无前端」→ update 静默跳过 playwright-test MCP 安装（atlasai 实测）。`hasFrontendSignal` 升级为分层信号、specific first、命中即停：① 框架配置文件（最强信号——vite/next/nuxt/svelte/astro/vue/remix config、angular.json，位于项目根或 findNpmRoot 命中目录）；② 前端框架依赖（既有清单）；③ dev script 关键词（既有）；④ workspace 成员扫描——识别 pnpm-workspace.yaml / `workspaces` 字段（数组与 `{packages}` 对象形态）/ turbo / nx / lerna / rush，成员发现优先解析 globs 简单形态（`apps/*`、`packages/**`、精确路径），复杂形态回退限深扫描（深度 ≤3、成员 ≤50、命中即停，跳过 node_modules 与点开头目录）。误报方向刻意选「宁报前端」（误判 → 多装一个 MCP，`--no-mcp` 可跳；漏报 → 静默跳过——正是本次修复的）。`null`（无可读 package.json = 检测跳过）语义保留；`detectAppServer` 端口/baseUrl 逻辑零改动；init/update/doctor 三个消费方零改动自动受益。openspec change: `monorepo-frontend-signal`。

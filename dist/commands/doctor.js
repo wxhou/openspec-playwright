@@ -6,7 +6,7 @@ import { execFileSync } from "child_process";
 import chalk from "chalk";
 import { detectAdapters, hasCommandArtifacts, slashCommandForAdapter, claudeAdapter, claudeWrapperStandardsContent, } from "../commands/editors.js";
 import { detectAppServer, isTestRunnerMcpInstalled, needsShell, detectCodeGraphStatus } from "../shared/index.js";
-import { bundledStandardsPath, compareBlock, OPENSPEC_START } from "../shared/drift.js";
+import { bundledStandardsPath, compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
 const OPTIONAL_NAMES = new Set([
     "engines",
     "specs",
@@ -344,10 +344,13 @@ export async function doctor(options = {}) {
             ? readFileSync(standardsPath, "utf-8")
             : "";
         // AGENTS.md — 标记即领土: only the tool-owned block is maintained
-        // (update repairs it when present). A missing file or one without
-        // markers is NOT repairable by update — report ok:true with a message
-        // pointing at init, never at update (avoids the doctor-nags →
-        // update-can't-fix loop).
+        // (update repairs it when present). A wiped block IS a failure when pw
+        // command artifacts exist (authorized territory was removed — possibly
+        // by the official `openspec update` legacy cleanup); the message points
+        // at INIT, whose append branch repairs it (环闭合 — never at update,
+        // avoiding the 0.3.76 doctor-nags → update-can't-fix loop). A surviving
+        // legacy OPENSPEC block is still ours (signature-gated migration
+        // converges on the next update) → ok:true info line.
         const agentsPath = join(projectRoot, "AGENTS.md");
         if (!existsSync(agentsPath)) {
             checks.push({
@@ -363,21 +366,24 @@ export async function doctor(options = {}) {
         else {
             const fileContent = readFileSync(agentsPath, "utf-8");
             const noMarkers = !fileContent.includes(OPENSPEC_START);
+            const missing = noMarkers && !hasLegacyTerritoryStart(fileContent);
             const drift = noMarkers
                 ? { stale: false }
                 : compareBlock(fileContent, standardsExpected);
             checks.push({
                 category: "Sync",
                 name: "standards-agents",
-                ok: noMarkers ? true : !drift.stale,
-                authorized: noMarkers ? hasCommand : true,
-                message: noMarkers
+                ok: missing ? !hasCommand : !drift.stale,
+                authorized: missing ? hasCommand : true,
+                message: missing
                     ? hasCommand
-                        ? 'AGENTS.md has no OPENSPEC block (removed) — restore via "openspec-pw init --tools <id>"'
+                        ? 'AGENTS.md has no OPENSPEC-PW block (removed — possibly by the official `openspec update` legacy cleanup) — restore via "openspec-pw init --tools <id>"'
                         : "not initialized (run openspec-pw init first)"
-                    : drift.stale
-                        ? "AGENTS.md differs from bundled version — run openspec-pw update"
-                        : "standards in sync",
+                    : noMarkers
+                        ? "AGENTS.md carries a legacy OPENSPEC block — run openspec-pw update to migrate markers"
+                        : drift.stale
+                            ? "AGENTS.md differs from bundled version — run openspec-pw update"
+                            : "standards in sync",
             });
         }
         // CLAUDE.md wrapper is only checked when the claude editor is authorized

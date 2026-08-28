@@ -352,10 +352,17 @@ loads them via a CLAUDE.md that carries a CodeGraph-first block and an OpenSpec-
 hint up front, followed by an `@AGENTS.md` import — Claude Code's documented mechanism for
 reusing AGENTS.md, which it does not read by default. Import position is unconstrained
 ("anywhere in your CLAUDE.md"); the only rule is the `@` line must not sit inside backticks
-or a code block. The import line sits outside the OPENSPEC:START/END comments (stripped
+or a code block. The import line sits outside the OPENSPEC-PW:START/END comments (stripped
 before context injection), so the markers act as the tool-owned boundary while the import is
 honored. OpenCode registers AGENTS.md in `opencode.jsonc` under `instructions`. Cline and
 Cursor auto-detect `AGENTS.md` natively — no wrapper file needed.
+
+> **Coexisting with the official `@fission-ai/openspec` CLI**: its `openspec update` runs a
+> "legacy cleanup" that deletes any root AGENTS.md/CLAUDE.md block wrapped in plain
+> `OPENSPEC:START/END` markers. openspec-pw blocks use the exclusive `OPENSPEC-PW:` namespace,
+> which the official matcher cannot see (verified against v1.11.0). Projects installed before
+> this change are migrated automatically on the next `openspec-pw update`/`init`; if the block
+> was already wiped, `openspec-pw update` warns loudly and `openspec-pw init` restores it.
 
 Test Assets (tests/playwright/)
   ├── seed.spec.ts         → Env validation

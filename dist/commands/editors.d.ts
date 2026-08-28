@@ -30,4 +30,4 @@ export { formatPiCommand, getPiCommandPath, hasPi, piAdapter, } from "./editors/
 export { formatOmpCommand, getOmpCommandPath, hasOmp, ompAdapter, } from "./editors/adapters/omp.js";
 export { formatDshCommand, getDshCommandPath, hasDsh, dshAdapter, } from "./editors/adapters/dsh.js";
 export { resolveToolsArg } from "./editors/tool-selection.js";
-export { readOpenSpecBlock, blockMatchesExpected, installOpenSpecBlock, claudeWrapperStandardsContent, installClaudeWrapper, installProjectRules, cleanProjectRules, readEmployeeStandards, } from "./editors/project-rules.js";
+export { readOpenSpecBlock, blockMatchesExpected, installOpenSpecBlock, claudeWrapperStandardsContent, installClaudeWrapper, installProjectRules, migrateLegacyMarkers, cleanProjectRules, readEmployeeStandards, } from "./editors/project-rules.js";
