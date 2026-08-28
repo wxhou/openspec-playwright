@@ -5,6 +5,7 @@ export interface PackageJson {
   scripts?: Record<string, string>;
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
+  workspaces?: string[] | { packages?: string[] };
 }
 
 export interface AppServerDetection {
@@ -176,23 +177,163 @@ const FRONTEND_FRAMEWORK_DEPS = [
 // text is naturally matched by inclusion).
 const FRONTEND_DEV_COMMAND_KEYWORDS = ["vite", "next", "nuxt", "svelte-kit", "astro"];
 
+// Framework config files — the strongest zero-ambiguity signal: presence at
+// a project/npm root means "frontend" even when dependencies live elsewhere
+// (monorepo roots commonly hold no frontend deps at all).
+const FRONTEND_CONFIG_FILES = [
+  "vite.config.js", "vite.config.ts", "vite.config.mjs",
+  "next.config.js", "next.config.ts", "next.config.mjs",
+  "nuxt.config.js", "nuxt.config.ts", "nuxt.config.mjs",
+  "angular.json",
+  "svelte.config.js", "svelte.config.ts",
+  "astro.config.js", "astro.config.mjs", "astro.config.ts",
+  "vue.config.js", "vue.config.ts",
+  "remix.config.js", "remix.config.ts",
+];
+
+// Workspace-scan bounds (spec: frontend-signal-detection): never walk deeper
+// than 3 directory levels and never inspect more than 50 member package.jsons
+// — guards against unbounded scans on huge repos.
+const WORKSPACE_SCAN_MAX_DEPTH = 3;
+const WORKSPACE_SCAN_MAX_MEMBERS = 50;
+
+function hasFrontendConfigFile(dir: string): boolean {
+  return FRONTEND_CONFIG_FILES.some((file) => existsSync(join(dir, file)));
+}
+
+function packageHasFrontendDeps(pkg: PackageJson): boolean {
+  return FRONTEND_FRAMEWORK_DEPS.some((name) => dependencyExists(pkg, name));
+}
+
 /**
- * Detect whether the project has frontend code: reads the package.json
- * located by findNpmRoot (same source as detectAppServer, so monorepo
- * conclusions match — a nested app is treated consistently by both).
+ * Workspace member globs for a detected monorepo, or null when the project
+ * is not a detectable workspace. An empty array means "workspace but no
+ * member globs discoverable" (marker files only) — the caller falls back to
+ * a bounded tree scan. Reads pnpm-workspace.yaml naively (list items only)
+ * and package.json workspaces (array or {packages} form); turbo/nx/lerna/
+ * rush markers carry no member list at all.
+ */
+function workspaceGlobPatterns(root: string, pkg: PackageJson): string[] | null {
+  const pnpmYaml = join(root, "pnpm-workspace.yaml");
+  let isWorkspace = false;
+  if (existsSync(pnpmYaml)) {
+    isWorkspace = true;
+    try {
+      const patterns = readFileSync(pnpmYaml, "utf-8")
+        .split(/\r?\n/)
+        .filter((line) => /^\s*-/.test(line))
+        .map((line) => line.replace(/^\s*-\s*/, "").trim().replace(/^['"]|['"]$/g, ""))
+        .filter((pattern) => pattern.length > 0);
+      if (patterns.length > 0) return patterns;
+    } catch {
+      // unreadable → fall through to the other markers
+    }
+  }
+  if (Array.isArray(pkg.workspaces)) return pkg.workspaces;
+  const wsPackages = (pkg.workspaces as { packages?: string[] } | undefined)?.packages;
+  if (Array.isArray(wsPackages)) return wsPackages;
+  for (const marker of ["turbo.json", "nx.json", "lerna.json", "rush.json"]) {
+    if (existsSync(join(root, marker))) return [];
+  }
+  return isWorkspace ? [] : null;
+}
+
+/**
+ * Expand member globs ("apps/*", "packages/**", "apps/web") into candidate
+ * member directories. Supports only the simple forms — an exact path, or a
+ * star-wildcard in the last segment. Anything else (leading/middle wildcards)
+ * returns null so the caller falls back to a bounded tree scan.
+ */
+function resolveMemberDirs(root: string, patterns: string[]): string[] | null {
+  const dirs: string[] = [];
+  for (const raw of patterns) {
+    const pattern = raw.replace(/^\.\//, "").replace(/\/+$/, "");
+    if (pattern === "") continue;
+    const segments = pattern.split("/");
+    const last = segments.length - 1;
+    if (segments.some((seg, i) => i !== last && seg.includes("*"))) return null;
+    if (segments[last].includes("*")) {
+      const baseDir = join(root, ...segments.slice(0, last));
+      if (!existsSync(baseDir)) continue;
+      try {
+        for (const entry of readdirSync(baseDir, { withFileTypes: true })) {
+          if (!entry.isDirectory() || entry.name.startsWith(".") || entry.name === "node_modules") continue;
+          dirs.push(join(baseDir, entry.name));
+        }
+      } catch {
+        // unreadable base directory — skip this pattern
+      }
+    } else {
+      dirs.push(join(root, ...segments)); // exact member path
+    }
+  }
+  return dirs;
+}
+
+/**
+ * Bounded scan of member candidate dirs for frontend deps or config files.
+ * Each seed gets `budget` directory levels below it; at most
+ * WORKSPACE_SCAN_MAX_MEMBERS member package.jsons are inspected. Skips
+ * node_modules and dot-directories (same convention as findNpmRoot).
+ */
+function hasFrontendInDirs(seeds: string[], budget: number): boolean {
+  let checked = 0;
+  const visit = (dir: string, remaining: number): boolean => {
+    if (remaining < 0 || checked >= WORKSPACE_SCAN_MAX_MEMBERS) return false;
+    const pkg = readPackageJson(join(dir, "package.json"));
+    if (pkg) checked++;
+    if ((pkg !== null && packageHasFrontendDeps(pkg)) || hasFrontendConfigFile(dir)) return true;
+    if (remaining === 0) return false;
+    let entries;
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return false;
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory() || entry.name.startsWith(".") || entry.name === "node_modules") continue;
+      if (visit(join(dir, entry.name), remaining - 1)) return true;
+    }
+    return false;
+  };
+  for (const seed of seeds) {
+    if (visit(seed, budget)) return true;
+  }
+  return false;
+}
+
+/**
+ * Detect whether the project has frontend code — layered signals, specific
+ * first, stop on first hit:
+ *   1. framework config files at the project/npm root (strongest);
+ *   2. framework dependencies in the package.json located by findNpmRoot
+ *      (same source as detectAppServer, so monorepo conclusions match);
+ *   3. dev-script command keywords;
+ *   4. monorepo workspace members (bounded scan) — frontend code commonly
+ *      lives in member packages (e.g. pnpm apps/*) whose root package.json
+ *      carries no frontend deps at all.
  * Returns null when no readable package.json is found at the located root —
  * callers skip the hint in that case (detection skipped, not "no frontend").
+ * Deliberately biased toward "frontend": a false positive costs one extra
+ * MCP install (--no-mcp skips it); a false negative silently skips the MCP.
  */
 export function hasFrontendSignal(projectRoot: string): boolean | null {
   const npmRoot = findNpmRoot(projectRoot);
   const pkg = readPackageJson(join(npmRoot, "package.json"));
   if (!pkg) return null;
 
-  for (const name of FRONTEND_FRAMEWORK_DEPS) {
-    if (dependencyExists(pkg, name)) return true;
-  }
+  if (hasFrontendConfigFile(projectRoot) || (npmRoot !== projectRoot && hasFrontendConfigFile(npmRoot))) return true;
+  if (packageHasFrontendDeps(pkg)) return true;
   const dev = pkg.scripts?.dev ?? "";
-  return FRONTEND_DEV_COMMAND_KEYWORDS.some((kw) => dev.includes(kw));
+  if (FRONTEND_DEV_COMMAND_KEYWORDS.some((kw) => dev.includes(kw))) return true;
+
+  const patterns = workspaceGlobPatterns(projectRoot, pkg);
+  if (patterns === null) return false;
+  const memberDirs = resolveMemberDirs(projectRoot, patterns);
+  if (memberDirs !== null && memberDirs.length > 0) {
+    return hasFrontendInDirs(memberDirs, WORKSPACE_SCAN_MAX_DEPTH - 1);
+  }
+  return hasFrontendInDirs([projectRoot], WORKSPACE_SCAN_MAX_DEPTH);
 }
 
 export function detectAppServer(projectRoot: string, env: NodeJS.ProcessEnv = process.env): AppServerDetection {

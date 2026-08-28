@@ -195,7 +195,7 @@ Browser exploration is provided out of the box by Playwright MCP and `openspec-p
 2. Installs the E2E command for each detected editor (`/opsx:e2e` for Claude Code, `/opsx-e2e` for OpenCode, Cline, Cursor, Pi, Oh My Pi, and DeepSeek Harness; Cursor also gets an Agent Skill)
 3. Generates `tests/playwright/seed.spec.ts`, `auth.setup.ts`, `credentials.yaml`, `app-knowledge.md`, `pages/BasePage.ts`
 4. Generates `playwright.config.ts` with automatic dev script and port detection (Vite/Next/Nuxt/Astro, `.env`, and `--port`)
-5. Detects a frontend signal (framework dependency or frontend dev command in the located `package.json`); with none found, prints guidance in the Summary — run `openspec-pw init` in the app directory (monorepo), or use Playwright's `request` fixture for API-only projects
+5. Detects a frontend signal (layered detection: framework config files → framework dependencies → frontend dev commands, plus monorepo workspace member detection so a pnpm/npm workspace with the frontend in `apps/*` is recognized); with none found, prints guidance in the Summary — run `openspec-pw init` in the app directory (monorepo), or use Playwright's `request` fixture for API-only projects
 
 > **Note**: After running `openspec-pw init`, manually install Playwright browsers: `npx playwright install --with-deps`
 
