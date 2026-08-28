@@ -119,7 +119,7 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   // 3. Detect supported editors, then resolve the explicit selection.
   // Priority: --tools flag > interactive prompt (TTY) > detected fallback.
   // `detected` is any-scope (project dirs + global config dirs for
-  // Pi/Oh My Pi/DeepSeek Harness) — used for display and interactive
+  // Pi/Oh My Pi) — used for display and interactive
   // pre-select only. The non-TTY fallback uses `projectDetected`:
   // global config dirs never authorize editor configuration.
   const detected = detectAdapters(projectRoot, deps.homeDir);
@@ -156,14 +156,14 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   if (selectedIds === null && editors.length === 0) {
     console.log(
       chalk.yellow(
-        "\n  ⚠ No supported editor detected in the project (need .claude/, .opencode/, .cline/, .cursor/, .pi/, .omp/, or .dsh/).",
+        "\n  ⚠ No supported editor detected in the project (need .claude/, .opencode/, .cline/, .cursor/, .pi/, or .omp/).",
       ),
     );
     console.log(
       chalk.gray("  For Cursor without an existing .cursor/ dir: mkdir -p .cursor\n"),
     );
     throw new Error(
-      'No supported editor detected and no --tools flag provided. Use --tools all, --tools none, or a comma-separated list: claude, opencode, cline, cursor, pi, omp, dsh (oh-my-pi aliases omp).',
+      'No supported editor detected and no --tools flag provided. Use --tools all, --tools none, or a comma-separated list: claude, opencode, cline, cursor, pi, omp (oh-my-pi aliases omp).',
     );
   }
 
@@ -361,7 +361,7 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   console.log(chalk.bold("How it works:"));
   console.log(
     chalk.gray(
-      "  /opsx:e2e (Claude), /opsx-e2e (OpenCode/Cline/Cursor/Pi/Oh My Pi/DeepSeek Harness) read your OpenSpec specs",
+      "  /opsx:e2e (Claude), /opsx-e2e (OpenCode/Cline/Cursor/Pi/Oh My Pi) read your OpenSpec specs",
     ),
   );
   console.log(chalk.gray("  and run Playwright E2E tests through a three-agent pipeline:"));
