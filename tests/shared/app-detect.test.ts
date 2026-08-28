@@ -151,4 +151,137 @@ describe("app-detect", () => {
     writeFileSync(join(appDir, "package.json"), JSON.stringify({ dependencies: { react: "^19.0.0" }, scripts: { dev: "vite" } }));
     expect(hasFrontendSignal(tmpDir)).toBe(true);
   });
+
+  // ─── hasFrontendSignal: layered signals + workspace awareness ─────────
+
+  it("hasFrontendSignal: framework config file hits even with backend-only deps", () => {
+    writeFileSync(join(tmpDir, "package.json"), JSON.stringify({ dependencies: { express: "^4.0.0" } }));
+    writeFileSync(join(tmpDir, "vite.config.ts"), "export default {};");
+    expect(hasFrontendSignal(tmpDir)).toBe(true);
+  });
+
+  it("hasFrontendSignal: angular.json counts as a framework config signal", () => {
+    writeFileSync(join(tmpDir, "package.json"), JSON.stringify({}));
+    writeFileSync(join(tmpDir, "angular.json"), "{}");
+    expect(hasFrontendSignal(tmpDir)).toBe(true);
+  });
+
+  it("hasFrontendSignal: config file at the nested npm root counts when the project root has none", () => {
+    writeFileSync(join(tmpDir, "package.json"), JSON.stringify({ scripts: { build: "tsc" } }));
+    const appDir = join(tmpDir, "apps", "web");
+    mkdirSync(appDir, { recursive: true });
+    writeFileSync(join(appDir, "package.json"), JSON.stringify({ scripts: { dev: "node server.js" } }));
+    writeFileSync(join(appDir, "next.config.mjs"), "export default {};");
+    expect(hasFrontendSignal(tmpDir)).toBe(true);
+  });
+
+  it("hasFrontendSignal: pnpm workspace member deps hit when root has a runnable script", () => {
+    // atlasai shape: root dev:all pins findNpmRoot at the repo root, whose
+    // package.json carries no frontend deps — only members do.
+    writeFileSync(join(tmpDir, "package.json"), JSON.stringify({ scripts: { "dev:all": "concurrently a b" } }));
+    writeFileSync(join(tmpDir, "pnpm-workspace.yaml"), "packages:\n  - apps/*\n  - packages/*\n");
+    const web = join(tmpDir, "apps", "web");
+    mkdirSync(web, { recursive: true });
+    writeFileSync(join(web, "package.json"), JSON.stringify({ dependencies: { react: "^19.0.0" } }));
+    expect(hasFrontendSignal(tmpDir)).toBe(true);
+  });
+
+  it("hasFrontendSignal: npm workspaces {packages: []} object form resolves members", () => {
+    writeFileSync(
+      join(tmpDir, "package.json"),
+      JSON.stringify({ scripts: { dev: "node server.js" }, workspaces: { packages: ["packages/*"] } }),
+    );
+    const ui = join(tmpDir, "packages", "ui");
+    mkdirSync(ui, { recursive: true });
+    writeFileSync(join(ui, "package.json"), JSON.stringify({ dependencies: { vue: "^3.0.0" } }));
+    expect(hasFrontendSignal(tmpDir)).toBe(true);
+  });
+
+  it("hasFrontendSignal: workspace member config file hits without member deps", () => {
+    writeFileSync(join(tmpDir, "package.json"), JSON.stringify({ workspaces: ["packages/*"] }));
+    const ui = join(tmpDir, "packages", "ui");
+    mkdirSync(ui, { recursive: true });
+    writeFileSync(join(ui, "package.json"), JSON.stringify({ devDependencies: { typescript: "^5.0.0" } }));
+    writeFileSync(join(ui, "vite.config.ts"), "export default {};");
+    expect(hasFrontendSignal(tmpDir)).toBe(true);
+  });
+
+  it("hasFrontendSignal: exact-path workspace pattern resolves the member directly", () => {
+    writeFileSync(join(tmpDir, "package.json"), JSON.stringify({ workspaces: ["apps/web"] }));
+    const web = join(tmpDir, "apps", "web");
+    mkdirSync(web, { recursive: true });
+    writeFileSync(join(web, "package.json"), JSON.stringify({ dependencies: { solid: "^1.0.0" } }));
+    expect(hasFrontendSignal(tmpDir)).toBe(true);
+  });
+
+  it("hasFrontendSignal: marker-only workspace (turbo.json) falls back to bounded scan", () => {
+    writeFileSync(join(tmpDir, "package.json"), JSON.stringify({ scripts: { dev: "node server.js" } }));
+    writeFileSync(join(tmpDir, "turbo.json"), "{}");
+    const web = join(tmpDir, "apps", "web");
+    mkdirSync(web, { recursive: true });
+    writeFileSync(join(web, "package.json"), JSON.stringify({ dependencies: { preact: "^10.0.0" } }));
+    expect(hasFrontendSignal(tmpDir)).toBe(true);
+  });
+
+  it("hasFrontendSignal: leading-wildcard glob falls back to bounded scan", () => {
+    writeFileSync(join(tmpDir, "package.json"), JSON.stringify({}));
+    writeFileSync(join(tmpDir, "pnpm-workspace.yaml"), "packages:\n  - '**/apps'\n");
+    const web = join(tmpDir, "libs", "apps", "web");
+    mkdirSync(web, { recursive: true });
+    writeFileSync(join(web, "package.json"), JSON.stringify({ dependencies: { svelte: "^5.0.0" } }));
+    expect(hasFrontendSignal(tmpDir)).toBe(true);
+  });
+
+  it("hasFrontendSignal: all-backend workspace returns false", () => {
+    writeFileSync(join(tmpDir, "package.json"), JSON.stringify({ scripts: { dev: "node server.js" } }));
+    writeFileSync(join(tmpDir, "pnpm-workspace.yaml"), "packages:\n  - services/*\n");
+    const api = join(tmpDir, "services", "api");
+    mkdirSync(api, { recursive: true });
+    writeFileSync(join(api, "package.json"), JSON.stringify({ dependencies: { express: "^4.0.0" } }));
+    expect(hasFrontendSignal(tmpDir)).toBe(false);
+  });
+
+  it("hasFrontendSignal: node_modules inside a member is skipped", () => {
+    writeFileSync(join(tmpDir, "package.json"), JSON.stringify({ workspaces: ["packages/*"] }));
+    const nm = join(tmpDir, "packages", "api", "node_modules", "react");
+    mkdirSync(nm, { recursive: true });
+    writeFileSync(join(nm, "package.json"), JSON.stringify({ name: "react", dependencies: { react: "^19.0.0" } }));
+    writeFileSync(join(tmpDir, "packages", "api", "package.json"), JSON.stringify({ dependencies: { express: "^4.0.0" } }));
+    expect(hasFrontendSignal(tmpDir)).toBe(false);
+  });
+
+  it("hasFrontendSignal: members nested deeper than 3 levels are not reached (bounded)", () => {
+    writeFileSync(join(tmpDir, "package.json"), JSON.stringify({}));
+    writeFileSync(join(tmpDir, "pnpm-workspace.yaml"), "packages:\n  - apps/*\n");
+    const deep = join(tmpDir, "apps", "a", "b", "c", "d");
+    mkdirSync(deep, { recursive: true });
+    writeFileSync(join(deep, "package.json"), JSON.stringify({ dependencies: { react: "^19.0.0" } }));
+    expect(hasFrontendSignal(tmpDir)).toBe(false);
+  });
+
+  it("hasFrontendSignal: member scan stops at the 50-member cap", () => {
+    writeFileSync(join(tmpDir, "package.json"), JSON.stringify({ workspaces: ["packages/*"] }));
+    mkdirSync(join(tmpDir, "packages"), { recursive: true });
+    for (let i = 1; i <= 55; i++) {
+      const dir = join(tmpDir, "packages", `m${String(i).padStart(2, "0")}`);
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, "package.json"), JSON.stringify({ dependencies: { express: "^4.0.0" } }));
+    }
+    // Alphabetically last: the scan must hit the member cap before reaching it.
+    const frontend = join(tmpDir, "packages", "zz");
+    mkdirSync(frontend, { recursive: true });
+    writeFileSync(join(frontend, "package.json"), JSON.stringify({ dependencies: { react: "^19.0.0" } }));
+    expect(hasFrontendSignal(tmpDir)).toBe(false);
+  });
+
+  it("hasFrontendSignal: repeat calls on unchanged state return the same result", () => {
+    writeFileSync(join(tmpDir, "package.json"), JSON.stringify({ scripts: { dev: "node server.js" } }));
+    writeFileSync(join(tmpDir, "pnpm-workspace.yaml"), "packages:\n  - apps/*\n");
+    const web = join(tmpDir, "apps", "web");
+    mkdirSync(web, { recursive: true });
+    writeFileSync(join(web, "package.json"), JSON.stringify({ dependencies: { express: "^4.0.0" } }));
+    const first = hasFrontendSignal(tmpDir);
+    expect(first).toBe(false);
+    expect(hasFrontendSignal(tmpDir)).toBe(first);
+  });
 });

@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+- **前端信号分层检测 + monorepo workspace 感知**. 修复 monorepo 前端信号盲区：根 package.json 无前端依赖的 pnpm/npm workspace（前端在 `apps/*`，根有可运行 script 把 `findNpmRoot` 钉在根）此前被误判「无前端」→ update 静默跳过 playwright-test MCP 安装（atlasai 实测）。`hasFrontendSignal` 升级为分层信号、specific first、命中即停：① 框架配置文件（最强信号——vite/next/nuxt/svelte/astro/vue/remix config、angular.json，位于项目根或 findNpmRoot 命中目录）；② 前端框架依赖（既有清单）；③ dev script 关键词（既有）；④ workspace 成员扫描——识别 pnpm-workspace.yaml / `workspaces` 字段（数组与 `{packages}` 对象形态）/ turbo / nx / lerna / rush，成员发现优先解析 globs 简单形态（`apps/*`、`packages/**`、精确路径），复杂形态回退限深扫描（深度 ≤3、成员 ≤50、命中即停，跳过 node_modules 与点开头目录）。误报方向刻意选「宁报前端」（误判 → 多装一个 MCP，`--no-mcp` 可跳；漏报 → 静默跳过——正是本次修复的）。`null`（无可读 package.json = 检测跳过）语义保留；`detectAppServer` 端口/baseUrl 逻辑零改动；init/update/doctor 三个消费方零改动自动受益。openspec change: `monorepo-frontend-signal`。
+  - `src/shared/app-detect.ts`、`tests/shared/app-detect.test.ts`（+13 用例）、`README.md`、`README.zh-CN.md`
+
 ## [0.3.76] - 2026-08-28
 ### Changed
 
