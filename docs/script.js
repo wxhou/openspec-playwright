@@ -1,7 +1,6 @@
 const CLAUDE_MD_ZH = `# 项目规范
 - 动手前读 \`openspec/config.yaml\`（技术栈、结构、约定、约束等），无内容则忽略
 - OpenSpec 命令：跑 \`npx openspec --help\` 查看
-- 用中文回复用户
 - 优先级：🔴 CRITICAL（违反→静默 bug/安全漏洞，停下确认后执行）｜🟡 IMPORTANT（偏离说明理由，谨慎执行）｜⚪ STANDARD（按标准执行）
 
 ## 代码质量
@@ -34,11 +33,9 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🔴 一次只发一个工具调用，等结果再决定下一步；等待/轮询用单个调用内部的循环实现
 - 🔴 单条消息并行只用于真正独立的调用，禁止复制相同调用
 - 🔴 发现自己正在重复生成相同调用 → 立即停止，重新评估
-- 🟡 长会话接近上下文上限时，复杂任务前先压缩上下文（如 \`/compact\`）
+- 🟡 长会话接近上下文上限时，复杂任务前先压缩上下文
 - 🟡 搜索分层：结构性问题（定义/调用/影响/流）优先用 CodeGraph；字面文本用全文搜索；文件名模式用文件名匹配。跳过依赖目录和缓存目录（调试依赖时除外），搜子目录时按需缩小
 - 🟡 重命名覆盖：调用、类型、字符串、import、barrel file、测试 mock，不得假设一次覆盖
-- 🟡 联网调研优先 agent-reach skill
-- 🟡 涉及前端 UI 设计时，按序使用：frontend-design skill 定方向 → ui-ux-pro-max skill 选风格 → web-design-guidelines skill 审查，三步组合避免"千篇一律 AI 风"
 - 🟡 编辑 → 重新读取确认 → lint+typecheck → 任一失败则回退
 - 🟡 变更完成告知用户可能遗漏区域，提示人工复查
 - 🔴 禁止用 sed/awk/node -e/python -c 等管道命令改源码文件（跳过编辑工具验证层）
@@ -63,12 +60,8 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 无论前后端一体还是纯前端，存在 OpenAPI/接口文档 → 查阅真实定义并标注来源（如 \`// 来源: docs/api/openapi.yaml#/paths/...\`）
 
 ## 临时文件管理
-- 🟡 非源码临时文件（截图、日志、heapdump 等）放项目根 \`tmp/\` 下
-- 🟡 文件名含时间戳（如 \`screenshot-20260721T143000.png\`）以避免冲突和重复
-- ⚪ 平铺存放，不分子目录
-- 🔴 禁止将临时文件提交到版本控制
-- 🟡 超 24h 的文件应在 commit 前删除
-- ⚪ 文件命名遵循项目所在语言/框架的约定（如 JS/Go 用 kebab-case，Python/Rust 用 snake_case，Java 用 PascalCase），避免空格和特殊字符
+- 🟡 非源码临时文件（截图、日志、heapdump 等）放项目根 \`tmp/\` 下，文件名含时间戳（如 \`screenshot-20260721T143000.png\`）
+- 🔴 禁止将临时文件提交到版本控制；超 24h 的文件应在 commit 前删除
 
 ## 浏览器验证证据链
 - 触发条件：改 DOM/交互/跳转/异步渲染/样式/响应式，或路由守卫/权限/多角色可见性 → 必须浏览器验证（权限类用真实登录态）；纯逻辑用 unit，不开浏览器
@@ -117,11 +110,9 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🔴 Send one tool call at a time, wait for the result before deciding next; implement waiting/polling as a loop inside a single call
 - 🔴 Parallel calls in one message only for genuinely independent calls; never duplicate the same call
 - 🔴 If you catch yourself generating the same call repeatedly → stop immediately, re-evaluate
-- 🟡 In long sessions near the context limit, compact context before complex tasks (e.g. \`/compact\`)
+- 🟡 In long sessions near the context limit, compact context before complex tasks
 - 🟡 Search in layers: structural queries (definitions/calls/impact/flow) prefer CodeGraph; literal text → full-text search; filename patterns → filename matching. Skip dependency and cache directories (except when debugging deps); narrow scope in subdirectories
 - 🟡 Renaming must cover: calls, types, strings, imports, barrel files, test mocks — don't assume one pass covers everything
-- 🟡 Web research via agent-reach skill
-- 🟡 When doing frontend UI work, use in order: frontend-design skill (direction) → ui-ux-pro-max skill (style selection) → web-design-guidelines skill (auto-review), three-step combo to avoid "generic AI look"
 - 🟡 Edit → re-read to confirm → lint+typecheck → rollback on any failure
 - 🟡 After changes, inform user of areas that may be missed, prompt manual review
 - 🔴 No sed/awk/node -e/python -c pipelines for source edits (bypasses edit tool validation)
@@ -146,12 +137,8 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - Full-stack or pure frontend — if OpenAPI/docs exist → consult real definitions and cite source (e.g. \`// source: docs/api/openapi.yaml#/paths/...\`)
 
 ## Temp File Management
-- 🟡 Non-source temp files (screenshots, logs, heapdumps, etc.) go in \`tmp/\` at project root
-- 🟡 Filenames include timestamp (e.g. \`screenshot-20260721T143000.png\`) to avoid collisions
-- ⚪ Flat layout, no subdirectories
-- 🔴 Never commit temp files to version control
-- 🟡 Files older than 24h should be deleted before commit
-- ⚪ Use filenames matching the project's language/framework convention (e.g. kebab-case for JS/Go, snake_case for Python/Rust, PascalCase for Java), avoid spaces and special characters
+- 🟡 Non-source temp files (screenshots, logs, heapdumps, etc.) go in \`tmp/\` at project root, filenames include timestamp (e.g. \`screenshot-20260721T143000.png\`)
+- 🔴 Never commit temp files to version control; delete files older than 24h before commit
 
 ## Browser Verification Evidence Chain
 - Trigger: DOM/interaction/navigation/async-render/style/responsive changes OR route guards/permissions/multi-role visibility → must be browser-verified (permissions need real login); pure logic → unit tests suffice, no browser
