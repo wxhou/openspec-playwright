@@ -6,7 +6,7 @@ A setup tool that integrates OpenSpec's spec-driven development with Playwright'
 
 ## Docs
 
-- [Project homepage](https://wxhou.github.io/openspec-playwright/): Full project site with feature overview, workflow, and quickstart.
+- [Project homepage](https://openspec-playwright.pages.dev/): Full project site with feature overview, workflow, and quickstart.
 - [README](https://github.com/wxhou/openspec-playwright/blob/main/README.md): English documentation.
 - [README.zh-CN](https://github.com/wxhou/openspec-playwright/blob/main/README.zh-CN.md): Chinese documentation.
 - [CHANGELOG](https://github.com/wxhou/openspec-playwright/blob/main/CHANGELOG.md): Version history and release notes.
