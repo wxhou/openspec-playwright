@@ -16,7 +16,7 @@
  * Re-export order matters for adapter self-registration: importing the
  * adapter modules loads them, and each calls `registerAdapter()` — the
  * order below fixes ADAPTERS registration order (claude → opencode →
- * cline → cursor → pi → omp → dsh), which `resolveToolsArg("all")`, the
+ * cline → cursor → pi → omp), which `resolveToolsArg("all")`, the
  * interactive prompt order, and tests/editors-tools.test.ts depend on.
  */
 export { type CommandMeta, buildCommandMeta, type EditorId, type ExtraArtifact, type EditorAdapter, type EditorAdapterInit, defineAdapter, } from "./editors/types.js";
@@ -28,6 +28,5 @@ export { formatClineCommand, getClineCommandPath, hasCline, clineAdapter, } from
 export { formatCursorCommand, getCursorCommandPath, getCursorSkillPath, formatCursorSkill, hasCursor, cursorAdapter, } from "./editors/adapters/cursor.js";
 export { formatPiCommand, getPiCommandPath, hasPi, piAdapter, } from "./editors/adapters/pi.js";
 export { formatOmpCommand, getOmpCommandPath, hasOmp, ompAdapter, } from "./editors/adapters/omp.js";
-export { formatDshCommand, getDshCommandPath, hasDsh, dshAdapter, } from "./editors/adapters/dsh.js";
 export { resolveToolsArg } from "./editors/tool-selection.js";
 export { readOpenSpecBlock, blockMatchesExpected, installOpenSpecBlock, claudeWrapperStandardsContent, installClaudeWrapper, installProjectRules, migrateLegacyMarkers, cleanProjectRules, readEmployeeStandards, } from "./editors/project-rules.js";

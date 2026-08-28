@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+- **移除 DeepSeek Harness（dsh）编辑器支持**. 官方 OpenSpec CLI 的工作流命令分发不覆盖 dsh（deepseek-harness 实测：官方 `openspec update` 只覆盖 Claude Code / Oh My Pi / OpenCode / Pi）——dsh 里只有 openspec-pw 装的 `opsx-e2e` 技能，OpenSpec 核心工作流（propose→apply→verify→archive）无入口，体验半截。编辑器支持收窄为 6 个：`claude`、`opencode`、`cline`、`cursor`、`pi`、`omp`。**退役清理**：`uninstall` 新增无条件退役段——探测精确路径 `.dsh/skills/opsx-e2e/`（openspec-pw 在 `.dsh` 下拥有过的全部领土）并删除，dsh-only 项目（零其他编辑器）连带清理 AGENTS.md 规范块；用户自装的 `.dsh/skills/` 下其他 skill 不受影响。**加回条件**：官方 OpenSpec 支持 dsh 后恢复 adapter（git 历史可完整找回；届时需连带还原 init-tool-selection spec 的「Retired editor id fails」场景）。dsh-only 项目跑 `update` 的 AGENTS.md 规范块维护不受影响（领土语义按标记判断）。`--tools dsh` 报 unknown id 错误。openspec change: `remove-dsh-support`。
+  - 删除：`src/commands/editors/adapters/dsh.ts`；修改：`src/commands/editors/{types,registry}.ts`、`src/commands/editors.ts`、`src/commands/{doctor,update,init,uninstall,index}.ts`
+  - `tests/editors-cursor.test.ts`（自 editors-dsh-cursor 更名 + 退役清理 3 用例）、`tests/{editors,editors-tools,init}.test.ts`
+  - `README.md`、`README.zh-CN.md`、`docs/index.html`
+
 ## [0.3.78] - 2026-08-28
 
 - **专属标记命名空间 `OPENSPEC-PW:` + 存量自动迁移（防官方 openspec CLI 误删）**. 事故：官方 `@fission-ai/openspec` v1.11.0 的 `openspec update` 内置 legacy 清理，按标记字符串把根 AGENTS.md/CLAUDE.md 中任何 `OPENSPEC:START/END` 块当「旧版官方遗留」交互确认（default yes）后整块移除——两工具共用标记导致员工规范块被误杀（2026-08-28 code-review-tool 实测）。修复分三层：① **根因消除**——openspec-pw 领土块迁移到专属 `OPENSPEC-PW:START/END` 命名空间（不含官方匹配的 `OPENSPEC:` 子串，已对官方 v1.11.0 全部 6 条匹配路径核验失配，`--force` 清理实测新标记块幸存、旧标记对照组被清）；② **存量自动迁移**——update/init 先行调用 `migrateLegacyMarkers`：授权工件 + 块内我方签名（`Employee-Grade Standards` / `@AGENTS.md`）双门槛下，原地替换标记字符串（内容逐字不动，单次写入无半迁态；仅剩旧 END 不迁移落入告警路径；纯官方遗迹不碰），未跑过官方 update 的存量项目直接 `openspec-pw update` 即自动迁移；CLAUDE.md 迁移签名兼容双历史形态——现行 wrapper（`@AGENTS.md`）与 2026-04 v0.1.38–v0.3.2 直接写入的全量规范块（`Employee-Grade Standards`），后者若不迁移 update 会 append 新 wrapper 而非 replace（review 发现的永久重复回归，已修）；③ **检测层**——块消失时 update 黄色多行警告（谓词 = 授权工件在 && 无新标记 && 无旧 START，纯官方项目不误报；附 init 恢复与 uninstall 退出路径），doctor `standards-agents` 翻转：「有授权工件 && 无任何标记」从 `ok:true` 改为 `ok:false`（消息指向 init——append 分支可修，环闭合，不回归 0.3.76 的 doctor→update 死循环；有旧标记未迁移为 `ok:true` 信息行）。⚠ `doctor --json` 行为变更：该检查项可翻转并影响 exit code（CI 中跑 doctor 的项目会变红——特性）。`uninstall` 双标记清理（新旧都删）；旧标记字符串收敛在 drift.ts（`LEGACY_*` 常量 + `hasLegacyTerritoryStart/End` 共享谓词），直接引用仅限迁移/卸载/测试，旧标记识别带退役计划（未来版本移除）。标记即领土语义不变（检测≠授权、零新状态、共享文件不自动重写——恢复必须显式 init）。openspec change: `marker-namespace`。

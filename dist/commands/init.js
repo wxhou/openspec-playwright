@@ -62,7 +62,7 @@ export async function init(options, deps = {}) {
     // 3. Detect supported editors, then resolve the explicit selection.
     // Priority: --tools flag > interactive prompt (TTY) > detected fallback.
     // `detected` is any-scope (project dirs + global config dirs for
-    // Pi/Oh My Pi/DeepSeek Harness) — used for display and interactive
+    // Pi/Oh My Pi) — used for display and interactive
     // pre-select only. The non-TTY fallback uses `projectDetected`:
     // global config dirs never authorize editor configuration.
     const detected = detectAdapters(projectRoot, deps.homeDir);
@@ -89,9 +89,9 @@ export async function init(options, deps = {}) {
             .filter((a) => a !== undefined);
     // No flag, non-TTY, and nothing detected → fail with --tools guidance.
     if (selectedIds === null && editors.length === 0) {
-        console.log(chalk.yellow("\n  ⚠ No supported editor detected in the project (need .claude/, .opencode/, .cline/, .cursor/, .pi/, .omp/, or .dsh/)."));
+        console.log(chalk.yellow("\n  ⚠ No supported editor detected in the project (need .claude/, .opencode/, .cline/, .cursor/, .pi/, or .omp/)."));
         console.log(chalk.gray("  For Cursor without an existing .cursor/ dir: mkdir -p .cursor\n"));
-        throw new Error('No supported editor detected and no --tools flag provided. Use --tools all, --tools none, or a comma-separated list: claude, opencode, cline, cursor, pi, omp, dsh (oh-my-pi aliases omp).');
+        throw new Error('No supported editor detected and no --tools flag provided. Use --tools all, --tools none, or a comma-separated list: claude, opencode, cline, cursor, pi, omp (oh-my-pi aliases omp).');
     }
     // 3b. Detect a frontend signal — computed once, reused for the MCP
     // install gate (step 4) and the Summary guidance hint.
@@ -209,7 +209,7 @@ export async function init(options, deps = {}) {
         console.log(chalk.bold(`\n  Restart ${editors.map((a) => a.displayName).join(" + ")} to use the updated commands.`));
     }
     console.log(chalk.bold("How it works:"));
-    console.log(chalk.gray("  /opsx:e2e (Claude), /opsx-e2e (OpenCode/Cline/Cursor/Pi/Oh My Pi/DeepSeek Harness) read your OpenSpec specs"));
+    console.log(chalk.gray("  /opsx:e2e (Claude), /opsx-e2e (OpenCode/Cline/Cursor/Pi/Oh My Pi) read your OpenSpec specs"));
     console.log(chalk.gray("  and run Playwright E2E tests through a three-agent pipeline:"));
     console.log(chalk.gray("  Planner → Generator → Healer\n"));
 }

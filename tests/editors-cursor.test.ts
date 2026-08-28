@@ -13,15 +13,11 @@ import {
   buildCommandMeta,
   cursorAdapter,
   detectAdapters,
-  dshAdapter,
   formatCursorCommand,
   formatCursorSkill,
-  formatDshCommand,
   getCursorCommandPath,
   getCursorSkillPath,
-  getDshCommandPath,
   hasCursor,
-  hasDsh,
   installCommand,
   installOpenSpecBlock,
   installProjectRules,
@@ -38,98 +34,6 @@ beforeEach(() => {
 });
 afterEach(() => {
   rmSync(tmpRoot, { recursive: true, force: true });
-});
-
-// ─── DeepSeek Harness adapter ─────────────────────────────────────────────
-describe("dshAdapter", () => {
-  it("has correct metadata", () => {
-    expect(dshAdapter.id).toBe("dsh");
-    expect(dshAdapter.displayName).toBe("DeepSeek Harness");
-    // dsh configures MCP via cordis.yml plugin config, not a simple file —
-    // MCP phases must skip it.
-    expect(dshAdapter.supportsMcp).toBe(false);
-  });
-
-  it("detects a project .dsh/ directory", () => {
-    mkdirSync(join(tmpRoot, ".dsh"));
-    expect(hasDsh(tmpRoot)).toBe(true);
-    expect(dshAdapter.detect(tmpRoot)).toBe(true);
-  });
-
-  it("detects the global ~/.dsh directory (DSH_HOME)", () => {
-    const home = join(tmpRoot, "fake-home");
-    mkdirSync(join(home, ".dsh"), { recursive: true });
-    expect(hasDsh(tmpRoot, home)).toBe(true);
-    expect(dshAdapter.detect(tmpRoot, home)).toBe(true);
-  });
-
-  it("does not detect when neither .dsh/ nor ~/.dsh exists", () => {
-    const home = join(tmpRoot, "fake-home");
-    expect(hasDsh(tmpRoot, home)).toBe(false);
-    expect(dshAdapter.detect(tmpRoot, home)).toBe(false);
-  });
-});
-
-describe("getDshCommandPath", () => {
-  it("returns .dsh/skills/opsx-<id>/SKILL.md", () => {
-    expect(getDshCommandPath("e2e")).toBe(
-      join(".dsh", "skills", "opsx-e2e", "SKILL.md"),
-    );
-  });
-});
-
-describe("formatDshCommand", () => {
-  it("emits name + description frontmatter and hyphenated body", () => {
-    const meta = buildCommandMeta("Run the E2E flow via /opsx:e2e");
-    const out = formatDshCommand(meta);
-    expect(out).toContain("name: opsx-e2e");
-    expect(out).toContain(
-      "description: Run Playwright E2E verification for an OpenSpec change",
-    );
-    expect(out).toContain("/opsx-e2e");
-    expect(out).not.toContain("/opsx:e2e");
-  });
-});
-
-describe("dshAdapter MCP (no simple file)", () => {
-  it("isMcpInstalled always returns false", () => {
-    expect(dshAdapter.isMcpInstalled(tmpRoot, "playwright")).toBe(false);
-  });
-
-  it("installMcp and removeMcp are no-ops (do not write files)", () => {
-    dshAdapter.installMcp(tmpRoot, "playwright", ["npx", "@playwright/mcp@latest"]);
-    dshAdapter.removeMcp(tmpRoot, "playwright");
-    expect(existsSync(join(tmpRoot, ".dsh", "mcp.json"))).toBe(false);
-  });
-});
-
-describe("installCommand (DeepSeek Harness)", () => {
-  it("writes the skill to .dsh/skills/opsx-e2e/SKILL.md", () => {
-    const meta = buildCommandMeta("Do the E2E thing");
-    installCommand(dshAdapter, meta, tmpRoot);
-    const dest = join(tmpRoot, ".dsh", "skills", "opsx-e2e", "SKILL.md");
-    expect(existsSync(dest)).toBe(true);
-    const content = readFileSync(dest, "utf-8");
-    expect(content).toContain("name: opsx-e2e");
-    expect(content).toContain("Do the E2E thing");
-  });
-
-  it("lists the skill file as the only artifact", () => {
-    const meta = buildCommandMeta("body");
-    expect(listCommandArtifactPaths(dshAdapter, meta)).toEqual([
-      join(".dsh", "skills", "opsx-e2e", "SKILL.md"),
-    ]);
-  });
-});
-
-describe("installProjectRules (DeepSeek Harness)", () => {
-  it("writes AGENTS.md (SSOT) and no CLAUDE.md wrapper", () => {
-    mkdirSync(join(tmpRoot, ".dsh"));
-    const detected = detectAdapters(tmpRoot, join(tmpRoot, "fake-home"));
-    installProjectRules(tmpRoot, "standards", detected);
-    expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(true);
-    expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(false);
-  });
 });
 
 // ─── Cursor adapter ──────────────────────────────────────────────────────────
@@ -292,6 +196,54 @@ describe("uninstall removes Cursor dual artifacts", () => {
       readFileSync(join(tmpRoot, ".cursor", "mcp.json"), "utf-8"),
     );
     expect(mcp.mcpServers.playwright).toBeUndefined();
+  });
+});
+
+describe("uninstall retired dsh cleanup (adapter removed)", () => {
+  const cwdRestore = async (fn: () => Promise<void>) => {
+    const cwd = process.cwd();
+    try {
+      process.chdir(tmpRoot);
+      await fn();
+    } finally {
+      process.chdir(cwd);
+    }
+  };
+
+  it("removes .dsh/skills/opsx-e2e and the AGENTS.md block (dsh-only project)", async () => {
+    mkdirSync(join(tmpRoot, ".dsh", "skills", "opsx-e2e"), { recursive: true });
+    writeFileSync(join(tmpRoot, ".dsh", "skills", "opsx-e2e", "SKILL.md"), "x");
+    // dsh-only project: no other editor artifacts, so the detected-adapters
+    // rules-cleaning loop is skipped — the retired cleanup must cover AGENTS.md.
+    writeFileSync(
+      join(tmpRoot, "AGENTS.md"),
+      `# proj\n\n<!-- OPENSPEC-PW:START -->\nstandards body\n<!-- OPENSPEC-PW:END -->\n\nuser tail\n`,
+    );
+
+    await cwdRestore(() => uninstall());
+
+    expect(existsSync(join(tmpRoot, ".dsh", "skills", "opsx-e2e"))).toBe(false);
+    const agents = readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8");
+    expect(agents).not.toContain("OPENSPEC-PW:START");
+    expect(agents).toContain("user tail");
+  });
+
+  it("keeps user-authored skills and only removes the exact retired path", async () => {
+    mkdirSync(join(tmpRoot, ".dsh", "skills", "opsx-e2e"), { recursive: true });
+    mkdirSync(join(tmpRoot, ".dsh", "skills", "my-opsx-helper"), { recursive: true });
+    writeFileSync(join(tmpRoot, ".dsh", "skills", "my-opsx-helper", "SKILL.md"), "user skill");
+
+    await cwdRestore(() => uninstall());
+
+    expect(existsSync(join(tmpRoot, ".dsh", "skills", "opsx-e2e"))).toBe(false);
+    expect(
+      existsSync(join(tmpRoot, ".dsh", "skills", "my-opsx-helper", "SKILL.md")),
+    ).toBe(true);
+  });
+
+  it("stays silent when .dsh does not exist", async () => {
+    await cwdRestore(() => uninstall());
+    expect(existsSync(join(tmpRoot, ".dsh"))).toBe(false);
   });
 });
 

@@ -36,8 +36,7 @@ export type EditorId =
   | "cline"
   | "cursor"
   | "pi"
-  | "omp"
-  | "dsh";
+  | "omp";
 
 export interface ExtraArtifact {
   relativePath: string;
@@ -92,7 +91,7 @@ export interface EditorAdapter {
 
 /**
  * Input shape for `defineAdapter` — declares the contract for an editor
- * adapter with sensible defaults for the no-MCP-client case (Pi, dsh).
+ * adapter with sensible defaults for the no-MCP-client case (Pi).
  * All required-by-behavior fields are still required; optional ones
  * (supportsMcp, projectRulesPath, isMcpInstalled, installMcp, removeMcp)
  * fall back to defaults.
@@ -105,7 +104,7 @@ export interface EditorAdapterInit {
   /**
    * Optional: project-level-only detection signal. Required to differ from
    * `detect` only for adapters whose detect() also matches a global config
-   * dir (pi, omp, dsh).
+   * dir (pi, omp).
    */
   projectSignal?: EditorAdapter["projectSignal"];
   commandFilePath: EditorAdapter["commandFilePath"];

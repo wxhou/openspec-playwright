@@ -15,7 +15,7 @@ import {
 // ─── resolveToolsArg (--tools flag parsing) ──────────────────────────────
 
 describe("resolveToolsArg", () => {
-  const ALL = ["claude", "opencode", "cline", "cursor", "pi", "omp", "dsh"];
+  const ALL = ["claude", "opencode", "cline", "cursor", "pi", "omp"];
 
   it("returns null when no --tools flag was provided", () => {
     expect(resolveToolsArg(undefined)).toBeNull();

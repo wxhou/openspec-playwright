@@ -1019,20 +1019,18 @@ describe("installProjectRules", () => {
 // ─── detectAdapters ─────────────────────────────────────────────────────────
 
 describe("detectAdapters", () => {
-  it("returns all seven adapters when every editor dir exists", () => {
+  it("returns all six adapters when every editor dir exists", () => {
     mkdirSync(join(tmpRoot, ".claude"));
     mkdirSync(join(tmpRoot, ".opencode"));
     mkdirSync(join(tmpRoot, ".cline"));
     mkdirSync(join(tmpRoot, ".cursor"));
     mkdirSync(join(tmpRoot, ".pi"));
     mkdirSync(join(tmpRoot, ".omp"));
-    mkdirSync(join(tmpRoot, ".dsh"));
     const adapters = detectAdapters(tmpRoot, join(tmpRoot, "fake-home"));
     expect(adapters.map((a) => a.id).sort()).toEqual([
       "claude",
       "cline",
       "cursor",
-      "dsh",
       "omp",
       "opencode",
       "pi",
