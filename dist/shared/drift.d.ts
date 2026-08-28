@@ -3,7 +3,6 @@ export declare const OPENSPEC_END = "<!-- OPENSPEC-PW:END -->";
 export declare const LEGACY_OPENSPEC_START = "<!-- OPENSPEC:START -->";
 export declare const LEGACY_OPENSPEC_END = "<!-- OPENSPEC:END -->";
 export declare function hasLegacyTerritoryStart(content: string): boolean;
-export declare function hasLegacyTerritoryEnd(content: string): boolean;
 export interface DriftResult {
     /** true when the file's OPENSPEC block differs from the expected content */
     stale: boolean;

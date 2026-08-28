@@ -29,10 +29,6 @@ export function hasLegacyTerritoryStart(content: string): boolean {
   return content.includes(LEGACY_OPENSPEC_START);
 }
 
-export function hasLegacyTerritoryEnd(content: string): boolean {
-  return content.includes(LEGACY_OPENSPEC_END);
-}
-
 export interface DriftResult {
   /** true when the file's OPENSPEC block differs from the expected content */
   stale: boolean;

@@ -257,28 +257,33 @@ export function readEmployeeStandards(srcPath) {
 // used to wipe our standards block. Our markers moved to the OPENSPEC-PW
 // namespace; these helpers migrate surviving legacy blocks in place.
 /** Our content signatures inside legacy blocks — an official legacy init
- * block never contains them, so it is never claimed by mistake. */
+ * block never contains them, so it is never claimed by mistake. The wrapper
+ * accepts either marker: the current wrapper carries "@AGENTS.md", but the
+ * April-2026 format (v0.1.38–v0.3.2) wrote the FULL standards directly into
+ * CLAUDE.md — that block is ours too, and must migrate (else update would
+ * append a new wrapper next to it instead of replacing it). */
 const LEGACY_MAIN_SIGNATURE = "Employee-Grade Standards";
-const LEGACY_WRAPPER_SIGNATURE = "@AGENTS.md";
+const LEGACY_WRAPPER_SIGNATURES = ["@AGENTS.md", "Employee-Grade Standards"];
 /**
  * Swap legacy markers for OPENSPEC-PW markers in one write (no half-migrated
  * state). Block content is preserved verbatim. Returns null when the file
  * has no locatable legacy territory: no legacy START (a lone legacy END
  * cannot be bounded safely), or the signature gate fails (not our block).
  */
-function migrateLegacyMarkersInContent(content, signature) {
+function migrateLegacyMarkersInContent(content, signatures) {
     if (!hasLegacyTerritoryStart(content))
         return null;
     const startIdx = content.indexOf(LEGACY_OPENSPEC_START);
     const endIdx = content.indexOf(LEGACY_OPENSPEC_END);
+    const matches = (inner) => signatures.some((s) => inner.includes(s));
     if (endIdx !== -1 && endIdx > startIdx) {
         const inner = content.slice(startIdx + LEGACY_OPENSPEC_START.length, endIdx);
-        if (!inner.includes(signature))
+        if (!matches(inner))
             return null;
     }
     else {
         // Lone START (truncated): our content must appear after it.
-        if (!content.slice(startIdx).includes(signature))
+        if (!matches(content.slice(startIdx)))
             return null;
     }
     // String replace swaps only the first occurrence — markers are unique.
@@ -302,7 +307,7 @@ export function migrateLegacyMarkers(projectRoot, hasPwArtifacts, claudeAuthoriz
     const agentsPath = join(projectRoot, "AGENTS.md");
     if (existsSync(agentsPath)) {
         const content = readFileSync(agentsPath, "utf-8");
-        const next = migrateLegacyMarkersInContent(content, LEGACY_MAIN_SIGNATURE);
+        const next = migrateLegacyMarkersInContent(content, [LEGACY_MAIN_SIGNATURE]);
         if (next !== null) {
             writeFileSync(agentsPath, next);
             console.log(chalk.green("  ✓ AGENTS.md: migrated markers to OPENSPEC-PW (immune to openspec legacy cleanup)"));
@@ -315,7 +320,7 @@ export function migrateLegacyMarkers(projectRoot, hasPwArtifacts, claudeAuthoriz
         // syncEmployeeStandards for why rewriting through the symlink is unsafe.
         if (existsSync(claudePath) && !lstatSync(claudePath).isSymbolicLink()) {
             const content = readFileSync(claudePath, "utf-8");
-            const next = migrateLegacyMarkersInContent(content, LEGACY_WRAPPER_SIGNATURE);
+            const next = migrateLegacyMarkersInContent(content, LEGACY_WRAPPER_SIGNATURES);
             if (next !== null) {
                 writeFileSync(claudePath, next);
                 console.log(chalk.green("  ✓ CLAUDE.md: migrated markers to OPENSPEC-PW (immune to openspec legacy cleanup)"));

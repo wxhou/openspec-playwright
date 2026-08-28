@@ -59,6 +59,20 @@ describe("migrateLegacyMarkers", () => {
     expect(readAgents()).toBe(content);
   });
 
+  it("legacy FULL-standards block in CLAUDE.md (April-2026 format, no @AGENTS.md) migrates", () => {
+    // v0.1.38–v0.3.2 wrote the full standards directly into CLAUDE.md under
+    // legacy markers. Without this signature, update would APPEND a new
+    // wrapper next to the block instead of replacing it (duplicate content).
+    const shapeB = `${LEGACY_OPENSPEC_START}\n\n# AI Coding Assistant Employee-Grade Standards\n\nfull standards body\n\n${LEGACY_OPENSPEC_END}\n`;
+    writeFileSync(join(tmpDir, "CLAUDE.md"), shapeB);
+    writeAgents("no markers here\n");
+    expect(migrateLegacyMarkers(tmpDir, true, true)).toBe(true);
+    const after = readFileSync(join(tmpDir, "CLAUDE.md"), "utf-8");
+    expect(after).toContain(OPENSPEC_START);
+    expect(after).not.toContain(LEGACY_OPENSPEC_START);
+    expect(after).toContain("full standards body");
+  });
+
   it("no pw artifacts: official relic untouched (not our territory)", () => {
     writeAgents(legacyBlock);
     expect(migrateLegacyMarkers(tmpDir, false, false)).toBe(false);

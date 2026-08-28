@@ -236,6 +236,28 @@ describe("syncEmployeeStandards", () => {
     expect(installClaudeWrapperMock).toHaveBeenCalledTimes(1);
   });
 
+  it("a legacy FULL-standards CLAUDE.md (April-2026 shape) migrates and is replaced, not appended next to", () => {
+    vi.mocked(writeFileSync).mockImplementation((p, c) => {
+      contentsByPath.set(String(p), String(c));
+      existingPaths.add(String(p));
+    });
+    agentsInSync();
+    existingPaths.add(claudePath);
+    contentsByPath.set(
+      claudePath,
+      `# proj\n\n<!-- OPENSPEC:START -->\n\n# AI Coding Assistant Employee-Grade Standards\n\nfull standards body\n\n<!-- OPENSPEC:END -->\n`,
+    );
+
+    syncEmployeeStandards(tmpDir, root, true, true);
+
+    // Migrated (signature = full-standards heading), then the regular drift
+    // path REPLACES the block with the wrapper — no append, no bare-import
+    // misjudgment, no permanent duplicate.
+    expect(logText()).toContain("CLAUDE.md: migrated markers to OPENSPEC-PW");
+    expect(logText()).not.toContain("裸 @AGENTS.md 导入");
+    expect(installClaudeWrapperMock).toHaveBeenCalledTimes(1);
+  });
+
   it("skips AGENTS.md write-back when the file is missing — regardless of detected editors", () => {
     syncEmployeeStandards(tmpDir, root, false, true);
 

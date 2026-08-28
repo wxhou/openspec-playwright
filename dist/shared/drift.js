@@ -25,9 +25,6 @@ export const LEGACY_OPENSPEC_END = "<!-- OPENSPEC:END -->";
 export function hasLegacyTerritoryStart(content) {
     return content.includes(LEGACY_OPENSPEC_START);
 }
-export function hasLegacyTerritoryEnd(content) {
-    return content.includes(LEGACY_OPENSPEC_END);
-}
 /**
  * Extract the OPENSPEC marker block from a file's content.
  * Returns `null` when there are no markers, and treats a truncated marker
