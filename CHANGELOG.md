@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Changed
 
+- **规范 review 修复（架构师二轮）**. ① §2 管道命令禁令堵措辞漏洞：对象从「源码文件」扩为「项目内已有文件——源码/文档/测试/配置同算」，批量改写须先征得用户同意（新文件豁免自动成立，不误伤生成类操作）；② §6 补后端验收「交付」缺口：含断言临时脚本转正为对应层级测试（浏览器→Playwright、服务→API 集成测试），后端验收落成集成测试提交前实跑——堵住「curl 看着对」逃逸通道；③ docs 内嵌副本补回「不重复堆」（防核心逻辑已被验收覆盖还堆单测，锚点测不到的 drift）；④ docs-sync 锚点标签错位修正 2 处。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`
+
 - **新增 §6 测试与验证策略（合并原浏览器验证证据链 + 测试策略；单测命中才测，验收重心在集成层）**. 动机：AI 用琐碎单测堆数量冒充完成度（test theater）——生成烧 token、套件拖慢反馈，验收结果才决定能否交付。值得单测正向清单（核心计算/状态转换/含分支纯函数/边界错误路径/复用工具/回归）+ 排除清单（纯透传/getter/样板/类型系统已保证的行为）；🔴 覆盖义务「验收标准点名的行为必须被某层测试覆盖（单测或验收测试，一层即可）」——核心逻辑已被 API 验收覆盖时不要求补单测；分层反馈预期（单测秒级、验收分钟级，量级锚点不设硬门槛）；验收统一定义「对照 spec 验收标准的真实行为验证，层级由被验对象决定」——后端验收走 API 真实请求（不以全 mock 单测链冒充），前端验收走 §6 浏览器 + Playwright。§6 触发块衔接「纯逻辑 → 按单测取舍，不开浏览器」；🔴 方案选型优先级链（已有依赖 > 成熟库 > 自写）由 🟡 提级并补入 docs 内嵌副本。同步 docs/script.js 中英内嵌副本、AGENTS.md、docs-sync 锚点（章节数保持 7，标题更名「测试与验证策略」）。
   - `employee-standards.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`AGENTS.md`
 

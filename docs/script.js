@@ -39,7 +39,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🟡 重命名覆盖：调用、类型、字符串、import、barrel file、测试 mock，不得假设一次覆盖
 - 🟡 编辑 → 重新读取确认 → lint+typecheck → 任一失败则回退
 - 🟡 变更完成告知用户可能遗漏区域，提示人工复查
-- 🔴 禁止用 sed/awk/node -e/python -c 等管道命令改源码文件（跳过编辑工具验证层）
+- 🔴 禁止用 sed/awk/node -e/python -c 等管道命令改写项目内已有文件——源码/文档/测试/配置同算（跳过编辑工具验证层）；确需批量改写，先征得用户同意
 - 不主动推送，除非用户明确要求
 - 格式化工具（ruff fmt/prettier 除外——不改语义）
 - 密钥与 .env 不入版本控制。示例用占位符（如 \`YOUR_API_KEY\`）。调试日志不打印凭据
@@ -74,12 +74,12 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🟡 提交前实跑测试，通过才算完成；未运行不视为完成
 - 🟡 无法覆盖的路径说明理由；\`test.skip\`/\`test.fixme\` 必附理由
 - 🟡 稳定选择器（data-testid/role）；Healer 只消 flaky，不得掩盖断言失败
-- 🔴 含断言的临时脚本转正为 Playwright 测试或删除
+- 🔴 含断言的临时脚本转正为对应层级的测试（浏览器→Playwright、服务→API 集成测试）或删除
 
 - 🟡 值得单测：业务核心计算/状态转换、含分支的纯函数、边界与错误处理路径、被多处复用的工具、修过 bug 的回归。不值得：纯透传、getter/装饰器/样板、类型系统已保证的行为、框架自带行为；模糊地带默认测，一个行为一组断言，不拆场景凑数
-- 🔴 验收标准点名的行为与业务核心逻辑必须被某层测试覆盖（单测或验收测试，一层即可）；不以本条为由跳过/删除既有测试
+- 🔴 验收标准点名的行为与业务核心逻辑必须被某层测试覆盖（单测或验收测试，一层即可，不重复堆）；不以本条为由跳过/删除既有测试
 - 🟡 分层反馈：单测秒级随手跑；验收测试提交前实跑，分钟级可接受
-- 🔴 后端/服务验收 → 对真实运行的服务发真实请求验证契约与端到端行为，不以全 mock 的单测链冒充验收
+- 🔴 后端/服务验收 → 对真实运行的服务发真实请求验证契约与端到端行为，不以全 mock 的单测链冒充验收；验收落成集成测试，提交前实跑
 - 🔴 前端/用户可见验收 → 浏览器验证 + Playwright 交付测试
 - 🟡 集成测试用真实数据/依赖；期望锚定 spec 验收标准，不自定期望`;
 
@@ -124,7 +124,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🟡 Renaming must cover: calls, types, strings, imports, barrel files, test mocks — don't assume one pass covers everything
 - 🟡 Edit → re-read to confirm → lint+typecheck → rollback on any failure
 - 🟡 After changes, inform user of areas that may be missed, prompt manual review
-- 🔴 No sed/awk/node -e/python -c pipelines for source edits (bypasses edit tool validation)
+- 🔴 No sed/awk/node -e/python -c pipelines for rewriting existing project files — source, docs, tests, config all count (bypasses edit tool validation); for bulk rewrites, get user consent first
 - No push unless explicitly requested
 - Formatters allowed (ruff fmt/prettier — don't change semantics)
 - Secrets & .env out of version control. Use placeholders (e.g. \`YOUR_API_KEY\`). No credentials in debug logs
@@ -159,12 +159,12 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🟡 Run tests before committing; not run = not done
 - 🟡 Uncovered paths need a reason; \`test.skip\`/\`test.fixme\` must state a reason
 - 🟡 Stable selectors (data-testid/role); Healer only reduces flakiness, must not mask assertion failures
-- 🔴 Temporary scripts with assertions must be converted to Playwright tests or deleted
+- 🔴 Temporary scripts with assertions must be converted to tests at the matching layer (browser → Playwright, service → API integration tests) or deleted
 
 - 🟡 Worth unit-testing: core business computation/state transitions, pure functions with branches, boundary & error paths, widely reused utilities, bug-fix regressions. Not worth: pure pass-through, getters/decorators/boilerplate, behavior already guaranteed by the type system, framework built-ins; when ambiguous default to testing (cost of a miss > cost of an extra test), one behavior one assertion set — don't split scenarios to pad counts
-- 🔴 Behaviors named by acceptance criteria and core business logic must be covered by some test layer (unit OR acceptance — one is enough); never use this rule to skip/delete existing tests
+- 🔴 Behaviors named by acceptance criteria and core business logic must be covered by some test layer (unit OR acceptance — one is enough, no duplicate stacking); never use this rule to skip/delete existing tests
 - 🟡 Layered feedback: unit tests run instantly (seconds); acceptance tests run before commit (minutes are fine)
-- 🔴 Backend/service acceptance → real requests against a real running service to verify contract & end-to-end behavior; never pass off an all-mock unit chain as acceptance
+- 🔴 Backend/service acceptance → real requests against a real running service to verify contract & end-to-end behavior; never pass off an all-mock unit chain as acceptance; acceptance lands as integration tests, run before commit
 - 🔴 Frontend/user-visible acceptance → browser verification + delivered Playwright tests
 - 🟡 Integration tests use real data/dependencies; expectations anchor to spec acceptance criteria, never self-defined`;
 
