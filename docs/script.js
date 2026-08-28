@@ -12,6 +12,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🟡 多步任务先列计划（\`1. [Step] → verify: [check]\`），循环验证直到成功。lint 失败时优先运行对应语言的 auto-fix（如 \`npm run lint:fix\` / \`ruff format .\` / \`go fmt ./...\`）
 - 🟡 只写被要求的：不加"灵活"/"可配置"/单次使用抽象。200行能50行则重写
 - 🔴 过时的直接删：删除/修改时不留兼容层、不写迁移、不留 fallback
+- 🔴 方案选型按优先级链：项目已有依赖 → 成熟有人维护的库 → 自己实现；同类问题先用成熟产品验证过的模式解决
 - 🟡 精准改动：只改必要的，改完清理自己造成的垃圾。匹配现有风格
 - 🟡 代码文件行数上限 1500：超过即违例，按职责拆分，不得继续堆叠
 - ⚪ 重构前清理未使用的 import/export/prop/console.log 等，单独提交再做重构
@@ -63,7 +64,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🟡 非源码临时文件（截图、日志、heapdump 等）放项目根 \`tmp/\` 下，文件名含时间戳（如 \`screenshot-20260721T143000.png\`）
 - 🔴 禁止将临时文件提交到版本控制；超 24h 的文件应在 commit 前删除
 
-## 浏览器验证证据链
+## 测试与验证策略
 - 触发条件：改 DOM/交互/跳转/异步渲染/样式/响应式，或路由守卫/权限/多角色可见性 → 必须浏览器验证（权限类用真实登录态）；纯逻辑按测试策略取舍，不开浏览器
 - 🔴 截图不等于行为验证：涉及交互必须验证交互结果（点击后的状态/跳转/数据渲染），仅截图不算通过
 - 🟡 自检不留测试代码：构建新鲜度（跑旧包验证作废）、登录态真实性（禁止注入 token）、期望锚定 spec（不自定期望）、控制台/网络无错
@@ -75,7 +76,6 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🟡 稳定选择器（data-testid/role）；Healer 只消 flaky，不得掩盖断言失败
 - 🔴 含断言的临时脚本转正为 Playwright 测试或删除
 
-## 测试策略
 - 🟡 值得单测：业务核心计算/状态转换、含分支的纯函数、边界与错误处理路径、被多处复用的工具、修过 bug 的回归。不值得：纯透传、getter/装饰器/样板、类型系统已保证的行为、框架自带行为；模糊地带默认测，一个行为一组断言，不拆场景凑数
 - 🔴 验收标准点名的行为与业务核心逻辑必须被某层测试覆盖（单测或验收测试，一层即可）；不以本条为由跳过/删除既有测试
 - 🟡 分层反馈：单测秒级随手跑；验收测试提交前实跑，分钟级可接受
@@ -97,6 +97,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🟡 Multi-step tasks: plan first (\`1. [Step] → verify: [check]\`), loop until verified. On lint failure, run the language's auto-fix first (e.g. \`npm run lint:fix\` / \`ruff format .\` / \`go fmt ./...\`)
 - 🟡 Write only what's requested: No flexibility/configurability/single-use abstractions. Rewrite if 200 lines can be 50
 - 🔴 Delete obsolete code outright: no compat layers, migrations, or fallbacks when removing/editing
+- 🔴 Solution selection follows the priority chain: existing project deps → mature maintained libraries → write it yourself; solve similar problems with proven patterns first
 - 🟡 Surgical changes: Touch only what's needed, clean up your own mess. Match existing style
 - 🟡 Code file line limit 1500: over 1500 is a violation — split by responsibility, never extend
 - ⚪ Before refactoring, clean unused imports/exports/props/console.log etc. in a separate commit
@@ -148,7 +149,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🟡 Non-source temp files (screenshots, logs, heapdumps, etc.) go in \`tmp/\` at project root, filenames include timestamp (e.g. \`screenshot-20260721T143000.png\`)
 - 🔴 Never commit temp files to version control; delete files older than 24h before commit
 
-## Browser Verification Evidence Chain
+## Testing & Verification Strategy
 - Trigger: DOM/interaction/navigation/async-render/style/responsive changes OR route guards/permissions/multi-role visibility → must be browser-verified (permissions need real login); pure logic → per testing strategy, no browser
 - 🔴 Screenshot ≠ behavior proof: interactions must verify the result (state change after click / navigation / data render); screenshot alone does not pass
 - 🟡 Self-check leaves no test code: verify build freshness (stale bundle invalidates), real login (no token injection), expectations anchored to spec (no self-defined expectations), console/network clean
@@ -160,7 +161,6 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🟡 Stable selectors (data-testid/role); Healer only reduces flakiness, must not mask assertion failures
 - 🔴 Temporary scripts with assertions must be converted to Playwright tests or deleted
 
-## Testing Strategy
 - 🟡 Worth unit-testing: core business computation/state transitions, pure functions with branches, boundary & error paths, widely reused utilities, bug-fix regressions. Not worth: pure pass-through, getters/decorators/boilerplate, behavior already guaranteed by the type system, framework built-ins; when ambiguous default to testing (cost of a miss > cost of an extra test), one behavior one assertion set — don't split scenarios to pad counts
 - 🔴 Behaviors named by acceptance criteria and core business logic must be covered by some test layer (unit OR acceptance — one is enough); never use this rule to skip/delete existing tests
 - 🟡 Layered feedback: unit tests run instantly (seconds); acceptance tests run before commit (minutes are fine)

@@ -23,12 +23,12 @@ const ZH_ANCHORS: [string, string][] = [
   ["§1 1500 行上限", "代码文件行数上限 1500"],
   ["§4 数据编撰禁令", "严禁主动编撰任何数据"],
   ["§6 临时文件管理", "临时文件管理"],
-  ["§6 章节标题", "浏览器验证证据链"],
+  ["§6 测试与验证策略", "测试与验证策略"],
   ["§6 截图≠行为", "仅截图不算通过"],
   ["§6 临时脚本转正", "转正为 Playwright 测试或删除"],
-  ["§7 测试策略", "测试策略"],
-  ["§7 覆盖义务", "必须被某层测试覆盖"],
-  ["§7 验收定义", "不以全 mock 的单测链冒充验收"],
+  ["§6 单测取舍", "模糊地带默认测"],
+  ["§6 覆盖义务", "必须被某层测试覆盖"],
+  ["§6 验收定义", "不以全 mock 的单测链冒充验收"],
 ];
 
 const EN_ANCHORS: [string, string][] = [
@@ -36,12 +36,12 @@ const EN_ANCHORS: [string, string][] = [
   ["§1 lint gate", "lint+typecheck runs after every edit"],
   ["§1 delete obsolete", "Delete obsolete code outright"],
   ["§1 1500 line cap", "Code file line limit 1500"],
-  ["§6 section title", "Browser Verification Evidence Chain"],
+  ["§6 testing & verification", "Testing & Verification Strategy"],
   ["§6 screenshot ≠ behavior", "Screenshot ≠ behavior proof"],
   ["§6 temp scripts", "Temporary scripts with assertions"],
-  ["§7 testing strategy", "Testing Strategy"],
-  ["§7 coverage duty", "must be covered by some test layer"],
-  ["§7 acceptance definition", "all-mock unit chain as acceptance"],
+  ["§6 selection chain", "priority chain"],
+  ["§6 coverage duty", "must be covered by some test layer"],
+  ["§6 acceptance definition", "all-mock unit chain as acceptance"],
 ];
 
 describe("docs/script.js embedded standards stay in sync", () => {
@@ -63,7 +63,7 @@ describe("docs/script.js embedded standards stay in sync", () => {
     // Section HEADINGS drift in wording between the full standards and the
     // condensed copy, so match by number coverage instead of exact titles.
     const sectionCount = (standards.match(/^## \d+\./gm) ?? []).length;
-    expect(sectionCount).toBeGreaterThanOrEqual(8); // §0..§7
+    expect(sectionCount).toBeGreaterThanOrEqual(7); // §0..§6
     // The condensed ZH copy carries all major sections as headings too.
     const zhHeadings = (zh.match(/^## /gm) ?? []).length;
     expect(zhHeadings).toBeGreaterThanOrEqual(sectionCount - 1);
