@@ -125,7 +125,9 @@ openspec-pw init --tools none            # 不配置编辑器，只生成脚手�
 
 受支持 id：`claude`、`opencode`、`cline`、`cursor`、`pi`、`omp`、`dsh`（`oh-my-pi` 是 `omp` 的别名）。id 大小写不敏感、重复自动去重、`all`/`none` 不能与具体 id 混用。被 `--tools` 指定的编辑器即使未被检测到也会配置（会自动创建其配置目录）。
 
-未提供 `--tools` 时：TTY 终端弹出交互式多选（预选已检测的编辑器）；非交互终端回退到检测结果。`--tools` 与 `--no-mcp` 正交：前者选择*哪些*编辑器，后者决定*是否*为它们安装 Playwright MCP。
+未提供 `--tools` 时：TTY 终端弹出交互式多选（预选已检测的编辑器——含 Pi / Oh My Pi / DeepSeek Harness 的全局配置目录信号）；非交互终端回退到**仅项目内检测**（全局配置目录只是预选建议，不构成写入授权）。`--tools` 与 `--no-mcp` 正交：前者选择*哪些*编辑器，后者决定*是否*为它们安装 Playwright MCP。
+
+**编辑器领土**：`update` 只维护项目内已有 openspec-pw 命令工件的编辑器——不会新增编辑器（全局配置目录或手建的 `.cursor/` 不构成写入授权）。给已初始化项目新增编辑器请重跑 `openspec-pw init --tools <id>`（幂等）。
 
 ### CLI 命令
 
@@ -211,8 +213,8 @@ openspec-pw uninstall     # 移除项目中的集成
 | **OpenSpec** | 目录已初始化 | `.spec.md` 规范文件数量 |
 | **Playwright 浏览器** | CLI 版本、Chromium 二进制已下载 | — |
 | **Playwright 测试框架** | `@playwright/test` 已安装 | — |
-| **Playwright MCP** | 每个检测到的编辑器均已配置 test-runner server（Pi 无 MCP 客户端，跳过并以信息性提示记录） | `playwright-cli`（PATH 上的 @playwright/cli）——可选 ⚠，不阻断 |
-| **Sync** | 已初始化时标准同步（漂移 → `openspec-pw update`） | 未初始化（闸门，不阻断） |
+| **Playwright MCP** | 每个已授权（有命令工件）编辑器的 test-runner server 配置；未授权编辑器降为信息行（提示 `init --tools` 添加，不阻断） | `playwright-cli`（PATH 上的 @playwright/cli）——可选 ⚠，不阻断 |
+| **Sync** | 已初始化时标准同步（漂移 → `openspec-pw update`；AGENTS.md 无标记视为未初始化，恒 ok:true） | 未初始化（闸门，不阻断） |
 | **测试目录** | `tests/playwright/` 目录存在 | `auth.setup.ts` 是否存在 |
 | **种子测试** | — | `seed.spec.ts` 是否存在 |
 | **应用服务器** | — | 开发脚本、基础 URL、可达性 |

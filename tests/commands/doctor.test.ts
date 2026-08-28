@@ -1,4 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { tmpdir } from "os";
+import { join } from "path";
+// "fs" is file-wide mocked below — pull the real fns for test fixtures via
+// importActual (vitest aliases node:fs onto the same mock).
+const realFs = await vi.importActual<typeof import("node:fs")>("node:fs");
+const mkdtempSync = realFs.mkdtempSync;
+const rmSync = realFs.rmSync;
 
 // Mock child_process.execFileSync
 vi.mock("child_process", () => ({
@@ -517,5 +524,151 @@ describe("doctor integration: test-runner + playwright-cli checks", () => {
     function exitSpyCleanup() {
       exitSpy.mockRestore();
     }
+  });
+});
+
+// ─── doctor authorization tiers (scope-editor-writes) ───────────────────────
+
+describe("doctor authorization tiers", () => {
+  const execMock = vi.mocked(execFileSync);
+  const existsMock = vi.mocked(existsSync);
+  const readdirMock = vi.mocked(readdirSync);
+  const readFileMock = vi.mocked(readFileSync);
+  const lstatMock = vi.mocked(lstatSync);
+  const detectAdaptersMock = vi.mocked(detectAdapters);
+
+  let fixtureRoot: string;
+  let existingPaths: Set<string>;
+  let cwdSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    fixtureRoot = mkdtempSync(join(tmpdir(), "ospw-pw-doctor-tier-"));
+    existingPaths = new Set();
+    cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(fixtureRoot);
+    detectAdaptersMock.mockReturnValue([claudeAdapter]);
+    execMock.mockImplementation((cmd: string) => {
+      if (cmd === "node" || cmd === "npm" || cmd === "npx") return "v22.0.0";
+      return "";
+    });
+    existsMock.mockImplementation((p: Parameters<typeof existsSync>[0]) =>
+      existingPaths.has(String(p).replace(/\\/g, "/")),
+    );
+    readFileMock.mockImplementation((p: Parameters<typeof readFileSync>[0]) => {
+      const s = String(p);
+      if (s.endsWith(".mcp.json")) {
+        return JSON.stringify({
+          mcpServers: {
+            "playwright-test": {
+              command: "npx",
+              args: ["playwright", "run-test-mcp-server"],
+            },
+          },
+        });
+      }
+      if (s.endsWith("AGENTS.md") || s.endsWith("CLAUDE.md")) {
+        return "<!-- OPENSPEC:START -->\ncontent\n<!-- OPENSPEC:END -->";
+      }
+      return "";
+    });
+    readdirMock.mockReturnValue([] as never);
+    lstatMock.mockReturnValue({ isSymbolicLink: () => false } as never);
+  });
+
+  afterEach(() => {
+    cwdSpy?.mockRestore();
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  });
+
+  async function doctorJsonChecks(): Promise<
+    Array<{
+      category: string;
+      name: string;
+      ok: boolean;
+      message?: string;
+      authorized?: boolean;
+    }>
+  > {
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((...args) => {
+      logs.push(args.join(" "));
+    });
+    try {
+      await doctor({ json: true });
+    } catch {
+      // optional — assertions below are the real checks
+    } finally {
+      spy.mockRestore();
+    }
+    return JSON.parse(logs.join("\n")).checks;
+  }
+
+  it("unauthorized editor MCP check is an ok:true info line pointing at init", async () => {
+    // claude detected but no command artifacts → not authorized
+    const checks = await doctorJsonChecks();
+    const mcp = checks.find((c) => c.name === "test-runner-mcp-claude");
+    expect(mcp?.ok).toBe(true);
+    expect(mcp?.authorized).toBe(false);
+    expect(mcp?.message).toContain("init --tools claude");
+    expect(mcp?.message).not.toContain("run openspec-pw update");
+  });
+
+  it("authorized editor with missing MCP keeps the run-update hint (self-healable)", async () => {
+    existingPaths.add(join(fixtureRoot, ".claude", "commands", "opsx", "e2e.md"));
+    // .mcp.json exists but has no servers → playwright-test not installed
+    readFileMock.mockImplementation((p: Parameters<typeof readFileSync>[0]) => {
+      const s = String(p);
+      if (s.endsWith(".mcp.json")) return "{}";
+      return "";
+    });
+    const checks = await doctorJsonChecks();
+    const mcp = checks.find((c) => c.name === "test-runner-mcp-claude");
+    expect(mcp?.ok).toBe(false);
+    expect(mcp?.authorized).toBe(true);
+    expect(mcp?.message).toContain("run openspec-pw update");
+  });
+
+  it("authorized editor with MCP installed is ok:true + authorized", async () => {
+    existingPaths.add(join(fixtureRoot, ".claude", "commands", "opsx", "e2e.md"));
+    existingPaths.add(join(fixtureRoot, ".mcp.json"));
+    const checks = await doctorJsonChecks();
+    const mcp = checks.find((c) => c.name === "test-runner-mcp-claude");
+    expect(mcp?.ok).toBe(true);
+    expect(mcp?.authorized).toBe(true);
+  });
+
+  it("no-marker AGENTS.md reports ok:true and never suggests update", async () => {
+    existingPaths.add(join(fixtureRoot, "AGENTS.md"));
+    existingPaths.add(join(fixtureRoot, ".claude", "commands", "opsx", "e2e.md"));
+    readFileMock.mockImplementation((p: Parameters<typeof readFileSync>[0]) => {
+      const s = String(p);
+      if (s.endsWith(".mcp.json")) return "{}";
+      if (s.endsWith("AGENTS.md")) return "user rules without markers";
+      return "";
+    });
+    const checks = await doctorJsonChecks();
+    const agents = checks.find((c) => c.name === "standards-agents");
+    expect(agents?.ok).toBe(true);
+    expect(agents?.message).toContain("restore via");
+    expect(agents?.message).not.toContain("run openspec-pw update");
+  });
+
+  it("missing AGENTS.md with no command artifacts → not initialized, ok:true", async () => {
+    // no AGENTS.md, no commands, no openspec dir → the aggregate standards check
+    const checks = await doctorJsonChecks();
+    const std = checks.find((c) => c.name === "standards");
+    expect(std?.ok).toBe(true);
+    expect(std?.message).toContain("not initialized");
+  });
+
+  it("AGENTS.md with markers but stale content is ok:false and fixable by update", async () => {
+    const drift = await import("../../src/shared/drift.js");
+    vi.mocked(drift.compareBlock).mockReturnValueOnce({ stale: true });
+    existingPaths.add(join(fixtureRoot, "AGENTS.md"));
+    existingPaths.add(join(fixtureRoot, "openspec"));
+    const checks = await doctorJsonChecks();
+    const agents = checks.find((c) => c.name === "standards-agents");
+    expect(agents?.ok).toBe(false);
+    expect(agents?.message).toContain("run openspec-pw update");
   });
 });

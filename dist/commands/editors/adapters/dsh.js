@@ -56,6 +56,9 @@ export const dshAdapter = defineAdapter({
     label: "dsh",
     displayName: "DeepSeek Harness",
     detect: hasDsh,
+    // Project-level signal only — global ~/.dsh is a pre-select suggestion,
+    // never a write authorization.
+    projectSignal: (projectRoot) => existsSync(join(projectRoot, ".dsh")),
     // dsh configures MCP via cordis.yml plugin config, not a simple file —
     // shared MCP phases skip this adapter (configure Playwright MCP manually).
     supportsMcp: false,

@@ -17,6 +17,10 @@ export function buildCommandMeta(body) {
 }
 const noop = () => { };
 const alwaysFalse = () => false;
+// Sentinel home dir that never exists — scopes detect() to project-level
+// signals for adapters that don't declare their own projectSignal (the
+// home-blind adapters ignore homeDir entirely).
+export const NO_HOME = "\0openspec-pw-no-home";
 /**
  * Build an `EditorAdapter` from a partial init object. Fills in
  * defaults so each adapter only declares what's actually different.
@@ -27,6 +31,7 @@ export function defineAdapter(init) {
         label: init.label,
         displayName: init.displayName,
         detect: init.detect,
+        projectSignal: init.projectSignal ?? ((root) => init.detect(root, NO_HOME)),
         commandFilePath: init.commandFilePath,
         formatCommand: init.formatCommand,
         supportsMcp: init.supportsMcp ?? true,

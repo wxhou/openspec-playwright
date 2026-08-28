@@ -68,6 +68,9 @@ export const ompAdapter: EditorAdapter = defineAdapter({
   label: "omp",
   displayName: "Oh My Pi",
   detect: hasOmp,
+  // Project-level signal only — global ~/.omp/agent is a pre-select
+  // suggestion, never a write authorization.
+  projectSignal: (projectRoot) => existsSync(join(projectRoot, ".omp")),
   commandFilePath: getOmpCommandPath,
   formatCommand: formatOmpCommand,
   // omp reads AGENTS.md natively — that's the default.

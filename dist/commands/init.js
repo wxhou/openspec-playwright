@@ -4,7 +4,7 @@ import { join } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { readFile } from "fs/promises";
-import { buildCommandMeta, detectAdapters, getAdapter, getAllAdapters, installCommand, installProjectRules, readEmployeeStandards, resolveToolsArg, slashCommandForAdapter, } from "./editors.js";
+import { buildCommandMeta, detectAdapters, detectProjectAdapters, getAdapter, getAllAdapters, installCommand, installProjectRules, readEmployeeStandards, resolveToolsArg, slashCommandForAdapter, } from "./editors.js";
 import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, TEST_RUNNER_MCP_SERVER, needsShell, hasFrontendSignal, detectCodeGraphStatus, codegraphHintLines, } from "../shared/index.js";
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
 const E2E_COMMAND_SRC = fileURLToPath(new URL("../../templates/e2e-command.md", import.meta.url));
@@ -61,10 +61,12 @@ export async function init(options, deps = {}) {
     console.log(chalk.green("  ✓ OpenSpec initialized"));
     // 3. Detect supported editors, then resolve the explicit selection.
     // Priority: --tools flag > interactive prompt (TTY) > detected fallback.
-    // (.claude/, .opencode/, .cline/, .cursor/, .pi/, .omp/, .dsh/ in the
-    // project; Pi, Oh My Pi, and DeepSeek Harness also detect via their global
-    // config dirs ~/.pi/agent, ~/.omp/agent, and ~/.dsh)
+    // `detected` is any-scope (project dirs + global config dirs for
+    // Pi/Oh My Pi/DeepSeek Harness) — used for display and interactive
+    // pre-select only. The non-TTY fallback uses `projectDetected`:
+    // global config dirs never authorize editor configuration.
     const detected = detectAdapters(projectRoot, deps.homeDir);
+    const projectDetected = detectProjectAdapters(projectRoot);
     console.log(detected.length > 0
         ? chalk.gray(`  Detected: ${detected.map((a) => a.label).join(", ")}`)
         : chalk.gray("  Detected: none"));
@@ -81,15 +83,14 @@ export async function init(options, deps = {}) {
         selectedIds = await prompt(getAllAdapters(), new Set(detected.map((a) => a.id)));
     }
     const editors = selectedIds === null
-        ? detected
+        ? projectDetected
         : selectedIds
             .map(getAdapter)
             .filter((a) => a !== undefined);
     // No flag, non-TTY, and nothing detected → fail with --tools guidance.
     if (selectedIds === null && editors.length === 0) {
-        console.log(chalk.yellow("\n  ⚠ No supported editor detected (need .claude/, .opencode/, .cline/, .cursor/, .pi/, .omp/, or .dsh/)."));
+        console.log(chalk.yellow("\n  ⚠ No supported editor detected in the project (need .claude/, .opencode/, .cline/, .cursor/, .pi/, .omp/, or .dsh/)."));
         console.log(chalk.gray("  For Cursor without an existing .cursor/ dir: mkdir -p .cursor\n"));
-        console.log(chalk.gray("  Pi, Oh My Pi, and DeepSeek Harness are detected via their global config dirs (~/.pi/agent/, ~/.omp/agent/, ~/.dsh/) when no project dir exists.\n"));
         throw new Error('No supported editor detected and no --tools flag provided. Use --tools all, --tools none, or a comma-separated list: claude, opencode, cline, cursor, pi, omp, dsh (oh-my-pi aliases omp).');
     }
     // 3b. Detect a frontend signal — computed once, reused for the MCP

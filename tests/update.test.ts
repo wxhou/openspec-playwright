@@ -324,24 +324,52 @@ describe("update.ts: --no-mcp registered + --no-cli recursion", () => {
 });
 
 describe("update.ts: drift coverage regression guards", () => {
-  it("AGENTS.md is always checked (SSOT) — not only via detected adapters", () => {
+  it("AGENTS.md is always evaluated per its own territory markers — not via detected adapters", () => {
     const src = readFileSync(
       fileURLToPath(new URL("../src/commands/update.ts", import.meta.url)),
       "utf-8",
     );
     // AGENTS.md path is always evaluated for staleness
     expect(src).toMatch(/const agentsPath = join\(projectRoot, "AGENTS\.md"\)/);
-    // A claude-only project still checks AGENTS.md (SSOT)
-    expect(src).toMatch(/detected\.length === 0/);
+    // 标记即领土: no-marker AGENTS.md skips the write-back (no detected gate)
+    expect(src).toMatch(/agentsInTerritory/);
     expect(src).toMatch(/already in sync/);
+    // CLAUDE.md wrapper is gated on claude command-artifact authorization
+    expect(src).toMatch(
+      /hasCommandArtifacts\(projectRoot, claudeAdapter\)/,
+    );
   });
 
-  it("no-marker AGENTS.md is treated as stale (needs append)", () => {
+  it("no-marker AGENTS.md is skipped, not appended (标记即领土)", () => {
     const src = readFileSync(
       fileURLToPath(new URL("../src/commands/update.ts", import.meta.url)),
       "utf-8",
     );
-    expect(src).toMatch(/!fileContent\.includes\(OPENSPEC_START\) \|\|/);
+    // The no-marker branch prints the init hint and never falls into the
+    // stale-write path (which requires markers to be present).
+    expect(src).toMatch(/has no OPENSPEC block/);
+    expect(src).not.toMatch(
+      /!fileContent\.includes\(OPENSPEC_START\) \|\|/,
+    );
+  });
+
+  it("command and MCP phases gate on artifact authorization, not detection", () => {
+    const src = readFileSync(
+      fileURLToPath(new URL("../src/commands/update.ts", import.meta.url)),
+      "utf-8",
+    );
+    expect(src).toMatch(/hasCommandArtifacts\(projectRoot, adapter\)/);
+    expect(src).toMatch(/openspec-pw init --tools \$\{adapter\.id\}/);
+  });
+
+  it("frontend-signal skip announces itself (no silent MCP skip in update)", () => {
+    const src = readFileSync(
+      fileURLToPath(new URL("../src/commands/update.ts", import.meta.url)),
+      "utf-8",
+    );
+    expect(src).toMatch(
+      /No frontend signal detected — skipping Playwright MCP/,
+    );
   });
 
   it("Cursor skill extraArtifacts are included in command drift check", () => {
@@ -379,7 +407,11 @@ describe("update.ts: single MCP server install (playwright-test)", () => {
     // Single-server layout: the legacy browser-control server is NOT
     // installed by update (it's a superset — 78 browser_* tools duplicated).
     expect(src).not.toMatch(/ensurePlaywrightMcp/);
-    // Frontend gate mirrors init: API-only projects skip MCP install
-    expect(src).toMatch(/hasFrontendSignal\(projectRoot\) === true/);
+    // Frontend gate mirrors init: API-only projects skip MCP install —
+    // and the skip is announced, not silent.
+    expect(src).toMatch(/hasFrontendSignal\(projectRoot\) !== true/);
+    expect(src).toMatch(
+      /No frontend signal detected — skipping Playwright MCP/,
+    );
   });
 });

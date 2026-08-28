@@ -51,6 +51,8 @@ export {
   getAdapter,
   getAllAdapters,
   detectAdapters,
+  detectProjectAdapters,
+  hasCommandArtifacts,
   slashCommandForAdapter,
   listCommandArtifactPaths,
   installCommand,

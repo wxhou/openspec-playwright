@@ -24,12 +24,17 @@ vi.mock("node:child_process", () => ({
 vi.mock("node:module", () => ({
   createRequire: vi.fn(() => ({ resolve: vi.fn() })),
 }));
-// installProjectRules is the side effect under assertion; everything else
-// from editors.js stays real (claudeWrapperStandardsContent is pure).
+// installOpenSpecBlock / installClaudeWrapper are the side effects under
+// assertion; everything else from editors.js stays real.
 vi.mock("../src/commands/editors.js", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("../src/commands/editors.js")>();
-  return { ...actual, installProjectRules: vi.fn() };
+  return {
+    ...actual,
+    installOpenSpecBlock: vi.fn(),
+    installClaudeWrapper: vi.fn(),
+    installProjectRules: vi.fn(),
+  };
 });
 
 import {
@@ -40,23 +45,20 @@ import {
 import { execFile } from "node:child_process";
 import { join } from "path";
 import { update, syncEmployeeStandards } from "../src/commands/update.js";
-import { installProjectRules } from "../src/commands/editors.js";
+import {
+  installOpenSpecBlock,
+  installClaudeWrapper,
+} from "../src/commands/editors.js";
 import { OPENSPEC_START, OPENSPEC_END } from "../src/shared/drift.js";
 
 const existsSyncMock = vi.mocked(existsSync);
 const readFileSyncMock = vi.mocked(readFileSync);
 const lstatSyncMock = vi.mocked(lstatSync);
 const execFileMock = vi.mocked(execFile);
-const installProjectRulesMock = vi.mocked(installProjectRules);
+const installOpenSpecBlockMock = vi.mocked(installOpenSpecBlock);
+const installClaudeWrapperMock = vi.mocked(installClaudeWrapper);
 
 const STANDARDS = "employee-grade standards body v1";
-
-/** Fake detected adapter — syncEmployeeStandards only reads `.id`. */
-function fakeAdapter(id: string) {
-  return { id, label: id } as unknown as Parameters<
-    typeof syncEmployeeStandards
-  >[2][number];
-}
 
 describe("update() early return", () => {
   const root = "/tmp/fake-update-project";
@@ -136,20 +138,59 @@ describe("syncEmployeeStandards", () => {
     );
   }
 
-  it("skips with a hint when no supported editor is detected", () => {
-    syncEmployeeStandards(tmpDir, root, []);
-
-    expect(logText()).toContain("No supported editor");
-    expect(installProjectRulesMock).not.toHaveBeenCalled();
-  });
-
   it("returns silently when the bundled standards template is missing", () => {
     existingPaths.clear();
 
-    syncEmployeeStandards(tmpDir, root, [fakeAdapter("opencode")]);
+    syncEmployeeStandards(tmpDir, root, false);
 
     expect(logText()).toBe("");
-    expect(installProjectRulesMock).not.toHaveBeenCalled();
+    expect(installOpenSpecBlockMock).not.toHaveBeenCalled();
+  });
+
+  it("skips AGENTS.md write-back when it has no OPENSPEC block (标记即领土) — even with editors detected", () => {
+    existingPaths.add(agentsPath);
+    contentsByPath.set(agentsPath, "user-authored rules without markers\n");
+
+    syncEmployeeStandards(tmpDir, root, false);
+
+    expect(logText()).toContain("has no OPENSPEC block");
+    expect(installOpenSpecBlockMock).not.toHaveBeenCalled();
+    expect(installClaudeWrapperMock).not.toHaveBeenCalled();
+  });
+
+  it("skips AGENTS.md write-back when the file is missing — regardless of detected editors", () => {
+    syncEmployeeStandards(tmpDir, root, false);
+
+    expect(logText()).toContain("AGENTS.md not found");
+    expect(installOpenSpecBlockMock).not.toHaveBeenCalled();
+    expect(installClaudeWrapperMock).not.toHaveBeenCalled();
+  });
+
+  it("rewrites the AGENTS.md block when the tool-owned block is stale", () => {
+    existingPaths.add(agentsPath);
+    contentsByPath.set(
+      agentsPath,
+      `${OPENSPEC_START}\noutdated standards body\n${OPENSPEC_END}`,
+    );
+
+    syncEmployeeStandards(tmpDir, root, false);
+
+    expect(logText()).toContain("OPENSPEC block differs");
+    expect(installOpenSpecBlockMock).toHaveBeenCalledTimes(1);
+    expect(installOpenSpecBlockMock).toHaveBeenCalledWith(
+      root,
+      STANDARDS,
+      expect.anything(),
+    );
+  });
+
+  it("short-circuits when AGENTS.md is already in sync", () => {
+    agentsInSync();
+
+    syncEmployeeStandards(tmpDir, root, false);
+
+    expect(logText()).toContain("already in sync");
+    expect(installOpenSpecBlockMock).not.toHaveBeenCalled();
   });
 
   it("treats a symlinked CLAUDE.md as drift-tracked via AGENTS.md", () => {
@@ -157,39 +198,11 @@ describe("syncEmployeeStandards", () => {
     existingPaths.add(claudePath);
     symlinks.set(claudePath, true);
 
-    syncEmployeeStandards(tmpDir, root, [fakeAdapter("claude")]);
+    syncEmployeeStandards(tmpDir, root, true);
 
     expect(logText()).toContain("drift tracked via AGENTS.md");
     expect(logText()).toContain("already in sync");
-    expect(installProjectRulesMock).not.toHaveBeenCalled();
-  });
-
-  it("rewrites rules files when the AGENTS.md OPENSPEC block is stale", () => {
-    existingPaths.add(agentsPath);
-    contentsByPath.set(
-      agentsPath,
-      `${OPENSPEC_START}\noutdated standards body\n${OPENSPEC_END}`,
-    );
-
-    const detected = [fakeAdapter("opencode")];
-    syncEmployeeStandards(tmpDir, root, detected);
-
-    expect(logText()).toContain("OPENSPEC block differs");
-    expect(installProjectRulesMock).toHaveBeenCalledTimes(1);
-    expect(installProjectRulesMock).toHaveBeenCalledWith(
-      root,
-      STANDARDS,
-      detected,
-    );
-  });
-
-  it("short-circuits when AGENTS.md is already in sync", () => {
-    agentsInSync();
-
-    syncEmployeeStandards(tmpDir, root, [fakeAdapter("opencode")]);
-
-    expect(logText()).toContain("already in sync");
-    expect(installProjectRulesMock).not.toHaveBeenCalled();
+    expect(installClaudeWrapperMock).not.toHaveBeenCalled();
   });
 
   it("warns on a bare @AGENTS.md import in CLAUDE.md without rewriting", () => {
@@ -197,9 +210,20 @@ describe("syncEmployeeStandards", () => {
     existingPaths.add(claudePath);
     contentsByPath.set(claudePath, "my project notes\n@AGENTS.md\nmore notes\n");
 
-    syncEmployeeStandards(tmpDir, root, [fakeAdapter("claude")]);
+    syncEmployeeStandards(tmpDir, root, true);
 
     expect(logText()).toContain("裸 @AGENTS.md 导入");
-    expect(installProjectRulesMock).not.toHaveBeenCalled();
+    expect(installClaudeWrapperMock).not.toHaveBeenCalled();
+  });
+
+  it("gates the CLAUDE.md wrapper on claude command-artifact authorization", () => {
+    agentsInSync();
+    // CLAUDE.md missing + claude NOT authorized → wrapper is not created
+    syncEmployeeStandards(tmpDir, root, false);
+    expect(installClaudeWrapperMock).not.toHaveBeenCalled();
+
+    // claude authorized + wrapper missing → installed
+    syncEmployeeStandards(tmpDir, root, true);
+    expect(installClaudeWrapperMock).toHaveBeenCalledTimes(1);
   });
 });

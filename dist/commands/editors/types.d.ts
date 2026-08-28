@@ -24,8 +24,18 @@ export interface EditorAdapter {
      * Some adapters (Pi, Oh My Pi) also treat a global config dir in the
      * user's home as a detection signal — `homeDir` lets tests inject a
      * fake home so detection stays hermetic.
+     *
+     * detect() is the "any scope" signal: display + interactive pre-select
+     * only. It NEVER authorizes writes — use projectSignal for that.
      */
     detect(projectRoot: string, homeDir?: string): boolean;
+    /**
+     * Project-level signal only (marker dir inside the project). Used for
+     * the init non-TTY fallback and anywhere a global dir must not count.
+     * Defaults to detect() with a sentinel home so home-blind adapters
+     * (claude/opencode/cline/cursor) reuse their detect() unchanged.
+     */
+    projectSignal?(projectRoot: string): boolean;
     /**
      * True when this editor has an MCP client to configure. False skips all
      * MCP install/check/remove phases (Pi has no MCP client).
@@ -60,6 +70,12 @@ export interface EditorAdapterInit {
     label: string;
     displayName: string;
     detect: EditorAdapter["detect"];
+    /**
+     * Optional: project-level-only detection signal. Required to differ from
+     * `detect` only for adapters whose detect() also matches a global config
+     * dir (pi, omp, dsh).
+     */
+    projectSignal?: EditorAdapter["projectSignal"];
     commandFilePath: EditorAdapter["commandFilePath"];
     formatCommand: EditorAdapter["formatCommand"];
     /** Optional: true by default; set false for editors without an MCP client. */
@@ -75,6 +91,7 @@ export interface EditorAdapterInit {
     registerInstructions?: EditorAdapter["registerInstructions"];
     extraArtifacts?: EditorAdapter["extraArtifacts"];
 }
+export declare const NO_HOME = "\0openspec-pw-no-home";
 /**
  * Build an `EditorAdapter` from a partial init object. Fills in
  * defaults so each adapter only declares what's actually different.
