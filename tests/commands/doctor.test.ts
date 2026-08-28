@@ -614,7 +614,7 @@ describe("doctor authorization tiers", () => {
   });
 
   it("authorized editor with missing MCP keeps the run-update hint (self-healable)", async () => {
-    existingPaths.add(join(fixtureRoot, ".claude", "commands", "opsx", "e2e.md"));
+    existingPaths.add(join(fixtureRoot, ".claude", "commands", "opsx", "e2e.md").replace(/\\/g, "/"));
     // .mcp.json exists but has no servers → playwright-test not installed
     readFileMock.mockImplementation((p: Parameters<typeof readFileSync>[0]) => {
       const s = String(p);
@@ -629,8 +629,8 @@ describe("doctor authorization tiers", () => {
   });
 
   it("authorized editor with MCP installed is ok:true + authorized", async () => {
-    existingPaths.add(join(fixtureRoot, ".claude", "commands", "opsx", "e2e.md"));
-    existingPaths.add(join(fixtureRoot, ".mcp.json"));
+    existingPaths.add(join(fixtureRoot, ".claude", "commands", "opsx", "e2e.md").replace(/\\/g, "/"));
+    existingPaths.add(join(fixtureRoot, ".mcp.json").replace(/\\/g, "/"));
     const checks = await doctorJsonChecks();
     const mcp = checks.find((c) => c.name === "test-runner-mcp-claude");
     expect(mcp?.ok).toBe(true);
@@ -638,8 +638,8 @@ describe("doctor authorization tiers", () => {
   });
 
   it("no-marker AGENTS.md reports ok:true and never suggests update", async () => {
-    existingPaths.add(join(fixtureRoot, "AGENTS.md"));
-    existingPaths.add(join(fixtureRoot, ".claude", "commands", "opsx", "e2e.md"));
+    existingPaths.add(join(fixtureRoot, "AGENTS.md").replace(/\\/g, "/"));
+    existingPaths.add(join(fixtureRoot, ".claude", "commands", "opsx", "e2e.md").replace(/\\/g, "/"));
     readFileMock.mockImplementation((p: Parameters<typeof readFileSync>[0]) => {
       const s = String(p);
       if (s.endsWith(".mcp.json")) return "{}";
@@ -664,8 +664,8 @@ describe("doctor authorization tiers", () => {
   it("AGENTS.md with markers but stale content is ok:false and fixable by update", async () => {
     const drift = await import("../../src/shared/drift.js");
     vi.mocked(drift.compareBlock).mockReturnValueOnce({ stale: true });
-    existingPaths.add(join(fixtureRoot, "AGENTS.md"));
-    existingPaths.add(join(fixtureRoot, "openspec"));
+    existingPaths.add(join(fixtureRoot, "AGENTS.md").replace(/\\/g, "/"));
+    existingPaths.add(join(fixtureRoot, "openspec").replace(/\\/g, "/"));
     const checks = await doctorJsonChecks();
     const agents = checks.find((c) => c.name === "standards-agents");
     expect(agents?.ok).toBe(false);
