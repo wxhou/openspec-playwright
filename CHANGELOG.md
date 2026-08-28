@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Changed
 
+- **精简 employee-standards（−20% token，零约束损失）**. 163 行 → 130 行（9.4KB → 8.0KB）：删除机器特定内容（`agent-reach` / `frontend-design` / `ui-ux-pro-max` skill 引用、「用中文回复用户」全局语言强制——装入任意项目不再突袭改语言）、§1 四组合并（保留依赖优先级链「已有依赖 > 新包 > 自写」与「清理与重构分开提交」）、§3 工作流表压成一行（保留「AI 不自动进入下一阶段」🔴）、§5 三段式压 2 行、§2/§5 WHY 删（§4/§6 WHY 保留——立法意图）。诚实性条「未执行检查标注『未运行』」⚪ 升 🟡。已装项目 AGENTS.md 标记内内容会 drift，下次 update 自动重写；标记外手动复制的副本不随 update（既有语义）。同步 `docs/script.js` 中英内嵌副本与本仓库根 `AGENTS.md`。
+  - `employee-standards.md`、`docs/script.js`、`AGENTS.md`
+
 - **编辑器写入授权收窄（领土语义）**. `update` 从「检测到就写」改为「只维护已授权编辑器」：授权判据 = 项目内已有 openspec-pw 命令工件（零新状态，删除即撤回授权），全局配置目录（`~/.pi/agent`、`~/.omp/agent`、`~/.dsh`）或手建的编辑器标记目录（如手建 `.cursor/`）不再触发写入——此前 `openspec init --tools claude` 的项目跑一次 `update` 会为机器上装了的 omp/pi/dsh 凭空新建命令文件与 MCP 配置并写回 AGENTS.md。`update` 不再新增编辑器：未授权编辑器打印信息行提示 `openspec-pw init --tools <id>`（幂等，扩展入口）；MCP 缺失但命令工件在 = 部分安装漂移，照常自愈。standards 相位同步改「标记即领土」：AGENTS.md 无 OPENSPEC 标记/缺失 ⇒ 跳过不写回（`--tools none` 项目 update 零写入）；CLAUDE.md wrapper 门控改为 claude 命令工件授权。`init` 非 TTY fallback 从 any-scope 检测收窄为仅项目内信号（TTY 交互预选保留全局信号）；fallback 无编辑器报错文案移除已失效的全局目录指引。`doctor` 分档：未授权编辑器的 MCP / Cursor E2E 检查降为 `ok: true` 信息行（提示 init，不再误导 run update）；AGENTS.md 无标记恒 `ok: true`（消除 doctor 报错 → update 修不了的死循环）；`--json` 编辑器相关检查新增 `authorized` 字段（⚠ `--json` checks 数组构成有变化，消费方需注意）。`uninstall` 不变（宽检测 + 存在性守卫）。openspec change: `scope-editor-writes`。
   - `src/commands/editors/types.ts`、`src/commands/editors/registry.ts`（`detectProjectAdapters` / `hasCommandArtifacts`）、`src/commands/editors/adapters/{pi,omp,dsh}.ts`、`src/commands/update.ts`、`src/commands/init.ts`、`src/commands/doctor.ts`
   - MCP 安装范围同步改「已授权编辑器」（原「检测到的编辑器」）；update 的前端 gate 静默跳过改为打印跳过说明行（对齐 init——修复「update 后 MCP 没装也没有任何解释」的排查黑洞）
