@@ -344,6 +344,20 @@ describe("init tool selection", () => {
     expect(existsSync(join(tmpRoot, COMMAND_FILES.opencode))).toBe(false);
   });
 
+  it("non-TTY fallback ignores global-only editors (project-scope only)", async () => {
+    const { init } = await import("../../src/commands/init.js");
+    // Oh My Pi exists only via its global config dir (~/.omp/agent) —
+    // no .omp/ marker dir in the project. The global signal must not
+    // authorize editor configuration in the non-interactive fallback:
+    // init fails with --tools guidance and writes nothing.
+    mkdirSync(join(blankHome, ".omp", "agent"), { recursive: true });
+    await expect(
+      init({ mcp: false }, { isTTY: false, homeDir: blankHome }),
+    ).rejects.toThrow(/--tools/);
+    expect(existsSync(join(tmpRoot, COMMAND_FILES.omp))).toBe(false);
+    expect(existsSync(join(tmpRoot, ".omp"))).toBe(false);
+  });
+
   it("fails with --tools guidance when nothing is detected and not a TTY", async () => {
     const { init } = await import("../../src/commands/init.js");
     await expect(

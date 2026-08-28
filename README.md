@@ -109,10 +109,19 @@ ids. A `--tools` id is configured even when the editor is not detected
 (its config directory is created).
 
 Without `--tools`, an interactive multi-select is shown on TTY terminals
-(pre-selecting detected editors); on non-interactive terminals the
-configured editors fall back to the detected ones. `--tools` is
-documented as orthogonal to `--no-mcp`: the former picks *which* editors,
-the latter *whether* to install the Playwright MCP server for them.
+(pre-selecting detected editors — including global-config-dir signals for
+Pi, Oh My Pi, and DeepSeek Harness); on non-interactive terminals the
+configured editors fall back to **project-level detection only** (global
+config dirs are a pre-select suggestion, never a write authorization).
+`--tools` is documented as orthogonal to `--no-mcp`: the former picks
+*which* editors, the latter *whether* to install the Playwright MCP server
+for them.
+
+**Editor territory**: `update` only maintains editors that already have
+openspec-pw command artifacts in the project — it never adds new editors
+(a global config dir or a hand-created `.cursor/` does not authorize
+writes). To add an editor to an initialized project, re-run
+`openspec-pw init --tools <id>` (idempotent).
 ### CLI Commands
 
 ```bash
@@ -218,8 +227,8 @@ Run through these steps in order when using the E2E workflow for the first time:
 | **OpenSpec** | directory initialized | `.spec.md` specs count |
 | **Playwright Browsers** | CLI version, Chromium binary downloaded | — |
 | **Playwright Test** | `@playwright/test` framework installed | — |
-| **Playwright MCP** | test-runner server configured for each detected editor (skipped with an informational note for Pi and DeepSeek Harness, which have no simple MCP config file) | `playwright-cli` (@playwright/cli on PATH) — optional ⚠, never block |
-| **Sync** | standards in sync when initialized (drift → `openspec-pw update`) | not initialized (gated, non-blocking) |
+| **Playwright MCP** | test-runner server configured for each **authorized** editor (command artifacts exist; unauthorized editors get an info line pointing at `init --tools <id>` — never a warning) | `playwright-cli` (@playwright/cli on PATH) — optional ⚠, never block |
+| **Sync** | standards in sync when initialized (drift → `openspec-pw update`; AGENTS.md without markers counts as not-initialized, always ok) | not initialized (gated, non-blocking) |
 | **Tests** | `tests/playwright/` directory exists | `auth.setup.ts` presence |
 | **Seed Test** | — | `seed.spec.ts` presence |
 | **App Server** | — | dev script, base URL, reachability |

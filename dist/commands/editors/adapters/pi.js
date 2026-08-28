@@ -54,6 +54,9 @@ export const piAdapter = defineAdapter({
     label: "pi",
     displayName: "Pi",
     detect: hasPi,
+    // Project-level signal only — global ~/.pi/agent is a pre-select
+    // suggestion, never a write authorization.
+    projectSignal: (projectRoot) => existsSync(join(projectRoot, ".pi")),
     // Pi has no MCP client — shared MCP phases skip this adapter.
     supportsMcp: false,
     commandFilePath: getPiCommandPath,

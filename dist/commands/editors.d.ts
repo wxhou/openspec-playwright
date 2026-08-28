@@ -21,7 +21,7 @@
  */
 export { type CommandMeta, buildCommandMeta, type EditorId, type ExtraArtifact, type EditorAdapter, type EditorAdapterInit, defineAdapter, } from "./editors/types.js";
 export { escapeYamlValue, formatTagsArray, transformToHyphenCommands, type McpStdioServer, type McpServersFile, readMcpServersFile, writeMcpServersFile, isMcpServerInFile, installMcpServerInFile, removeMcpServerFromFile, } from "./editors/shared.js";
-export { registerAdapter, getAdapter, getAllAdapters, detectAdapters, slashCommandForAdapter, listCommandArtifactPaths, installCommand, } from "./editors/registry.js";
+export { registerAdapter, getAdapter, getAllAdapters, detectAdapters, detectProjectAdapters, hasCommandArtifacts, slashCommandForAdapter, listCommandArtifactPaths, installCommand, } from "./editors/registry.js";
 export { formatClaudeCommand, getClaudeCommandPath, hasClaudeCode, claudeAdapter, } from "./editors/adapters/claude.js";
 export { formatOpenCodeCommand, getOpenCodeCommandPath, hasOpenCode, opencodeAdapter, readOpenCodeInstructions, } from "./editors/adapters/opencode.js";
 export { formatClineCommand, getClineCommandPath, hasCline, clineAdapter, } from "./editors/adapters/cline.js";

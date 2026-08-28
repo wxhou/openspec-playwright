@@ -4,7 +4,13 @@ import { createRequire } from "node:module";
 import { join } from "path";
 import { execFileSync } from "child_process";
 import chalk from "chalk";
-import { detectAdapters, slashCommandForAdapter, claudeWrapperStandardsContent } from "../commands/editors.js";
+import {
+  detectAdapters,
+  hasCommandArtifacts,
+  slashCommandForAdapter,
+  claudeAdapter,
+  claudeWrapperStandardsContent,
+} from "../commands/editors.js";
 import { detectAppServer, isTestRunnerMcpInstalled, needsShell, detectCodeGraphStatus } from "../shared/index.js";
 import { bundledStandardsPath, compareBlock, OPENSPEC_START } from "../shared/drift.js";
 
@@ -38,6 +44,8 @@ export async function doctor(options: DoctorOptions = {}) {
     name: string;
     ok: boolean;
     message?: string;
+    /** Set on editor-scoped checks: tool-owned command artifacts exist. */
+    authorized?: boolean;
   }> = [];
 
   const projectRoot = process.cwd();
@@ -235,21 +243,29 @@ export async function doctor(options: DoctorOptions = {}) {
           category: "Playwright MCP",
           name: `playwright-mcp-${adapter.label}`,
           ok: true,
+          authorized: hasCommandArtifacts(projectRoot, adapter),
           message: `${adapter.displayName} has no MCP client (use openspec-pw explore)`,
         });
         continue;
       }
-      // Single project-scoped MCP server (official test-runner layout):
-      // playwright-test supersedes the @playwright/mcp browser-control
-      // server. Optional check — missing means a stale install; run update.
+      // Gate on write authorization (tool-owned command artifacts exist),
+      // not on detection: a global config dir or a hand-created marker
+      // directory does not authorize openspec-pw writes, so nagging about
+      // "run update" for it would send the user into a loop update cannot
+      // fix (update never expands territory). Unauthorized → info line
+      // pointing at the init extension path.
+      const authorized = hasCommandArtifacts(projectRoot, adapter);
       const testRunnerInstalled = isTestRunnerMcpInstalled(adapter);
       checks.push({
         category: "Playwright MCP",
         name: `test-runner-mcp-${adapter.label}`,
-        ok: testRunnerInstalled,
-        message: testRunnerInstalled
-          ? "installed"
-          : `not configured for ${adapter.label} (run openspec-pw update)`,
+        ok: authorized ? testRunnerInstalled : true,
+        authorized,
+        message: authorized
+          ? testRunnerInstalled
+            ? "installed"
+            : `not configured for ${adapter.label} (run openspec-pw update)`
+          : `not configured in this project (run "openspec-pw init --tools ${adapter.id}" to add)`,
       });
 
       // Claude Code MCP moved to project scope (0.3.69): a legacy user-scope
@@ -277,9 +293,12 @@ export async function doctor(options: DoctorOptions = {}) {
       }
     }
 
-    // Cursor-specific: command + skill readiness (spec requirement)
+    // Cursor-specific: command + skill readiness (spec requirement). Gated
+    // on write authorization — a hand-created .cursor/ with the user's own
+    // config must not red-flag doctor (update would not create the files).
     const cursor = adapters.find((a) => a.id === "cursor");
     if (cursor) {
+      const cursorAuthorized = hasCommandArtifacts(projectRoot, cursor);
       const cmdPath = join(projectRoot, ".cursor", "commands", "opsx-e2e.md");
       const skillPath = join(
         projectRoot,
@@ -290,21 +309,29 @@ export async function doctor(options: DoctorOptions = {}) {
       );
       const hasCmd = existsSync(cmdPath);
       const hasSkill = existsSync(skillPath);
+      const notConfigured =
+        'not configured in this project (run "openspec-pw init --tools cursor" to add)';
       checks.push({
         category: "Cursor E2E",
         name: "cursor-e2e-command",
-        ok: hasCmd,
-        message: hasCmd
-          ? ".cursor/commands/opsx-e2e.md found"
-          : ".cursor/commands/opsx-e2e.md missing",
+        ok: cursorAuthorized ? hasCmd : true,
+        authorized: cursorAuthorized,
+        message: cursorAuthorized
+          ? hasCmd
+            ? ".cursor/commands/opsx-e2e.md found"
+            : ".cursor/commands/opsx-e2e.md missing"
+          : notConfigured,
       });
       checks.push({
         category: "Cursor E2E",
         name: "cursor-e2e-skill",
-        ok: hasSkill,
-        message: hasSkill
-          ? ".cursor/skills/opsx-e2e/SKILL.md found"
-          : ".cursor/skills/opsx-e2e/SKILL.md missing",
+        ok: cursorAuthorized ? hasSkill : true,
+        authorized: cursorAuthorized,
+        message: cursorAuthorized
+          ? hasSkill
+            ? ".cursor/skills/opsx-e2e/SKILL.md found"
+            : ".cursor/skills/opsx-e2e/SKILL.md missing"
+          : notConfigured,
       });
     }
   }
@@ -357,36 +384,49 @@ export async function doctor(options: DoctorOptions = {}) {
       ? readFileSync(standardsPath, "utf-8")
       : "";
 
-    // AGENTS.md is the single source of truth — always checked regardless of
-    // which editors are detected (covers claude-only projects). A present file
-    // with no OPENSPEC marker needs the block appended (tool-owned).
+    // AGENTS.md — 标记即领土: only the tool-owned block is maintained
+    // (update repairs it when present). A missing file or one without
+    // markers is NOT repairable by update — report ok:true with a message
+    // pointing at init, never at update (avoids the doctor-nags →
+    // update-can't-fix loop).
     const agentsPath = join(projectRoot, "AGENTS.md");
     if (!existsSync(agentsPath)) {
       checks.push({
         category: "Sync",
         name: "standards-agents",
-        ok: false,
-        message: "AGENTS.md missing — run openspec-pw update",
+        ok: true,
+        authorized: hasCommand,
+        message: hasCommand
+          ? 'AGENTS.md missing (standards block removed) — restore via "openspec-pw init --tools <id>"'
+          : "not initialized (run openspec-pw init first)",
       });
     } else {
       const fileContent = readFileSync(agentsPath, "utf-8");
       const noMarkers = !fileContent.includes(OPENSPEC_START);
       const drift = noMarkers
-        ? { stale: true }
+        ? { stale: false }
         : compareBlock(fileContent, standardsExpected);
       checks.push({
         category: "Sync",
         name: "standards-agents",
-        ok: !drift.stale,
-        message: drift.stale
-          ? "AGENTS.md needs update (missing markers or differs from bundled version) — run openspec-pw update"
-          : "standards in sync",
+        ok: noMarkers ? true : !drift.stale,
+        authorized: noMarkers ? hasCommand : true,
+        message: noMarkers
+          ? hasCommand
+            ? 'AGENTS.md has no OPENSPEC block (removed) — restore via "openspec-pw init --tools <id>"'
+            : "not initialized (run openspec-pw init first)"
+          : drift.stale
+            ? "AGENTS.md differs from bundled version — run openspec-pw update"
+            : "standards in sync",
       });
     }
 
-    // CLAUDE.md wrapper is only checked when Claude is detected. A bare
-    // `@AGENTS.md` import without markers is left untouched — not stale.
-    if (adapters.some((a) => a.id === "claude")) {
+    // CLAUDE.md wrapper is only checked when the claude editor is authorized
+    // (command artifacts exist) — not on detection: a global ~/.claude dir
+    // or a project .claude/ without openspec-pw artifacts never implies a
+    // wrapper. A bare `@AGENTS.md` import without markers is left
+    // untouched — not stale.
+    if (hasCommandArtifacts(projectRoot, claudeAdapter)) {
       const claudePath = join(projectRoot, "CLAUDE.md");
       // A symlinked CLAUDE.md (→ AGENTS.md, the official reuse pattern) is
       // covered by the standards-agents check above — comparing it against
@@ -588,7 +628,12 @@ export async function doctor(options: DoctorOptions = {}) {
   console.log(chalk.blue("\n─── Summary ───"));
   if (allOk) {
     console.log(chalk.green("  ✅ All prerequisites met!\n"));
-    const detected = detectAdapters(process.cwd());
+    // Hint only over authorized editors — global-signal detection must not
+    // suggest commands for editors this project never configured (same
+    // display/authorization alignment as update's restart hint).
+    const detected = detectAdapters(process.cwd()).filter((a) =>
+      hasCommandArtifacts(process.cwd(), a),
+    );
     const hints = detected.length
       ? detected.map((a) => {
           return `${slashCommandForAdapter(a)} (in ${a.displayName})`;

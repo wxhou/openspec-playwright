@@ -6,7 +6,7 @@ import { tmpdir } from "os";
 import { promisify } from "util";
 import chalk from "chalk";
 import * as tar from "tar";
-import { buildCommandMeta, detectAdapters, installCommand, installProjectRules, claudeWrapperStandardsContent, } from "./editors.js";
+import { buildCommandMeta, getAllAdapters, hasCommandArtifacts, installCommand, installOpenSpecBlock, installClaudeWrapper, claudeAdapter, claudeWrapperStandardsContent, opencodeAdapter, } from "./editors.js";
 import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, hasFrontendSignal, needsShell, detectCodeGraphStatus, codegraphHintLines, } from "../shared/index.js";
 import { compareBlock, OPENSPEC_START } from "../shared/drift.js";
 const execFileAsync = promisify(execFile);
@@ -33,7 +33,12 @@ export async function update(options) {
         console.log(chalk.blue("─── Updating CLI ───"));
         let cliUpdated = false;
         try {
-            await execFileAsync("npm", ["install", "-g", "openspec-playwright@latest"], { timeout: 120000, cwd: projectRoot, stdio: "inherit", shell: needsShell });
+            await execFileAsync("npm", ["install", "-g", "openspec-playwright@latest"], {
+                timeout: 120000,
+                cwd: projectRoot,
+                stdio: "inherit",
+                shell: needsShell,
+            });
             console.log(chalk.green("  ✓ CLI updated via npm"));
             cliUpdated = true;
         }
@@ -88,7 +93,12 @@ export async function update(options) {
             console.log(chalk.gray("    Node module resolution will use local version, not global CLI."));
             console.log(chalk.gray("    Syncing local devDependency to latest..."));
             try {
-                await execFileAsync("npm", ["install", "-D", "openspec-playwright@latest"], { timeout: 120000, cwd: projectRoot, stdio: "inherit", shell: needsShell });
+                await execFileAsync("npm", ["install", "-D", "openspec-playwright@latest"], {
+                    timeout: 120000,
+                    cwd: projectRoot,
+                    stdio: "inherit",
+                    shell: needsShell,
+                });
                 console.log(chalk.green("  ✓ devDependency synced to latest"));
             }
             catch (err) {
@@ -109,13 +119,21 @@ export async function update(options) {
             if (existsSync(commandSrc)) {
                 body = readFileSync(commandSrc, "utf-8");
             }
-            const detected = detectAdapters(projectRoot);
-            if (detected.length === 0) {
-                console.log(chalk.gray("  - No supported editor (.claude, .opencode, .cline, .cursor, .pi, .omp, or .dsh) found, skipping command installation"));
+            // Write authorization = tool-owned artifacts exist ("existing artifacts
+            // are the manifest") — never detect(): a global config dir or a
+            // hand-created marker directory does not authorize writes. update
+            // maintains territory; it never expands it.
+            const authorized = getAllAdapters().filter((a) => hasCommandArtifacts(projectRoot, a));
+            if (authorized.length === 0) {
+                console.log(chalk.gray('  - No openspec-pw artifacts in this project — run "openspec-pw init" to set up editor integrations'));
             }
             else if (body) {
                 const meta = buildCommandMeta(body);
-                for (const adapter of detected) {
+                for (const adapter of getAllAdapters()) {
+                    if (!hasCommandArtifacts(projectRoot, adapter)) {
+                        console.log(chalk.gray(`  - ${adapter.label}: not configured in this project (run "openspec-pw init --tools ${adapter.id}" to add)`));
+                        continue;
+                    }
                     // Drift-aware: only rewrite a command file when its content differs
                     // from the formatted template. Untouched files keep their mtime.
                     const relPath = adapter.commandFilePath(meta.id);
@@ -149,8 +167,9 @@ export async function update(options) {
             syncProjectTemplates(tmpDir, projectRoot);
             // Standards sync (drift-aware). Under --no-skill this phase still runs
             // via the else branch below — the flag only scopes command/template
-            // installation, not standards.
-            syncEmployeeStandards(tmpDir, projectRoot, detected);
+            // installation, not standards. CLAUDE.md wrapper is gated on the
+            // claude editor's command-artifact authorization.
+            syncEmployeeStandards(tmpDir, projectRoot, hasCommandArtifacts(projectRoot, claudeAdapter));
             rmSync(tmpDir, { recursive: true, force: true });
             console.log(chalk.green("  ✓ Commands & templates updated to latest"));
         }
@@ -159,7 +178,12 @@ export async function update(options) {
             console.log(chalk.yellow(`  ⚠ Failed to update from npm: ${msg}`));
             console.log(chalk.gray("  Trying npm install to pull latest version..."));
             try {
-                await execFileAsync("npm", ["install", "-g", "openspec-playwright@latest"], { timeout: 120000, cwd: projectRoot, stdio: "inherit", shell: needsShell });
+                await execFileAsync("npm", ["install", "-g", "openspec-playwright@latest"], {
+                    timeout: 120000,
+                    cwd: projectRoot,
+                    stdio: "inherit",
+                    shell: needsShell,
+                });
                 console.log(chalk.green("  ✓ Updated via npm install"));
             }
             catch (err2) {
@@ -176,7 +200,7 @@ export async function update(options) {
         console.log(chalk.blue("\n─── Standards Sync ───"));
         try {
             const tmpDir = await fetchLatestBundle();
-            syncEmployeeStandards(tmpDir, projectRoot, detectAdapters(projectRoot));
+            syncEmployeeStandards(tmpDir, projectRoot, hasCommandArtifacts(projectRoot, claudeAdapter));
             rmSync(tmpDir, { recursive: true, force: true });
         }
         catch (err) {
@@ -184,29 +208,44 @@ export async function update(options) {
             console.log(chalk.yellow(`  ⚠ Standards sync failed: ${msg}`));
         }
     }
-    // 2b. Install the Playwright test-runner MCP if not present (per detected
-    // editor). Single project-scoped server matching the official
-    // `playwright init-agents` layout: `playwright-test` exposes both browser_*
-    // tools and the test_run/test_debug/test_list workflow tools. Frontend
-    // gate mirrors init — API-only projects don't need the browser MCP.
+    // 2b. Install the Playwright test-runner MCP for each authorized editor
+    // (tool-owned command artifacts exist). Single project-scoped server
+    // matching the official `playwright init-agents` layout: `playwright-test`
+    // exposes both browser_* tools and the test_run/test_debug/test_list
+    // workflow tools. Frontend gate mirrors init — API-only projects don't
+    // need the browser MCP (the skip is announced, not silent). Unauthorized
+    // editors are skipped: MCP config files (e.g. .omp/mcp.json) are never
+    // created out of thin air.
     if (options.mcp !== false) {
-        const mcpEditors = detectAdapters(projectRoot);
-        if (mcpEditors.length > 0 && hasFrontendSignal(projectRoot) === true) {
-            console.log(chalk.blue("\n─── Installing Playwright MCP ───"));
-            for (const adapter of mcpEditors) {
-                if (isTestRunnerMcpInstalled(adapter)) {
-                    console.log(chalk.green(`  ✓ ${adapter.label}: Test-runner MCP already installed`));
-                    continue;
-                }
-                try {
-                    ensureTestRunnerMcp(adapter);
-                    if (adapter.supportsMcp !== false) {
-                        console.log(chalk.gray(`  (Restart ${adapter.label} to activate)`));
+        if (hasFrontendSignal(projectRoot) !== true) {
+            console.log(chalk.gray("  - No frontend signal detected — skipping Playwright MCP (API tests use the request fixture)"));
+        }
+        else {
+            const authorized = getAllAdapters().filter((a) => hasCommandArtifacts(projectRoot, a));
+            if (authorized.length === 0) {
+                console.log(chalk.gray('  - No openspec-pw artifacts in this project — run "openspec-pw init" to set up the Playwright MCP'));
+            }
+            else {
+                console.log(chalk.blue("\n─── Installing Playwright MCP ───"));
+                for (const adapter of getAllAdapters()) {
+                    if (!hasCommandArtifacts(projectRoot, adapter)) {
+                        console.log(chalk.gray(`  - ${adapter.label}: not configured in this project (run "openspec-pw init --tools ${adapter.id}" to add)`));
+                        continue;
                     }
-                }
-                catch {
-                    console.log(chalk.yellow(`  ⚠ ${adapter.label}: Failed to install Test-runner MCP`));
-                    console.log(chalk.gray(`    Install manually (see ${adapter.label} docs).`));
+                    if (isTestRunnerMcpInstalled(adapter)) {
+                        console.log(chalk.green(`  ✓ ${adapter.label}: Test-runner MCP already installed`));
+                        continue;
+                    }
+                    try {
+                        ensureTestRunnerMcp(adapter);
+                        if (adapter.supportsMcp !== false) {
+                            console.log(chalk.gray(`  (Restart ${adapter.label} to activate)`));
+                        }
+                    }
+                    catch {
+                        console.log(chalk.yellow(`  ⚠ ${adapter.label}: Failed to install Test-runner MCP`));
+                        console.log(chalk.gray(`    Install manually (see ${adapter.label} docs).`));
+                    }
                 }
             }
         }
@@ -220,7 +259,7 @@ export async function update(options) {
     // devDependency in the user's package.json shadowing the global
     // CLI binary. See Node module resolution rules.
     await checkVersionShadow();
-    const editorsForHint = detectAdapters(projectRoot);
+    const editorsForHint = getAllAdapters().filter((a) => hasCommandArtifacts(projectRoot, a));
     if (editorsForHint.length > 0) {
         const labels = editorsForHint.map((a) => a.displayName).join(" + ");
         console.log(chalk.bold(`\n  Restart ${labels} to use the updated commands.`));
@@ -299,7 +338,11 @@ async function fetchLatestBundle() {
         .sort((a, b) => b.mtime - a.mtime);
     if (tgzFiles.length === 0)
         throw new Error("No tarball found");
-    await tar.extract({ file: join(tmpDir, tgzFiles[0].name), cwd: tmpDir, strip: 1 });
+    await tar.extract({
+        file: join(tmpDir, tgzFiles[0].name),
+        cwd: tmpDir,
+        strip: 1,
+    });
     return tmpDir;
 }
 /**
@@ -308,37 +351,40 @@ async function fetchLatestBundle() {
  * under `--no-skill` — standards sync is not a skill install and must not be
  * silently skipped by that flag.
  */
-export function syncEmployeeStandards(tmpDir, projectRoot, detected) {
+export function syncEmployeeStandards(tmpDir, projectRoot, claudeAuthorized) {
     // Update employee-grade standards in project rules files (AGENTS.md + CLAUDE.md).
     // Drift-aware: only rewrite a rules file when its OPENSPEC block differs
     // from the bundled template; matching content is left untouched (no mtime
-    // change). AGENTS.md is the SSOT (always written by installProjectRules);
-    // CLAUDE.md is the Claude wrapper (only written when Claude is detected).
+    // change). 标记即领土, judged per artifact: AGENTS.md is only maintained
+    // when it already carries the tool-owned OPENSPEC block — a missing file
+    // or one without markers is NOT created/appended here (run
+    // `openspec-pw init` to install). The CLAUDE.md wrapper is gated on the
+    // claude editor's command-artifact authorization, not its own markers.
     const standardsSrc = join(tmpDir, "employee-standards.md");
     if (!existsSync(standardsSrc))
         return;
     const standards = readFileSync(standardsSrc, "utf-8");
-    if (detected.length === 0) {
-        console.log(chalk.gray("  - No supported editor (.claude, .opencode, .cline, .cursor, .pi, .omp, or .dsh) found, skipping standards sync"));
-        return;
-    }
-    // AGENTS.md is the single source of truth and is always written by
-    // installProjectRules regardless of which editors are detected — so it
-    // is always checked here (covers claude-only projects). A present file
-    // with no OPENSPEC marker needs the block appended (tool-owned).
     const agentsPath = join(projectRoot, "AGENTS.md");
-    let agentsStale = !existsSync(agentsPath);
-    if (!agentsStale) {
-        const fileContent = readFileSync(agentsPath, "utf-8");
-        agentsStale =
-            !fileContent.includes(OPENSPEC_START) ||
-                compareBlock(fileContent, standards).stale;
+    let agentsStale = false;
+    let agentsInTerritory = false;
+    if (!existsSync(agentsPath)) {
+        console.log(chalk.gray('  - AGENTS.md not found — run "openspec-pw init" to install employee standards'));
     }
-    // CLAUDE.md wrapper is only written when Claude is detected. A bare
-    // `@AGENTS.md` import without markers is left untouched (added by the
-    // openspec CLI or the user) — not stale.
+    else {
+        const fileContent = readFileSync(agentsPath, "utf-8");
+        if (!fileContent.includes(OPENSPEC_START)) {
+            console.log(chalk.gray('  - AGENTS.md has no OPENSPEC block — run "openspec-pw init" to install employee standards'));
+        }
+        else {
+            agentsInTerritory = true;
+            agentsStale = compareBlock(fileContent, standards).stale;
+        }
+    }
+    // CLAUDE.md wrapper is only maintained when the claude editor is
+    // authorized. A bare `@AGENTS.md` import without markers is left
+    // untouched (added by the openspec CLI or the user) — not stale.
     let claudeStale = false;
-    if (detected.some((a) => a.id === "claude")) {
+    if (claudeAuthorized) {
         const claudePath = join(projectRoot, "CLAUDE.md");
         // A symlinked CLAUDE.md (→ AGENTS.md, the official reuse pattern)
         // is what Claude Code reads; the AGENTS.md check above already
@@ -363,12 +409,16 @@ export function syncEmployeeStandards(tmpDir, projectRoot, detected) {
             }
         }
     }
-    const anyStale = agentsStale || claudeStale;
-    if (anyStale) {
+    if (agentsStale || claudeStale) {
         console.log(chalk.gray("  检测到非模板内容将被覆盖 — OPENSPEC block differs from bundled version"));
-        installProjectRules(projectRoot, standards, detected);
+        if (agentsStale) {
+            installOpenSpecBlock(projectRoot, standards, opencodeAdapter);
+        }
+        if (claudeStale) {
+            installClaudeWrapper(projectRoot);
+        }
     }
-    else {
+    else if (agentsInTerritory) {
         console.log(chalk.green("  ✓ employee-grade standards already in sync"));
     }
 }

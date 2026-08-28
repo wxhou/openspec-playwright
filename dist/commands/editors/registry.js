@@ -9,9 +9,10 @@
  * (editors.ts re-exports the adapter modules in exactly that order;
  * tests/editors-tools.test.ts asserts it.)
  */
-import { mkdirSync, writeFileSync } from "fs";
+import { mkdirSync, writeFileSync, existsSync } from "fs";
 import { dirname, resolve as pathResolve } from "path";
 import chalk from "chalk";
+import { buildCommandMeta } from "./types.js";
 // ─── Registry ────────────────────────────────────────────────────────────
 const ADAPTERS = [
 // Adapters are registered after const declarations at the bottom of this file.
@@ -25,6 +26,26 @@ export function getAllAdapters() {
 }
 export function detectAdapters(projectRoot, homeDir) {
     return ADAPTERS.filter((a) => a.detect(projectRoot, homeDir));
+}
+/**
+ * Project-scope detection: project-level signals only (no global config
+ * dirs). This is the scope the init non-TTY fallback uses; write
+ * authorization additionally requires tool-owned artifacts (see
+ * hasCommandArtifacts).
+ */
+export function detectProjectAdapters(projectRoot) {
+    return ADAPTERS.filter((a) => a.projectSignal(projectRoot));
+}
+/**
+ * True when any of the adapter's tool-owned command artifacts exist in the
+ * project — the write-authorization signal ("existing artifacts are the
+ * manifest"). Deliberately does NOT use detect(): a marker directory alone
+ * (e.g. a hand-created `.cursor/` with the user's own config) does not
+ * authorize openspec-pw writes.
+ */
+export function hasCommandArtifacts(projectRoot, adapter) {
+    const paths = listCommandArtifactPaths(adapter, buildCommandMeta(""));
+    return paths.some((rel) => existsSync(pathResolve(projectRoot, rel)));
 }
 export function registerAdapter(adapter) {
     ADAPTERS.push(adapter);

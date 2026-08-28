@@ -24,7 +24,7 @@ export { buildCommandMeta, defineAdapter, } from "./editors/types.js";
 // Cross-editor shared helpers
 export { escapeYamlValue, formatTagsArray, transformToHyphenCommands, readMcpServersFile, writeMcpServersFile, isMcpServerInFile, installMcpServerInFile, removeMcpServerFromFile, } from "./editors/shared.js";
 // Registry (lookup / detection / install helpers) — no adapter imports here
-export { registerAdapter, getAdapter, getAllAdapters, detectAdapters, slashCommandForAdapter, listCommandArtifactPaths, installCommand, } from "./editors/registry.js";
+export { registerAdapter, getAdapter, getAllAdapters, detectAdapters, detectProjectAdapters, hasCommandArtifacts, slashCommandForAdapter, listCommandArtifactPaths, installCommand, } from "./editors/registry.js";
 // Adapters — import order = registration order (do not reorder)
 export { formatClaudeCommand, getClaudeCommandPath, hasClaudeCode, claudeAdapter, } from "./editors/adapters/claude.js";
 export { formatOpenCodeCommand, getOpenCodeCommandPath, hasOpenCode, opencodeAdapter, readOpenCodeInstructions, } from "./editors/adapters/opencode.js";
