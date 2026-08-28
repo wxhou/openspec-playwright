@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.76] - 2026-08-28
 ### Changed
 
 - **规范 review 修复（架构师二轮）**. ① §2 管道命令禁令堵措辞漏洞：对象从「源码文件」扩为「项目内已有文件——源码/文档/测试/配置同算」，批量改写须先征得用户同意（新文件豁免自动成立，不误伤生成类操作）；② §6 补后端验收「交付」缺口：含断言临时脚本转正为对应层级测试（浏览器→Playwright、服务→API 集成测试），后端验收落成集成测试提交前实跑——堵住「curl 看着对」逃逸通道；③ docs 内嵌副本补回「不重复堆」（防核心逻辑已被验收覆盖还堆单测，锚点测不到的 drift）；④ docs-sync 锚点标签错位修正 2 处。
