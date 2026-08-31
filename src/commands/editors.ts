@@ -116,6 +116,13 @@ export {
   cleanupEmptyDirs,
 } from "./editors/removal.js";
 
+// Config-state predicates (init pre-select manifest)
+export {
+  isEditorConfigured,
+  anyEditorConfigured,
+  agentsFileHasMarkers,
+} from "./editors/configured.js";
+
 // Project rules file management (AGENTS.md SSOT + CLAUDE.md wrapper)
 export {
   readOpenSpecBlock,

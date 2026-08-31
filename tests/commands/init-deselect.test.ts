@@ -280,7 +280,7 @@ describe("init deselect-removal: re-init pre-select behavior", () => {
     expect(detectedNext.has("cursor")).toBe(false);
   });
 
-  it("does not converge: installed-MCP residue keeps the dir → still pre-selected next run", async () => {
+  it("converges despite residue: installed-MCP dir kept (rewritten mcp.json) → no longer pre-selected", async () => {
     mkdirSync(join(tmpRoot, ".cursor", "commands"), { recursive: true });
     writeFileSync(join(tmpRoot, CURSOR_COMMAND), "cmd");
     writeFileSync(
@@ -300,21 +300,22 @@ describe("init deselect-removal: re-init pre-select behavior", () => {
       },
     );
 
-    // entry removed but the rewritten mcp.json keeps .cursor/ alive
+    // entry removed but the rewritten mcp.json keeps .cursor/ alive on disk —
+    // directory residue no longer drives the pre-select (artifact manifest)
     expect(existsSync(join(tmpRoot, ".cursor", "mcp.json"))).toBe(true);
     const detectedNext = new Set<string>();
     await init(
       { mcp: false },
       {
         isTTY: true,
-        prompt: async (_all, detected) => {
-          detected.forEach((id) => detectedNext.add(id));
+        prompt: async (_all, preselected) => {
+          [...preselected].forEach((id) => detectedNext.add(id));
           return ["claude"];
         },
         confirm: async () => true,
       },
     );
-    expect(detectedNext.has("cursor")).toBe(true);
+    expect(detectedNext.has("cursor")).toBe(false);
   });
 
   it("pi global home signal: project removal runs, ~/.pi left untouched", async () => {

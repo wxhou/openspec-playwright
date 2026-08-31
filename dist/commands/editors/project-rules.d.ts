@@ -74,6 +74,17 @@ export declare function cleanProjectRules(adapter: EditorAdapter, projectRoot: s
 export declare function removeMarkersFromFile(dest: string, fileLabel: string): void;
 /** Read the employee-grade standards source file (empty string if missing). */
 export declare function readEmployeeStandards(srcPath: string): string;
+/** Our content signatures inside legacy blocks — an official legacy init
+ * block never contains them, so it is never claimed by mistake. The wrapper
+ * accepts either marker: the current wrapper carries "@AGENTS.md", but the
+ * April-2026 format (v0.1.38–v0.3.2) wrote the FULL standards directly into
+ * CLAUDE.md — that block is ours too, and must migrate (else update would
+ * append a new wrapper next to it instead of replacing it). */
+/** Our content signature inside legacy AGENTS.md blocks — an official legacy
+ * init block never contains it, so it is never claimed by mistake. Exported
+ * for the config-state predicates (configured.ts), which share the same
+ * "official block ≠ our block" gate. */
+export declare const LEGACY_MAIN_SIGNATURE = "Employee-Grade Standards";
 /**
  * Migrate legacy OPENSPEC markers in AGENTS.md (and CLAUDE.md wrapper) to the
  * OPENSPEC-PW namespace. Gates:

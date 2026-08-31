@@ -98,20 +98,26 @@ repeats are de-duplicated, and `all`/`none` cannot be mixed with specific
 ids. A `--tools` id is configured even when the editor is not detected
 (its config directory is created).
 
-Without `--tools`, an interactive multi-select is shown on TTY terminals
-(pre-selecting detected editors — including global-config-dir signals for
-Pi and Oh My Pi); on non-interactive terminals the
-configured editors fall back to **project-level detection only** (global
-config dirs are a pre-select suggestion, never a write authorization).
+Without `--tools`, an interactive multi-select is shown on TTY terminals.
+The pre-select reads the **openspec-pw configuration manifest, not
+directory presence**: editors that carry openspec-pw products (command
+files, MCP entries, claude's legacy skill dir) are pre-checked and labeled
+`(configured)`. A project with no openspec-pw state at all (first run)
+falls back to pre-checking everything `detect()` found — marker dirs, and
+Pi/Oh My Pi's global `~/.pi/agent/` / `~/.omp/agent/` — with no labels.
+Once anything is configured, foreign files that keep an editor's directory
+alive (the official `openspec` CLI's own `opsx-*` files, your own
+settings, global home dirs) no longer influence the pre-select.
 `--tools` is documented as orthogonal to `--no-mcp`: the former picks
 *which* editors, the latter *whether* to install the Playwright MCP server
 for them.
 
-Init prints two output signals: the `Detected (pre-select):` line (only
-when `--tools` is not given) is a TTY multi-select pre-select hint —
-any-scope detection, **not** the install set; the `Selected editors:` line
-(always printed, before any editor is configured) is the actual install
-set. When in doubt, read `Selected editors`.
+Init prints two output signals: the pre-select hint line (only when
+`--tools` is not given) — `Configured (pre-select):` on projects with
+openspec-pw state, `Detected (pre-select):` in the first-run fallback —
+is **not** the install set; the `Selected editors:` line (always printed,
+before any editor is configured) is the actual install set. When in
+doubt, read `Selected editors`.
 
 **Deselect = remove.** In the interactive multi-select, a *detected editor
 you deselect* has its openspec-pw products removed — command/skill files,
@@ -122,13 +128,12 @@ writes this run). Only openspec-pw-owned territory is touched — your own
 config entries in the same files stay. Shared rules: the AGENTS.md
 openspec-pw block is removed only when **no** editor remains selected; a
 symlinked CLAUDE.md is never written through. `--tools` and non-TTY runs
-never remove anything (`--tools` is an explicit allow list). Known
-limitation: deselection does not always stop future init prompts from
-pre-selecting that editor — detection is directory-presence, so a marker
-directory still holding your own files (or a rewritten-but-kept
-`mcp.json`, or Pi/Oh My Pi's global `~/.pi/agent/` / `~/.omp/agent/`)
-still counts as "detected". What it *does* stop immediately: `update` no
-longer refreshes the removed editor's artifacts.
+never remove anything (`--tools` is an explicit allow list). Removal
+feeds straight back into the pre-select: a removed editor is no longer
+pre-checked on the next init (the pre-select reads the openspec-pw
+manifest, so directory residue — kept `mcp.json`, your own files, global
+home dirs — no longer matters). A *fully* deselected and confirmed
+project resets to the first-run pre-select on the next init.
 
 **Editor territory**: `update` only maintains editors that already have
 openspec-pw command artifacts in the project — it never adds new editors

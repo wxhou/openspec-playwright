@@ -36,6 +36,8 @@ export { formatOmpCommand, getOmpCommandPath, hasOmp, ompAdapter, } from "./edit
 export { resolveToolsArg } from "./editors/tool-selection.js";
 // Per-editor artifact removal (init deselect + uninstall cleanup)
 export { OPENSPEC_PW_MCP_SERVERS, CLAUDE_LEGACY_SKILL_REL, enumerateAdapterArtifacts, isInventoryEmpty, removeAdapterMcp, removeAdapterCommandArtifacts, removeClaudeLegacySkill, removeClaudeWrapper, cleanupEmptyDirs, } from "./editors/removal.js";
+// Config-state predicates (init pre-select manifest)
+export { isEditorConfigured, anyEditorConfigured, agentsFileHasMarkers, } from "./editors/configured.js";
 // Project rules file management (AGENTS.md SSOT + CLAUDE.md wrapper)
 export { readOpenSpecBlock, blockMatchesExpected, installOpenSpecBlock, claudeWrapperStandardsContent, installClaudeWrapper, installProjectRules, migrateLegacyMarkers, cleanProjectRules, removeMarkersFromFile, readEmployeeStandards, } from "./editors/project-rules.js";
 //# sourceMappingURL=editors.js.map

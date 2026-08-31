@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.82] - 2026-09-01
+
+- **feat(init): 交互多选预选信号改用 openspec-pw 产物清单（`init-preselect-artifact-manifest`）**. v0.3.81 用户实测（personal-resume）暴露的收敛缺口：预选读"目录存在"（`detect()`），而目录被官方 `openspec` CLI 自己的 `opsx-*` 文件、用户自有配置、pi/omp 全局 `~/.pi/agent/`+`~/.omp/agent/` 撑着——被取消勾选或从未配置的 editor 永远预勾选，每次 init 需手动全关。修复：两段式预选——有 openspec-pw 状态的项目预选 = `isEditorConfigured` 命中项（command/extraArtifacts 产物 ∪ openspec-pw MCP 条目 ∪ claude legacy skill 目录，文案 `(configured)`）；零状态项目（首次运行）旁路回退全检测预选（新用户体验不倒退）。预选从此与 update/doctor 的授权门控（hasCommandArtifacts）同源——全系统"磁盘产物"单一事实。**行为翻转**：v0.3.81 记录的两类预选不收敛已知行为（mcp.json 残留、pi/omp 全局信号）自本变更起失效（MODIFIED 覆写）；全部取消并确认删除后项目磁盘零痕迹，与从未配置不可区分 → 下次 init 回到首次运行预选语义（诚实记录，避免状态文件）；手工删产物但 AGENTS.md marker 还在 → 预选空集不回勾（marker 计入状态）。移除候选同步收窄到已配置 editor（空枚举消失）。
+  - 新增 `src/commands/editors/configured.ts`（`isEditorConfigured`/`anyEditorConfigured`/`agentsFileHasMarkers`）；修改 `src/commands/init.ts`（两段式预选 + `Configured (pre-select):` 输出行）
+  - 新增 `tests/commands/init-preselect.test.ts`（11 用例）；`tests/commands/init-deselect.test.ts`（mcp.json 残留场景翻转断言）
+  - `README.md`、`README.zh-CN.md`
+
 ## [0.3.81] - 2026-08-31
 
 - **BREAKING feat(init): 交互式取消勾选的编辑器其 openspec-pw 产物被移除（`init-deselect-removes-config`）**. 旧行为：取消勾选仅"本次跳过写入"，旧产物原地保留 → `detect()` 持续命中 → 下次 init 预选数量永不变化，`update` 还按 artifacts-are-the-manifest 继续刷新已被"关掉"的编辑器。新行为：交互式多选完成后，探测到但未选中的编辑器——其 openspec-pw 命令/技能文件（含 extraArtifacts、claude 的 legacy 技能目录 `.claude/skills/openspec-e2e/`）、openspec-pw MCP 条目（`playwright-test` + legacy `playwright`，条目级删除不碰用户自有 server）、CLAUDE.md wrapper 块——前置一次列出全部待移除项的整体确认后移除；拒绝则回退旧语义（仅跳过写入）。边界：AGENTS.md 共享块 run 级判定（仅无任何编辑器保留且确认后才清，作为一行条目进同一次确认清单；空文件删除与 uninstall 同语义）；symlink 的 CLAUDE.md 永不穿透（防剥掉 AGENTS.md 共享块）；`--mcp=false` 仅限安装/检查阶段，确认后的 MCP 移除不受影响；`--tools` / 非 TTY 路径零移除（显式授权清单语义）。预选收敛如实标注：产物拆除立即让 `update`/`doctor` 停止刷新；预选不再勾选仅当 marker 目录清理后为空——mcp.json 只改写不删除、目录常含用户自有内容、pi/omp 全局信号三种情况预选不收敛（目录存在性探测的已知行为）。openspec change: `init-deselect-removes-config`。

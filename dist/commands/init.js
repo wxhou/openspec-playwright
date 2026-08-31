@@ -5,24 +5,29 @@ import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { readFile } from "fs/promises";
 import { buildCommandMeta, detectAdapters, detectProjectAdapters, getAdapter, getAllAdapters, installCommand, installProjectRules, migrateLegacyMarkers, readEmployeeStandards, resolveToolsArg, slashCommandForAdapter, enumerateAdapterArtifacts, isInventoryEmpty, removeAdapterMcp, removeAdapterCommandArtifacts, removeClaudeLegacySkill, removeClaudeWrapper, removeMarkersFromFile, } from "./editors.js";
-import { LEGACY_OPENSPEC_START, OPENSPEC_START } from "../shared/drift.js";
+import { isEditorConfigured, agentsFileHasMarkers, } from "./editors/configured.js";
 import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, TEST_RUNNER_MCP_SERVER, needsShell, hasFrontendSignal, detectCodeGraphStatus, codegraphHintLines, CREDENTIALS_RELPATHS, credentialsIgnoreHint, findUnignoredFiles, } from "../shared/index.js";
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
 const E2E_COMMAND_SRC = fileURLToPath(new URL("../../templates/e2e-command.md", import.meta.url));
 const EMPLOYEE_STANDARDS_SRC = fileURLToPath(new URL("../../employee-standards.md", import.meta.url));
 /**
  * Interactive multi-select of all supported editors, pre-selecting the
- * editors detected in the project. Dynamically imports @inquirer/prompts so
- * non-interactive runs never load it.
+ * editors passed in `preselected`. In the artifact-manifest tier those are
+ * the configured editors — the `configured` set drives the "(configured)"
+ * name suffix. In the first-run bypass tier `configured` is empty, so no
+ * suffix renders. Dynamically imports @inquirer/prompts so non-interactive
+ * runs never load it.
  */
-export async function promptSelectEditors(allEditors, detectedIds) {
+export async function promptSelectEditors(allEditors, preselected, configured = new Set()) {
     const { checkbox } = await import("@inquirer/prompts");
     const selected = await checkbox({
         message: "Select editors to configure",
         choices: allEditors.map((a) => ({
-            name: detectedIds.has(a.id) ? `${a.displayName} (detected)` : a.displayName,
+            name: configured.has(a.id)
+                ? `${a.displayName} (configured)`
+                : a.displayName,
             value: a.id,
-            checked: detectedIds.has(a.id),
+            checked: preselected.has(a.id),
         })),
     });
     return selected;
@@ -63,18 +68,39 @@ export async function init(options, deps = {}) {
     // 3. Detect supported editors, then resolve the explicit selection.
     // Priority: --tools flag > interactive prompt (TTY) > detected fallback.
     // `detected` is any-scope (project dirs + global config dirs for
-    // Pi/Oh My Pi) — used for display and interactive
-    // pre-select only. The non-TTY fallback uses `projectDetected`:
-    // global config dirs never authorize editor configuration.
+    // Pi/Oh My Pi) — used for display and, on a project with zero
+    // openspec-pw state (first run), the interactive pre-select. The
+    // pre-select itself reads the configured manifest (isEditorConfigured):
+    // detection is the keep-alive signal (official openspec CLI files, user
+    // config, global home dirs), so it must not drive the checkbox once the
+    // project has real openspec-pw products.
     const detected = detectAdapters(projectRoot, deps.homeDir);
     const projectDetected = detectProjectAdapters(projectRoot);
-    // Detected is any-scope detection — its only role is the TTY multi-select
-    // pre-select hint. With --tools the user has already expressed intent, so
-    // stay silent: the line would be misread as the install set.
+    const configuredIds = new Set(detected
+        .filter((a) => isEditorConfigured(a, projectRoot))
+        .map((a) => a.id));
+    const hasAnyState = configuredIds.size > 0 || agentsFileHasMarkers(projectRoot);
+    // Two-tier pre-select: artifact-manifest tier pre-checks only configured
+    // editors; the first-run bypass (zero openspec-pw state) pre-checks every
+    // detected editor, preserving the old fresh-project experience.
+    const preselectedIds = hasAnyState
+        ? configuredIds
+        : new Set(detected.map((a) => a.id));
+    // With --tools the user has already expressed intent, so stay silent: the
+    // line would be misread as the install set.
     if (options.tools === undefined) {
-        console.log(detected.length > 0
-            ? chalk.gray(`  Detected (pre-select): ${detected.map((a) => a.label).join(", ")}`)
-            : chalk.gray("  Detected: none"));
+        if (hasAnyState) {
+            console.log(configuredIds.size > 0
+                ? chalk.gray(`  Configured (pre-select): ${[...configuredIds]
+                    .map((id) => getAdapter(id)?.label ?? id)
+                    .join(", ")}`)
+                : chalk.gray("  Configured: none"));
+        }
+        else {
+            console.log(detected.length > 0
+                ? chalk.gray(`  Detected (pre-select): ${detected.map((a) => a.label).join(", ")}`)
+                : chalk.gray("  Detected: none"));
+        }
     }
     const isTTY = deps.isTTY ?? process.stdout.isTTY === true;
     const prompt = deps.prompt ?? promptSelectEditors;
@@ -91,7 +117,7 @@ export async function init(options, deps = {}) {
     }
     if (selectedIds === null && isTTY) {
         interactiveSelection = true;
-        selectedIds = await prompt(getAllAdapters(), new Set(detected.map((a) => a.id)));
+        selectedIds = await prompt(getAllAdapters(), preselectedIds, configuredIds);
     }
     const editors = selectedIds === null
         ? projectDetected
@@ -114,28 +140,24 @@ export async function init(options, deps = {}) {
     // skill, and the shared AGENTS.md block when no editor remains), gated on
     // one confirm. Refusal falls back to the old "skip, don't touch" semantics.
     if (interactiveSelection && selectedIds !== null) {
-        const deselected = detected.filter((a) => !selectedIds.includes(a.id));
+        // Removal candidates share the configured manifest: never-configured
+        // editors own no products, so there is nothing to enumerate (and no
+        // confirm noise for a merely-detected editor that was never set up).
+        const deselected = detected
+            .filter((a) => !selectedIds.includes(a.id) && configuredIds.has(a.id));
         const inventories = deselected
             .map((adapter) => ({
             adapter,
             inv: enumerateAdapterArtifacts(adapter, projectRoot),
         }))
-            // Editors with nothing to remove are silent — no confirm-list noise
-            // for a merely-detected-but-never-configured editor.
+            // Editors with nothing to remove are silent — no confirm-list noise.
             .filter(({ inv }) => !isInventoryEmpty(inv));
         // Run-level shared block: the AGENTS.md openspec-pw block serves every
         // configured editor, so it only goes when none remain. It joins the
         // same confirmation list as a per-editor item (otherwise a project
         // whose per-editor artifacts were hand-deleted would remove the shared
         // block without ever asking).
-        const agentsPath = join(projectRoot, "AGENTS.md");
-        const agentsHasBlock = selectedIds.length === 0 &&
-            existsSync(agentsPath) &&
-            (() => {
-                const content = readFileSync(agentsPath, "utf-8");
-                return (content.includes(OPENSPEC_START) ||
-                    content.includes(LEGACY_OPENSPEC_START));
-            })();
+        const agentsHasBlock = selectedIds.length === 0 && agentsFileHasMarkers(projectRoot);
         if (inventories.length > 0 || agentsHasBlock) {
             console.log(chalk.blue("\n─── Removing Deselected Editors ───"));
             console.log(chalk.yellow("  The following openspec-pw artifacts will be removed:"));
@@ -177,7 +199,7 @@ export async function init(options, deps = {}) {
                     }
                 }
                 if (agentsHasBlock) {
-                    removeMarkersFromFile(agentsPath, "AGENTS.md");
+                    removeMarkersFromFile(join(projectRoot, "AGENTS.md"), "AGENTS.md");
                     console.log(chalk.green("  ✓ AGENTS.md: shared openspec-pw block removed"));
                 }
             }

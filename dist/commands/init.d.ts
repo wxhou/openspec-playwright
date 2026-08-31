@@ -6,8 +6,10 @@ export interface InitOptions {
     tools?: string;
 }
 export interface InitDeps {
-    /** Interactive selection prompt; defaults to @inquirer/prompts checkbox. */
-    prompt?: (allEditors: EditorAdapter[], detectedIds: ReadonlySet<EditorId>) => Promise<EditorId[]>;
+    /** Interactive selection prompt; defaults to @inquirer/prompts checkbox.
+     * Receives the pre-selected id set (configured tier or first-run bypass)
+     * and the configured id set (`(configured)` suffix driver). */
+    prompt?: (allEditors: EditorAdapter[], preselectedIds: ReadonlySet<EditorId>, configuredIds?: ReadonlySet<EditorId>) => Promise<EditorId[]>;
     /**
      * Confirmation prompt for the deselect-removal list; defaults to
      * @inquirer/prompts confirm. Separate from `prompt` — a checkbox stub
@@ -22,10 +24,13 @@ export interface InitDeps {
 }
 /**
  * Interactive multi-select of all supported editors, pre-selecting the
- * editors detected in the project. Dynamically imports @inquirer/prompts so
- * non-interactive runs never load it.
+ * editors passed in `preselected`. In the artifact-manifest tier those are
+ * the configured editors — the `configured` set drives the "(configured)"
+ * name suffix. In the first-run bypass tier `configured` is empty, so no
+ * suffix renders. Dynamically imports @inquirer/prompts so non-interactive
+ * runs never load it.
  */
-export declare function promptSelectEditors(allEditors: EditorAdapter[], detectedIds: ReadonlySet<EditorId>): Promise<EditorId[]>;
+export declare function promptSelectEditors(allEditors: EditorAdapter[], preselected: ReadonlySet<EditorId>, configured?: ReadonlySet<EditorId>): Promise<EditorId[]>;
 export declare function init(options: InitOptions, deps?: InitDeps): Promise<void>;
 export declare function generateSeedTest(projectRoot: string): Promise<void>;
 export declare function generateAppKnowledge(projectRoot: string): Promise<void>;
