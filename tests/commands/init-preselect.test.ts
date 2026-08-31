@@ -231,6 +231,9 @@ describe("init pre-select: artifact manifest tier", () => {
   });
 
   it("full deselect + confirm removes the shared marker block → next init resets to first-run semantics", async () => {
+    // A foreign-content editor dir: detected on the bypass tier, never "configured"
+    mkdirSync(join(tmpRoot, ".cursor"), { recursive: true });
+    writeFileSync(join(tmpRoot, ".cursor", "settings.json"), "{}");
     mkdirSync(join(tmpRoot, ".claude", "commands", "opsx"), { recursive: true });
     writeFileSync(join(tmpRoot, CLAUDE_COMMAND), "cmd");
     writeFileSync(
@@ -245,7 +248,8 @@ describe("init pre-select: artifact manifest tier", () => {
     let preselectedNext: string[] = [];
     await init({ mcp: false }, { isTTY: true, prompt: async (_a, pre) => { preselectedNext = [...pre]; return []; }, confirm: async () => true });
     // Zero state left on disk = indistinguishable from first run: bypass re-fires
-    expect(preselectedNext.length).toBeGreaterThan(1);
+    // and pre-checks every detected editor (incl. the foreign-content cursor)
+    expect(preselectedNext).toContain("cursor");
   });
 
   it("hand-deleted products with marker block remaining → no bypass (pre-select empty)", async () => {
