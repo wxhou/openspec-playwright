@@ -124,11 +124,18 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   // global config dirs never authorize editor configuration.
   const detected = detectAdapters(projectRoot, deps.homeDir);
   const projectDetected = detectProjectAdapters(projectRoot);
-  console.log(
-    detected.length > 0
-      ? chalk.gray(`  Detected: ${detected.map((a) => a.label).join(", ")}`)
-      : chalk.gray("  Detected: none"),
-  );
+  // Detected is any-scope detection — its only role is the TTY multi-select
+  // pre-select hint. With --tools the user has already expressed intent, so
+  // stay silent: the line would be misread as the install set.
+  if (options.tools === undefined) {
+    console.log(
+      detected.length > 0
+        ? chalk.gray(
+            `  Detected (pre-select): ${detected.map((a) => a.label).join(", ")}`,
+          )
+        : chalk.gray("  Detected: none"),
+    );
+  }
 
   const isTTY = deps.isTTY ?? process.stdout.isTTY === true;
   const prompt = deps.prompt ?? promptSelectEditors;
@@ -151,6 +158,16 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
       : selectedIds
           .map(getAdapter)
           .filter((a): a is EditorAdapter => a !== undefined);
+
+  // The actual install set — what this run will configure. The Selected
+  // editors line is the authoritative signal (mirrors the Summary's
+  // Restart list); it prints before any installCommand runs, and before
+  // the empty-detection failure below so `none` accompanies the error.
+  console.log(
+    chalk.gray(
+      `  Selected editors: ${editors.map((a) => a.label).join(", ") || "none"}`,
+    ),
+  );
 
   // No flag, non-TTY, and nothing detected → fail with --tools guidance.
   if (selectedIds === null && editors.length === 0) {

@@ -531,3 +531,93 @@ describe("init frontend signal hint", () => {
     expect(existsSync(join(tmpRoot, "playwright.config.ts"))).toBe(true);
   });
 });
+
+// ─── init output signals: detected vs selected ────────────────────────
+
+describe("init output signals detected vs selected", () => {
+  let tmpRoot: string;
+  let cwdSpy: ReturnType<typeof import("vitest")["vi"]["spyOn"]>;
+  let logSpy: ReturnType<typeof import("vitest")["vi"]["spyOn"]>;
+  const logs: string[] = [];
+  const blankHome = join(tmpdir(), "ospw-pw-blank-home-signals-" + Date.now());
+
+  beforeAll(() => {
+    mkdirSync(blankHome, { recursive: true });
+  });
+
+  beforeEach(() => {
+    tmpRoot = mkdtempSync(join(tmpdir(), "ospw-pw-init-signals-"));
+    mkdirSync(join(tmpRoot, "openspec"), { recursive: true });
+    cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(tmpRoot);
+    logs.length = 0;
+    logSpy = vi.spyOn(console, "log").mockImplementation((...args: unknown[]) => {
+      logs.push(args.join(" "));
+    });
+  });
+
+  afterEach(() => {
+    cwdSpy.mockRestore();
+    logSpy.mockRestore();
+    rmSync(tmpRoot, { recursive: true, force: true });
+  });
+
+  afterAll(() => {
+    rmSync(blankHome, { recursive: true, force: true });
+  });
+
+  it("--tools suppresses the Detected line; Selected editors is the install set", async () => {
+    // Both editors detectable — the misread this change fixes.
+    mkdirSync(join(tmpRoot, ".claude"), { recursive: true });
+    mkdirSync(join(tmpRoot, ".opencode"), { recursive: true });
+    const { init } = await import("../../src/commands/init.js");
+    await init({ tools: "claude", mcp: false });
+    expect(logs.some((l) => l.includes("Selected editors: claude"))).toBe(true);
+    expect(logs.some((l) => l.includes("Detected"))).toBe(false);
+    expect(existsSync(join(tmpRoot, ".opencode/commands/opsx-e2e.md"))).toBe(false);
+  });
+
+  it("no --tools in non-TTY prints Detected (pre-select) and the fallback as Selected editors", async () => {
+    mkdirSync(join(tmpRoot, ".claude"), { recursive: true });
+    mkdirSync(join(tmpRoot, ".opencode"), { recursive: true });
+    const { init } = await import("../../src/commands/init.js");
+    await init({ mcp: false }, { isTTY: false, homeDir: blankHome });
+    expect(logs.some((l) => l.includes("Detected (pre-select): claude, opencode"))).toBe(true);
+    expect(logs.some((l) => l.includes("Selected editors: claude, opencode"))).toBe(true);
+  });
+
+  it("TTY override: Detected (pre-select) lists detection, Selected editors reflects the confirmation", async () => {
+    mkdirSync(join(tmpRoot, ".cursor"), { recursive: true });
+    const { init } = await import("../../src/commands/init.js");
+    await init(
+      { mcp: false },
+      { isTTY: true, homeDir: blankHome, prompt: async () => ["claude"] },
+    );
+    expect(logs.some((l) => l.includes("Detected (pre-select): cursor"))).toBe(true);
+    expect(logs.some((l) => l.includes("Selected editors: claude"))).toBe(true);
+  });
+
+  it("--tools none prints Selected editors: none", async () => {
+    const { init } = await import("../../src/commands/init.js");
+    await init({ tools: "none" });
+    expect(logs.some((l) => l.includes("Selected editors: none"))).toBe(true);
+  });
+
+  it("nothing detected without --tools prints both none lines before failing", async () => {
+    const { init } = await import("../../src/commands/init.js");
+    await expect(
+      init({ mcp: false }, { isTTY: false, homeDir: blankHome }),
+    ).rejects.toThrow(/--tools/);
+    expect(logs.some((l) => l.includes("Detected: none"))).toBe(true);
+    expect(logs.some((l) => l.includes("Selected editors: none"))).toBe(true);
+  });
+
+  it("--tools expands to an editor that was not detected", async () => {
+    mkdirSync(join(tmpRoot, ".claude"), { recursive: true });
+    mkdirSync(join(tmpRoot, ".opencode"), { recursive: true });
+    const { init } = await import("../../src/commands/init.js");
+    await init({ tools: "cursor", mcp: false });
+    expect(logs.some((l) => l.includes("Detected"))).toBe(false);
+    expect(logs.some((l) => l.includes("Selected editors: cursor"))).toBe(true);
+    expect(existsSync(join(tmpRoot, ".cursor/commands/opsx-e2e.md"))).toBe(true);
+  });
+});

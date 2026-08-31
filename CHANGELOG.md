@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+- **fix(init): Detected 输出门控为 TTY pre-select 信号，新增 `Selected editors:` 行明示实际 install 集**. 用户场景：`.claude/` + `.opencode/` 并存的项目跑 `openspec-pw init --tools claude`，启动行 `Detected: claude, opencode` 报 2 个，被误读为装了 2 个（实际只装 1 个）。修复：① `Detected` 行仅在 `--tools` 未传时打印（其唯一角色 = TTY multi-select 预选提示；any-scope 检测 = 项目目录 + `~/.pi/agent/`、`~/.omp/agent/`），文案带 `(pre-select)` 标签；② 新增灰字 `Selected editors: ...` 行，位于 `editors` 计算后、首个 installCommand 前，内容 = 实际 install 集（与 Summary 末尾 `Restart ...` 一致；空集打印 `none`，且在无检测报错前打印使错误输出自解释）。init 的 install 决策零改动（仅输出信号语义澄清）。openspec change: `init-tool-count-signal`。
+  - `src/commands/init.ts`、`tests/init.test.ts`（+6 用例：--tools 抑制 Detected / 非 TTY fallback 双行 / TTY 覆盖预选 / `--tools none` / 无检测双 none 行 / --tools 扩展未检测编辑器）
+  - `README.md`、`README.zh-CN.md`
+
 ## [0.3.79] - 2026-08-28
 
 - **移除 DeepSeek Harness（dsh）编辑器支持**. 官方 OpenSpec CLI 的工作流命令分发不覆盖 dsh（deepseek-harness 实测：官方 `openspec update` 只覆盖 Claude Code / Oh My Pi / OpenCode / Pi）——dsh 里只有 openspec-pw 装的 `opsx-e2e` 技能，OpenSpec 核心工作流（propose→apply→verify→archive）无入口，体验半截。编辑器支持收窄为 6 个：`claude`、`opencode`、`cline`、`cursor`、`pi`、`omp`。**退役清理**：`uninstall` 新增无条件退役段——探测精确路径 `.dsh/skills/opsx-e2e/`（openspec-pw 在 `.dsh` 下拥有过的全部领土）并删除，dsh-only 项目（零其他编辑器）连带清理 AGENTS.md 规范块；用户自装的 `.dsh/skills/` 下其他 skill 不受影响。**加回条件**：官方 OpenSpec 支持 dsh 后恢复 adapter（git 历史可完整找回；届时需连带还原 init-tool-selection spec 的「Retired editor id fails」场景）。dsh-only 项目跑 `update` 的 AGENTS.md 规范块维护不受影响（领土语义按标记判断）。`--tools dsh` 报 unknown id 错误。openspec change: `remove-dsh-support`。
