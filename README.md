@@ -107,6 +107,12 @@ config dirs are a pre-select suggestion, never a write authorization).
 *which* editors, the latter *whether* to install the Playwright MCP server
 for them.
 
+Init prints two output signals: the `Detected (pre-select):` line (only
+when `--tools` is not given) is a TTY multi-select pre-select hint —
+any-scope detection, **not** the install set; the `Selected editors:` line
+(always printed, before any editor is configured) is the actual install
+set. When in doubt, read `Selected editors`.
+
 **Editor territory**: `update` only maintains editors that already have
 openspec-pw command artifacts in the project — it never adds new editors
 (a global config dir or a hand-created `.cursor/` does not authorize
@@ -253,6 +259,8 @@ If your project already has `playwright.config.ts`, `openspec-pw init` will not 
 ## Authentication
 
 If your app requires login, set up credentials once, then all tests run authenticated automatically.
+
+> **Keep credentials out of git**: add `tests/playwright/credentials.yaml` (and the `credentials.yaml.bak` that `openspec-pw update` writes) to your `.gitignore`, or keep credentials in the `E2E_USERNAME` / `E2E_PASSWORD` env vars instead. init and update print a warning when these files are not ignored.
 
 ```bash
 # 1. Edit credentials

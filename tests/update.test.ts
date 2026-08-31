@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
@@ -126,6 +126,114 @@ users:
     // No backup should be created when content matches
     expect(existsSync(join(projectDir, "tests", "playwright", "credentials.yaml.bak"))).toBe(false);
     rmSync(projectDir, { recursive: true, force: true });
+  });
+});
+
+// ─── syncCredentials: credentials ignore hint ─────────────────────────
+
+describe("syncCredentials: credentials ignore hint", () => {
+  const tplDir = join(tmpdir(), "ospw-cred-hint-tpl-" + Date.now());
+
+  beforeEach(() => {
+    mkdirSync(join(tplDir, "templates"), { recursive: true });
+    writeFileSync(
+      join(tplDir, "templates", "credentials.yaml"),
+      "api: CHANGE_ME\nusers: []\n",
+    );
+  });
+
+  afterEach(() => {
+    rmSync(tplDir, { recursive: true, force: true });
+  });
+
+  async function runSync(projectDir: string) {
+    const { syncCredentials } = await import("../../src/commands/update.js");
+    const logs: string[] = [];
+    const spy = vi
+      .spyOn(console, "log")
+      .mockImplementation((...args: unknown[]) => {
+        logs.push(args.join(" "));
+      });
+    try {
+      syncCredentials(tplDir, projectDir);
+    } finally {
+      spy.mockRestore();
+    }
+    return logs;
+  }
+
+  it("hints on fresh generation when nothing is git-ignored", async () => {
+    const projectDir = join(tmpdir(), "ospw-cred-hint-gen-" + Date.now());
+    mkdirSync(projectDir, { recursive: true });
+    try {
+      const logs = await runSync(projectDir);
+      expect(
+        logs.some(
+          (l) =>
+            l.includes("Test credentials are not git-ignored") &&
+            l.includes("tests/playwright/credentials.yaml"),
+        ),
+      ).toBe(true);
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true });
+    }
+  });
+
+  it("rewrite path names the .bak backup specifically", async () => {
+    const projectDir = join(tmpdir(), "ospw-cred-hint-bak-" + Date.now());
+    mkdirSync(join(projectDir, "tests", "playwright"), { recursive: true });
+    // .gitignore covers credentials.yaml but NOT the .bak update is about
+    // to write — the hint must name the .bak.
+    writeFileSync(
+      join(projectDir, ".gitignore"),
+      "tests/playwright/credentials.yaml\n",
+    );
+    writeFileSync(
+      join(projectDir, "tests", "playwright", "credentials.yaml"),
+      "api: http://localhost:3000\nusers: []\n",
+    );
+    try {
+      const logs = await runSync(projectDir);
+      expect(
+        logs.some((l) =>
+          l.includes(
+            "not git-ignored: tests/playwright/credentials.yaml.bak —",
+          ),
+        ),
+      ).toBe(true);
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true });
+    }
+  });
+
+  it("no hint when .gitignore covers both credential files", async () => {
+    const projectDir = join(tmpdir(), "ospw-cred-hint-ok-" + Date.now());
+    mkdirSync(projectDir, { recursive: true });
+    writeFileSync(
+      join(projectDir, ".gitignore"),
+      "tests/playwright/credentials.yaml\ntests/playwright/credentials.yaml.bak\n",
+    );
+    try {
+      const logs = await runSync(projectDir);
+      expect(logs.some((l) => l.includes("not git-ignored"))).toBe(false);
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true });
+    }
+  });
+
+  it("never edits the project .gitignore", async () => {
+    const projectDir = join(tmpdir(), "ospw-cred-hint-git-" + Date.now());
+    mkdirSync(projectDir, { recursive: true });
+    const gitignore = "# my rules\ntests/playwright/credentials.yaml\n";
+    writeFileSync(join(projectDir, ".gitignore"), gitignore);
+    try {
+      await runSync(projectDir);
+      expect(readFileSync(join(projectDir, ".gitignore"), "utf-8")).toBe(
+        gitignore,
+      );
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true });
+    }
   });
 });
 
@@ -370,6 +478,18 @@ describe("update.ts: drift coverage regression guards", () => {
     expect(src).toMatch(
       /No frontend signal detected — skipping Playwright MCP/,
     );
+  });
+
+  it("zero-authorized Summary says configured, not detected (授权集不用检测措辞)", () => {
+    const src = readFileSync(
+      fileURLToPath(new URL("../src/commands/update.ts", import.meta.url)),
+      "utf-8",
+    );
+    // editorsForHint is the AUTHORIZED set (hasCommandArtifacts) — the
+    // zero-case line must not claim "detected" (a hand-created .claude/
+    // marker dir can still be detectable with zero command artifacts).
+    expect(src).toMatch(/No configured editors — nothing to restart/);
+    expect(src).not.toMatch(/No supported editor detected — nothing to restart/);
   });
 
   it("Cursor skill extraArtifacts are included in command drift check", () => {

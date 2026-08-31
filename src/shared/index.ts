@@ -17,3 +17,8 @@ export {
   hasFrontendSignal,
 } from "./app-detect.js";
 export type { AppServerDetection } from "./app-detect.js";
+export {
+  CREDENTIALS_RELPATHS,
+  credentialsIgnoreHint,
+  findUnignoredFiles,
+} from "./ignore-check.js";

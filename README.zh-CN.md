@@ -118,6 +118,8 @@ openspec-pw init --tools none            # 不配置编辑器，只生成脚手�
 
 未提供 `--tools` 时：TTY 终端弹出交互式多选（预选已检测的编辑器——含 Pi / Oh My Pi 的全局配置目录信号）；非交互终端回退到**仅项目内检测**（全局配置目录只是预选建议，不构成写入授权）。`--tools` 与 `--no-mcp` 正交：前者选择*哪些*编辑器，后者决定*是否*为它们安装 Playwright MCP。
 
+init 打印两种输出信号：`Detected (pre-select):` 行（仅未传 `--tools` 时出现）是 TTY 多选的预选提示——any-scope 检测，**不是**实际安装集；`Selected editors:` 行（总是打印，位于任何编辑器配置之前）才是实际安装集。判断装了什么，看 `Selected editors`。
+
 **编辑器领土**：`update` 只维护项目内已有 openspec-pw 命令工件的编辑器——不会新增编辑器（全局配置目录或手建的 `.cursor/` 不构成写入授权）。给已初始化项目新增编辑器请重跑 `openspec-pw init --tools <id>`（幂等）。
 
 ### CLI 命令
@@ -216,6 +218,8 @@ openspec-pw uninstall     # 移除项目中的集成
 ## 认证配置
 
 如果你的应用需要登录，配置一次凭证后，所有测试自动以已登录状态运行。
+
+> **别把凭证提交进 git**：把 `tests/playwright/credentials.yaml`（以及 `openspec-pw update` 会写的 `credentials.yaml.bak`）加入 `.gitignore`，或改用 `E2E_USERNAME` / `E2E_PASSWORD` 环境变量。未忽略时 init 和 update 会打印黄色警告行。
 
 ```bash
 # 1. 编辑凭证
