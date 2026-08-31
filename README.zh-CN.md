@@ -120,6 +120,8 @@ openspec-pw init --tools none            # 不配置编辑器，只生成脚手�
 
 init 打印两种输出信号：`Detected (pre-select):` 行（仅未传 `--tools` 时出现）是 TTY 多选的预选提示——any-scope 检测，**不是**实际安装集；`Selected editors:` 行（总是打印，位于任何编辑器配置之前）才是实际安装集。判断装了什么，看 `Selected editors`。
 
+**取消勾选 = 移除**。交互式多选里，*已被探测但你取消勾选的*编辑器的 openspec-pw 产物会被移除——命令/技能文件、该编辑器的 openspec-pw MCP 条目（含 claude 的 wrapper 块与 legacy 技能目录），前置一次列出全部待移除项的确认（拒绝则保持旧行为：本次仅跳过写入）。只动 openspec-pw 自有领土——同一文件中你自有的配置条目不受影响。共享规则：AGENTS.md 的 openspec-pw 块仅在**没有任何编辑器保留**时移除；symlink 的 CLAUDE.md 永不穿透写入。`--tools` 与非 TTY 运行不做任何移除（`--tools` 是显式授权清单）。已知限制：取消勾选不一定让下次 init 不再预选该编辑器——探测是目录存在性，marker 目录里仍有你自己的文件（或改写后保留的 `mcp.json`，或 Pi/Oh My Pi 的全局 `~/.pi/agent/`、`~/.omp/agent/`）仍会算"已探测"。它**立即生效**的是：`update` 不再刷新被移除编辑器的产物。
+
 **编辑器领土**：`update` 只维护项目内已有 openspec-pw 命令工件的编辑器——不会新增编辑器（全局配置目录或手建的 `.cursor/` 不构成写入授权）。给已初始化项目新增编辑器请重跑 `openspec-pw init --tools <id>`（幂等）。
 
 ### CLI 命令

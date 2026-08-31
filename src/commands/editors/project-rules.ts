@@ -285,8 +285,13 @@ export function cleanProjectRules(adapter: EditorAdapter, projectRoot: string): 
   }
 }
 
-/** Remove OpenSpec marker blocks from a single file. Only edits within markers. */
-function removeMarkersFromFile(dest: string, fileLabel: string): void {
+/**
+ * Remove openspec-pw marker blocks (both namespaces) from a single file,
+ * deleting the file entirely when it empties out. Exported for the init
+ * deselect-removal flow (CLAUDE.md wrapper cleanup); cleanProjectRules
+ * wraps it for the uninstall context.
+ */
+export function removeMarkersFromFile(dest: string, fileLabel: string): void {
   if (!existsSync(dest)) {
     console.log(chalk.gray(`  - ${fileLabel} not found, skipping`));
     return;

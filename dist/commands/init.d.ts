@@ -8,6 +8,13 @@ export interface InitOptions {
 export interface InitDeps {
     /** Interactive selection prompt; defaults to @inquirer/prompts checkbox. */
     prompt?: (allEditors: EditorAdapter[], detectedIds: ReadonlySet<EditorId>) => Promise<EditorId[]>;
+    /**
+     * Confirmation prompt for the deselect-removal list; defaults to
+     * @inquirer/prompts confirm. Separate from `prompt` — a checkbox stub
+     * cannot answer a boolean question, and without an injection point tests
+     * would block on stdin.
+     */
+    confirm?: (message: string) => Promise<boolean>;
     /** Override TTY detection (tests inject false here). */
     isTTY?: boolean;
     /** Override home dir for Pi/Oh My Pi global detection (tests inject an empty dir). */

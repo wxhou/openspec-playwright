@@ -1,9 +1,4 @@
-import {
-  existsSync,
-  rmSync,
-  readdirSync,
-  rmdirSync,
-} from "fs";
+import { existsSync, rmSync } from "fs";
 import { join, dirname } from "path";
 import chalk from "chalk";
 import {
@@ -12,6 +7,8 @@ import {
   claudeAdapter,
   detectAdapters,
   listCommandArtifactPaths,
+  removeAdapterCommandArtifacts,
+  cleanupEmptyDirs,
 } from "./editors.js";
 import {
   removePlaywrightMcp,
@@ -35,21 +32,21 @@ export async function uninstall() {
     removeTestRunnerMcp(adapter);
   }
 
-  // 2. Remove E2E command (+ extraArtifacts) for each detected editor
+  // 2. Remove E2E command (+ extraArtifacts) for each detected editor —
+  // delegates to the removal.ts primitive (same rm + empty-dir cascade +
+  // per-path success line as the original inline loop).
   console.log(chalk.blue("\n─── Removing E2E Commands ───"));
   for (const adapter of detected) {
     const relPaths = listCommandArtifactPaths(adapter, meta);
     let removedAny = false;
     for (const relPath of relPaths) {
-      const absPath = join(projectRoot, relPath);
-      if (existsSync(absPath)) {
-        rmSync(absPath);
-        cleanupEmptyDirs(dirname(absPath), projectRoot);
-        console.log(chalk.green(`  ✓ ${adapter.label}: ${relPath}`));
+      if (existsSync(join(projectRoot, relPath))) {
         removedAny = true;
       }
     }
-    if (!removedAny) {
+    if (removedAny) {
+      removeAdapterCommandArtifacts(adapter, projectRoot);
+    } else {
       console.log(
         chalk.gray(`  - ${adapter.label}: E2E command not found, skipping`),
       );
@@ -121,21 +118,5 @@ export async function uninstall() {
         "  Note: codegraph MCP remains in your agents — remove with: codegraph uninstall",
       ),
     );
-  }
-}
-
-function cleanupEmptyDirs(dir: string, stopAt: string) {
-  while (dir !== stopAt && dir.length > stopAt.length) {
-    try {
-      const entries = readdirSync(dir);
-      if (entries.length === 0) {
-        rmdirSync(dir);
-        dir = dirname(dir);
-      } else {
-        break;
-      }
-    } catch {
-      break;
-    }
   }
 }

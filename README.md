@@ -113,6 +113,23 @@ any-scope detection, **not** the install set; the `Selected editors:` line
 (always printed, before any editor is configured) is the actual install
 set. When in doubt, read `Selected editors`.
 
+**Deselect = remove.** In the interactive multi-select, a *detected editor
+you deselect* has its openspec-pw products removed — command/skill files,
+the editor's openspec-pw MCP entries (claude's wrapper block and legacy
+skill directory included), after one confirmation listing everything about
+to be removed. Declining keeps the old behavior (deselect merely skips
+writes this run). Only openspec-pw-owned territory is touched — your own
+config entries in the same files stay. Shared rules: the AGENTS.md
+openspec-pw block is removed only when **no** editor remains selected; a
+symlinked CLAUDE.md is never written through. `--tools` and non-TTY runs
+never remove anything (`--tools` is an explicit allow list). Known
+limitation: deselection does not always stop future init prompts from
+pre-selecting that editor — detection is directory-presence, so a marker
+directory still holding your own files (or a rewritten-but-kept
+`mcp.json`, or Pi/Oh My Pi's global `~/.pi/agent/` / `~/.omp/agent/`)
+still counts as "detected". What it *does* stop immediately: `update` no
+longer refreshes the removed editor's artifacts.
+
 **Editor territory**: `update` only maintains editors that already have
 openspec-pw command artifacts in the project — it never adds new editors
 (a global config dir or a hand-created `.cursor/` does not authorize

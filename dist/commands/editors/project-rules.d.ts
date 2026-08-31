@@ -65,6 +65,13 @@ export declare function installClaudeWrapper(projectRoot: string): void;
 export declare function installProjectRules(projectRoot: string, standardsContent: string, detected: EditorAdapter[]): void;
 /** Remove all OpenSpec marker blocks from AGENTS.md (always) and CLAUDE.md (for claude adapter). */
 export declare function cleanProjectRules(adapter: EditorAdapter, projectRoot: string): void;
+/**
+ * Remove openspec-pw marker blocks (both namespaces) from a single file,
+ * deleting the file entirely when it empties out. Exported for the init
+ * deselect-removal flow (CLAUDE.md wrapper cleanup); cleanProjectRules
+ * wraps it for the uninstall context.
+ */
+export declare function removeMarkersFromFile(dest: string, fileLabel: string): void;
 /** Read the employee-grade standards source file (empty string if missing). */
 export declare function readEmployeeStandards(srcPath: string): string;
 /**

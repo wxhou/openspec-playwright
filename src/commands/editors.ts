@@ -102,6 +102,20 @@ export {
 // Tool selection (--tools flag parsing)
 export { resolveToolsArg } from "./editors/tool-selection.js";
 
+// Per-editor artifact removal (init deselect + uninstall cleanup)
+export {
+  OPENSPEC_PW_MCP_SERVERS,
+  CLAUDE_LEGACY_SKILL_REL,
+  type AdapterArtifactInventory,
+  enumerateAdapterArtifacts,
+  isInventoryEmpty,
+  removeAdapterMcp,
+  removeAdapterCommandArtifacts,
+  removeClaudeLegacySkill,
+  removeClaudeWrapper,
+  cleanupEmptyDirs,
+} from "./editors/removal.js";
+
 // Project rules file management (AGENTS.md SSOT + CLAUDE.md wrapper)
 export {
   readOpenSpecBlock,
@@ -112,5 +126,6 @@ export {
   installProjectRules,
   migrateLegacyMarkers,
   cleanProjectRules,
+  removeMarkersFromFile,
   readEmployeeStandards,
 } from "./editors/project-rules.js";

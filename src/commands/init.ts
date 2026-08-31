@@ -16,7 +16,15 @@ import {
   readEmployeeStandards,
   resolveToolsArg,
   slashCommandForAdapter,
+  enumerateAdapterArtifacts,
+  isInventoryEmpty,
+  removeAdapterMcp,
+  removeAdapterCommandArtifacts,
+  removeClaudeLegacySkill,
+  removeClaudeWrapper,
+  removeMarkersFromFile,
 } from "./editors.js";
+import { LEGACY_OPENSPEC_START, OPENSPEC_START } from "../shared/drift.js";
 import type { EditorAdapter, EditorId } from "./editors.js";
 import {
   ensureTestRunnerMcp,
@@ -52,6 +60,13 @@ export interface InitDeps {
     allEditors: EditorAdapter[],
     detectedIds: ReadonlySet<EditorId>,
   ) => Promise<EditorId[]>;
+  /**
+   * Confirmation prompt for the deselect-removal list; defaults to
+   * @inquirer/prompts confirm. Separate from `prompt` — a checkbox stub
+   * cannot answer a boolean question, and without an injection point tests
+   * would block on stdin.
+   */
+  confirm?: (message: string) => Promise<boolean>;
   /** Override TTY detection (tests inject false here). */
   isTTY?: boolean;
   /** Override home dir for Pi/Oh My Pi global detection (tests inject an empty dir). */
@@ -143,12 +158,17 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   const isTTY = deps.isTTY ?? process.stdout.isTTY === true;
   const prompt = deps.prompt ?? promptSelectEditors;
   let selectedIds: EditorId[] | null;
+  // True only when the selection came from the interactive prompt — the
+  // deselected-removal phase runs exclusively on that path (--tools is an
+  // explicit authorization list; non-TTY never removes).
+  let interactiveSelection = false;
   try {
     selectedIds = resolveToolsArg(options.tools);
   } catch (err) {
     throw new Error(`Invalid --tools value: ${(err as Error).message}`);
   }
   if (selectedIds === null && isTTY) {
+    interactiveSelection = true;
     selectedIds = await prompt(
       getAllAdapters(),
       new Set(detected.map((a) => a.id)),
@@ -185,6 +205,90 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     throw new Error(
       'No supported editor detected and no --tools flag provided. Use --tools all, --tools none, or a comma-separated list: claude, opencode, cline, cursor, pi, omp (oh-my-pi aliases omp).',
     );
+  }
+
+  // 3a. Deselect = remove. Interactive deselections are real removals of
+  // openspec-pw products (commands, MCP entries, claude wrapper/legacy
+  // skill, and the shared AGENTS.md block when no editor remains), gated on
+  // one confirm. Refusal falls back to the old "skip, don't touch" semantics.
+  if (interactiveSelection && selectedIds !== null) {
+    const deselected = detected.filter((a) => !selectedIds!.includes(a.id));
+    const inventories = deselected
+      .map((adapter) => ({
+        adapter,
+        inv: enumerateAdapterArtifacts(adapter, projectRoot),
+      }))
+      // Editors with nothing to remove are silent — no confirm-list noise
+      // for a merely-detected-but-never-configured editor.
+      .filter(({ inv }) => !isInventoryEmpty(inv));
+
+    // Run-level shared block: the AGENTS.md openspec-pw block serves every
+    // configured editor, so it only goes when none remain. It joins the
+    // same confirmation list as a per-editor item (otherwise a project
+    // whose per-editor artifacts were hand-deleted would remove the shared
+    // block without ever asking).
+    const agentsPath = join(projectRoot, "AGENTS.md");
+    const agentsHasBlock =
+      selectedIds.length === 0 &&
+      existsSync(agentsPath) &&
+      (() => {
+        const content = readFileSync(agentsPath, "utf-8");
+        return (
+          content.includes(OPENSPEC_START) ||
+          content.includes(LEGACY_OPENSPEC_START)
+        );
+      })();
+
+    if (inventories.length > 0 || agentsHasBlock) {
+      console.log(chalk.blue("\n─── Removing Deselected Editors ───"));
+      console.log(chalk.yellow("  The following openspec-pw artifacts will be removed:"));
+      for (const { adapter, inv } of inventories) {
+        for (const relPath of inv.commandPaths) {
+          console.log(chalk.gray(`    - ${adapter.label}: ${relPath}`));
+        }
+        if (inv.legacySkillPath) {
+          console.log(chalk.gray(`    - ${adapter.label}: ${inv.legacySkillPath}/`));
+        }
+        for (const server of inv.mcpServers) {
+          console.log(chalk.gray(`    - ${adapter.label}: ${server} MCP entry`));
+        }
+        if (inv.hasClaudeWrapper) {
+          console.log(chalk.gray(`    - ${adapter.label}: CLAUDE.md wrapper block`));
+        }
+      }
+      if (agentsHasBlock) {
+        console.log(chalk.gray("    - AGENTS.md: shared openspec-pw block"));
+      }
+
+      const confirm =
+        deps.confirm ??
+        (async (message: string) => {
+          const { confirm: promptConfirm } = await import("@inquirer/prompts");
+          return promptConfirm({ message });
+        });
+      const agreed = await confirm("Proceed with removal?");
+
+      if (!agreed) {
+        console.log(
+          chalk.gray("  - Removal declined — keeping existing artifacts (deselect only skips writes this run)"),
+        );
+      } else {
+        for (const { adapter, inv } of inventories) {
+          removeAdapterMcp(adapter, projectRoot, inv.mcpServers);
+          removeAdapterCommandArtifacts(adapter, projectRoot);
+          if (inv.legacySkillPath) {
+            removeClaudeLegacySkill(projectRoot);
+          }
+          if (inv.hasClaudeWrapper) {
+            removeClaudeWrapper(projectRoot);
+          }
+        }
+        if (agentsHasBlock) {
+          removeMarkersFromFile(agentsPath, "AGENTS.md");
+          console.log(chalk.green("  ✓ AGENTS.md: shared openspec-pw block removed"));
+        }
+      }
+    }
   }
 
   // 3b. Detect a frontend signal — computed once, reused for the MCP

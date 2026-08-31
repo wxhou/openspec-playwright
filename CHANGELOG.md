@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.81] - 2026-08-31
+
+- **BREAKING feat(init): 交互式取消勾选的编辑器其 openspec-pw 产物被移除（`init-deselect-removes-config`）**. 旧行为：取消勾选仅"本次跳过写入"，旧产物原地保留 → `detect()` 持续命中 → 下次 init 预选数量永不变化，`update` 还按 artifacts-are-the-manifest 继续刷新已被"关掉"的编辑器。新行为：交互式多选完成后，探测到但未选中的编辑器——其 openspec-pw 命令/技能文件（含 extraArtifacts、claude 的 legacy 技能目录 `.claude/skills/openspec-e2e/`）、openspec-pw MCP 条目（`playwright-test` + legacy `playwright`，条目级删除不碰用户自有 server）、CLAUDE.md wrapper 块——前置一次列出全部待移除项的整体确认后移除；拒绝则回退旧语义（仅跳过写入）。边界：AGENTS.md 共享块 run 级判定（仅无任何编辑器保留且确认后才清，作为一行条目进同一次确认清单；空文件删除与 uninstall 同语义）；symlink 的 CLAUDE.md 永不穿透（防剥掉 AGENTS.md 共享块）；`--mcp=false` 仅限安装/检查阶段，确认后的 MCP 移除不受影响；`--tools` / 非 TTY 路径零移除（显式授权清单语义）。预选收敛如实标注：产物拆除立即让 `update`/`doctor` 停止刷新；预选不再勾选仅当 marker 目录清理后为空——mcp.json 只改写不删除、目录常含用户自有内容、pi/omp 全局信号三种情况预选不收敛（目录存在性探测的已知行为）。openspec change: `init-deselect-removes-config`。
+  - 新增 `src/commands/editors/removal.ts`（dry 枚举 `enumerateAdapterArtifacts` + 分部分删除小函数 `removeAdapterMcp`/`removeAdapterCommandArtifacts`/`removeClaudeLegacySkill`/`removeClaudeWrapper` + `cleanupEmptyDirs`）；修改 `src/commands/{init,uninstall}.ts`（init 新增 deselected-removal 阶段 + `InitDeps.confirm` 注入点；uninstall 按 section 复用原语，输出顺序不变）、`src/commands/editors/{project-rules,}.ts`（导出 `removeMarkersFromFile`）
+  - 新增 `tests/editors-removal.test.ts`（13 用例）、`tests/commands/init-deselect.test.ts`（10 用例：确认/拒绝/run 级共享块/symlink/--tools/收敛与不收敛/pi 全局残留）；`tests/commands/uninstall-command.test.ts`（+characterization 保护网）
+  - `README.md`、`README.zh-CN.md`
+
 ## [0.3.80] - 2026-08-31
 
 - **feat: 测试凭据 git 忽略状态检测 + advisory 提示（`credentials-gitignore-guard`）**. 泄漏面：脚手架引导用户往 `tests/playwright/credentials.yaml` 填真实测试凭据，但工具链零 gitignore 指引；update 的 `syncCredentials` 还写 `credentials.yaml.bak`——两份含真实密码的文件可无感知进 git 历史。修复分三层：① 共享检测函数 `findUnignoredFiles`（`src/shared/ignore-check.ts`，读项目根 `.gitignore` + `.git/info/exclude`，用 `ignore` 包按 git 语义匹配——**exclude 先、.gitignore 后**复现 git 优先级；不依赖 git 二进制、纯读取零写入）；② init scaffold 段与 update 的 syncCredentials 两条写路径（新建/备份合并）在凭据文件未被忽略时打印黄色 advisory 行（点名具体路径 + 建议条目；已忽略零输出；不改 exit code；**绝不改写用户 `.gitignore`**——标记即领土原则）；③ 模板头部注释补忽略建议与环境变量替代。⚠ 已装项目下次 update 会因模板变更触发 credentials 合并 + `.bak` 生成（合并保留用户数据）。openspec change: `credentials-gitignore-guard`。
