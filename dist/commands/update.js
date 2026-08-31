@@ -264,7 +264,7 @@ export async function update(options) {
         console.log(chalk.bold(`\n  Restart ${labels} to use the updated commands.`));
     }
     else {
-        console.log(chalk.bold("\n  No supported editor detected — nothing to restart."));
+        console.log(chalk.bold("\n  No configured editors — nothing to restart."));
     }
     // CodeGraph hints — suggest `codegraph init` when the CLI is installed but
     // the project is not indexed, or `codegraph sync` (+ install hooks when the

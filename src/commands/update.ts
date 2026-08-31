@@ -416,7 +416,7 @@ export async function update(options: UpdateOptions) {
     );
   } else {
     console.log(
-      chalk.bold("\n  No supported editor detected — nothing to restart."),
+      chalk.bold("\n  No configured editors — nothing to restart."),
     );
   }
 

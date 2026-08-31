@@ -372,6 +372,18 @@ describe("update.ts: drift coverage regression guards", () => {
     );
   });
 
+  it("zero-authorized Summary says configured, not detected (授权集不用检测措辞)", () => {
+    const src = readFileSync(
+      fileURLToPath(new URL("../src/commands/update.ts", import.meta.url)),
+      "utf-8",
+    );
+    // editorsForHint is the AUTHORIZED set (hasCommandArtifacts) — the
+    // zero-case line must not claim "detected" (a hand-created .claude/
+    // marker dir can still be detectable with zero command artifacts).
+    expect(src).toMatch(/No configured editors — nothing to restart/);
+    expect(src).not.toMatch(/No supported editor detected — nothing to restart/);
+  });
+
   it("Cursor skill extraArtifacts are included in command drift check", () => {
     const src = readFileSync(
       fileURLToPath(new URL("../src/commands/update.ts", import.meta.url)),

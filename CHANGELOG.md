@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **fix(update): Summary 零授权行措辞纠正——「No configured editors」替代「No supported editor detected」**. 该行数据源是授权集（`hasCommandArtifacts` 过滤），却用 "detected" 措辞——手建 `.claude/` 等标记目录在但命令工件不在时，update 报「未检测到编辑器」与事实相反（与 init 的 Detected/Selected 混淆同类，`init-tool-count-signal` 审计发现的残留）。纯文案修正，行为零改动。
+  - `src/commands/update.ts`、`tests/update.test.ts`（+1 源码守卫）
+
 - **fix(init): Detected 输出门控为 TTY pre-select 信号，新增 `Selected editors:` 行明示实际 install 集**. 用户场景：`.claude/` + `.opencode/` 并存的项目跑 `openspec-pw init --tools claude`，启动行 `Detected: claude, opencode` 报 2 个，被误读为装了 2 个（实际只装 1 个）。修复：① `Detected` 行仅在 `--tools` 未传时打印（其唯一角色 = TTY multi-select 预选提示；any-scope 检测 = 项目目录 + `~/.pi/agent/`、`~/.omp/agent/`），文案带 `(pre-select)` 标签；② 新增灰字 `Selected editors: ...` 行，位于 `editors` 计算后、首个 installCommand 前，内容 = 实际 install 集（与 Summary 末尾 `Restart ...` 一致；空集打印 `none`，且在无检测报错前打印使错误输出自解释）。init 的 install 决策零改动（仅输出信号语义澄清）。openspec change: `init-tool-count-signal`。
   - `src/commands/init.ts`、`tests/init.test.ts`（+6 用例：--tools 抑制 Detected / 非 TTY fallback 双行 / TTY 覆盖预选 / `--tools none` / 无检测双 none 行 / --tools 扩展未检测编辑器）
   - `README.md`、`README.zh-CN.md`
