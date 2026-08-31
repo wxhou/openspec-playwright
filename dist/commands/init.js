@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { readFile } from "fs/promises";
 import { buildCommandMeta, detectAdapters, detectProjectAdapters, getAdapter, getAllAdapters, installCommand, installProjectRules, migrateLegacyMarkers, readEmployeeStandards, resolveToolsArg, slashCommandForAdapter, } from "./editors.js";
-import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, TEST_RUNNER_MCP_SERVER, needsShell, hasFrontendSignal, detectCodeGraphStatus, codegraphHintLines, } from "../shared/index.js";
+import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, TEST_RUNNER_MCP_SERVER, needsShell, hasFrontendSignal, detectCodeGraphStatus, codegraphHintLines, CREDENTIALS_RELPATHS, credentialsIgnoreHint, findUnignoredFiles, } from "../shared/index.js";
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
 const E2E_COMMAND_SRC = fileURLToPath(new URL("../../templates/e2e-command.md", import.meta.url));
 const EMPLOYEE_STANDARDS_SRC = fileURLToPath(new URL("../../employee-standards.md", import.meta.url));
@@ -169,6 +169,15 @@ export async function init(options, deps = {}) {
     // 7. Generate app-knowledge.md
     console.log(chalk.blue("\n─── Generating App Knowledge ───"));
     await generateAppKnowledge(projectRoot);
+    // 7a. Advisory: real test credentials must not reach git history.
+    // Detection only — the user's .gitignore is shared territory and is
+    // never auto-edited. Runs whenever the scaffold completes with the
+    // file present (freshly generated or pre-existing); .bak is named
+    // too when one exists.
+    const unignoredCredentials = findUnignoredFiles(projectRoot, CREDENTIALS_RELPATHS);
+    if (unignoredCredentials.length > 0) {
+        console.log(chalk.yellow(`\n  ⚠ ${credentialsIgnoreHint(unignoredCredentials)}`));
+    }
     // 7b. Generate GitHub Actions workflow (if --ci)
     if (options.ci) {
         console.log(chalk.blue("\n─── Generating CI Workflow ───"));

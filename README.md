@@ -260,6 +260,8 @@ If your project already has `playwright.config.ts`, `openspec-pw init` will not 
 
 If your app requires login, set up credentials once, then all tests run authenticated automatically.
 
+> **Keep credentials out of git**: add `tests/playwright/credentials.yaml` (and the `credentials.yaml.bak` that `openspec-pw update` writes) to your `.gitignore`, or keep credentials in the `E2E_USERNAME` / `E2E_PASSWORD` env vars instead. init and update print a warning when these files are not ignored.
+
 ```bash
 # 1. Edit credentials
 vim tests/playwright/credentials.yaml

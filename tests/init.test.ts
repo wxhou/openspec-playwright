@@ -621,3 +621,60 @@ describe("init output signals detected vs selected", () => {
     expect(existsSync(join(tmpRoot, ".cursor/commands/opsx-e2e.md"))).toBe(true);
   });
 });
+
+// ─── init credentials ignore hint ─────────────────────────────────────
+
+describe("init credentials ignore hint", () => {
+  let tmpRoot: string;
+  let cwdSpy: ReturnType<typeof import("vitest")["vi"]["spyOn"]>;
+  let logSpy: ReturnType<typeof import("vitest")["vi"]["spyOn"]>;
+  const logs: string[] = [];
+
+  beforeEach(() => {
+    tmpRoot = mkdtempSync(join(tmpdir(), "ospw-pw-init-credhint-"));
+    mkdirSync(join(tmpRoot, "openspec"), { recursive: true });
+    cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(tmpRoot);
+    logs.length = 0;
+    logSpy = vi.spyOn(console, "log").mockImplementation((...args: unknown[]) => {
+      logs.push(args.join(" "));
+    });
+  });
+
+  afterEach(() => {
+    cwdSpy.mockRestore();
+    logSpy.mockRestore();
+    rmSync(tmpRoot, { recursive: true, force: true });
+  });
+
+  it("hints when credentials.yaml is not git-ignored", async () => {
+    const { init } = await import("../../src/commands/init.js");
+    await init({ tools: "none" });
+    expect(
+      logs.some(
+        (l) =>
+          l.includes("Test credentials are not git-ignored") &&
+          l.includes("tests/playwright/credentials.yaml"),
+      ),
+    ).toBe(true);
+  });
+
+  it("no hint when .gitignore covers both credential files", async () => {
+    writeFileSync(
+      join(tmpRoot, ".gitignore"),
+      "tests/playwright/credentials.yaml\ntests/playwright/credentials.yaml.bak\n",
+    );
+    const { init } = await import("../../src/commands/init.js");
+    await init({ tools: "none" });
+    expect(
+      logs.some((l) => l.includes("Test credentials are not git-ignored")),
+    ).toBe(false);
+  });
+
+  it("never edits the project .gitignore", async () => {
+    const content = "# my rules\ntests/playwright/credentials.yaml\n";
+    writeFileSync(join(tmpRoot, ".gitignore"), content);
+    const { init } = await import("../../src/commands/init.js");
+    await init({ tools: "none" });
+    expect(readFileSync(join(tmpRoot, ".gitignore"), "utf-8")).toBe(content);
+  });
+});

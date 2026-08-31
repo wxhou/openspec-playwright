@@ -35,6 +35,9 @@ import {
   needsShell,
   detectCodeGraphStatus,
   codegraphHintLines,
+  CREDENTIALS_RELPATHS,
+  credentialsIgnoreHint,
+  findUnignoredFiles,
 } from "../shared/index.js";
 import { compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
 
@@ -756,6 +759,7 @@ export function syncCredentials(tmpDir: string, projectRoot: string) {
     console.log(
       chalk.green("  ✓ Generated: tests/playwright/credentials.yaml"),
     );
+    printCredentialsIgnoreHint(projectRoot);
     return;
   }
 
@@ -816,4 +820,18 @@ export function syncCredentials(tmpDir: string, projectRoot: string) {
       "  ✓ Updated: tests/playwright/credentials.yaml (preserved user data)",
     ),
   );
+  printCredentialsIgnoreHint(projectRoot);
+}
+
+/**
+ * Advisory after credentials.yaml was created or rewritten (both write
+ * paths call this): warn when the file — or the .bak backup just written —
+ * is not covered by the project's ignore rules. Detection only; the user's
+ * .gitignore is never modified.
+ */
+function printCredentialsIgnoreHint(projectRoot: string): void {
+  const unignored = findUnignoredFiles(projectRoot, CREDENTIALS_RELPATHS);
+  if (unignored.length > 0) {
+    console.log(chalk.yellow(`\n  ⚠ ${credentialsIgnoreHint(unignored)}`));
+  }
 }

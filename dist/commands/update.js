@@ -7,7 +7,7 @@ import { promisify } from "util";
 import chalk from "chalk";
 import * as tar from "tar";
 import { buildCommandMeta, getAllAdapters, hasCommandArtifacts, installCommand, installOpenSpecBlock, installClaudeWrapper, migrateLegacyMarkers, claudeAdapter, claudeWrapperStandardsContent, opencodeAdapter, } from "./editors.js";
-import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, hasFrontendSignal, needsShell, detectCodeGraphStatus, codegraphHintLines, } from "../shared/index.js";
+import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, hasFrontendSignal, needsShell, detectCodeGraphStatus, codegraphHintLines, CREDENTIALS_RELPATHS, credentialsIgnoreHint, findUnignoredFiles, } from "../shared/index.js";
 import { compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
 const execFileAsync = promisify(execFile);
 export async function update(options) {
@@ -496,6 +496,7 @@ export function syncCredentials(tmpDir, projectRoot) {
         mkdirSync(join(projectRoot, "tests", "playwright"), { recursive: true });
         writeFileSync(credsDest, latest);
         console.log(chalk.green("  ✓ Generated: tests/playwright/credentials.yaml"));
+        printCredentialsIgnoreHint(projectRoot);
         return;
     }
     const existing = readFileSync(credsDest, "utf-8");
@@ -534,5 +535,18 @@ export function syncCredentials(tmpDir, projectRoot) {
     }
     writeFileSync(credsDest, updated);
     console.log(chalk.green("  ✓ Updated: tests/playwright/credentials.yaml (preserved user data)"));
+    printCredentialsIgnoreHint(projectRoot);
+}
+/**
+ * Advisory after credentials.yaml was created or rewritten (both write
+ * paths call this): warn when the file — or the .bak backup just written —
+ * is not covered by the project's ignore rules. Detection only; the user's
+ * .gitignore is never modified.
+ */
+function printCredentialsIgnoreHint(projectRoot) {
+    const unignored = findUnignoredFiles(projectRoot, CREDENTIALS_RELPATHS);
+    if (unignored.length > 0) {
+        console.log(chalk.yellow(`\n  ⚠ ${credentialsIgnoreHint(unignored)}`));
+    }
 }
 //# sourceMappingURL=update.js.map

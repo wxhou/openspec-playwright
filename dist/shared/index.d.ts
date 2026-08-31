@@ -5,3 +5,4 @@ export { detectCodeGraphStatus, codegraphHintLines } from "./codegraph.js";
 export type { CodeGraphStatus } from "./codegraph.js";
 export { detectAppServer, findNpmRoot, chooseDevScript, parsePort, hasFrontendSignal, } from "./app-detect.js";
 export type { AppServerDetection } from "./app-detect.js";
+export { CREDENTIALS_RELPATHS, credentialsIgnoreHint, findUnignoredFiles, } from "./ignore-check.js";

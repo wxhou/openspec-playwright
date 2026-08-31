@@ -219,6 +219,8 @@ openspec-pw uninstall     # 移除项目中的集成
 
 如果你的应用需要登录，配置一次凭证后，所有测试自动以已登录状态运行。
 
+> **别把凭证提交进 git**：把 `tests/playwright/credentials.yaml`（以及 `openspec-pw update` 会写的 `credentials.yaml.bak`）加入 `.gitignore`，或改用 `E2E_USERNAME` / `E2E_PASSWORD` 环境变量。未忽略时 init 和 update 会打印黄色警告行。
+
 ```bash
 # 1. 编辑凭证
 vim tests/playwright/credentials.yaml
