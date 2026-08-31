@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.80] - 2026-08-31
 
 - **feat: 测试凭据 git 忽略状态检测 + advisory 提示（`credentials-gitignore-guard`）**. 泄漏面：脚手架引导用户往 `tests/playwright/credentials.yaml` 填真实测试凭据，但工具链零 gitignore 指引；update 的 `syncCredentials` 还写 `credentials.yaml.bak`——两份含真实密码的文件可无感知进 git 历史。修复分三层：① 共享检测函数 `findUnignoredFiles`（`src/shared/ignore-check.ts`，读项目根 `.gitignore` + `.git/info/exclude`，用 `ignore` 包按 git 语义匹配——**exclude 先、.gitignore 后**复现 git 优先级；不依赖 git 二进制、纯读取零写入）；② init scaffold 段与 update 的 syncCredentials 两条写路径（新建/备份合并）在凭据文件未被忽略时打印黄色 advisory 行（点名具体路径 + 建议条目；已忽略零输出；不改 exit code；**绝不改写用户 `.gitignore`**——标记即领土原则）；③ 模板头部注释补忽略建议与环境变量替代。⚠ 已装项目下次 update 会因模板变更触发 credentials 合并 + `.bak` 生成（合并保留用户数据）。openspec change: `credentials-gitignore-guard`。
   - 新增 `src/shared/ignore-check.ts`、`tests/shared/ignore-check.test.ts`（10 用例：含 git 优先级顺序与「被排除目录内 negation 无效」两条 git 语义回归）；修改 `src/commands/{init,update}.ts`、`templates/credentials.yaml`、`tests/{init,update}.test.ts`（+7）；`dependencies` + `ignore@^7.0.7`（自 devDependencies 传递链升级为直接依赖——不升级则发布包运行时 `Cannot find module 'ignore'`）
