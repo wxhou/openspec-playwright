@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+- **docs(standards): §6 精简（1256→1183 字符，🔴 8→7）+ §2 两条互斥 🔴 删除（`standards-section6-slim`）**. §6 按 Prompt 工程师「档 1 强化版」重写：18→15 bullet，期望锚定上移为验收块通用规则（A-4 删除）、验收后端/前端合并为双分支路由（唯一纯路由条不再占 🔴）、B 交付两条合并（正反两说压为「实跑且通过才算完成」）、分层反馈压缩；WHY/五块结构/全部 🟡 逃逸通道条目原样保留，§6 零语义损失。§2「一次只发一个工具调用」与「单条消息并行只用于真正独立的调用」两条 🔴 字面互斥（全文件评审发现），经用户裁决整体删除（唯一语义修改，与 §6 压缩分开记录）。同步：根 AGENTS.md 标记块、docs/script.js 中英内嵌副本（docs-sync 锚点零断言修改，24/24 绿）、仓库 CLAUDE.md 新增「Standards 精简判据」维护约定。⚠ 已装项目标记块保持旧文本，下次 `openspec-pw update` 自动重写。
+  - `employee-standards.md`、`AGENTS.md`、`CLAUDE.md`、`docs/script.js`、`tests/update.standards.test.ts`（+1 replace 分支用例）
+
 ## [0.3.82] - 2026-09-01
 
 - **feat(init): 交互多选预选信号改用 openspec-pw 产物清单（`init-preselect-artifact-manifest`）**. v0.3.81 用户实测（personal-resume）暴露的收敛缺口：预选读"目录存在"（`detect()`），而目录被官方 `openspec` CLI 自己的 `opsx-*` 文件、用户自有配置、pi/omp 全局 `~/.pi/agent/`+`~/.omp/agent/` 撑着——被取消勾选或从未配置的 editor 永远预勾选，每次 init 需手动全关。修复：两段式预选——有 openspec-pw 状态的项目预选 = `isEditorConfigured` 命中项（command/extraArtifacts 产物 ∪ openspec-pw MCP 条目 ∪ claude legacy skill 目录，文案 `(configured)`）；零状态项目（首次运行）旁路回退全检测预选（新用户体验不倒退）。预选从此与 update/doctor 的授权门控（hasCommandArtifacts）同源——全系统"磁盘产物"单一事实。**行为翻转**：v0.3.81 记录的两类预选不收敛已知行为（mcp.json 残留、pi/omp 全局信号）自本变更起失效（MODIFIED 覆写）；全部取消并确认删除后项目磁盘零痕迹，与从未配置不可区分 → 下次 init 回到首次运行预选语义（诚实记录，避免状态文件）；手工删产物但 AGENTS.md marker 还在 → 预选空集不回勾（marker 计入状态）。移除候选同步收窄到已配置 editor（空枚举消失）。

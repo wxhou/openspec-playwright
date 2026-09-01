@@ -148,6 +148,34 @@ describe("syncEmployeeStandards", () => {
     expect(installOpenSpecBlockMock).not.toHaveBeenCalled();
   });
 
+  it("rewrites a stale §6 block with the slimmed text via the replace branch", () => {
+    // Pre-release verification for standards-section6-slim: a project whose
+    // marker block still holds the OLD §6 wording gets the NEW slimmed §6
+    // (cannot use a fixture + `update` here — fetchLatestBundle pulls the
+    // latest PUBLISHED package from npm, not local dist).
+    const NEW_STANDARDS =
+      "employee-grade standards body v2\n\n## 6. 测试与验证策略\n\n分层反馈：单测随手跑（秒级）；验收测试提交前实跑即可（分钟级）";
+    const OLD_BLOCK =
+      "employee-grade standards body v1\n\n## 6. 测试与验证策略\n\n分层反馈预期：单测改完随手跑（秒级量级）；验收测试提交前实跑";
+    existingPaths.add(agentsPath);
+    contentsByPath.set(standardsSrc, NEW_STANDARDS);
+    contentsByPath.set(
+      agentsPath,
+      `preamble\n${OPENSPEC_START}\n${OLD_BLOCK}\n${OPENSPEC_END}\n`,
+    );
+
+    syncEmployeeStandards(tmpDir, root, false, true);
+
+    expect(installOpenSpecBlockMock).toHaveBeenCalledTimes(1);
+    expect(installOpenSpecBlockMock).toHaveBeenCalledWith(
+      root,
+      expect.stringContaining("分层反馈：单测随手跑"),
+      expect.anything(),
+    );
+    const written = String(installOpenSpecBlockMock.mock.calls[0][1]);
+    expect(written).not.toContain("分层反馈预期");
+  });
+
   it("warns loudly when AGENTS.md has no marker at all and pw artifacts exist (accident shape)", () => {
     existingPaths.add(agentsPath);
     contentsByPath.set(agentsPath, "user-authored rules without markers\n");
