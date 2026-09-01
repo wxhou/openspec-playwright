@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **docs(specs): 主 spec 追认 v0.3.81/0.3.82 行为（`sync-init-selection-spec`）**. 主 spec `init-tool-selection` 停留在 v0.3.80 语义，与已发布实现直接矛盾（spec 说预选读「检测到的编辑器」+ `Detected (pre-select):`，实现已是两级预选 + `Configured (pre-select):` 分叉；deselect=移除语义零 spec 覆盖）。delta：2 MODIFIED（两级预选 + 输出行分叉）+ 1 ADDED（Interactive deselection removes openspec-pw artifacts，7 场景覆盖确认流/领土边界）；纯 spec 追认，零代码改动，+2 条验证性输出行断言（评审核实 Configured 输出行此前零断言）。0.3.81/0.3.82 的原始 change 档案在另一会话无法补建，design 映射表（行为→spec→锚点→测试）充当替代档案。归档时 delta sync 并入主 spec。
+  - `openspec/specs/init-tool-selection/spec.md`（归档时）、`tests/commands/init-preselect.test.ts`（+2）、`CHANGELOG.md`
+
 - **docs(standards): §6 精简（1256→1183 字符，🔴 8→7）+ §2 两条互斥 🔴 删除（`standards-section6-slim`）**. §6 按 Prompt 工程师「档 1 强化版」重写：18→15 bullet，期望锚定上移为验收块通用规则（A-4 删除）、验收后端/前端合并为双分支路由（唯一纯路由条不再占 🔴）、B 交付两条合并（正反两说压为「实跑且通过才算完成」）、分层反馈压缩；WHY/五块结构/全部 🟡 逃逸通道条目原样保留，§6 零语义损失。§2「一次只发一个工具调用」与「单条消息并行只用于真正独立的调用」两条 🔴 字面互斥（全文件评审发现），经用户裁决整体删除（唯一语义修改，与 §6 压缩分开记录）。同步：根 AGENTS.md 标记块、docs/script.js 中英内嵌副本（docs-sync 锚点零断言修改，24/24 绿）、仓库 CLAUDE.md 新增「Standards 精简判据」维护约定。⚠ 已装项目标记块保持旧文本，下次 `openspec-pw update` 自动重写。
   - `employee-standards.md`、`AGENTS.md`、`CLAUDE.md`、`docs/script.js`、`tests/update.standards.test.ts`（+1 replace 分支用例）
 

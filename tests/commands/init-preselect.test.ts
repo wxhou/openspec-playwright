@@ -183,6 +183,49 @@ describe("init pre-select: artifact manifest tier", () => {
     expect(names.every((n) => n === "")).toBe(true); // no (configured) suffix in bypass tier
   });
 
+  it("stateful project prints 'Configured (pre-select): <ids>'", async () => {
+    mkdirSync(join(tmpRoot, ".claude", "commands", "opsx"), { recursive: true });
+    writeFileSync(join(tmpRoot, CLAUDE_COMMAND), "cmd");
+
+    const logs: string[] = [];
+    const logSpy = vi.spyOn(console, "log").mockImplementation((...args: unknown[]) => {
+      logs.push(args.join(" "));
+    });
+    try {
+      await init(
+        { mcp: false },
+        { isTTY: true, prompt: async () => ["claude"], confirm: async () => true },
+      );
+    } finally {
+      logSpy.mockRestore();
+    }
+    expect(logs.some((l) => l.includes("Configured (pre-select): claude"))).toBe(true);
+    expect(logs.some((l) => l.includes("Detected"))).toBe(false);
+  });
+
+  it("marker-block-only state prints 'Configured: none'", async () => {
+    // AGENTS.md marker block present, zero configured editors (products
+    // hand-deleted) — the pre-select hint fork reports Configured: none.
+    writeFileSync(
+      join(tmpRoot, "AGENTS.md"),
+      "ours\n\n<!-- OPENSPEC-PW:START -->\nstandards\n<!-- OPENSPEC-PW:END -->\n",
+    );
+
+    const logs: string[] = [];
+    const logSpy = vi.spyOn(console, "log").mockImplementation((...args: unknown[]) => {
+      logs.push(args.join(" "));
+    });
+    try {
+      await init(
+        { mcp: false },
+        { isTTY: true, prompt: async () => ["claude"], confirm: async () => true },
+      );
+    } finally {
+      logSpy.mockRestore();
+    }
+    expect(logs.some((l) => l.includes("Configured: none"))).toBe(true);
+  });
+
   it("after deselect-removal + confirm → removed editor no longer pre-selected", async () => {
     mkdirSync(join(tmpRoot, ".cursor", "commands"), { recursive: true });
     writeFileSync(join(tmpRoot, CURSOR_COMMAND), "cmd");
