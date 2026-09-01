@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.83] - 2026-09-01
 
 - **docs(specs): 主 spec 追认 v0.3.81/0.3.82 行为（`sync-init-selection-spec`）**. 主 spec `init-tool-selection` 停留在 v0.3.80 语义，与已发布实现直接矛盾（spec 说预选读「检测到的编辑器」+ `Detected (pre-select):`，实现已是两级预选 + `Configured (pre-select):` 分叉；deselect=移除语义零 spec 覆盖）。delta：2 MODIFIED（两级预选 + 输出行分叉）+ 1 ADDED（Interactive deselection removes openspec-pw artifacts，7 场景覆盖确认流/领土边界）；纯 spec 追认，零代码改动，+2 条验证性输出行断言（评审核实 Configured 输出行此前零断言）。0.3.81/0.3.82 的原始 change 档案在另一会话无法补建，design 映射表（行为→spec→锚点→测试）充当替代档案。归档时 delta sync 并入主 spec。
   - `openspec/specs/init-tool-selection/spec.md`（归档时）、`tests/commands/init-preselect.test.ts`（+2）、`CHANGELOG.md`
