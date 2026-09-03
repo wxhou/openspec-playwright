@@ -28,6 +28,8 @@ npm install -g openspec-playwright@latest
 
 > **旧版本迁移**：早期版本把 Claude Code 的 Playwright MCP 装到全局 user 域（`~/.claude.json`）。若你用旧版 `openspec-pw` 初始化过，全局残留仍会对所有项目生效，清理一次即可：`claude mcp remove playwright`（user 域）。注意：项目级 server 首次交互使用时 Claude Code 会弹出批准提示（`claude mcp reset-project-choices` 可重置选择）。
 
+> **server 名 `playwright-test` 的来历**：这是 Playwright 官方 `playwright init-agents` CLI 的产物名——同名、同 transport（`npx playwright run-test-mcp-server`，`playwright` 包内置子命令）。它**不是** `@playwright/mcp`（独立 npm 包，注册名 `playwright`，约 67 个 `browser_*` 工具）；test-runner 是它的**超集**（约 80 个工具：完整 `browser_*` 集 + Healer 闭环用的结构化 `test_run` / `test_debug` / `test_list` 工作流工具）。两个 server 名字不同、可共存；搜「Playwright MCP」通常先看到的是 `@playwright/mcp` 的文档。
+
 浏览器探索能力由 Playwright MCP 和 `openspec-pw explore` 内置提供，无需额外工具。
 
 ## 初始化

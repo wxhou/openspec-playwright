@@ -246,6 +246,10 @@ export async function init(options, deps = {}) {
                 }
             }
         }
+        // Naming provenance: search results for "Playwright MCP" surface the
+        // separate @playwright/mcp package (server name "playwright"); ours is
+        // the official init-agents name for the test-runner superset.
+        console.log(chalk.gray("  (server name \"playwright-test\" = the official `playwright init-agents` name; superset of @playwright/mcp — see README)"));
     }
     else if (options.mcp !== false && editors.length > 0) {
         console.log(chalk.gray("  - No frontend signal detected — skipping Playwright MCP (API tests use the request fixture)"));

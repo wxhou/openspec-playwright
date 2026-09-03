@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+- **docs: 澄清 `playwright-test` server 名来历（官方 init-agents 产物名，非自编）**. 用户搜索「Playwright MCP」先看到的是官方 `@playwright/mcp` 独立包（注册名 `playwright`，约 67 个 `browser_*` 工具），与 openspec-pw 安装的 test-runner server（注册名 `playwright-test`，`playwright` 包内置 `run-test-mcp-server` 子命令，约 80 工具含 `test_run`/`test_debug`/`test_list`）产生混淆。经架构师评审（三方案对比：改名 `playwright` 会撞 namespace 且 `removePlaywrightMcp` legacy 清理会误删自家条目；换装 `@playwright/mcp` 会丢 Healer 依赖的 `test_*` 工具），裁定**保持 `playwright-test` 不动**——它与 Playwright 官方 `playwright init-agents` CLI 产物同名同 transport，用户可无缝切换。文档补丁三处：README/README.zh-CN MCP 段落身份声明、`init` MCP 安装相位尾部灰字提示行。零行为变更、零迁移。
+  - `README.md`、`README.zh-CN.md`、`src/commands/init.ts`（+1 提示行）、`CHANGELOG.md`
+
 ## [0.3.83] - 2026-09-01
 
 - **docs(specs): 主 spec 追认 v0.3.81/0.3.82 行为（`sync-init-selection-spec`）**. 主 spec `init-tool-selection` 停留在 v0.3.80 语义，与已发布实现直接矛盾（spec 说预选读「检测到的编辑器」+ `Detected (pre-select):`，实现已是两级预选 + `Configured (pre-select):` 分叉；deselect=移除语义零 spec 覆盖）。delta：2 MODIFIED（两级预选 + 输出行分叉）+ 1 ADDED（Interactive deselection removes openspec-pw artifacts，7 场景覆盖确认流/领土边界）；纯 spec 追认，零代码改动，+2 条验证性输出行断言（评审核实 Configured 输出行此前零断言）。0.3.81/0.3.82 的原始 change 档案在另一会话无法补建，design 映射表（行为→spec→锚点→测试）充当替代档案。归档时 delta sync 并入主 spec。

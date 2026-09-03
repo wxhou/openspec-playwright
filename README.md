@@ -205,6 +205,8 @@ openspec-pw uninstall     # Remove integration from the project
 
 > **Migrating from older versions**: before this change, Claude Code's Playwright MCP was installed at global user scope (`~/.claude.json`). If you initialized with an older `openspec-pw`, a stale global entry may still load everywhere. Clean it up once: `claude mcp remove playwright` (user scope). Note that project-scoped servers prompt for approval the first time they are used interactively (`claude mcp reset-project-choices` resets those choices).
 
+> **Server name `playwright-test`**: this is the name Playwright's own `playwright init-agents` CLI ships — same name, same transport (`npx playwright run-test-mcp-server`, the `playwright` package's built-in subcommand). It is **not** the same server as `@playwright/mcp` (a separate npm package that registers as `playwright` with ~67 `browser_*` tools); the test-runner is its **superset** (~80 tools: the full `browser_*` set plus the structured `test_run` / `test_debug` / `test_list` workflow tools the Healer loop uses). The two servers coexist under different names; search results for "Playwright MCP" usually surface `@playwright/mcp` docs.
+
 Browser exploration is provided out of the box by Playwright MCP and `openspec-pw explore`; no extra browser tool is needed.
 
 ## What `openspec-pw init` Does
