@@ -17,6 +17,7 @@ import { buildCommandMeta } from "./types.js";
 import {
   classifyAgentFile,
   installedAgentsSnapshotDir,
+  normalizeEol,
   readAgentsManifest,
 } from "./agents.js";
 
@@ -129,7 +130,7 @@ export function installOptionalArtifacts(
         );
         continue;
       }
-      if (readFileSync(absPath, "utf-8") === extra.contents) {
+      if (normalizeEol(readFileSync(absPath, "utf-8")) === normalizeEol(extra.contents)) {
         console.log(chalk.gray(`  - ${adapter.label}: ${extra.relativePath} already current`));
         continue;
       }

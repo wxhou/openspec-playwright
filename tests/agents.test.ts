@@ -151,6 +151,16 @@ describe("classifyAgentFile", () => {
     expect(classifyAgentFile(tmpRoot, rel, "SNAPSHOT", manifest)).toBe("modified");
   });
 
+  it("CRLF checkout content still classifies as owned (Windows git autocrlf)", () => {
+    const manifest = readAgentsManifest(SNAPSHOT_DIR)!;
+    const rel = AGENT_RELS[0];
+    mkdirSync(join(tmpRoot, ".claude", "agents"), { recursive: true });
+    const snapshot = loadAgentSnapshots(SNAPSHOT_DIR)[0].contents.replace(/\n/g, "\r\n");
+    writeFileSync(join(tmpRoot, rel), snapshot);
+    expect(classifyAgentFile(tmpRoot, rel, loadAgentSnapshots(SNAPSHOT_DIR)[0].contents, manifest)).toBe("owned");
+    expect(sha256Contents(snapshot)).toBe(sha256Contents(loadAgentSnapshots(SNAPSHOT_DIR)[0].contents));
+  });
+
   it("old-baseline hash counts as owned via historicalHashes", () => {
     const manifest = readAgentsManifest(SNAPSHOT_DIR)!;
     const rel = AGENT_RELS[0];

@@ -13,7 +13,7 @@ import { mkdirSync, writeFileSync, existsSync, readFileSync } from "fs";
 import { dirname, resolve as pathResolve } from "path";
 import chalk from "chalk";
 import { buildCommandMeta } from "./types.js";
-import { classifyAgentFile, installedAgentsSnapshotDir, readAgentsManifest, } from "./agents.js";
+import { classifyAgentFile, installedAgentsSnapshotDir, normalizeEol, readAgentsManifest, } from "./agents.js";
 // ─── Registry ────────────────────────────────────────────────────────────
 const ADAPTERS = [
 // Adapters are registered after const declarations at the bottom of this file.
@@ -95,7 +95,7 @@ export function installOptionalArtifacts(adapter, projectRoot, install) {
                 console.log(chalk.yellow(`  ⚠ ${adapter.label}: ${extra.relativePath} differs from the bundled snapshot (manual edit or newer init-agents output) — left untouched`));
                 continue;
             }
-            if (readFileSync(absPath, "utf-8") === extra.contents) {
+            if (normalizeEol(readFileSync(absPath, "utf-8")) === normalizeEol(extra.contents)) {
                 console.log(chalk.gray(`  - ${adapter.label}: ${extra.relativePath} already current`));
                 continue;
             }

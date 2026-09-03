@@ -16,6 +16,13 @@ export declare function installedAgentsSnapshotDir(): string;
 export declare function readAgentsManifest(dir: string): AgentsManifest | null;
 /** Current snapshot contents for all three roles; [] when templates are missing. */
 export declare function loadAgentSnapshots(dir: string): ExtraArtifact[];
+/**
+ * Normalize CRLF to LF before content-based ownership decisions. Git's
+ * autocrlf converts LF snapshots to CRLF in Windows working trees — the
+ * byte compare must be insensitive to that or every Windows checkout gets
+ * misclassified as user-owned.
+ */
+export declare function normalizeEol(content: string): string;
 export declare function sha256Contents(content: string): string;
 export type AgentFileState = "missing" | "owned" | "modified";
 /** Role for a vendored agent rel path, or null when it is not one of ours. */

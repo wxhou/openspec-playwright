@@ -71,8 +71,18 @@ export function loadAgentSnapshots(dir: string): ExtraArtifact[] {
   return snapshots;
 }
 
+/**
+ * Normalize CRLF to LF before content-based ownership decisions. Git's
+ * autocrlf converts LF snapshots to CRLF in Windows working trees — the
+ * byte compare must be insensitive to that or every Windows checkout gets
+ * misclassified as user-owned.
+ */
+export function normalizeEol(content: string): string {
+  return content.replace(/\r\n/g, "\n");
+}
+
 export function sha256Contents(content: string): string {
-  return createHash("sha256").update(content).digest("hex");
+  return createHash("sha256").update(normalizeEol(content)).digest("hex");
 }
 
 export type AgentFileState = "missing" | "owned" | "modified";
@@ -99,7 +109,7 @@ export function classifyAgentFile(
   const abs = join(projectRoot, relPath);
   if (!existsSync(abs)) return "missing";
   const existing = readFileSync(abs, "utf-8");
-  if (existing === snapshotContents) return "owned";
+  if (normalizeEol(existing) === normalizeEol(snapshotContents)) return "owned";
   const role = roleForRelPath(relPath);
   if (!role) return "modified";
   if (manifest.historicalHashes?.[role]?.includes(sha256Contents(existing))) {
@@ -166,7 +176,7 @@ export function syncVendoredAgents(
     const abs = join(projectRoot, snapshot.relativePath);
     // Refresh only tool-owned files whose content differs from the snapshot
     // (old baselines stay refreshable via the manifest's historical hashes).
-    const stale = classifyAgentFile(projectRoot, snapshot.relativePath, snapshot.contents, manifest) === "owned" && readFileSync(abs, "utf-8") !== snapshot.contents;
+    const stale = classifyAgentFile(projectRoot, snapshot.relativePath, snapshot.contents, manifest) === "owned" && normalizeEol(readFileSync(abs, "utf-8")) !== normalizeEol(snapshot.contents);
     if (!stale) continue;
     writeFileSync(abs, snapshot.contents);
     console.log(chalk.green(`  ✓ ${role}: ${snapshot.relativePath} updated to snapshot ${manifest.baseline}`));
