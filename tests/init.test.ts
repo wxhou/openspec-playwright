@@ -9,6 +9,43 @@ import {
 } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
+import { fileURLToPath } from "url";
+
+// ─── generateTestPlanTemplate ────────────────────────────────────────────────
+
+describe("generateTestPlanTemplate", () => {
+  const tmpDir = join(tmpdir(), "openspec-pw-testplan-tpl-" + Date.now());
+  const testsDir = join(tmpDir, "tests", "playwright");
+
+  beforeEach(() => {
+    mkdirSync(testsDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("copies templates/test-plan.md to tests/playwright/test-plan.template.md", async () => {
+    const { generateTestPlanTemplate } = await import("../../src/commands/init.js");
+    await generateTestPlanTemplate(tmpDir);
+    const dest = join(testsDir, "test-plan.template.md");
+    expect(existsSync(dest)).toBe(true);
+    // Content matches the bundled template (the Special-Element playbook).
+    const bundled = readFileSync(
+      fileURLToPath(new URL("../templates/test-plan.md", import.meta.url)),
+      "utf-8",
+    );
+    expect(readFileSync(dest, "utf-8")).toBe(bundled);
+  });
+
+  it("skips when test-plan.template.md already exists", async () => {
+    const { generateTestPlanTemplate } = await import("../../src/commands/init.js");
+    const dest = join(testsDir, "test-plan.template.md");
+    writeFileSync(dest, "# customized playbook");
+    await generateTestPlanTemplate(tmpDir);
+    expect(readFileSync(dest, "utf-8")).toBe("# customized playbook");
+  });
+});
 
 // ─── generateSeedTest ─────────────────────────────────────────────────────────
 

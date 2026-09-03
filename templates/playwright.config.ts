@@ -172,12 +172,15 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
 
-  // Dev server lifecycle - Playwright starts/stops automatically
+  // Dev server lifecycle - Playwright starts/stops automatically.
+  // reuseExistingServer is convenient in dev but must NOT reuse a foreign
+  // server in CI — a same-port collision would silently validate the wrong
+  // app (false green).
   webServer: {
     command: devCmd,
     url: baseUrl,
     timeout: 120000,
-    reuseExistingServer: true,
+    reuseExistingServer: !process.env.CI,
   },
 
   // Setup project (used by /opsx:e2e Healer and local auth setup)

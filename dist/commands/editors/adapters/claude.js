@@ -10,15 +10,16 @@ import { join } from "path";
 import { TIMEOUT } from "../../../shared/constants.js";
 import { needsShell } from "../../../shared/platform.js";
 import { defineAdapter } from "../types.js";
-import { escapeYamlValue, formatTagsArray } from "../shared.js";
+import { escapeYamlValue } from "../shared.js";
 import { registerAdapter } from "../registry.js";
+import { installedAgentsSnapshotDir, loadAgentSnapshots } from "../agents.js";
 // ─── Claude Code adapter ─────────────────────────────────────────────────
 export function formatClaudeCommand(meta) {
+    // Claude Code consumes `description` and `argument-hint`; name/category/tags
+    // are ignored there and only made the frontmatter noisier.
     return `---
-name: ${escapeYamlValue(meta.name)}
 description: ${escapeYamlValue(meta.description)}
-category: ${escapeYamlValue(meta.category)}
-tags: ${formatTagsArray(meta.tags)}
+argument-hint: "<change-name|all>"
 ---
 
 ${meta.body}
@@ -74,6 +75,11 @@ export const claudeAdapter = defineAdapter({
             shell: needsShell,
         });
     },
+    // Vendored official Playwright agents (init --agents). Read lazily from
+    // the installed package templates; byte-identity with the official
+    // init-agents output is load-bearing (content-based ownership), so the
+    // files are shipped and written unmodified.
+    optionalArtifacts: (install) => (install ? loadAgentSnapshots(installedAgentsSnapshotDir()) : []),
 });
 registerAdapter(claudeAdapter);
 //# sourceMappingURL=claude.js.map

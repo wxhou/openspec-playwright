@@ -4,6 +4,8 @@ export interface InitOptions {
     mcp?: boolean;
     ci?: boolean;
     tools?: string;
+    /** Opt-in install of the vendored official Playwright agents (claude only). */
+    agents?: boolean;
 }
 export interface InitDeps {
     /** Interactive selection prompt; defaults to @inquirer/prompts checkbox.
@@ -34,6 +36,12 @@ export declare function promptSelectEditors(allEditors: EditorAdapter[], presele
 export declare function init(options: InitOptions, deps?: InitDeps): Promise<void>;
 export declare function generateSeedTest(projectRoot: string): Promise<void>;
 export declare function generateAppKnowledge(projectRoot: string): Promise<void>;
+/**
+ * Copy the special-element test-plan playbook into the user's project as a
+ * reference template (app-exploration.md points here). Same lifecycle as
+ * BasePage.ts: init creates it once, update refreshes it on drift.
+ */
+export declare function generateTestPlanTemplate(projectRoot: string): Promise<void>;
 export declare function generateSharedPages(projectRoot: string): Promise<void>;
 export declare function generateGithubWorkflow(projectRoot: string): Promise<void>;
 export declare function generatePlaywrightConfig(projectRoot: string): Promise<void>;

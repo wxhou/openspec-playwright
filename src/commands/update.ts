@@ -27,6 +27,7 @@ import {
   claudeAdapter,
   claudeWrapperStandardsContent,
   opencodeAdapter,
+  syncVendoredAgents,
 } from "./editors.js";
 import {
   ensureTestRunnerMcp,
@@ -270,6 +271,15 @@ export async function update(options: UpdateOptions) {
 
       // Sync project templates (BasePage.ts, seed.spec.ts)
       syncProjectTemplates(tmpDir, projectRoot);
+
+      // Vendored Playwright agents (claude, opt-in): refresh tool-owned
+      // files to the fetched snapshot; user-owned files are skipped with a
+      // notice; missing files are never created (opt-in via init --agents).
+      syncVendoredAgents(
+        join(tmpDir, "templates", "agents"),
+        projectRoot,
+        hasCommandArtifacts(projectRoot, claudeAdapter),
+      );
 
       // Standards sync (drift-aware). Under --no-skill this phase still runs
       // via the else branch below — the flag only scopes command/template
@@ -694,6 +704,28 @@ export function syncProjectTemplates(tmpDir: string, projectRoot: string) {
         writeFileSync(basePageDest, latest);
         console.log(
           chalk.green("  ✓ Updated: tests/playwright/pages/BasePage.ts"),
+        );
+      }
+    }
+  }
+
+  // 1b. Sync test-plan.template.md — always update if content differs
+  const testPlanSrc = join(tmpDir, "templates", "test-plan.md");
+  const testPlanDest = join(testsDir, "test-plan.template.md");
+
+  if (existsSync(testPlanSrc)) {
+    if (!existsSync(testPlanDest)) {
+      writeFileSync(testPlanDest, readFileSync(testPlanSrc));
+      console.log(
+        chalk.green("  ✓ Generated: tests/playwright/test-plan.template.md"),
+      );
+    } else {
+      const existing = readFileSync(testPlanDest, "utf-8");
+      const latest = readFileSync(testPlanSrc, "utf-8");
+      if (existing !== latest) {
+        writeFileSync(testPlanDest, latest);
+        console.log(
+          chalk.green("  ✓ Updated: tests/playwright/test-plan.template.md"),
         );
       }
     }

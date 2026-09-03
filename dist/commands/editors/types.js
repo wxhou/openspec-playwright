@@ -41,6 +41,7 @@ export function defineAdapter(init) {
         removeMcp: init.removeMcp ?? noop,
         registerInstructions: init.registerInstructions,
         extraArtifacts: init.extraArtifacts,
+        optionalArtifacts: init.optionalArtifacts,
     };
 }
 //# sourceMappingURL=types.js.map

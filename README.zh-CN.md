@@ -10,6 +10,8 @@
 npm install -g openspec-playwright@latest
 ```
 
+> 仅支持通过 npm 安装。`openspec-pw update` 通过 `npm install -g` 自更新——用 pnpm/bun/yarn 全局安装会装出第二份冲突副本，不受支持。
+
 ## 前置条件
 
 **必需：**
@@ -28,6 +30,8 @@ npm install -g openspec-playwright@latest
 
 > **旧版本迁移**：早期版本把 Claude Code 的 Playwright MCP 装到全局 user 域（`~/.claude.json`）。若你用旧版 `openspec-pw` 初始化过，全局残留仍会对所有项目生效，清理一次即可：`claude mcp remove playwright`（user 域）。注意：项目级 server 首次交互使用时 Claude Code 会弹出批准提示（`claude mcp reset-project-choices` 可重置选择）。
 
+> **server 名 `playwright-test` 的来历**：这是 Playwright 官方 `playwright init-agents` CLI 的产物名——同名、同 transport（`npx playwright run-test-mcp-server`，`playwright` 包内置子命令）。它**不是** `@playwright/mcp`（独立 npm 包，注册名 `playwright`，约 67 个 `browser_*` 工具）；test-runner 是它的**超集**（约 80 个工具：完整 `browser_*` 集 + Healer 闭环用的结构化 `test_run` / `test_debug` / `test_list` 工作流工具）。两个 server 名字不同、可共存；搜「Playwright MCP」通常先看到的是 `@playwright/mcp` 的文档。
+
 浏览器探索能力由 Playwright MCP 和 `openspec-pw explore` 内置提供，无需额外工具。
 
 ## 初始化
@@ -35,7 +39,7 @@ npm install -g openspec-playwright@latest
 ```bash
 # 在项目目录下
 openspec init              # 初始化 OpenSpec
-openspec-pw init          # 安装 Playwright E2E 集成（--tools 可选编辑器）
+openspec-pw init          # 安装 Playwright E2E 集成（--tools 选编辑器，--agents 加装官方 agents）
 ```
 
 > **注意**：运行 `openspec-pw init` 后，手动安装 Playwright 浏览器：`npx playwright install --with-deps`
@@ -120,14 +124,34 @@ openspec-pw init --tools none            # 不配置编辑器，只生成脚手�
 
 init 打印两种输出信号：预选提示行（仅未传 `--tools` 时出现）——有 openspec-pw 状态的项目是 `Configured (pre-select):`，首次运行回退则是 `Detected (pre-select):`——**不是**实际安装集；`Selected editors:` 行（总是打印，位于任何编辑器配置之前）才是实际安装集。判断装了什么，看 `Selected editors`。
 
-**取消勾选 = 移除**。交互式多选里，*已被探测但你取消勾选的*编辑器的 openspec-pw 产物会被移除——命令/技能文件、该编辑器的 openspec-pw MCP 条目（含 claude 的 wrapper 块与 legacy 技能目录），前置一次列出全部待移除项的确认（拒绝则保持旧行为：本次仅跳过写入）。只动 openspec-pw 自有领土——同一文件中你自有的配置条目不受影响。共享规则：AGENTS.md 的 openspec-pw 块仅在**没有任何编辑器保留**时移除；symlink 的 CLAUDE.md 永不穿透写入。`--tools` 与非 TTY 运行不做任何移除（`--tools` 是显式授权清单）。移除直接反哺预选：被移除的编辑器下次 init 不再预勾选（预选读 openspec-pw 清单——保留的 `mcp.json`、你自己的文件、全局目录都不再重要）；*全部*取消并确认的项目下次 init 重置回首-运行预选语义。
+**取消勾选 = 移除**。交互式多选里，*已被探测但你取消勾选的*编辑器的 openspec-pw 产物会被移除——命令/技能文件、该编辑器的 openspec-pw MCP 条目（含 claude 的 wrapper 块与 legacy 技能目录，以及归本工具所有的 vendored agents），前置一次列出全部待移除项的确认（拒绝则保持旧行为：本次仅跳过写入）。只动 openspec-pw 自有领土——同一文件中你自有的配置条目不受影响；你手改过的 vendored agent 文件会被保留并报告，绝不删除。共享规则：AGENTS.md 的 openspec-pw 块仅在**没有任何编辑器保留**时移除；symlink 的 CLAUDE.md 永不穿透写入。`--tools` 与非 TTY 运行不做任何移除（`--tools` 是显式授权清单）。移除直接反哺预选：被移除的编辑器下次 init 不再预勾选（预选读 openspec-pw 清单——保留的 `mcp.json`、你自己的文件、全局目录都不再重要）；*全部*取消并确认的项目下次 init 重置回首-运行预选语义。
 
 **编辑器领土**：`update` 只维护项目内已有 openspec-pw 命令工件的编辑器——不会新增编辑器（全局配置目录或手建的 `.cursor/` 不构成写入授权）。给已初始化项目新增编辑器请重跑 `openspec-pw init --tools <id>`（幂等）。
+
+### 官方 Playwright Agents（opt-in `--agents`）
+
+```bash
+openspec-pw init --tools claude --agents   # 额外安装官方三个 agent 定义
+```
+
+`--agents`（默认关）把 Playwright 官方 `playwright init-agents`（claude loop）生成的三个 agent 定义**逐字快照**装进 `.claude/agents/`：
+
+- `playwright-test-planner.md` — 探索应用、产出测试计划
+- `playwright-test-generator.md` — 生成测试代码
+- `playwright-test-healer.md` — 调试并修复失败测试
+
+它们的 `tools:` frontmatter 引用的正是 `playwright-test` MCP server——本工具装好的那一条目，MCP 前提天然满足。交互式 init 会在编辑器确认后追加一个默认 **No** 的确认项；纯 API 项目与 MCP 一起跳过（该相位跟随同一前端信号门控——agent 的工具全是 MCP 工具）。归属按内容判定：与内置快照一致的文件（上游基线见 `templates/agents/SOURCE.md`）归本工具所有——`update` 在快照升级时刷新、移除路径一并删除；你手改过的（或用新版官方 init-agents 刷过的）文件**永不覆盖、永不删除**，仅提示。`doctor` 报告其存在、归属状态，并在 `playwright-test` MCP 条目缺失时给出非阻断 ⚠。
+
+**与 `/opsx:e2e` 的分工**：命令模板是 OpenSpec 锚定的完整管道（计划 → 生成 → 带 App Bug Registry 的治疗闭环 → Phase 3 人工升级）；vendored agents 是无 change 在飞时可单独召唤的子 agent。工作流内部，Planner 与 Generator 两个阶段在子 agent 已安装时可委托执行（规则随委托提示词传递，产物由主 agent 核验）；Healer 阶段**永不委托**——管道护栏取代官方 healer 的自主改断言行为。项目 AGENTS.md §6 约束一切来源的 agent。
+
+> **官方 healer 与本工具护栏的差异**：官方 healer 被指示「不要问用户、可通过修改断言和期望值修复失败测试」；本工具的 Healer 管道**禁止未授权放宽断言**——更新断言或 spec 是 Phase 3 的人工决策。单独召唤官方 healer 快速修测试是你的选择，但不要把它的输出混入 `/opsx:e2e` 交付流。
+
+> **如果你坚持自己跑 `npx playwright init-agents`**：它是清场重写型——整文件重写 `.mcp.json`（你自装的 MCP 条目会被销毁，fixture 已实证）、已有 `opencode.jsonc` 时另立 `opencode.json`、且要求随 Playwright 升级重跑。必须跑的话请在 `openspec-pw init` **之前**，跑完 `git diff .mcp.json` 检查其他条目幸存。用 `--agents` 则不需要跑它——官方新版快照由 `update` 同步。
 
 ### CLI 命令
 
 ```bash
-openspec-pw init          # 初始化集成（--tools all|none|ids… 可选编辑器）
+openspec-pw init          # 初始化集成（--tools all|none|ids… 可选编辑器；--agents 加装官方 agents）
 openspec-pw update        # 更新 CLI 和命令到最新版本
 openspec-pw doctor        # 检查前置条件 (Node, Playwright, OpenSpec, 配置, 测试) + 应用服务器诊断
 openspec-pw audit         # 检查测试文件是否有孤儿文件和配置问题
@@ -209,6 +233,7 @@ openspec-pw uninstall     # 移除项目中的集成
 | **Playwright 浏览器** | CLI 版本、Chromium 二进制已下载 | — |
 | **Playwright 测试框架** | `@playwright/test` 已安装 | — |
 | **Playwright MCP** | 每个已授权（有命令工件）编辑器的 test-runner server 配置；未授权编辑器降为信息行（提示 `init --tools` 添加，不阻断） | `playwright-cli`（PATH 上的 @playwright/cli）——可选 ⚠，不阻断 |
+| **Vendored Agents** | — | 官方 agents 快照的存在与归属（owned/modified）；依赖的 `playwright-test` MCP 缺失时 ⚠（不阻断） |
 | **Sync** | 已初始化时标准同步（漂移 → `openspec-pw update`；AGENTS.md 无标记视为未初始化，恒 ok:true） | 未初始化（闸门，不阻断） |
 | **测试目录** | `tests/playwright/` 目录存在 | `auth.setup.ts` 是否存在 |
 | **种子测试** | — | `seed.spec.ts` 是否存在 |
@@ -277,6 +302,7 @@ CLI (openspec-pw)
   ├── Claude Code (/opsx:e2e)
   │   ├── .claude/commands/opsx/e2e.md    → 命令文件（从 templates/e2e-command.md 安装）
   │   ├── playwright-test server         → Healer Agent 工具（通过 `claude mcp add --scope project playwright-test …`，写入项目根 `.mcp.json`）
+  │   ├── .claude/agents/playwright-test-*.md → 官方 agents 快照（opt-in `--agents`）
   │   └── CLAUDE.md                       → CodeGraph 优先节 + 工作流提示 + 通过 `@AGENTS.md` 引入 AGENTS.md
   ├── OpenCode (/opsx-e2e)
   │   ├── .opencode/commands/opsx-e2e.md  → 命令文件（正文由 /opsx: 改写为 /opsx-）

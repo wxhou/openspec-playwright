@@ -10,12 +10,14 @@ A setup tool that integrates OpenSpec's spec-driven development with Playwright'
 npm install -g openspec-playwright@latest
 ```
 
+> npm is the supported installation channel. Global installs via pnpm/bun/yarn are not supported — `openspec-pw update` self-updates through `npm install -g`, which would create a second, conflicting install.
+
 ## Setup
 
 ```bash
 # In your project directory
 openspec init              # Initialize OpenSpec
-openspec-pw init          # Install Playwright E2E integration (--tools to pick editors)
+openspec-pw init          # Install Playwright E2E integration (--tools to pick editors, --agents for the official agents)
 ```
 
 ## Supported AI Coding Assistants
@@ -122,10 +124,12 @@ doubt, read `Selected editors`.
 **Deselect = remove.** In the interactive multi-select, a *detected editor
 you deselect* has its openspec-pw products removed — command/skill files,
 the editor's openspec-pw MCP entries (claude's wrapper block and legacy
-skill directory included), after one confirmation listing everything about
+skill directory included, plus any tool-owned vendored agents), after one
+confirmation listing everything about
 to be removed. Declining keeps the old behavior (deselect merely skips
 writes this run). Only openspec-pw-owned territory is touched — your own
-config entries in the same files stay. Shared rules: the AGENTS.md
+config entries in the same files stay (user-modified vendored agent files
+are kept and reported, never deleted). Shared rules: the AGENTS.md
 openspec-pw block is removed only when **no** editor remains selected; a
 symlinked CLAUDE.md is never written through. `--tools` and non-TTY runs
 never remove anything (`--tools` is an explicit allow list). Removal
@@ -140,10 +144,62 @@ openspec-pw command artifacts in the project — it never adds new editors
 (a global config dir or a hand-created `.cursor/` does not authorize
 writes). To add an editor to an initialized project, re-run
 `openspec-pw init --tools <id>` (idempotent).
+
+### Official Playwright Agents (opt-in `--agents`)
+
+```bash
+openspec-pw init --tools claude --agents   # additionally install the official agent definitions
+```
+
+`--agents` (off by default) installs byte-identical snapshots of the three
+agent definitions Playwright's official `playwright init-agents` (claude
+loop) generates into `.claude/agents/`:
+
+- `playwright-test-planner.md` — explore the app, produce a test plan
+- `playwright-test-generator.md` — generate test code
+- `playwright-test-healer.md` — debug and fix failing tests
+
+Their `tools:` frontmatter references the `playwright-test` MCP server —
+the very entry `openspec-pw init` installs — so the MCP prerequisite is
+already satisfied. On the interactive path, init appends one confirmation
+(default **No**); API-only projects skip the phase alongside the MCP
+(phase follows the same frontend-signal gate, since the agents' tools are
+MCP tools). Ownership is content-based: files matching the bundled
+snapshot (`templates/agents/SOURCE.md` records the upstream baseline) are
+tool-owned — `update` refreshes them when a newer snapshot ships and
+removal paths delete them; files you edited (or refreshed with a newer
+official `init-agents`) are **never overwritten or deleted**, only
+reported. `doctor` shows their presence, ownership, and — when the
+`playwright-test` MCP entry is missing — a non-blocking warning.
+
+**Division of labor vs `/opsx:e2e`**: the command template is the
+OpenSpec-anchored pipeline (plan → generate → heal with the App Bug
+Registry → Phase 3 human escalation); the vendored agents are standalone
+subagents for ad-hoc calls when no OpenSpec change is in flight. Inside the
+workflow, the Planner and Generator steps may delegate to their subagents
+when installed (the rules travel with the delegation prompt, and you verify
+the output); the Healer step **never delegates** — the pipeline's guardrails
+replace the official healer's autonomous assertion editing. The project's
+AGENTS.md §6 binds agents from any source.
+
+> **Official healer vs our guardrails**: the official healer is instructed
+> not to ask the user and to fix failing tests by modifying assertions and
+> expected values. This tool's Healer pipeline **never loosens assertions
+> without approval** — updating an assertion or the spec is a Phase 3 human
+> decision. Invoking the standalone official healer for a quick fix is your
+> call; just don't mix its output into a `/opsx:e2e` delivery.
+
+> **If you insist on running `npx playwright init-agents` yourself**: it is
+> clobber-type — it rewrites `.mcp.json` wholesale (your own MCP entries are
+> destroyed; fixture-verified), creates a parallel `opencode.json` next to
+> an existing `opencode.jsonc`, and wants a re-run on every Playwright
+> upgrade. Run it *before* `openspec-pw init` if you must, and check
+> `git diff .mcp.json` afterward. With `--agents` you never need it —
+> `update` ships newer official snapshots.
 ### CLI Commands
 
 ```bash
-openspec-pw init          # Initialize integration (--tools all|none|ids… to select editors)
+openspec-pw init          # Initialize integration (--tools all|none|ids… to select editors; --agents adds the official agents)
 openspec-pw update        # Update CLI and commands to latest version
 openspec-pw doctor        # Check prerequisites (Node, Playwright, OpenSpec, config, tests) + app server diagnostics
 openspec-pw audit         # Audit tests for orphaned specs and issues
@@ -205,6 +261,8 @@ openspec-pw uninstall     # Remove integration from the project
 
 > **Migrating from older versions**: before this change, Claude Code's Playwright MCP was installed at global user scope (`~/.claude.json`). If you initialized with an older `openspec-pw`, a stale global entry may still load everywhere. Clean it up once: `claude mcp remove playwright` (user scope). Note that project-scoped servers prompt for approval the first time they are used interactively (`claude mcp reset-project-choices` resets those choices).
 
+> **Server name `playwright-test`**: this is the name Playwright's own `playwright init-agents` CLI ships — same name, same transport (`npx playwright run-test-mcp-server`, the `playwright` package's built-in subcommand). It is **not** the same server as `@playwright/mcp` (a separate npm package that registers as `playwright` with ~67 `browser_*` tools); the test-runner is its **superset** (~80 tools: the full `browser_*` set plus the structured `test_run` / `test_debug` / `test_list` workflow tools the Healer loop uses). The two servers coexist under different names; search results for "Playwright MCP" usually surface `@playwright/mcp` docs.
+
 Browser exploration is provided out of the box by Playwright MCP and `openspec-pw explore`; no extra browser tool is needed.
 
 ## What `openspec-pw init` Does
@@ -246,6 +304,7 @@ Run through these steps in order when using the E2E workflow for the first time:
 | **Playwright Browsers** | CLI version, Chromium binary downloaded | — |
 | **Playwright Test** | `@playwright/test` framework installed | — |
 | **Playwright MCP** | test-runner server configured for each **authorized** editor (command artifacts exist; unauthorized editors get an info line pointing at `init --tools <id>` — never a warning) | `playwright-cli` (@playwright/cli on PATH) — optional ⚠, never block |
+| **Vendored Agents** | — | official agent snapshots' presence + ownership (owned/modified); non-blocking ⚠ when their `playwright-test` MCP dependency is missing |
 | **Sync** | standards in sync when initialized (drift → `openspec-pw update`; AGENTS.md without markers counts as not-initialized, always ok) | not initialized (gated, non-blocking) |
 | **Tests** | `tests/playwright/` directory exists | `auth.setup.ts` presence |
 | **Seed Test** | — | `seed.spec.ts` presence |
@@ -340,6 +399,7 @@ Editors (auto-detected by openspec-pw init)
   ├── Claude Code (/opsx:e2e)
   │   ├── .claude/commands/opsx/e2e.md   → Command file
   │   ├── playwright-test server         → Healer Agent tools (via `claude mcp add --scope project playwright-test …`, writes project-root `.mcp.json`)
+  │   ├── .claude/agents/playwright-test-*.md → Official agent snapshots (opt-in `--agents`)
   │   └── CLAUDE.md                      → CodeGraph 优先 block + workflow hint + imports AGENTS.md via `@AGENTS.md`
   ├── OpenCode (/opsx-e2e)
   │   ├── .opencode/commands/opsx-e2e.md → Command file (body rewritten from /opsx: → /opsx-)

@@ -405,6 +405,23 @@ describe("update.ts: drift-aware no-op", () => {
     expect(after).not.toBe(before); // updated
     expect(readFileSync(basePageDest, "utf-8")).toBe("export class BasePage {}");
   });
+
+  it("test-plan.template.md is generated when missing and refreshed on drift", async () => {
+    const { syncProjectTemplates } = await import("../../src/commands/update.js");
+
+    const planSrc = join(tmpDir, "templates", "test-plan.md");
+    mkdirSync(join(tmpDir, "templates"), { recursive: true });
+    writeFileSync(planSrc, "# Test Plan playbook v1");
+
+    syncProjectTemplates(tmpDir, tmpDir);
+    const dest = join(testsDir, "test-plan.template.md");
+    expect(readFileSync(dest, "utf-8")).toBe("# Test Plan playbook v1");
+
+    // Drift → refreshed.
+    writeFileSync(planSrc, "# Test Plan playbook v2");
+    syncProjectTemplates(tmpDir, tmpDir);
+    expect(readFileSync(dest, "utf-8")).toBe("# Test Plan playbook v2");
+  });
 });
 
 describe("update.ts: --no-mcp registered + --no-cli recursion", () => {

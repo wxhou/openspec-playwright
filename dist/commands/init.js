@@ -4,7 +4,7 @@ import { join } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { readFile } from "fs/promises";
-import { buildCommandMeta, detectAdapters, detectProjectAdapters, getAdapter, getAllAdapters, installCommand, installProjectRules, migrateLegacyMarkers, readEmployeeStandards, resolveToolsArg, slashCommandForAdapter, enumerateAdapterArtifacts, isInventoryEmpty, removeAdapterMcp, removeAdapterCommandArtifacts, removeClaudeLegacySkill, removeClaudeWrapper, removeMarkersFromFile, } from "./editors.js";
+import { buildCommandMeta, detectAdapters, detectProjectAdapters, getAdapter, getAllAdapters, installCommand, installOptionalArtifacts, installProjectRules, migrateLegacyMarkers, readEmployeeStandards, resolveToolsArg, slashCommandForAdapter, enumerateAdapterArtifacts, enumerateVendoredAgents, installedAgentsSnapshotDir, isInventoryEmpty, removeAdapterMcp, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, removeClaudeLegacySkill, removeClaudeWrapper, removeMarkersFromFile, } from "./editors.js";
 import { isEditorConfigured, agentsFileHasMarkers, } from "./editors/configured.js";
 import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, TEST_RUNNER_MCP_SERVER, needsShell, hasFrontendSignal, detectCodeGraphStatus, codegraphHintLines, CREDENTIALS_RELPATHS, credentialsIgnoreHint, findUnignoredFiles, } from "../shared/index.js";
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
@@ -115,6 +115,11 @@ export async function init(options, deps = {}) {
     catch (err) {
         throw new Error(`Invalid --tools value: ${err.message}`);
     }
+    // Agents are an editor add-on — "--tools none --agents" has nothing to
+    // attach to. Fail before any writes, mirroring the resolveToolsArg errors.
+    if (options.agents && selectedIds !== null && selectedIds.length === 0) {
+        throw new Error('The --agents option requires at least one configured editor (claude) and cannot be combined with "--tools none".');
+    }
     if (selectedIds === null && isTTY) {
         interactiveSelection = true;
         selectedIds = await prompt(getAllAdapters(), preselectedIds, configuredIds);
@@ -135,10 +140,24 @@ export async function init(options, deps = {}) {
         console.log(chalk.gray("  For Cursor without an existing .cursor/ dir: mkdir -p .cursor\n"));
         throw new Error('No supported editor detected and no --tools flag provided. Use --tools all, --tools none, or a comma-separated list: claude, opencode, cline, cursor, pi, omp (oh-my-pi aliases omp).');
     }
+    // --agents with no agent-capable editor in the selection: informational
+    // no-op (agents are claude-scoped), the run itself still succeeds.
+    const claudeSelected = editors.some((a) => a.id === "claude");
+    if (options.agents && !claudeSelected) {
+        console.log(chalk.gray("  - No agent-capable editor (claude) selected — vendored agents skipped"));
+    }
     // 3a. Deselect = remove. Interactive deselections are real removals of
     // openspec-pw products (commands, MCP entries, claude wrapper/legacy
-    // skill, and the shared AGENTS.md block when no editor remains), gated on
-    // one confirm. Refusal falls back to the old "skip, don't touch" semantics.
+    // skill, vendored agents, and the shared AGENTS.md block when no editor
+    // remains), gated on one confirm. Refusal falls back to the old "skip,
+    // don't touch" semantics.
+    const confirmPrompt = deps.confirm ??
+        (async (message) => {
+            const { confirm: promptConfirm } = await import("@inquirer/prompts");
+            // default: false is load-bearing — both confirms (removal, agents)
+            // must default to No.
+            return promptConfirm({ message, default: false });
+        });
     if (interactiveSelection && selectedIds !== null) {
         // Removal candidates share the configured manifest: never-configured
         // editors own no products, so there is nothing to enumerate (and no
@@ -174,16 +193,18 @@ export async function init(options, deps = {}) {
                 if (inv.hasClaudeWrapper) {
                     console.log(chalk.gray(`    - ${adapter.label}: CLAUDE.md wrapper block`));
                 }
+                // Consent-gated optional artifacts (vendored agents): only the
+                // tool-owned files join the list — user-modified files are kept.
+                if (adapter.optionalArtifacts) {
+                    for (const relPath of enumerateVendoredAgents(projectRoot, installedAgentsSnapshotDir()).owned) {
+                        console.log(chalk.gray(`    - ${adapter.label}: ${relPath}`));
+                    }
+                }
             }
             if (agentsHasBlock) {
                 console.log(chalk.gray("    - AGENTS.md: shared openspec-pw block"));
             }
-            const confirm = deps.confirm ??
-                (async (message) => {
-                    const { confirm: promptConfirm } = await import("@inquirer/prompts");
-                    return promptConfirm({ message });
-                });
-            const agreed = await confirm("Proceed with removal?");
+            const agreed = await confirmPrompt("Proceed with removal?");
             if (!agreed) {
                 console.log(chalk.gray("  - Removal declined — keeping existing artifacts (deselect only skips writes this run)"));
             }
@@ -191,6 +212,7 @@ export async function init(options, deps = {}) {
                 for (const { adapter, inv } of inventories) {
                     removeAdapterMcp(adapter, projectRoot, inv.mcpServers);
                     removeAdapterCommandArtifacts(adapter, projectRoot);
+                    removeOwnedVendoredAgents(projectRoot, adapter);
                     if (inv.legacySkillPath) {
                         removeClaudeLegacySkill(projectRoot);
                     }
@@ -246,9 +268,33 @@ export async function init(options, deps = {}) {
                 }
             }
         }
+        // Naming provenance: search results for "Playwright MCP" surface the
+        // separate @playwright/mcp package (server name "playwright"); ours is
+        // the official init-agents name for the test-runner superset.
+        console.log(chalk.gray("  (server name \"playwright-test\" = the official `playwright init-agents` name; superset of @playwright/mcp — see README)"));
     }
     else if (options.mcp !== false && editors.length > 0) {
         console.log(chalk.gray("  - No frontend signal detected — skipping Playwright MCP (API tests use the request fixture)"));
+    }
+    // 4b. Vendored official Playwright agents (claude only, opt-in). Every
+    // tool the agents reference lives on the playwright-test MCP server, so
+    // the phase follows the same frontend-signal gate as the MCP install.
+    const claudeEditor = editors.find((a) => a.id === "claude");
+    if (claudeEditor && frontendSignal === true) {
+        let agentsConsent = options.agents === true;
+        if (!agentsConsent && interactiveSelection) {
+            agentsConsent = await confirmPrompt("Install the official Playwright agents (planner/generator/healer) into .claude/agents/?");
+        }
+        if (agentsConsent) {
+            console.log(chalk.blue("\n─── Installing Vendored Agents ───"));
+            installOptionalArtifacts(claudeEditor, projectRoot, true);
+        }
+        else if (interactiveSelection) {
+            console.log(chalk.gray("  - Agents skipped (opt in later with: openspec-pw init --tools claude --agents)"));
+        }
+    }
+    else if (claudeEditor && options.agents === true) {
+        console.log(chalk.gray("  - No frontend signal detected — skipping vendored agents (their tools depend on the Playwright MCP)"));
     }
     // 5. Install E2E command for each selected editor
     if (editors.length > 0) {
@@ -265,6 +311,7 @@ export async function init(options, deps = {}) {
     // 6b. Generate shared pages directory
     console.log(chalk.blue("\n─── Generating Shared Pages ───"));
     await generateSharedPages(projectRoot);
+    await generateTestPlanTemplate(projectRoot);
     // 6c. Generate playwright.config.ts
     console.log(chalk.blue("\n─── Generating Playwright Config ───"));
     await generatePlaywrightConfig(projectRoot);
@@ -378,6 +425,23 @@ export async function generateAppKnowledge(projectRoot) {
     if (existsSync(src)) {
         writeFileSync(dest, readFileSync(src));
         console.log(chalk.green("  ✓ Generated: tests/playwright/app-knowledge.md"));
+    }
+}
+/**
+ * Copy the special-element test-plan playbook into the user's project as a
+ * reference template (app-exploration.md points here). Same lifecycle as
+ * BasePage.ts: init creates it once, update refreshes it on drift.
+ */
+export async function generateTestPlanTemplate(projectRoot) {
+    const src = join(TEMPLATE_DIR, "test-plan.md");
+    const dest = join(projectRoot, "tests", "playwright", "test-plan.template.md");
+    if (existsSync(dest)) {
+        console.log(chalk.gray("  - test-plan.template.md already exists, skipping"));
+        return;
+    }
+    if (existsSync(src)) {
+        writeFileSync(dest, readFileSync(src));
+        console.log(chalk.green("  ✓ Generated: tests/playwright/test-plan.template.md"));
     }
 }
 export async function generateSharedPages(projectRoot) {

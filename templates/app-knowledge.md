@@ -16,6 +16,16 @@ Discovered routes from sitemap.xml or link extraction. Used by "all" mode to gen
 | `/dashboard` | required | `DashboardPage.ts` | Protected |
 | | | | |
 
+## Exploration State
+
+Written by Step 4 (idempotency): skip full re-exploration when the sitemap is unchanged.
+
+| Field | Value |
+|-------|-------|
+| Last sitemap hash | `<sha>` |
+| Last exploration | `<timestamp>` |
+| Routes known | `<N>` |
+
 ## Credential Format
 
 | Field | Format | Source |
@@ -26,7 +36,7 @@ Discovered routes from sitemap.xml or link extraction. Used by "all" mode to gen
 
 ## Common Selector Patterns
 
-Priority: `[data-testid]` > `getByRole` > `getByLabel` > `getByText` > CSS
+Priority (single source of truth, matches the E2E workflow): verified selector from app-exploration.md > `[data-testid]` > `getByRole` > `getByLabel` > `getByText` > CSS id/class > positional
 
 ### Forms
 

@@ -55,7 +55,9 @@ export {
   hasCommandArtifacts,
   slashCommandForAdapter,
   listCommandArtifactPaths,
+  listOptionalArtifactPaths,
   installCommand,
+  installOptionalArtifacts,
 } from "./editors/registry.js";
 
 // Adapters — import order = registration order (do not reorder)
@@ -111,10 +113,27 @@ export {
   isInventoryEmpty,
   removeAdapterMcp,
   removeAdapterCommandArtifacts,
+  removeOwnedVendoredAgents,
   removeClaudeLegacySkill,
   removeClaudeWrapper,
   cleanupEmptyDirs,
 } from "./editors/removal.js";
+
+// Vendored Playwright agent snapshots (claude, init --agents)
+export {
+  VENDORED_AGENT_ROLES,
+  vendoredAgentRelPath,
+  vendoredAgentRelPaths,
+  type AgentsManifest,
+  installedAgentsSnapshotDir,
+  readAgentsManifest,
+  loadAgentSnapshots,
+  sha256Contents,
+  roleForRelPath,
+  classifyAgentFile,
+  enumerateVendoredAgents,
+  syncVendoredAgents,
+} from "./editors/agents.js";
 
 // Config-state predicates (init pre-select manifest)
 export {

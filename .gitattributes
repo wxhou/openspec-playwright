@@ -1,0 +1,4 @@
+# Vendored agent snapshots must stay LF on every platform — content-based
+# ownership compares bytes, and git autocrlf CRLF conversion on Windows
+# would misclassify every checkout as user-owned.
+templates/agents/** text eol=lf

@@ -24,7 +24,7 @@ export { buildCommandMeta, defineAdapter, } from "./editors/types.js";
 // Cross-editor shared helpers
 export { escapeYamlValue, formatTagsArray, transformToHyphenCommands, readMcpServersFile, writeMcpServersFile, isMcpServerInFile, installMcpServerInFile, removeMcpServerFromFile, } from "./editors/shared.js";
 // Registry (lookup / detection / install helpers) — no adapter imports here
-export { registerAdapter, getAdapter, getAllAdapters, detectAdapters, detectProjectAdapters, hasCommandArtifacts, slashCommandForAdapter, listCommandArtifactPaths, installCommand, } from "./editors/registry.js";
+export { registerAdapter, getAdapter, getAllAdapters, detectAdapters, detectProjectAdapters, hasCommandArtifacts, slashCommandForAdapter, listCommandArtifactPaths, listOptionalArtifactPaths, installCommand, installOptionalArtifacts, } from "./editors/registry.js";
 // Adapters — import order = registration order (do not reorder)
 export { formatClaudeCommand, getClaudeCommandPath, hasClaudeCode, claudeAdapter, } from "./editors/adapters/claude.js";
 export { formatOpenCodeCommand, getOpenCodeCommandPath, hasOpenCode, opencodeAdapter, readOpenCodeInstructions, } from "./editors/adapters/opencode.js";
@@ -35,7 +35,9 @@ export { formatOmpCommand, getOmpCommandPath, hasOmp, ompAdapter, } from "./edit
 // Tool selection (--tools flag parsing)
 export { resolveToolsArg } from "./editors/tool-selection.js";
 // Per-editor artifact removal (init deselect + uninstall cleanup)
-export { OPENSPEC_PW_MCP_SERVERS, CLAUDE_LEGACY_SKILL_REL, enumerateAdapterArtifacts, isInventoryEmpty, removeAdapterMcp, removeAdapterCommandArtifacts, removeClaudeLegacySkill, removeClaudeWrapper, cleanupEmptyDirs, } from "./editors/removal.js";
+export { OPENSPEC_PW_MCP_SERVERS, CLAUDE_LEGACY_SKILL_REL, enumerateAdapterArtifacts, isInventoryEmpty, removeAdapterMcp, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, removeClaudeLegacySkill, removeClaudeWrapper, cleanupEmptyDirs, } from "./editors/removal.js";
+// Vendored Playwright agent snapshots (claude, init --agents)
+export { VENDORED_AGENT_ROLES, vendoredAgentRelPath, vendoredAgentRelPaths, installedAgentsSnapshotDir, readAgentsManifest, loadAgentSnapshots, sha256Contents, roleForRelPath, classifyAgentFile, enumerateVendoredAgents, syncVendoredAgents, } from "./editors/agents.js";
 // Config-state predicates (init pre-select manifest)
 export { isEditorConfigured, anyEditorConfigured, agentsFileHasMarkers, } from "./editors/configured.js";
 // Project rules file management (AGENTS.md SSOT + CLAUDE.md wrapper)

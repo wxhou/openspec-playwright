@@ -21,7 +21,7 @@
  */
 export { type CommandMeta, buildCommandMeta, type EditorId, type ExtraArtifact, type EditorAdapter, type EditorAdapterInit, defineAdapter, } from "./editors/types.js";
 export { escapeYamlValue, formatTagsArray, transformToHyphenCommands, type McpStdioServer, type McpServersFile, readMcpServersFile, writeMcpServersFile, isMcpServerInFile, installMcpServerInFile, removeMcpServerFromFile, } from "./editors/shared.js";
-export { registerAdapter, getAdapter, getAllAdapters, detectAdapters, detectProjectAdapters, hasCommandArtifacts, slashCommandForAdapter, listCommandArtifactPaths, installCommand, } from "./editors/registry.js";
+export { registerAdapter, getAdapter, getAllAdapters, detectAdapters, detectProjectAdapters, hasCommandArtifacts, slashCommandForAdapter, listCommandArtifactPaths, listOptionalArtifactPaths, installCommand, installOptionalArtifacts, } from "./editors/registry.js";
 export { formatClaudeCommand, getClaudeCommandPath, hasClaudeCode, claudeAdapter, } from "./editors/adapters/claude.js";
 export { formatOpenCodeCommand, getOpenCodeCommandPath, hasOpenCode, opencodeAdapter, readOpenCodeInstructions, } from "./editors/adapters/opencode.js";
 export { formatClineCommand, getClineCommandPath, hasCline, clineAdapter, } from "./editors/adapters/cline.js";
@@ -29,6 +29,7 @@ export { formatCursorCommand, getCursorCommandPath, getCursorSkillPath, formatCu
 export { formatPiCommand, getPiCommandPath, hasPi, piAdapter, } from "./editors/adapters/pi.js";
 export { formatOmpCommand, getOmpCommandPath, hasOmp, ompAdapter, } from "./editors/adapters/omp.js";
 export { resolveToolsArg } from "./editors/tool-selection.js";
-export { OPENSPEC_PW_MCP_SERVERS, CLAUDE_LEGACY_SKILL_REL, type AdapterArtifactInventory, enumerateAdapterArtifacts, isInventoryEmpty, removeAdapterMcp, removeAdapterCommandArtifacts, removeClaudeLegacySkill, removeClaudeWrapper, cleanupEmptyDirs, } from "./editors/removal.js";
+export { OPENSPEC_PW_MCP_SERVERS, CLAUDE_LEGACY_SKILL_REL, type AdapterArtifactInventory, enumerateAdapterArtifacts, isInventoryEmpty, removeAdapterMcp, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, removeClaudeLegacySkill, removeClaudeWrapper, cleanupEmptyDirs, } from "./editors/removal.js";
+export { VENDORED_AGENT_ROLES, vendoredAgentRelPath, vendoredAgentRelPaths, type AgentsManifest, installedAgentsSnapshotDir, readAgentsManifest, loadAgentSnapshots, sha256Contents, roleForRelPath, classifyAgentFile, enumerateVendoredAgents, syncVendoredAgents, } from "./editors/agents.js";
 export { isEditorConfigured, anyEditorConfigured, agentsFileHasMarkers, } from "./editors/configured.js";
 export { readOpenSpecBlock, blockMatchesExpected, installOpenSpecBlock, claudeWrapperStandardsContent, installClaudeWrapper, installProjectRules, migrateLegacyMarkers, cleanProjectRules, removeMarkersFromFile, readEmployeeStandards, } from "./editors/project-rules.js";

@@ -1,7 +1,7 @@
 import { existsSync, rmSync } from "fs";
 import { join, dirname } from "path";
 import chalk from "chalk";
-import { buildCommandMeta, cleanProjectRules, claudeAdapter, detectAdapters, listCommandArtifactPaths, removeAdapterCommandArtifacts, cleanupEmptyDirs, } from "./editors.js";
+import { buildCommandMeta, cleanProjectRules, claudeAdapter, detectAdapters, listCommandArtifactPaths, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, cleanupEmptyDirs, } from "./editors.js";
 import { removePlaywrightMcp, removeTestRunnerMcp, detectCodeGraphStatus, } from "../shared/index.js";
 export async function uninstall() {
     console.log(chalk.blue("\n🗑️  Uninstalling OpenSpec + Playwright E2E\n"));
@@ -34,6 +34,18 @@ export async function uninstall() {
         else {
             console.log(chalk.gray(`  - ${adapter.label}: E2E command not found, skipping`));
         }
+    }
+    // 2b. Remove the vendored Playwright agent files (opt-in `init --agents`
+    // installs). Tool-owned files go; user-modified files are kept and named.
+    console.log(chalk.blue("\n─── Removing Vendored Agents ───"));
+    if (detected.some((a) => a.id === "claude")) {
+        const removedAgents = removeOwnedVendoredAgents(projectRoot, claudeAdapter);
+        if (removedAgents.length === 0) {
+            console.log(chalk.gray("  - No tool-owned vendored agents found (nothing to remove)"));
+        }
+    }
+    else {
+        console.log(chalk.gray("  - Claude not detected, skipping"));
     }
     // 3. Remove legacy skill directory (if present from older versions)
     console.log(chalk.blue("\n─── Removing Legacy Skill ───"));
