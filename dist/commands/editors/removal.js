@@ -22,6 +22,7 @@ import { buildCommandMeta } from "./types.js";
 import { listCommandArtifactPaths } from "./registry.js";
 import { removeMarkersFromFile } from "./project-rules.js";
 import { LEGACY_OPENSPEC_START, OPENSPEC_START } from "../../shared/drift.js";
+import { enumerateVendoredAgents, installedAgentsSnapshotDir } from "./agents.js";
 // ─── MCP server names owned by openspec-pw ───────────────────────────────
 /**
  * The Playwright MCP servers openspec-pw manages. `playwright-test` is the
@@ -103,6 +104,30 @@ export function removeAdapterCommandArtifacts(adapter, projectRoot) {
             console.log(chalk.green(`  ✓ ${adapter.label}: ${relPath}`));
             removed.push(relPath);
         }
+    }
+    return removed;
+}
+/**
+ * Remove the tool-owned vendored Playwright agent files (claude; init
+ * deselection + uninstall). User-owned files are never deleted — each is
+ * reported as kept-modified. Returns the removed project-relative paths.
+ */
+export function removeOwnedVendoredAgents(projectRoot, adapter) {
+    if (!adapter.optionalArtifacts)
+        return [];
+    const { owned, modified } = enumerateVendoredAgents(projectRoot, installedAgentsSnapshotDir());
+    const removed = [];
+    for (const relPath of owned) {
+        const absPath = join(projectRoot, relPath);
+        if (!existsSync(absPath))
+            continue;
+        rmSync(absPath);
+        cleanupEmptyDirs(dirname(absPath), projectRoot);
+        console.log(chalk.green(`  ✓ ${adapter.label}: ${relPath}`));
+        removed.push(relPath);
+    }
+    for (const relPath of modified) {
+        console.log(chalk.gray(`  - ${adapter.label}: ${relPath} kept (differs from the bundled snapshot — not openspec-pw-owned)`));
     }
     return removed;
 }

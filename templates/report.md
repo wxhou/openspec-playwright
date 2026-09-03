@@ -15,15 +15,24 @@
 | Test Bugs (healed) | <B> |
 | Flaky/RAFT | <F> |
 | Human Escalations | <H> |
-| Final Status | PASS / FAIL / SKIPPED |
+| Final Status | PASS / PASS (N skipped) / PASS (N skipped, M App Bugs) / FAIL |
+
+## App Bug Summary
+
+<!-- Active vs resolved. If ≥3 active, prepend:
+⚠️ N active App Bugs — consider pausing test authoring until resolved. -->
+
+| # | Test | Route | Status |
+|---|------|-------|--------|
+| | | | |
 
 ## Failure Classification
 
 | Test | Failure Type | Action Taken | Healed? |
 |------|-------------|------------|---------|
-| <test> | App Bug | test.skip() | N/A |
+| <test> | App Bug | test.fixme() | N/A |
 | <test> | Selector Changed | Healed | Yes |
-| <test> | RAFT | Skipped in suite | N/A |
+| <test> | RAFT | test.fixme() in suite | N/A |
 | <test> | Human Escalation | Awaiting decision | N/A |
 
 ## Auto-Heal Log

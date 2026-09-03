@@ -6,8 +6,8 @@ Setup tool for OpenSpec + Playwright E2E integration.
 
 - `src/commands/init.ts` — `openspec-pw init` setup logic
 - `src/commands/doctor.ts` — `openspec-pw doctor` prerequisites checker
-- `.claude/skills/openspec-e2e/SKILL.md` — Claude Code skill for `/opsx:e2e`
-- `.claude/commands/opsx/e2e.md` — Claude Code command
+- `templates/e2e-command.md` — E2E workflow template, installed as every editor's `/opsx:e2e` / `/opsx-e2e` command
+- `.claude/commands/opsx/e2e.md` — Claude Code command (installed copy)
 - `templates/seed.spec.ts` — Playwright seed test template
 - `templates/auth.setup.ts` — Authentication setup (API + UI login)
 - `templates/credentials.yaml` — Test credentials configuration
@@ -55,7 +55,7 @@ Before each release action, confirm the target version has already been explicit
 - [ ] `npm run lint` passes
 - [ ] `npm run typecheck` passes
 - [ ] `npm run build && npm run test:run` passes
-- [ ] `npm run build && npm pack && tar tf openspec-playwright-*.tgz | grep scripts` succeeds (verifies `scripts/bump-docs.js` is included)
+- [ ] `npm run build && npm pack && tar tf openspec-playwright-*.tgz | grep scripts` succeeds (verifies `scripts/bump-docs.js` is included) and `tar tf openspec-playwright-*.tgz | grep templates/agents` lists the three vendored agent files + SOURCE.md
 - [ ] `git status` is clean (no uncommitted changes)
 - [ ] `git log --oneline` shows expected changes
 - [ ] Check `npm view openspec-playwright version` to verify the target version is not already published. **Do not change the version number to work around a conflict.** If the requested version already exists or publish fails, wait for explicit user instruction before taking any versioning action.

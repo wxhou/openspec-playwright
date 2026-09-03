@@ -10,6 +10,8 @@ import {
   slashCommandForAdapter,
   claudeAdapter,
   claudeWrapperStandardsContent,
+  enumerateVendoredAgents,
+  installedAgentsSnapshotDir,
 } from "../commands/editors.js";
 import { detectAppServer, isTestRunnerMcpInstalled, needsShell, detectCodeGraphStatus } from "../shared/index.js";
 import { bundledStandardsPath, compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
@@ -30,6 +32,7 @@ const OPTIONAL_NAMES = new Set([
   "codegraph-index",
   "codegraph-mcp",
   "playwright-cli",
+  "vendored-agents-mcp",
 ]);
 
 // Per-editor optional checks can't be enumerated by exact name — match
@@ -290,6 +293,49 @@ export async function doctor(options: DoctorOptions = {}) {
         } catch {
           // no ~/.claude.json or unparseable — nothing to report
         }
+      }
+    }
+
+    // Vendored Playwright agents (claude, opt-in via `init --agents`).
+    // Presence + ownership are informational; the only warning is the
+    // agents' MCP dependency — every tool they reference lives on the
+    // playwright-test server.
+    const claude = adapters.find((a) => a.id === "claude");
+    if (claude) {
+      const agentInv = enumerateVendoredAgents(projectRoot, installedAgentsSnapshotDir());
+      const agentsPresent = agentInv.owned.length + agentInv.modified.length;
+      if (agentsPresent > 0) {
+        checks.push({
+          category: "Vendored Agents",
+          name: "vendored-agents",
+          ok: true,
+          message: `${agentsPresent} file(s) (${agentInv.owned.length} owned, ${agentInv.modified.length} modified)`,
+        });
+        if (agentInv.modified.length > 0) {
+          checks.push({
+            category: "Vendored Agents",
+            name: "vendored-agents-drift",
+            ok: true,
+            message:
+              "differs from the bundled snapshot (manual edit or newer init-agents output) — update leaves it untouched",
+          });
+        }
+        if (!isTestRunnerMcpInstalled(claude)) {
+          checks.push({
+            category: "Vendored Agents",
+            name: "vendored-agents-mcp",
+            ok: false,
+            message:
+              'agents depend on the playwright-test MCP server, which is missing — run "openspec-pw init" or: claude mcp add --scope project playwright-test npx playwright run-test-mcp-server',
+          });
+        }
+      } else if (hasCommandArtifacts(projectRoot, claude)) {
+        checks.push({
+          category: "Vendored Agents",
+          name: "vendored-agents",
+          ok: true,
+          message: "not installed (opt-in: openspec-pw init --tools claude --agents)",
+        });
       }
     }
 

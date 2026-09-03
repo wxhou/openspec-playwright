@@ -6,7 +6,7 @@ import { tmpdir } from "os";
 import { promisify } from "util";
 import chalk from "chalk";
 import * as tar from "tar";
-import { buildCommandMeta, getAllAdapters, hasCommandArtifacts, installCommand, installOpenSpecBlock, installClaudeWrapper, migrateLegacyMarkers, claudeAdapter, claudeWrapperStandardsContent, opencodeAdapter, } from "./editors.js";
+import { buildCommandMeta, getAllAdapters, hasCommandArtifacts, installCommand, installOpenSpecBlock, installClaudeWrapper, migrateLegacyMarkers, claudeAdapter, claudeWrapperStandardsContent, opencodeAdapter, syncVendoredAgents, } from "./editors.js";
 import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, hasFrontendSignal, needsShell, detectCodeGraphStatus, codegraphHintLines, CREDENTIALS_RELPATHS, credentialsIgnoreHint, findUnignoredFiles, } from "../shared/index.js";
 import { compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
 const execFileAsync = promisify(execFile);
@@ -164,6 +164,10 @@ export async function update(options) {
             }
             // Sync project templates (BasePage.ts, seed.spec.ts)
             syncProjectTemplates(tmpDir, projectRoot);
+            // Vendored Playwright agents (claude, opt-in): refresh tool-owned
+            // files to the fetched snapshot; user-owned files are skipped with a
+            // notice; missing files are never created (opt-in via init --agents).
+            syncVendoredAgents(join(tmpDir, "templates", "agents"), projectRoot, hasCommandArtifacts(projectRoot, claudeAdapter));
             // Standards sync (drift-aware). Under --no-skill this phase still runs
             // via the else branch below — the flag only scopes command/template
             // installation, not standards. CLAUDE.md wrapper is gated on the
@@ -457,6 +461,23 @@ export function syncProjectTemplates(tmpDir, projectRoot) {
             if (existing !== latest) {
                 writeFileSync(basePageDest, latest);
                 console.log(chalk.green("  ✓ Updated: tests/playwright/pages/BasePage.ts"));
+            }
+        }
+    }
+    // 1b. Sync test-plan.template.md — always update if content differs
+    const testPlanSrc = join(tmpDir, "templates", "test-plan.md");
+    const testPlanDest = join(testsDir, "test-plan.template.md");
+    if (existsSync(testPlanSrc)) {
+        if (!existsSync(testPlanDest)) {
+            writeFileSync(testPlanDest, readFileSync(testPlanSrc));
+            console.log(chalk.green("  ✓ Generated: tests/playwright/test-plan.template.md"));
+        }
+        else {
+            const existing = readFileSync(testPlanDest, "utf-8");
+            const latest = readFileSync(testPlanSrc, "utf-8");
+            if (existing !== latest) {
+                writeFileSync(testPlanDest, latest);
+                console.log(chalk.green("  ✓ Updated: tests/playwright/test-plan.template.md"));
             }
         }
     }

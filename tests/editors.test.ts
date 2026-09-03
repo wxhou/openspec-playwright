@@ -183,10 +183,11 @@ describe("formatClaudeCommand", () => {
 
   it("includes required frontmatter fields", () => {
     const output = formatClaudeCommand(buildCommandMeta("body"));
-    expect(output).toContain("name:");
     expect(output).toContain("description:");
-    expect(output).toContain("category:");
-    expect(output).toContain("tags:");
+    expect(output).toContain("argument-hint:");
+    // Claude Code ignores name/category/tags — they must not bloat the file.
+    expect(output).not.toContain("category:");
+    expect(output).not.toContain("tags:");
   });
 
   it("body content appears after frontmatter", () => {

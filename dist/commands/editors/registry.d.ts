@@ -23,5 +23,19 @@ export declare function registerAdapter(adapter: EditorAdapter): void;
 export declare function slashCommandForAdapter(adapter: EditorAdapter): string;
 /** Relative paths installCommand writes for this adapter + meta. */
 export declare function listCommandArtifactPaths(adapter: EditorAdapter, meta: CommandMeta): string[];
+/**
+ * Relative paths of the adapter's consent-gated optional artifacts, empty
+ * unless `install` consent is granted. Deliberately separate from
+ * listCommandArtifactPaths — optional artifacts (vendored agents) confer no
+ * write authorization and no configured status.
+ */
+export declare function listOptionalArtifactPaths(adapter: EditorAdapter, install: boolean): string[];
+/**
+ * Write the adapter's consent-gated optional artifacts (vendored agents).
+ * Ownership-aware: missing → write; tool-owned & current → no-op; tool-owned
+ * & stale (older snapshot) → refresh; user-owned → never overwritten, yellow
+ * notice instead. Consent is the caller's job — `install: true` runs writes.
+ */
+export declare function installOptionalArtifacts(adapter: EditorAdapter, projectRoot: string, install: boolean): void;
 /** Install the command file (and optional extraArtifacts) for one adapter. */
 export declare function installCommand(adapter: EditorAdapter, meta: CommandMeta, projectRoot: string): void;

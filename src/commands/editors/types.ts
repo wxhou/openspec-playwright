@@ -87,6 +87,14 @@ export interface EditorAdapter {
   registerInstructions?(projectRoot: string, instructions: string[]): void;
   /** Optional: secondary files written alongside commandFilePath (Cursor skill). */
   extraArtifacts?(meta: CommandMeta): ExtraArtifact[];
+  /**
+   * Optional: consent-gated secondary files (claude's vendored Playwright
+   * agents). Only written when `install` is true — the caller resolves
+   * consent (the `--agents` flag or the interactive confirm). Unlike
+   * extraArtifacts, these paths NEVER enter listCommandArtifactPaths, so
+   * they confer no configured status and no write authorization.
+   */
+  optionalArtifacts?(install: boolean): ExtraArtifact[];
 }
 
 /**
@@ -121,6 +129,7 @@ export interface EditorAdapterInit {
   removeMcp?: EditorAdapter["removeMcp"];
   registerInstructions?: EditorAdapter["registerInstructions"];
   extraArtifacts?: EditorAdapter["extraArtifacts"];
+  optionalArtifacts?: EditorAdapter["optionalArtifacts"];
 }
 
 const noop = () => {};
@@ -153,5 +162,6 @@ export function defineAdapter(init: EditorAdapterInit): EditorAdapter {
     removeMcp: init.removeMcp ?? noop,
     registerInstructions: init.registerInstructions,
     extraArtifacts: init.extraArtifacts,
+    optionalArtifacts: init.optionalArtifacts,
   };
 }

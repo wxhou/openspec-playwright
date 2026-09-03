@@ -17,7 +17,7 @@ BASE_URL: <from env or seed.spec.ts>
 - **Auth**: none / required (storageState: <path>)
 - **URL**: ${BASE_URL}<path>
 - **Ready signal**: <how to know page is loaded>
-- **Screenshot**: `__screenshots__/<path-slug>.png`
+- **Screenshot**: `tests/playwright/screenshots/<path-slug>.png`
 
 ### Interactive Elements (from real DOM)
 
@@ -46,11 +46,11 @@ BASE_URL: <from env or seed.spec.ts>
 | | | | | |
 | | | | | |
 
-> **Special element type legend**: `canvas-2d` | `canvas-webgl` | `iframe` | `shadow-dom` | `contenteditable` | `video` | `audio` | `datepicker` | `drag-drop` | `infinite-scroll` | `file-upload` | `captcha-image` | `captcha-slider` | `captcha-3d` | `recaptcha` | `hcaptcha` | `turnstile` | `otp-sms` | `otp-totp` | `websocket` | `sse`
+> **Special element type legend**: `canvas-2d` | `canvas-webgl` | `iframe` | `shadow-dom` | `contenteditable` | `video` | `audio` | `datepicker` | `drag-drop` | `infinite-scroll` | `file-upload` | `captcha-image` | `captcha-slider` | `captcha-3d` | `recaptcha` | `hcaptcha` | `turnstile` | `otp-email` | `otp-sms` | `totp` | `polling` | `websocket` | `sse`
 >
-> **AI-opaque strategy**: CAPTCHA/OTP/slider-CAPTCHA — see `templates/test-plan.md` → **AI-Opaque Elements**
+> **AI-opaque strategy**: CAPTCHA/OTP/slider-CAPTCHA — see `tests/playwright/test-plan.template.md` → **AI-Opaque Elements**
 >
-> **Test strategy**: See `templates/test-plan.md` → **Special Element Test Cases**
+> **Test strategy**: See `tests/playwright/test-plan.template.md` → **Special Element Test Cases**
 
 ## Exploration Failures
 

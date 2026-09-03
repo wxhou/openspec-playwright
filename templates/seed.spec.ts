@@ -68,7 +68,7 @@ test.describe('Application smoke tests', () => {
 // ──────────────────────────────────────────────
 
 test.describe('Environment validation', () => {
-  test('BASE_URL responds 200', async ({ page }) => {
+  test('BASE_URL responds without server error', async ({ page }) => {
     const res = await page.request.get(BASE_URL);
     expect(res.status(), `BASE_URL ${BASE_URL} returned ${res.status()}`).toBeLessThan(500);
   });
@@ -78,7 +78,7 @@ test.describe('Environment validation', () => {
     const authPath = 'playwright/.auth/user.json';
     if (!existsSync(authPath)) {
       throw new Error(
-        `Auth not configured. Run:\n  npx playwright test --project=setup\nThen re-run /opsx:e2e.`
+        `Auth not configured. Run:\n  npx playwright test --project=setup\nThen re-run the E2E workflow command (/opsx:e2e or /opsx-e2e depending on your editor).`
       );
     }
   });

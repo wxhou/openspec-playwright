@@ -9,11 +9,16 @@
  * (editors.ts re-exports the adapter modules in exactly that order;
  * tests/editors-tools.test.ts asserts it.)
  */
-import { mkdirSync, writeFileSync, existsSync } from "fs";
+import { mkdirSync, writeFileSync, existsSync, readFileSync } from "fs";
 import { dirname, resolve as pathResolve } from "path";
 import chalk from "chalk";
 import type { CommandMeta, EditorAdapter, EditorId } from "./types.js";
 import { buildCommandMeta } from "./types.js";
+import {
+  classifyAgentFile,
+  installedAgentsSnapshotDir,
+  readAgentsManifest,
+} from "./agents.js";
 
 // ─── Registry ────────────────────────────────────────────────────────────
 
@@ -81,6 +86,63 @@ export function listCommandArtifactPaths(
     paths.push(extra.relativePath);
   }
   return paths;
+}
+
+/**
+ * Relative paths of the adapter's consent-gated optional artifacts, empty
+ * unless `install` consent is granted. Deliberately separate from
+ * listCommandArtifactPaths — optional artifacts (vendored agents) confer no
+ * write authorization and no configured status.
+ */
+export function listOptionalArtifactPaths(
+  adapter: EditorAdapter,
+  install: boolean,
+): string[] {
+  if (!install) return [];
+  return (adapter.optionalArtifacts?.(true) ?? []).map((extra) => extra.relativePath);
+}
+
+/**
+ * Write the adapter's consent-gated optional artifacts (vendored agents).
+ * Ownership-aware: missing → write; tool-owned & current → no-op; tool-owned
+ * & stale (older snapshot) → refresh; user-owned → never overwritten, yellow
+ * notice instead. Consent is the caller's job — `install: true` runs writes.
+ */
+export function installOptionalArtifacts(
+  adapter: EditorAdapter,
+  projectRoot: string,
+  install: boolean,
+): void {
+  if (!install) return;
+  const extras = adapter.optionalArtifacts?.(true) ?? [];
+  if (extras.length === 0) return;
+  const manifest = readAgentsManifest(installedAgentsSnapshotDir());
+  for (const extra of extras) {
+    const absPath = pathResolve(projectRoot, extra.relativePath);
+    if (existsSync(absPath) && manifest) {
+      const state = classifyAgentFile(projectRoot, extra.relativePath, extra.contents, manifest);
+      if (state === "modified") {
+        console.log(
+          chalk.yellow(
+            `  ⚠ ${adapter.label}: ${extra.relativePath} differs from the bundled snapshot (manual edit or newer init-agents output) — left untouched`,
+          ),
+        );
+        continue;
+      }
+      if (readFileSync(absPath, "utf-8") === extra.contents) {
+        console.log(chalk.gray(`  - ${adapter.label}: ${extra.relativePath} already current`));
+        continue;
+      }
+    }
+    mkdirSync(dirname(absPath), { recursive: true });
+    writeFileSync(absPath, extra.contents);
+    console.log(chalk.green(`  ✓ ${adapter.label}: ${extra.relativePath}`));
+  }
+  console.log(
+    chalk.gray(
+      "  (official `playwright init-agents` claude-loop snapshot — provenance: templates/agents/SOURCE.md)",
+    ),
+  );
 }
 
 // ─── Install helpers ─────────────────────────────────────────────────────
