@@ -63,21 +63,15 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🔴 禁止将临时文件提交到版本控制；超 24h 的文件应在 commit 前删除
 
 ## 测试与验证策略
-- 触发条件：改 DOM/交互/跳转/异步渲染/样式/响应式，或路由守卫/权限/多角色可见性 → 必须浏览器验证；纯逻辑按测试策略取舍，不开浏览器
-- 🔴 截图不等于行为验证：涉及交互必须验证交互结果（点击后的状态/跳转/数据渲染），仅截图不算通过
-- 🟡 自检不留测试代码：构建新鲜度（跑旧包验证作废）、登录态真实性（禁止注入 token，必须真实登录态）、控制台/网络无错
-- 🟡 多角色场景：每个角色单独登录验证，一个账号不能代表所有角色
-- 🔴 有验证价值的浏览器路径写成 Playwright 测试；AI 临时打开浏览器「看着没问题」不算完成
-- 🔴 测试必须断言交互结果，\`toBeVisible\` 等存在性断言只能作辅助
-- 🟡 提交前实跑且通过才算完成；无法覆盖的路径（\`test.skip\`/\`test.fixme\`）必附理由
-- 🟡 稳定选择器（data-testid/role）；Healer 只消 flaky，不得掩盖断言失败
-- 🔴 含断言的临时脚本转正为对应层级的测试（浏览器→Playwright、服务→API 集成测试）或删除
-
+- 🟡 触发：改 DOM/交互/跳转/异步渲染/样式/响应式，或守卫/权限/多角色可见性 → 浏览器验证；纯逻辑按单测取舍，不开浏览器
 - 🟡 值得单测：业务核心计算/状态转换、含分支的纯函数、边界与错误处理路径、被多处复用的工具、修过 bug 的回归。不值得：纯透传、getter/装饰器/样板、类型系统已保证的行为、框架自带行为；模糊地带默认测，一个行为一组断言，不拆场景凑数
-- 🔴 验收标准点名的行为与业务核心逻辑必须被某层测试覆盖（单测或验收测试，一层即可，不重复堆）；不以本条为由跳过/删除既有测试
-- 🟡 分层反馈：单测秒级随手跑；验收测试提交前实跑，分钟级可接受
-- 🔴 后端/服务 → 对真实运行的服务发真实请求验证契约与端到端行为，不以全 mock 的单测链冒充验收，落成集成测试；前端/用户可见 → 浏览器验证 + Playwright 交付测试
-- 🟡 集成测试用真实数据/依赖；所有验收验证（集成 + 浏览器自检）期望锚定 spec 验收标准，不自定期望`;
+- 🔴 验收标准点名的行为与业务核心逻辑必须被某层测试覆盖（单测或验收测试，一层即可）；不以本条为由跳过/删除既有测试
+- 🔴 后端/服务 → 对真实运行的服务发真实请求验证契约与端到端行为，不以全 mock 的单测链冒充验收，落成集成测试（真实数据/依赖，遵守数据编撰节）
+- 🟡 所有验收期望锚定 spec/验收标准写「预期 X，实测 Y」（期望编造禁令见数据编撰节）
+- 🔴 截图 ≠ 行为验证：交互必须验证结果（点击后的状态/跳转/渲染），仅截图不算通过；断言只作辅助
+- 🟡 验证前核对加载的是本次产物（清缓存/停用 SW/核 hash）；权限类禁止注入 token，必须真实登录态，多角色各角色单独登录
+- 🔴 有验证价值的浏览器路径写成 Playwright 测试——临时开浏览器「看着没问题」不算完成，含断言的临时脚本转正为对应层级的测试（浏览器→Playwright、服务→API 集成测试）或删除
+- 🟡 无法覆盖的路径（\`test.skip\`/\`test.fixme\`）必附理由；稳定选择器（data-testid/role）；Healer 只消 flaky，不得掩盖断言失败`;
 
 const CLAUDE_MD_EN = `# Project Guidelines
 - Read \`openspec/config.yaml\` first (tech stack, structure, conventions, constraints, etc.); ignore if absent
@@ -144,21 +138,15 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🔴 Never commit temp files to version control; delete files older than 24h before commit
 
 ## Testing & Verification Strategy
-- Trigger: DOM/interaction/navigation/async-render/style/responsive changes OR route guards/permissions/multi-role visibility → must be browser-verified; pure logic → per testing strategy, no browser
-- 🔴 Screenshot ≠ behavior proof: interactions must verify the result (state change after click / navigation / data render); screenshot alone does not pass
-- 🟡 Self-check leaves no test code: verify build freshness (stale bundle invalidates), real login (no token injection), console/network clean
-- 🟡 Multi-role scenarios: each role logs in separately; one account cannot represent all roles
-- 🔴 Browser paths with verification value become Playwright tests; "looks fine in the browser" is not completion
-- 🔴 Tests must assert interaction results; existence assertions like \`toBeVisible\` are auxiliary only
-- 🟡 Run tests before committing and passing = done; uncovered paths (\`test.skip\`/\`test.fixme\`) must state a reason
-- 🟡 Stable selectors (data-testid/role); Healer only reduces flakiness, must not mask assertion failures
-- 🔴 Temporary scripts with assertions must be converted to tests at the matching layer (browser → Playwright, service → API integration tests) or deleted
-
-- 🟡 Worth unit-testing: core business computation/state transitions, pure functions with branches, boundary & error paths, widely reused utilities, bug-fix regressions. Not worth: pure pass-through, getters/decorators/boilerplate, behavior already guaranteed by the type system, framework built-ins; when ambiguous default to testing (cost of a miss > cost of an extra test), one behavior one assertion set — don't split scenarios to pad counts
-- 🔴 Behaviors named by acceptance criteria and core business logic must be covered by some test layer (unit OR acceptance — one is enough, no duplicate stacking); never use this rule to skip/delete existing tests
-- 🟡 Layered feedback: unit tests run instantly (seconds); acceptance tests run before commit (minutes are fine)
-- 🔴 Backend/service → real requests against a real running service to verify contract & end-to-end behavior; never pass off an all-mock unit chain as acceptance; lands as integration tests; frontend/user-visible → browser verification + delivered Playwright tests
-- 🟡 Integration tests use real data/dependencies; all acceptance verification (integration + browser self-check) anchors expectations to spec acceptance criteria, never self-defined`;
+- 🟡 Trigger: DOM/interaction/navigation/async-render/style/responsive changes OR guards/permissions/multi-role visibility → browser-verify; pure logic → per unit-test criteria, no browser
+- 🟡 Worth unit-testing: core business computation/state transitions, pure functions with branches, boundary & error paths, widely reused utilities, bug-fix regressions. Not worth: pass-through, getters/decorators/boilerplate, type-system-guaranteed behavior, framework built-ins; when ambiguous default to testing, one behavior one assertion set — don't split scenarios to pad counts
+- 🔴 Behaviors named by acceptance criteria and core business logic must be covered by some test layer (unit OR acceptance — one is enough); never use this rule to skip/delete existing tests
+- 🔴 Backend/service → real requests against a real running service to verify contract and end-to-end behavior; never pass off an all-mock unit chain as acceptance — lands as integration tests (real data/dependencies, per the Data Fabrication section)
+- 🟡 All acceptance expectations anchor to spec acceptance criteria ("expected X, got Y"); the no-fabricating-expectations rule lives in the Data Fabrication section
+- 🔴 Screenshot ≠ behavior proof: interactions must verify the result (state/navigation/render after click); screenshot alone does not pass; assertions serve only as auxiliary evidence
+- 🟡 Verify the tested build is the current one (stale bundle invalidates); permission checks need a real login state (no token injection); each role logs in separately
+- 🔴 Browser paths with verification value become Playwright tests — "looks fine in the browser" is not completion. Temporary scripts with assertions must be converted to tests at the matching layer (browser → Playwright, service → API integration) or deleted
+- 🟡 Uncovered paths (\`test.skip\`/\`test.fixme\`) must state a reason; stable selectors (data-testid/role); Healer only reduces flakiness, must not mask assertion failures`;
 
 function processInline(text) {
   // **bold** → <strong>

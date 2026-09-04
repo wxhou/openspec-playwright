@@ -4,7 +4,7 @@ import {
   readdirSync,
   readFileSync,
 } from "fs";
-import { join } from "path";
+import { join, sep as pathSep } from "path";
 import chalk from "chalk";
 import { SHARED_FILE_NAMES, TIMEOUT, needsShell, detectAppServer } from "../shared/index.js";
 
@@ -87,6 +87,10 @@ export async function audit() {
     }
   }
 
+  // 4c. Spec-anchor retire check: tests anchored to requirements that no
+  // longer exist in the main spec. Report-only — audit never deletes.
+  const anchorStats = auditSpecAnchors(projectRoot, testsDir, specFiles, results);
+
   // 5. Check for missing auth.setup when tests reference protected routes
   const needsAuth = specFiles.some((file) => {
     const content = readFileSync(file, "utf-8");
@@ -123,10 +127,16 @@ export async function audit() {
   }
 
   // 7. Output results
+  // Anchor-free info stats: visibility signal only, never counted as issues.
+  for (const line of anchorStats) {
+    console.log(chalk.gray(`  ℹ ${line}`));
+  }
   if (results.length === 0) {
-    console.log(
-      chalk.green("  ✅ No issues found. All tests look healthy.\n"),
-    );
+    if (anchorStats.length === 0) {
+      console.log(
+        chalk.green("  ✅ No issues found. All tests look healthy.\n"),
+      );
+    }
     return;
   }
 
@@ -173,6 +183,217 @@ export async function audit() {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+// ─── Spec anchors (check 4c) ───────────────────────────────────────────────
+// Anchor format: `// spec: <capability>#<requirement-title-verbatim>`. The
+// title is the exact `### Requirement:` text from the delta spec — no slug
+// conversion, so matching against a main spec is a plain `includes`.
+
+export interface SpecAnchor {
+  capability: string;
+  requirementTitle: string;
+  /** 0-based line index of the anchor comment (directly usable for adjacency). */
+  line: number;
+}
+
+const ANCHOR_RE = /^\/\/\s*spec:\s*([^#\n]+)#(.+)$/;
+
+/** Shared-file exclusion set (SHARED_FILE_NAMES) as a local Set for helpers. */
+const SHARED_FILES_LOCAL = new Set(SHARED_FILE_NAMES);
+
+/** Extract every `// spec: <cap>#<title>` line from a spec file's content. */
+export function extractSpecAnchors(content: string): SpecAnchor[] {
+  const anchors: SpecAnchor[] = [];
+  content.split("\n").forEach((line, idx) => {
+    const m = ANCHOR_RE.exec(line.trim());
+    if (m) {
+      anchors.push({
+        capability: m[1].trim(),
+        requirementTitle: m[2].trim(),
+        line: idx,
+      });
+    }
+  });
+  return anchors;
+}
+
+/**
+ * Indices of content lines that belong to a `test.fixme(...)` block. A fixme
+ * test is a declared "known-stale, kept on purpose" — anchor checks skip it
+ * (reporting it would be noise and push users toward deleting the anchor to
+ * silence the report). Line-level regex, same style as the flake scanner.
+ */
+export function extractFixmeLines(content: string): Set<number> {
+  const lines = content.split("\n");
+  const fixme = new Set<number>();
+  lines.forEach((line, idx) => {
+    if (/test\.fixme\s*\(/.test(line)) {
+      // The fixme title string ends the declaration; the test body spans
+      // until the matching close. Line-level approximation: the same line
+      // plus the block that follows until a line starting with `});` at the
+      // test's indentation. Cheap superset: mark the anchor candidates that
+      // lie within [line, next `});` line].
+      let end = idx;
+      for (let j = idx + 1; j < lines.length; j++) {
+        if (/^\s*\}\);/.test(lines[j])) {
+          end = j;
+          break;
+        }
+        if (j === lines.length - 1) end = j;
+      }
+      for (let k = idx; k <= end; k++) fixme.add(k);
+    }
+  });
+  return fixme;
+}
+
+/** Whether a `// spec:` anchor at line index `line` is exempt (inside a fixme block). */
+function anchorIsFixmeExempt(fixmeLines: Set<number>, line: number): boolean {
+  return fixmeLines.has(line);
+}
+
+interface AnchorAuditInput {
+  /** Project root containing `openspec/`. */
+  projectRoot: string;
+  /** tests/playwright directory. */
+  testsDir: string;
+  /** All collected .spec.ts files (absolute paths). */
+  specFiles: string[];
+}
+
+export interface AnchorAuditOutput {
+  /** Issue results to append to the main audit report. */
+  results: AuditResult[];
+  /** Per-directory info lines for anchor-free tests (never counted as issues). */
+  infoLines: string[];
+}
+
+/**
+ * Check 4c: report tests whose spec anchor points at a requirement that no
+ * longer exists in the main spec. Pure computation over injected reads so
+ * unit tests never need a real openspec tree — the fs-reading variant below
+ * wires this into audit().
+ */
+export function auditAnchorsCore(
+  input: AnchorAuditInput & {
+    readMainSpec: (capability: string) => string | null;
+    readArchivedDeltas: (capability: string) => Array<{ change: string; content: string }>;
+  },
+): AnchorAuditOutput {
+  const { testsDir, specFiles, readMainSpec, readArchivedDeltas } = input;
+  const results: AuditResult[] = [];
+  const unanchoredByDir = new Map<string, number>();
+  // POSIX-normalize paths so reports and dir derivation are identical on
+  // Windows (readdir/join yield backslashes there; relPath must stay /-cut).
+  const toRelPosix = (absPath: string) =>
+    absPath.replace(testsDir + pathSep, "").replaceAll(pathSep, "/");
+
+  const mainSpecCache = new Map<string, string | null>();
+  const getMainSpec = (cap: string): string | null => {
+    if (!mainSpecCache.has(cap)) mainSpecCache.set(cap, readMainSpec(cap));
+    return mainSpecCache.get(cap) ?? null;
+  };
+
+  for (const file of specFiles) {
+    const relPath = toRelPosix(file);
+    const fileName = relPath.split("/").pop() ?? "";
+    if (SHARED_FILES_LOCAL.has(fileName)) continue;
+
+    const content = readFileSync(file, "utf-8");
+    const lines = content.split("\n");
+    // Anchors carry their own line indices — duplicate anchor texts (same
+    // requirement, multiple tests) each keep their true position.
+    const anchors = extractSpecAnchors(content);
+    // Tests without an anchor on the line directly above them.
+    const testLines = lines
+      .map((l, idx) => ({ idx, isTest: /^\s*(test|await\s+test)\s*[\('"]/.test(l) }))
+      .filter((t) => t.isTest);
+    const fixmeLines = extractFixmeLines(content);
+
+    let unanchored = 0;
+    for (const t of testLines) {
+      const anchorAbove = anchors.find(
+        (a) => a.line === t.idx - 1 || a.line === t.idx - 2,
+      );
+      if (!anchorAbove) unanchored++;
+    }
+
+    if (unanchored > 0) {
+      const dir = relPath.includes("/")
+        ? relPath.slice(0, relPath.lastIndexOf("/"))
+        : relPath;
+      unanchoredByDir.set(dir, (unanchoredByDir.get(dir) ?? 0) + unanchored);
+    }
+
+    for (const anchor of anchors) {
+      if (anchor.line >= 0 && anchorIsFixmeExempt(fixmeLines, anchor.line)) continue;
+      const mainSpec = getMainSpec(anchor.capability);
+      if (mainSpec === null) {
+        results.push({
+          fileName: relPath,
+          issue: "Anchored to retired capability",
+          detail: `Anchor capability \`${anchor.capability}\` has no openspec/specs/ directory — renamed or removed? Verify before retiring the test.`,
+        });
+        continue;
+      }
+      if (!mainSpec.includes(anchor.requirementTitle)) {
+        const archived = readArchivedDeltas(anchor.capability);
+        const culprit = archived.find((d) =>
+          d.content.includes(`### Requirement: ${anchor.requirementTitle}`),
+        );
+        results.push({
+          fileName: relPath,
+          issue: "Anchored to removed requirement",
+          detail: culprit
+            ? `Requirement "${anchor.requirementTitle}" is gone from the main spec — removed by archived change \`${culprit.change}\`. Test is a retire candidate (delete, fixme with reason, or keep if the behavior lives on).`
+            : `Requirement "${anchor.requirementTitle}" is gone from the main spec. Test is a retire candidate (delete, fixme with reason, or keep if the behavior lives on).`,
+        });
+      }
+    }
+  }
+
+  const infoLines: string[] = [];
+  for (const [dir, count] of unanchoredByDir) {
+    infoLines.push(
+      `${dir}/ — ${count} test(s) without spec anchors (pre-anchors legacy or missing anchors)`,
+    );
+  }
+  return { results, infoLines };
+}
+
+/** fs-reading wiring of auditAnchorsCore for audit(). Report-only: no writes. */
+function auditSpecAnchors(
+  projectRoot: string,
+  testsDir: string,
+  specFiles: string[],
+  results: AuditResult[],
+): string[] {
+  const output = auditAnchorsCore({
+    projectRoot,
+    testsDir,
+    specFiles,
+    readMainSpec: (cap) => {
+      const specPath = join(projectRoot, "openspec", "specs", ...cap.split("/"), "spec.md");
+      if (!existsSync(specPath)) return null;
+      return readFileSync(specPath, "utf-8");
+    },
+    readArchivedDeltas: (cap) => {
+      const archiveDir = join(projectRoot, "openspec", "changes", "archive");
+      if (!existsSync(archiveDir)) return [];
+      const out: Array<{ change: string; content: string }> = [];
+      for (const entry of readdirSync(archiveDir, { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue;
+        const deltaPath = join(archiveDir, entry.name, "specs", ...cap.split("/"), "spec.md");
+        if (!existsSync(deltaPath)) continue;
+        out.push({ change: entry.name, content: readFileSync(deltaPath, "utf-8") });
+      }
+      return out;
+    },
+  });
+  results.push(...output.results);
+  return output.infoLines;
+}
+
 
 export async function getSitemapRoutes(projectRoot: string): Promise<{
   routes: string[];
