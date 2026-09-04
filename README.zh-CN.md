@@ -164,6 +164,26 @@ openspec-pw uninstall     # 移除项目中的集成
 
 ## 工作原理
 
+### Spec 锚与过时测试审计
+
+Generator 生成的每条测试上方带一行 **spec 锚** 注释：
+
+```typescript
+// spec: coupon#优惠券七天后过期
+test('coupon expires after 7 days', async ({ page }) => { ... });
+```
+
+锚的 `<capability>#<requirement>` 直接使用 delta spec 中 requirement 的**标题原文**（不做 slug 转换），`openspec-pw audit` 因此能用纯文本匹配对主 spec 核验。审计报告四态：
+
+| 状态 | 信号 | 含义 |
+|---|---|---|
+| 锚指向的 requirement 已不在主 spec | ⚠ issue，引证删除它的归档 change | 测试是候删项——删除 / `test.fixme` 附理由 / 行为仍存活则保留 |
+| 锚指向的 capability 目录缺失 | ⚠ issue（单独类别） | 大概率是 capability 改名——先核验再处置 |
+| 某 change 目录下有测试无锚 | ℹ 每目录一行 info | 锚机制之前的存量或漏写——仅可见性提示，不计入 issue 数 |
+| `test.fixme` 的测试 | 跳过 | fixme 即「已知过时、故意保留」的声明，报告它是噪音 |
+
+audit **只报告、绝不删除**——测试退役永远是人工决策。存量无锚测试不迁移，随新测试自然带锚而逐步退役。MCP 录制流（`generator_write_test`）产物按操作步骤切、天然无锚，模板 review 清单含补锚步骤。
+
 ```
 # 由 /opsx:e2e <change-name>（Claude Code）或 /opsx-e2e <change-name>（OpenCode/Cline/Cursor/Pi/Oh My Pi）触发
 /opsx:e2e <change-name>
