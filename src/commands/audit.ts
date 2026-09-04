@@ -4,7 +4,7 @@ import {
   readdirSync,
   readFileSync,
 } from "fs";
-import { join } from "path";
+import { join, sep as pathSep } from "path";
 import chalk from "chalk";
 import { SHARED_FILE_NAMES, TIMEOUT, needsShell, detectAppServer } from "../shared/index.js";
 
@@ -283,6 +283,10 @@ export function auditAnchorsCore(
   const { testsDir, specFiles, readMainSpec, readArchivedDeltas } = input;
   const results: AuditResult[] = [];
   const unanchoredByDir = new Map<string, number>();
+  // POSIX-normalize paths so reports and dir derivation are identical on
+  // Windows (readdir/join yield backslashes there; relPath must stay /-cut).
+  const toRelPosix = (absPath: string) =>
+    absPath.replace(testsDir + pathSep, "").replaceAll(pathSep, "/");
 
   const mainSpecCache = new Map<string, string | null>();
   const getMainSpec = (cap: string): string | null => {
@@ -291,7 +295,7 @@ export function auditAnchorsCore(
   };
 
   for (const file of specFiles) {
-    const relPath = file.replace(testsDir + "/", "");
+    const relPath = toRelPosix(file);
     const fileName = relPath.split("/").pop() ?? "";
     if (SHARED_FILES_LOCAL.has(fileName)) continue;
 
