@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+- **BREAKING fix(init): 首跑预选只看项目自身信号（`first-run-preselect-project-scope`）**. 0.3.82 引入的首跑预选混入机器域：home 里有 `~/.pi/agent/` / `~/.omp/agent/` 就预勾 Pi / Oh My Pi——实测场景（项目仅 `.claude/`，预勾 claude+pi+omp 三项）暴露「机器状态 ≠ 项目意图」。①首跑预选源改为**预选专用信号集**（marker 目录 ∪ 根意图文件），与非 TTY 回退严格分层——意图文件是 pre-select-only 信号，`projectSignal`/`detectProjectAdapters` 一字不动，仅根 `CLAUDE.md` 的项目在非 TTY 下零写入（架构师评审 C1 裁决：初稿「与非 TTY 同范围」为假命题）；②项目级信号补强（官方文档查证）：根 `CLAUDE.md` → claude、根 `.cursorrules`（legacy）→ cursor、根 `opencode.json(c)` → opencode——只建了根 CLAUDE.md 的项目首跑也能正确预勾（残余误报如实记录：Pi 也读根 CLAUDE.md）；③`Detected (pre-select):` 行改打预选集；全局安装未预选的编辑器打一行灰字提示（**仅首跑层**，清单层零噪音）。已初始化项目走清单层完全不受影响。
+  - 新增 `src/commands/editors/preselect.ts`；修改 `src/commands/init.ts`、`src/commands/editors.ts`；`tests/commands/init-preselect.test.ts`（+3 翻转/新增、:246 补无灰字断言）；`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
+
 ## [0.3.84] - 2026-09-03
 
 - **fix(templates): 修 `reuseExistingServer` 假绿风险（真实 E2E 冒烟实测发现）**. 临时项目实测时端口撞上机器上另一个项目的 vite preview（4173），seed 因生成 config 的 `reuseExistingServer: true` 复用了**外来服务器**而「通过」——正是 AGENTS.md §6 A-2「验证前核对加载的是本次产物」警告的假绿场景，任何端口冲突的真实用户都会踩。①生成 config 改 `reuseExistingServer: !process.env.CI`（Playwright 官方推荐：本地保留复用便利，CI 严格自启）；②e2e-command Step 4.1 加反假绿守卫：探索前核实页面属于你的应用（已知元素/title），不是同端口外来服务。本次冒烟同时完成深水验证：seed 4/4、explore 5/5、按模板规则手写 spec（Page Object + getByTestId + UI-first + fresh-context auth guard）3/3。

@@ -142,6 +142,9 @@ export {
   agentsFileHasMarkers,
 } from "./editors/configured.js";
 
+// Pre-select-only intent-file signals (first-run tier; never authorize writes)
+export { intentFileEditors } from "./editors/preselect.js";
+
 // Project rules file management (AGENTS.md SSOT + CLAUDE.md wrapper)
 export {
   readOpenSpecBlock,

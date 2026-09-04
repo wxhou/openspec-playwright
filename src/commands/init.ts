@@ -17,6 +17,7 @@ import {
   readEmployeeStandards,
   resolveToolsArg,
   slashCommandForAdapter,
+  intentFileEditors,
   enumerateAdapterArtifacts,
   enumerateVendoredAgents,
   installedAgentsSnapshotDir,
@@ -171,11 +172,18 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   const hasAnyState =
     configuredIds.size > 0 || agentsFileHasMarkers(projectRoot);
   // Two-tier pre-select: artifact-manifest tier pre-checks only configured
-  // editors; the first-run bypass (zero openspec-pw state) pre-checks every
-  // detected editor, preserving the old fresh-project experience.
+  // editors; the first-run bypass (zero openspec-pw state) pre-checks the
+  // pre-select signal set — project marker dirs plus root intent files.
+  // Machine state (global home dirs) never pre-checks an editor.
+  const preselectHintIds = [
+    ...new Set<EditorId>([
+      ...projectDetected.map((a) => a.id),
+      ...intentFileEditors(projectRoot),
+    ]),
+  ];
   const preselectedIds = hasAnyState
     ? configuredIds
-    : new Set(detected.map((a) => a.id));
+    : new Set(preselectHintIds);
 
   // With --tools the user has already expressed intent, so stay silent: the
   // line would be misread as the install set.
@@ -192,12 +200,26 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
       );
     } else {
       console.log(
-        detected.length > 0
+        preselectHintIds.length > 0
           ? chalk.gray(
-              `  Detected (pre-select): ${detected.map((a) => a.label).join(", ")}`,
+              `  Detected (pre-select): ${preselectHintIds
+                .map((id) => getAdapter(id)?.label ?? id)
+                .join(", ")}`,
             )
           : chalk.gray("  Detected: none"),
       );
+      // First-run tier only: editors installed on this machine (global home
+      // dirs) but not pre-selected — the user can still check them.
+      const globalOnly = detected.filter((a) => !preselectHintIds.includes(a.id));
+      if (globalOnly.length > 0) {
+        console.log(
+          chalk.gray(
+            `  Globally detected, not pre-selected: ${globalOnly
+              .map((a) => a.label)
+              .join(", ")} — check to include`,
+          ),
+        );
+      }
     }
   }
 

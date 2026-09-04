@@ -120,7 +120,7 @@ openspec-pw init --tools none            # 不配置编辑器，只生成脚手�
 
 受支持 id：`claude`、`opencode`、`cline`、`cursor`、`pi`、`omp`（`oh-my-pi` 是 `omp` 的别名）。id 大小写不敏感、重复自动去重、`all`/`none` 不能与具体 id 混用。被 `--tools` 指定的编辑器即使未被检测到也会配置（会自动创建其配置目录）。
 
-未提供 `--tools` 时：TTY 终端弹出交互式多选。**预选读取 openspec-pw 配置清单，而非目录存在性**：实际拥有 openspec-pw 产物（命令文件、MCP 条目、claude legacy 技能目录）的编辑器被预勾选并标注 `(configured)`。项目完全没有任何 openspec-pw 状态时（首次运行）回退为预选全部 `detect()` 命中项——marker 目录与 Pi / Oh My Pi 的全局 `~/.pi/agent/`、`~/.omp/agent/`——不带标签。一旦配置过任何编辑器，撑着目录存在性的外部文件（官方 `openspec` CLI 自己的 `opsx-*` 文件、你自己的配置、全局目录）就不再影响预选。`--tools` 与 `--no-mcp` 正交：前者选择*哪些*编辑器，后者决定*是否*为它们安装 Playwright MCP。
+未提供 `--tools` 时：TTY 终端弹出交互式多选。**预选读取 openspec-pw 配置清单，而非目录存在性**：实际拥有 openspec-pw 产物（命令文件、MCP 条目、claude legacy 技能目录）的编辑器被预勾选并标注 `(configured)`。项目完全没有任何 openspec-pw 状态时（首次运行）预选**仅看项目自身信号**——marker 目录加根目录意图文件（根 `CLAUDE.md` → claude、根 `.cursorrules` → cursor、根 `opencode.json(c)` → opencode）；机器上装有但项目未用的编辑器（如经全局 `~/.pi/agent/`、`~/.omp/agent/` 检测到的 Pi / Oh My Pi）**列出但不勾选**，并有一行灰字提示。一旦配置过任何编辑器，撑着目录存在性的外部文件（官方 `openspec` CLI 自己的 `opsx-*` 文件、你自己的配置、全局目录）就不再影响预选。`--tools` 与 `--no-mcp` 正交：前者选择*哪些*编辑器，后者决定*是否*为它们安装 Playwright MCP。
 
 init 打印两种输出信号：预选提示行（仅未传 `--tools` 时出现）——有 openspec-pw 状态的项目是 `Configured (pre-select):`，首次运行回退则是 `Detected (pre-select):`——**不是**实际安装集；`Selected editors:` 行（总是打印，位于任何编辑器配置之前）才是实际安装集。判断装了什么，看 `Selected editors`。
 
