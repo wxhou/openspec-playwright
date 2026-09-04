@@ -159,28 +159,137 @@ describe("init pre-select: artifact manifest tier", () => {
     expect(names).not.toContain("Cursor (configured)");
   });
 
-  it("first-run bypass: zero openspec-pw state → all detected pre-selected, no suffix", async () => {
-    // Foreign content only — official CLI files + marker dirs, zero products
+  it("first-run bypass: zero openspec-pw state → project-level detected pre-selected, no suffix", async () => {
+    // Project marker dirs only; empty injected home so global pi/omp stay silent
+    const home = mkdtempSync(join(tmpdir(), "ospw-preselect-home-"));
     mkdirSync(join(tmpRoot, ".claude"), { recursive: true });
     mkdirSync(join(tmpRoot, ".cursor"), { recursive: true });
 
     let preselected: string[] = [];
     let names: string[] = [];
-    await init(
-      { mcp: false },
-      {
-        isTTY: true,
-        prompt: async (allEditors, pre, configured) => {
-          preselected = [...pre];
-          names = allEditors.map((a) => (configured.has(a.id) ? "(configured)" : ""));
-          return ["claude"];
+    try {
+      await init(
+        { mcp: false },
+        {
+          isTTY: true,
+          homeDir: home,
+          prompt: async (allEditors, pre, configured) => {
+            preselected = [...pre];
+            names = allEditors.map((a) => (configured.has(a.id) ? "(configured)" : ""));
+            return ["claude"];
+          },
+          confirm: async () => true,
         },
-        confirm: async () => true,
-      },
-    );
+      );
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
 
-    expect(preselected.length).toBeGreaterThan(1); // claude + cursor at least
+    expect(preselected).toEqual(["claude", "cursor"]);
     expect(names.every((n) => n === "")).toBe(true); // no (configured) suffix in bypass tier
+  });
+
+  it("first-run: globally-installed editors are listed unchecked with a hint", async () => {
+    // Machine has ~/.pi/agent + ~/.omp/agent; project has only .claude/ →
+    // pre-select is claude only; pi/omp listed unchecked with the gray hint.
+    const home = mkdtempSync(join(tmpdir(), "ospw-preselect-home-"));
+    mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+    mkdirSync(join(home, ".omp", "agent"), { recursive: true });
+    mkdirSync(join(tmpRoot, ".claude"), { recursive: true });
+
+    const logs: string[] = [];
+    const logSpy = vi.spyOn(console, "log").mockImplementation((...args: unknown[]) => {
+      logs.push(args.join(" "));
+    });
+    try {
+      let preselected: string[] = [];
+      await init(
+        { mcp: false },
+        {
+          isTTY: true,
+          homeDir: home,
+          prompt: async (_a, pre) => {
+            preselected = [...pre];
+            return ["claude"];
+          },
+          confirm: async () => true,
+        },
+      );
+      expect(preselected).toEqual(["claude"]);
+      const gray = logs.filter((l) => l.includes("Globally detected, not pre-selected"));
+      expect(gray).toHaveLength(1);
+      expect(gray[0]).toContain("pi, omp");
+    } finally {
+      logSpy.mockRestore();
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  it("first-run: root CLAUDE.md alone pre-checks claude (intent-file signal)", async () => {
+    const home = mkdtempSync(join(tmpdir(), "ospw-preselect-home-"));
+    writeFileSync(join(tmpRoot, "CLAUDE.md"), "# project memory");
+
+    try {
+      let preselected: string[] = [];
+      await init(
+        { mcp: false },
+        {
+          isTTY: true,
+          homeDir: home,
+          prompt: async (_a, pre) => {
+            preselected = [...pre];
+            return ["claude"];
+          },
+          confirm: async () => true,
+        },
+      );
+      expect(preselected).toContain("claude");
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  it("first-run: cursor and opencode intent files pre-check their editors", async () => {
+    const home = mkdtempSync(join(tmpdir(), "ospw-preselect-home-"));
+    const cases: Array<[string, string, string]> = [
+      [".cursorrules", "cursor", "legacy cursor rules"],
+      ["opencode.json", "opencode", "opencode config"],
+      ["opencode.jsonc", "opencode", "opencode jsonc config"],
+    ];
+    try {
+      for (const [file, editorId, label] of cases) {
+        rmSync(tmpRoot, { recursive: true, force: true });
+        mkdirSync(join(tmpRoot, "openspec"), { recursive: true });
+        writeFileSync(join(tmpRoot, file), `# ${label}`);
+        let preselected: string[] = [];
+        await init(
+          { mcp: false },
+          {
+            isTTY: true,
+            homeDir: home,
+            prompt: async (_a, pre) => {
+              preselected = [...pre];
+              return ["claude"];
+            },
+            confirm: async () => true,
+          },
+        );
+        expect(preselected, `${file} should pre-check ${editorId}`).toContain(editorId);
+        expect(preselected).not.toContain("claude"); // no other intent file present
+      }
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  it("intent files are pre-select-only: non-TTY with only root CLAUDE.md configures nothing", async () => {
+    writeFileSync(join(tmpRoot, "CLAUDE.md"), "# project memory");
+
+    await expect(
+      init({ mcp: false }, { isTTY: false }),
+    ).rejects.toThrow(/--tools/);
+    // No editor received anything: no command file, no project rules write.
+    expect(existsSync(join(tmpRoot, ".claude", "commands", "opsx", "e2e.md"))).toBe(false);
   });
 
   it("stateful project prints 'Configured (pre-select): <ids>'", async () => {
@@ -254,6 +363,10 @@ describe("init pre-select: artifact manifest tier", () => {
 
     try {
       let preselected: string[] = [];
+      const logs: string[] = [];
+      const logSpy = vi.spyOn(console, "log").mockImplementation((...args: unknown[]) => {
+        logs.push(args.join(" "));
+      });
       await init(
         { mcp: false },
         {
@@ -266,8 +379,11 @@ describe("init pre-select: artifact manifest tier", () => {
           confirm: async () => true,
         },
       );
+      logSpy.mockRestore();
       expect(preselected).not.toContain("pi");
       expect(preselected).toContain("claude");
+      // Manifest tier never prints the global hint (first-run tier only).
+      expect(logs.some((l) => l.includes("Globally detected, not pre-selected"))).toBe(false);
     } finally {
       rmSync(home, { recursive: true, force: true });
     }

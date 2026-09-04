@@ -40,6 +40,8 @@ export { OPENSPEC_PW_MCP_SERVERS, CLAUDE_LEGACY_SKILL_REL, enumerateAdapterArtif
 export { VENDORED_AGENT_ROLES, vendoredAgentRelPath, vendoredAgentRelPaths, installedAgentsSnapshotDir, readAgentsManifest, loadAgentSnapshots, sha256Contents, roleForRelPath, classifyAgentFile, enumerateVendoredAgents, syncVendoredAgents, } from "./editors/agents.js";
 // Config-state predicates (init pre-select manifest)
 export { isEditorConfigured, anyEditorConfigured, agentsFileHasMarkers, } from "./editors/configured.js";
+// Pre-select-only intent-file signals (first-run tier; never authorize writes)
+export { intentFileEditors } from "./editors/preselect.js";
 // Project rules file management (AGENTS.md SSOT + CLAUDE.md wrapper)
 export { readOpenSpecBlock, blockMatchesExpected, installOpenSpecBlock, claudeWrapperStandardsContent, installClaudeWrapper, installProjectRules, migrateLegacyMarkers, cleanProjectRules, removeMarkersFromFile, readEmployeeStandards, } from "./editors/project-rules.js";
 //# sourceMappingURL=editors.js.map

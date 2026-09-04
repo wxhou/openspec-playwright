@@ -105,9 +105,12 @@ The pre-select reads the **openspec-pw configuration manifest, not
 directory presence**: editors that carry openspec-pw products (command
 files, MCP entries, claude's legacy skill dir) are pre-checked and labeled
 `(configured)`. A project with no openspec-pw state at all (first run)
-falls back to pre-checking everything `detect()` found — marker dirs, and
-Pi/Oh My Pi's global `~/.pi/agent/` / `~/.omp/agent/` — with no labels.
-Once anything is configured, foreign files that keep an editor's directory
+pre-checks **project-level signals only** — marker dirs plus root
+intent files (root `CLAUDE.md` → claude, root `.cursorrules` → cursor,
+root `opencode.json(c)` → opencode). Editors installed on your machine but
+not used by the project (e.g. Pi / Oh My Pi detected via the global
+`~/.pi/agent/` / `~/.omp/agent/` home dirs) are **listed unchecked** with a
+gray hint line. Once anything is configured, foreign files that keep an editor's directory
 alive (the official `openspec` CLI's own `opsx-*` files, your own
 settings, global home dirs) no longer influence the pre-select.
 `--tools` is documented as orthogonal to `--no-mcp`: the former picks
