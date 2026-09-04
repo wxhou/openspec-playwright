@@ -5,8 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
+## [0.3.86] - 2026-09-04
 - **feat(audit): spec 锚 + 锚差集审计——静默过时测试的确定性检测（`spec-anchors-audit`）**. 「测试测的是已删除的 spec requirement 却一直绿」此前零检测手段（audit 只查根级旧文件/sitemap；coverage 测量集只含活跃 change）。本变更建立追溯链：①e2e 命令模板 Generator 段（Spec idempotency 内）要求每条 test() 上方一行 `// spec: <capability>#<requirement 标题原文>` 锚——标题原文不 slug 化，差集匹配是纯文本 includes，零转换层；MCP 录制流 review 清单补锚（录制产物按步骤切、天然无锚）；锚句寄住 idempotency 段，随既有 subagent 委托清单自动携带（委托清单零改动）。②`audit` 新增检查 4c 四态报告：锚指向已删 requirement → ⚠ 引证删除它的归档 change（grep archive/*/specs REMOVED）；capability 目录缺失 → ⚠ 单独类别（改名误报供人工辨别）；目录级无锚测试 → 一行 info（不计入 issue 数，把漏写锚从永久静默变为周期可见）；`test.fixme` 跳过（挂账即声明，报告是噪音且会把用户推向删锚逃避）。audit 只报告不删除——退役永远人工决策；存量无锚测试不迁移，自然退役。四态经 thinking 评估修正：缺锚 info、标题原文格式、fixme 豁免、录制流补锚均为漏洞修补而非范围膨胀。
   - `templates/e2e-command.md`（Spec idempotency 锚句 + MCP recording flow review 补锚）、`src/commands/audit.ts`（`extractSpecAnchors`/`extractFixmeLines`/`auditAnchorsCore` 纯函数层 + 检查 4c）、`tests/commands/audit.anchors.test.ts`（新，8 用例四态）、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
 
