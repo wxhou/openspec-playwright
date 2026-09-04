@@ -5,8 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
+## [0.3.85] - 2026-09-04
 - **BREAKING fix(init): 首跑预选只看项目自身信号（`first-run-preselect-project-scope`）**. 0.3.82 引入的首跑预选混入机器域：home 里有 `~/.pi/agent/` / `~/.omp/agent/` 就预勾 Pi / Oh My Pi——实测场景（项目仅 `.claude/`，预勾 claude+pi+omp 三项）暴露「机器状态 ≠ 项目意图」。①首跑预选源改为**预选专用信号集**（marker 目录 ∪ 根意图文件），与非 TTY 回退严格分层——意图文件是 pre-select-only 信号，`projectSignal`/`detectProjectAdapters` 一字不动，仅根 `CLAUDE.md` 的项目在非 TTY 下零写入（架构师评审 C1 裁决：初稿「与非 TTY 同范围」为假命题）；②项目级信号补强（官方文档查证）：根 `CLAUDE.md` → claude、根 `.cursorrules`（legacy）→ cursor、根 `opencode.json(c)` → opencode——只建了根 CLAUDE.md 的项目首跑也能正确预勾（残余误报如实记录：Pi 也读根 CLAUDE.md）；③`Detected (pre-select):` 行改打预选集；全局安装未预选的编辑器打一行灰字提示（**仅首跑层**，清单层零噪音）。已初始化项目走清单层完全不受影响。
   - 新增 `src/commands/editors/preselect.ts`；修改 `src/commands/init.ts`、`src/commands/editors.ts`；`tests/commands/init-preselect.test.ts`（+3 翻转/新增、:246 补无灰字断言）；`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
 
