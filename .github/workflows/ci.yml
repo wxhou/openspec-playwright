@@ -43,7 +43,14 @@ jobs:
       - name: Build
         run: npm run build
 
+      # npm audit calls the registry's security endpoint, which has been
+      # flaky (400/503) and is not a code-quality gate — a registry outage
+      # must not fail CI. Runs once on a single matrix leg (the dependency
+      # tree is OS-independent) to cut external-call exposure 4x; findings
+      # show as a yellow step, real highs get fixed via dependabot/PRs.
       - name: Audit dependencies
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '22'
+        continue-on-error: true
         run: npm audit --audit-level=high
 
       - name: Check file size limits
