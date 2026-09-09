@@ -28,7 +28,7 @@ const ZH_ANCHORS: [string, string][] = [
   ["§6 临时脚本转正", "转正为对应层级的测试"],
   ["§6 单测取舍", "模糊地带默认测"],
   ["§6 覆盖义务", "必须被某层测试覆盖"],
-  ["§6 验收定义", "不以全 mock 的单测链冒充验收"],
+  ["§6 验收定义", "对真实运行的服务发真实请求"],
 ];
 
 const EN_ANCHORS: [string, string][] = [
@@ -41,7 +41,7 @@ const EN_ANCHORS: [string, string][] = [
   ["§6 temp scripts", "Temporary scripts with assertions"],
   ["§1 selection chain", "priority chain"],
   ["§6 coverage duty", "must be covered by some test layer"],
-  ["§6 acceptance definition", "all-mock unit chain as acceptance"],
+  ["§6 acceptance definition", "real requests against a real running service"],
 ];
 
 describe("docs/script.js embedded standards stay in sync", () => {
