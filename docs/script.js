@@ -8,9 +8,9 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🟡 不隐藏任何 gate 失败结果——lint / typecheck / test 任一失败时，完整输出错误日志并停止，不继续后续步骤
 - ⚪ 未执行的检查步骤明确标注「未运行」，不暗示已通过
 - 🟡 需求理解不清或存在可见风险时，先停下来提问，不直接执行。偏离标准实践需说明理由
-- 🟡 动手前列假设 → 逐条验证。有不清→停下来，说出困惑，再提问。多解释则全列，更简单方案则提出并坚持
+- 🟡 动手前列假设 → 逐条验证。需求不清或有风险 → 停下来提问。多解释则全列，更简单方案则提出并坚持
 - 🟡 多步任务先列计划（\`1. [Step] → verify: [check]\`），循环验证直到成功。lint 失败时优先运行对应语言的 auto-fix（如 \`npm run lint:fix\` / \`ruff format .\` / \`go fmt ./...\`）
-- 🟡 只写被要求的：不加"灵活"/"可配置"/单次使用抽象。200行能50行则重写
+- 🟡 只写被要求的：不加"灵活"/"可配置"/单次使用抽象，不为想象中的场景写防御。200行能50行则重写
 - 🔴 过时的直接删：删除/修改时不留兼容层、不写迁移、不留 fallback
 - 🔴 方案选型按优先级链：项目已有依赖 → 成熟有人维护的库 → 自己实现；同类问题先用成熟产品验证过的模式解决
 - 🟡 精准改动：只改必要的，改完清理自己造成的垃圾。匹配现有风格
@@ -18,17 +18,16 @@ const CLAUDE_MD_ZH = `# 项目规范
 - ⚪ 重构前清理未使用的 import/export/prop/console.log 等，单独提交再做重构
 
 ## 禁止非通用性改动
-- 不写只适配特定输入值的逻辑 → 上游格式变化即失效
+- 不写只适配特定输入值的逻辑
 - 不假设外部数据有效 → 校验类型/范围/null，处理空/异常/边界值，防 NPE 和注入
-- 不假设异步/外部操作一定成功 → 网络/磁盘/下游随时可能失败
+- 不假设异步/外部操作一定成功
 - 不假设响应结构一定如预期 → 先校验再访问深层属性
 - 不假设精度/范围安全 → 计算前确认安全范围
 - 不假设资源自动释放 → 文件/连接/cursor 用后必须释放
 - 不写魔法数字 → 用常量或枚举并注释原因
-- 不断言具体值（除非明确要求）→ 脆性断言，换环境即碎
+- 不断言具体值（除非明确要求）→ 脆性断言
 - linter/typechecker 不存在 → 告知用户并建议安装
 - mock 数据/fixture → 参见数据编撰禁令
-- 涉及 API 定义 → 查阅真实 OpenAPI/MCP 定义并标注来源
 
 ## 工具限制
 - 🔴 发现自己正在重复生成相同调用 → 立即停止，重新评估
@@ -51,7 +50,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 ## 数据编撰
 - 🔴 严禁主动编撰任何数据填充代码，除非用户明确同意
 - 编撰示例：mock 用户/邮箱/手机号、编造测试期望值、凭空出现配置默认值、假装存在的接口/字段/枚举值
-- 不编造 URL/路径 → 引用真实来源，勿凭印象编造 endpoint/path/字段名
+- 不编造 URL/路径/字段名 → 引用真实来源
 - 遇需数据的代码位必须显式询问用户
 - 用户同意占位 → \`TODO(user)\` 标注并附问询上下文
 - 用户提供数据 → 使用真实数据
@@ -64,9 +63,9 @@ const CLAUDE_MD_ZH = `# 项目规范
 
 ## 测试与验证策略
 - 🟡 触发：改 DOM/交互/跳转/异步渲染/样式/响应式，或守卫/权限/多角色可见性 → 浏览器验证；纯逻辑按单测取舍，不开浏览器
-- 🟡 值得单测：业务核心计算/状态转换、含分支的纯函数、边界与错误处理路径、被多处复用的工具、修过 bug 的回归。不值得：纯透传、getter/装饰器/样板、类型系统已保证的行为、框架自带行为；模糊地带默认测，一个行为一组断言，不拆场景凑数
+- 🟡 值得单测：业务核心计算/状态转换、含分支的纯函数、边界与错误处理路径、被多处复用的工具、修过 bug 的回归。不值得：纯透传、getter/装饰器/样板、类型系统已保证的行为、框架自带行为；模糊地带默认测，一个行为一组断言
 - 🔴 验收标准点名的行为与业务核心逻辑必须被某层测试覆盖（单测或验收测试，一层即可）；不以本条为由跳过/删除既有测试
-- 🔴 后端/服务 → 对真实运行的服务发真实请求验证契约与端到端行为，不以全 mock 的单测链冒充验收，落成集成测试（真实数据/依赖，遵守数据编撰节）
+- 🔴 后端/服务 → 对真实运行的服务发真实请求验证契约与端到端行为，落成集成测试（真实数据/依赖，遵守数据编撰节）
 - 🟡 所有验收期望锚定 spec/验收标准写「预期 X，实测 Y」（期望编造禁令见数据编撰节）
 - 🔴 截图 ≠ 行为验证：交互必须验证结果（点击后的状态/跳转/渲染），仅截图不算通过；断言只作辅助
 - 🟡 验证前核对加载的是本次产物（清缓存/停用 SW/核 hash）；权限类禁止注入 token，必须真实登录态，多角色各角色单独登录
@@ -83,9 +82,9 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🟡 Never hide gate failures — when lint, typecheck, or test fails, output the full error log and stop. Do not proceed to subsequent steps.
 - ⚪ Unexecuted verification steps must be explicitly marked "not run", never implied as passed
 - 🟡 When requirements are unclear or risks are visible, pause and ask before executing. Deviations from standard practice must be justified.
-- 🟡 List assumptions before coding → verify each one. If unclear → stop, express confusion, then ask. Present all interpretations; suggest simpler approaches and insist
+- 🟡 List assumptions before coding → verify each one. If unclear → stop and ask. Present all interpretations; suggest simpler approaches and insist
 - 🟡 Multi-step tasks: plan first (\`1. [Step] → verify: [check]\`), loop until verified. On lint failure, run the language's auto-fix first (e.g. \`npm run lint:fix\` / \`ruff format .\` / \`go fmt ./...\`)
-- 🟡 Write only what's requested: No flexibility/configurability/single-use abstractions. Rewrite if 200 lines can be 50
+- 🟡 Write only what's requested: No flexibility/configurability/single-use abstractions, no defensive code for imagined scenarios. Rewrite if 200 lines can be 50
 - 🔴 Delete obsolete code outright: no compat layers, migrations, or fallbacks when removing/editing
 - 🔴 Solution selection follows the priority chain: existing project deps → mature maintained libraries → write it yourself; solve similar problems with proven patterns first
 - 🟡 Surgical changes: Touch only what's needed, clean up your own mess. Match existing style
@@ -93,17 +92,16 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - ⚪ Before refactoring, clean unused imports/exports/props/console.log etc. in a separate commit
 
 ## No Non-Generic Changes
-- Don't write logic that only fits specific input values → breaks when upstream format changes
+- Don't write logic that only fits specific input values
 - Don't assume external data is valid → validate type/range/null, handle empty/edge/boundary values, prevent NPE and injection
-- Don't assume async/external ops always succeed → network/disk/downstream may fail anytime
+- Don't assume async/external ops always succeed
 - Don't assume response structure stays as expected → validate before accessing deep properties
 - Don't assume precision/range safety → verify range before computation
 - Don't assume resources auto-release → files/connections/cursors must be released
 - No magic numbers → use constants or enums with comments
-- Don't assert specific values (unless explicitly requested) → brittle, breaks across environments
+- Don't assert specific values (unless explicitly requested) → brittle
 - If linter/typechecker missing → tell user and suggest installing
 - Mock data / fixtures → see Data Fabrication section below
-- API definitions → consult real OpenAPI/MCP definitions and cite sources
 
 ## Tool Constraints
 - 🔴 If you catch yourself generating the same call repeatedly → stop immediately, re-evaluate
@@ -126,7 +124,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 ## Data Fabrication
 - 🔴 Never fabricate any data to fill code without explicit user consent
 - Examples: mock users/emails/phone numbers, fabricated test expectations, imaginary config defaults, pretended APIs/fields/enum values
-- Don't fabricate URLs/paths → cite real sources, don't guess endpoints/paths/field names
+- Don't fabricate URLs/paths/field names → cite real sources
 - When data is needed → ask user explicitly
 - User agrees → mark with \`TODO(user)\` and attach context
 - User provides data → use real data
@@ -139,12 +137,12 @@ const CLAUDE_MD_EN = `# Project Guidelines
 
 ## Testing & Verification Strategy
 - 🟡 Trigger: DOM/interaction/navigation/async-render/style/responsive changes OR guards/permissions/multi-role visibility → browser-verify; pure logic → per unit-test criteria, no browser
-- 🟡 Worth unit-testing: core business computation/state transitions, pure functions with branches, boundary & error paths, widely reused utilities, bug-fix regressions. Not worth: pass-through, getters/decorators/boilerplate, type-system-guaranteed behavior, framework built-ins; when ambiguous default to testing, one behavior one assertion set — don't split scenarios to pad counts
+- 🟡 Worth unit-testing: core business computation/state transitions, pure functions with branches, boundary & error paths, widely reused utilities, bug-fix regressions. Not worth: pass-through, getters/decorators/boilerplate, type-system-guaranteed behavior, framework built-ins; when ambiguous default to testing, one behavior one assertion set
 - 🔴 Behaviors named by acceptance criteria and core business logic must be covered by some test layer (unit OR acceptance — one is enough); never use this rule to skip/delete existing tests
-- 🔴 Backend/service → real requests against a real running service to verify contract and end-to-end behavior; never pass off an all-mock unit chain as acceptance — lands as integration tests (real data/dependencies, per the Data Fabrication section)
+- 🔴 Backend/service → real requests against a real running service to verify contract and end-to-end behavior — lands as integration tests (real data/dependencies, per the Data Fabrication section)
 - 🟡 All acceptance expectations anchor to spec acceptance criteria ("expected X, got Y"); the no-fabricating-expectations rule lives in the Data Fabrication section
 - 🔴 Screenshot ≠ behavior proof: interactions must verify the result (state/navigation/render after click); screenshot alone does not pass; assertions serve only as auxiliary evidence
-- 🟡 Verify the tested build is the current one (stale bundle invalidates); permission checks need a real login state (no token injection); each role logs in separately
+- 🟡 Verify the tested build is the current one; permission checks need a real login state (no token injection); each role logs in separately
 - 🔴 Browser paths with verification value become Playwright tests — "looks fine in the browser" is not completion. Temporary scripts with assertions must be converted to tests at the matching layer (browser → Playwright, service → API integration) or deleted
 - 🟡 Uncovered paths (\`test.skip\`/\`test.fixme\`) must state a reason; stable selectors (data-testid/role); Healer only reduces flakiness, must not mask assertion failures`;
 
