@@ -27,6 +27,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 不假设资源自动释放 → 文件/连接/cursor 用后必须释放
 - 不写魔法数字 → 用常量或枚举并注释原因
 - 不断言具体值（除非明确要求）→ 脆性断言
+- 不假设平台路径分隔符与换行格式 → 用语言内建跨平台 API（\`path.sep\`/\`path.join\`），比较前归一化 EOL
 - linter/typechecker 不存在 → 告知用户并建议安装
 - mock 数据/fixture → 参见数据编撰禁令
 
@@ -56,7 +57,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 用户同意占位 → \`TODO(user)\` 标注并附问询上下文
 - 用户提供数据 → 使用真实数据
 - 用户拒绝 → 用 stub/throw/null 显式失败，禁止静默编造
-- 无论前后端一体还是纯前端，存在 OpenAPI/接口文档 → 查阅真实定义并标注来源（如 \`// 来源: docs/api/openapi.yaml#/paths/...\`）
+- 存在 OpenAPI/接口文档 → 查阅真实定义并标注来源（如 \`// 来源: docs/api/openapi.yaml#/paths/...\`）
 
 ## 临时文件管理
 - 🟡 非源码临时文件（截图、日志、heapdump 等）放项目根 \`tmp/\` 下，文件名含时间戳（如 \`screenshot-20260721T143000.png\`）
@@ -100,6 +101,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - Don't assume resources auto-release → files/connections/cursors must be released
 - No magic numbers → use constants or enums with comments
 - Don't assert specific values (unless explicitly requested) → brittle
+- Don't assume platform path separators or newline formats → use the language's built-in cross-platform APIs (\`path.sep\`/\`path.join\`), normalize EOL before comparing
 - If linter/typechecker missing → tell user and suggest installing
 - Mock data / fixtures → see Data Fabrication section below
 
@@ -129,7 +131,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - User agrees → mark with \`TODO(user)\` and attach context
 - User provides data → use real data
 - User refuses → use stub/throw/null for explicit failure, never silently fabricate
-- Full-stack or pure frontend — if OpenAPI/docs exist → consult real definitions and cite source (e.g. \`// source: docs/api/openapi.yaml#/paths/...\`)
+- If OpenAPI/API docs exist → consult real definitions and cite source (e.g. \`// source: docs/api/openapi.yaml#/paths/...\`)
 
 ## Temp File Management
 - 🟡 Non-source temp files (screenshots, logs, heapdumps, etc.) go in \`tmp/\` at project root, filenames include timestamp (e.g. \`screenshot-20260721T143000.png\`)
