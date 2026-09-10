@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+- **docs(standards): §6 删除 B. 交付节——E2E 交付完全归 `/opsx:e2e` 工作流管**. 用户裁决：标准层不再承担「有价值的浏览器路径转正为持久测试」的义务（模板 Phase/Generator 规则更细，且仅在显式跑工作流时生效）。删除后 §6 净语义：日常用户可见改动 → 浏览器自检（自检节）+ 真实请求验收，回归资产只在显式跑 e2e 工作流时产生。一并移除：临时脚本转正 lifecycle、skip/fixme 披露、稳定选择器、Healer 卫生（模板均有更细版本）；自检节标题随之去掉「不留测试代码」对举限定。用户手改统一小节标题样式（「——」→「：」、去 A. 编号）后同步镜像。docs-sync 移除两个锚（「转正为对应层级的测试」/「Temporary scripts with assertions」——语义已删非改写）。影响面：已装项目 standards 随下次 `openspec-pw update` 刷新；下游 AI 不再自发创建 Playwright 测试，产品行为回归「显式工作流触发」。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
+
 ## [0.3.87] - 2026-09-10
 - **docs(standards): 全篇精简——§1–§5 同尺清理（含上轮 §6 句内压缩），employee-standards.md 5.9K→3.9K**. 三轮后用户确认继续：§6 句内三处（「不以全 mock 的单测链冒充验收」正反双说、「——跑旧包验证作废」后果重申、「，不拆场景凑数」正反双说，docs-sync「§6 验收定义」锚换为语义等价新锚「对真实运行的服务发真实请求」）；§1 五处（同句重复「有不清再提问」、「未要求功能」同义复述、DO NOT 五个纯理由句——删后全系列统一为「禁令 → 对策」格式、跨节重复「涉及 API 定义」行（§4 为 SSOT 且带格式示例））；§4 一处（「勿凭印象编造」正反双说）。对照社区流传 CLAUDE.md 行为准则查漏后补一句：§1「不为想象中的场景写防御」（投机性防御禁令，唯一真缺口，挂「只写被要求的」句尾）。docs/script.js ZH/EN 内嵌副本同步（EN 副本的「express confusion」「breaks across environments」等浓缩措辞同尺压缩）。CLAUDE.md CodeGraph 优先段经评估**不删**——产品功能（CODE_GRAPH_FIRST_BLOCK，codegraph-integration spec 钉住），wrapper 头部高权重放置有源码注释载明的设计理由（@AGENTS.md 导入内容权重低）。所有删除零语义损失（正说完整、理由自明、对策保留）。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`（锚句等价替换）、`CHANGELOG.md`
