@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **docs(standards): §1 补平台假设 DO NOT + 两处清理**. 平台假设条款有本周两次真实事故背书：0.3.84 git autocrlf 把快照转 CRLF 致哈希比对挂（换行符假设）、锚报告字面 `"/"` 切路径致 Windows 输出绝对路径（路径分隔符假设）——新增「不假设平台路径分隔符与换行格式 → 用语言内建跨平台 API（path.sep/path.join），比较前归一化 EOL」，对齐全系「禁令 → 对策」格式。清理两处：验收主条尾悬空「；」（删前端尾段的标点残留）、§4「无论前后端一体还是纯前端」枚举前缀删除（漏纯后端，语义反而更全）。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`（ZH/EN 同步）、`CHANGELOG.md`
+
 - **docs(standards): §6 删除 B. 交付节——E2E 交付完全归 `/opsx:e2e` 工作流管**. 用户裁决：标准层不再承担「有价值的浏览器路径转正为持久测试」的义务（模板 Phase/Generator 规则更细，且仅在显式跑工作流时生效）。删除后 §6 净语义：日常用户可见改动 → 浏览器自检（自检节）+ 真实请求验收，回归资产只在显式跑 e2e 工作流时产生。一并移除：临时脚本转正 lifecycle、skip/fixme 披露、稳定选择器、Healer 卫生（模板均有更细版本）；自检节标题随之去掉「不留测试代码」对举限定。用户手改统一小节标题样式（「——」→「：」、去 A. 编号）后同步镜像。docs-sync 移除两个锚（「转正为对应层级的测试」/「Temporary scripts with assertions」——语义已删非改写）。影响面：已装项目 standards 随下次 `openspec-pw update` 刷新；下游 AI 不再自发创建 Playwright 测试，产品行为回归「显式工作流触发」。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 
