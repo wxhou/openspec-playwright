@@ -14,6 +14,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🔴 过时的直接删：删除/修改时不留兼容层、不写迁移、不留 fallback
 - 🔴 方案选型按优先级链：项目已有依赖 → 成熟有人维护的库 → 自己实现；同类问题先用成熟产品验证过的模式解决
 - 🟡 精准改动：只改必要的，改完清理自己造成的垃圾。匹配现有风格
+- 🟡 注释纪律：只写代码无法表达的 why（约束、workaround 原因、反直觉决策）；改动叙述（原来/现在/不再/已删除等）、对已删代码的引用、注释掉的代码一律不留——历史归 git log；改动时顺手删掉已失效的相邻注释；spec 锚与 TODO(user) 属机制标注，不在其列
 - 🟡 代码文件行数上限 1500：超过即违例，按职责拆分，不得继续堆叠
 - ⚪ 重构前清理未使用的 import/export/prop/console.log 等，单独提交再做重构
 
@@ -88,6 +89,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🔴 Delete obsolete code outright: no compat layers, migrations, or fallbacks when removing/editing
 - 🔴 Solution selection follows the priority chain: existing project deps → mature maintained libraries → write it yourself; solve similar problems with proven patterns first
 - 🟡 Surgical changes: Touch only what's needed, clean up your own mess. Match existing style
+- 🟡 Comment discipline: write only the why the code cannot express (constraints, workaround reasons, counterintuitive decisions); change narration ("originally/now/no longer/removed" etc.), references to deleted code, and commented-out code are never kept — history belongs in git log; prune adjacent stale comments while editing; machine-readable anchors (spec anchors) and TODO(user) markers are exempt
 - 🟡 Code file line limit 1500: over 1500 is a violation — split by responsibility, never extend
 - ⚪ Before refactoring, clean unused imports/exports/props/console.log etc. in a separate commit
 
