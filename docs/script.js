@@ -69,9 +69,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🔴 后端/服务 → 对真实运行的服务发真实请求验证契约与端到端行为，落成集成测试（真实数据/依赖，遵守数据编撰节）
 - 🟡 所有验收期望锚定 spec/验收标准写「预期 X，实测 Y」（期望编造禁令见数据编撰节）
 - 🔴 截图 ≠ 行为验证：交互必须验证结果（点击后的状态/跳转/渲染），仅截图不算通过；断言只作辅助
-- 🟡 验证前核对加载的是本次产物（清缓存/停用 SW/核 hash）；权限类禁止注入 token，必须真实登录态，多角色各角色单独登录
-- 🔴 有验证价值的浏览器路径写成 Playwright 测试——临时开浏览器「看着没问题」不算完成，含断言的临时脚本转正为对应层级的测试（浏览器→Playwright、服务→API 集成测试）或删除
-- 🟡 无法覆盖的路径（\`test.skip\`/\`test.fixme\`）必附理由；稳定选择器（data-testid/role）；Healer 只消 flaky，不得掩盖断言失败`;
+- 🟡 验证前核对加载的是本次产物（清缓存/停用 SW/核 hash）；权限类禁止注入 token，必须真实登录态，多角色各角色单独登录`;
 
 const CLAUDE_MD_EN = `# Project Guidelines
 - Read \`openspec/config.yaml\` first (tech stack, structure, conventions, constraints, etc.); ignore if absent
@@ -144,9 +142,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🔴 Backend/service → real requests against a real running service to verify contract and end-to-end behavior — lands as integration tests (real data/dependencies, per the Data Fabrication section)
 - 🟡 All acceptance expectations anchor to spec acceptance criteria ("expected X, got Y"); the no-fabricating-expectations rule lives in the Data Fabrication section
 - 🔴 Screenshot ≠ behavior proof: interactions must verify the result (state/navigation/render after click); screenshot alone does not pass; assertions serve only as auxiliary evidence
-- 🟡 Verify the tested build is the current one; permission checks need a real login state (no token injection); each role logs in separately
-- 🔴 Browser paths with verification value become Playwright tests — "looks fine in the browser" is not completion. Temporary scripts with assertions must be converted to tests at the matching layer (browser → Playwright, service → API integration) or deleted
-- 🟡 Uncovered paths (\`test.skip\`/\`test.fixme\`) must state a reason; stable selectors (data-testid/role); Healer only reduces flakiness, must not mask assertion failures`;
+- 🟡 Verify the tested build is the current one; permission checks need a real login state (no token injection); each role logs in separately`;
 
 function processInline(text) {
   // **bold** → <strong>
