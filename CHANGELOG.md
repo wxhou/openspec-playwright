@@ -5,8 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
+## [0.3.88] - 2026-09-10
 - **docs(standards): §1 补平台假设 DO NOT + 两处清理**. 平台假设条款有本周两次真实事故背书：0.3.84 git autocrlf 把快照转 CRLF 致哈希比对挂（换行符假设）、锚报告字面 `"/"` 切路径致 Windows 输出绝对路径（路径分隔符假设）——新增「不假设平台路径分隔符与换行格式 → 用语言内建跨平台 API（path.sep/path.join），比较前归一化 EOL」，对齐全系「禁令 → 对策」格式。清理两处：验收主条尾悬空「；」（删前端尾段的标点残留）、§4「无论前后端一体还是纯前端」枚举前缀删除（漏纯后端，语义反而更全）。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`（ZH/EN 同步）、`CHANGELOG.md`
 
