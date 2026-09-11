@@ -307,6 +307,9 @@ describe("init tool selection", () => {
   beforeEach(() => {
     tmpRoot = mkdtempSync(join(tmpdir(), "ospw-pw-init-sel-"));
     mkdirSync(join(tmpRoot, "openspec"), { recursive: true });
+    // Frontend signal: these tests exercise editor selection, which runs in
+    // frontend mode (the full-scaffold baseline the assertions expect).
+    writeFileSync(join(tmpRoot, "package.json"), JSON.stringify({ scripts: { dev: "vite" } }));
     // init() resolves the project root from process.cwd() — point it at the temp project.
     cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(tmpRoot);
   });
@@ -414,6 +417,8 @@ describe("init interactive prompt selection", () => {
     mkdirSync(join(tmpRoot, "openspec"), { recursive: true });
     // Detect exactly one editor: Cursor.
     mkdirSync(join(tmpRoot, ".cursor"), { recursive: true });
+    // Frontend signal: full-scaffold baseline (editor selection tests).
+    writeFileSync(join(tmpRoot, "package.json"), JSON.stringify({ scripts: { dev: "vite" } }));
     cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(tmpRoot);
   });
 
@@ -439,7 +444,10 @@ describe("init interactive prompt selection", () => {
       return ["claude"];
     };
 
-    await init({ mcp: false }, { isTTY: true, prompt: fakePrompt });
+    await init(
+      { mcp: false },
+      { isTTY: true, prompt: fakePrompt, confirm: async () => false },
+    );
 
     expect(receivedDetected.has("cursor")).toBe(true);
     // Only the confirmed selection is installed.
@@ -470,6 +478,8 @@ describe("init interactive prompt with no detected editors", () => {
   beforeEach(() => {
     tmpRoot = mkdtempSync(join(tmpdir(), "ospw-pw-init-nodetect-"));
     mkdirSync(join(tmpRoot, "openspec"), { recursive: true });
+    // Frontend signal: full-scaffold baseline (editor selection tests).
+    writeFileSync(join(tmpRoot, "package.json"), JSON.stringify({ scripts: { dev: "vite" } }));
     cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(tmpRoot);
   });
 
@@ -506,9 +516,9 @@ describe("init interactive prompt with no detected editors", () => {
   });
 });
 
-// ─── init frontend signal hint ─────────────────────────────────────────
+// ─── init mode selection & transparency ───────────────────────────────
 
-describe("init frontend signal hint", () => {
+describe("init mode selection & transparency", () => {
   let tmpRoot: string;
   let cwdSpy: ReturnType<typeof import("vitest")["vi"]["spyOn"]>;
   let logSpy: ReturnType<typeof import("vitest")["vi"]["spyOn"]>;
@@ -530,42 +540,140 @@ describe("init frontend signal hint", () => {
     rmSync(tmpRoot, { recursive: true, force: true });
   });
 
-  it("prints the two-line hint for a project without a frontend signal", async () => {
+  it("runs minimal mode for a backend project: README only, no Playwright scaffold", async () => {
     writeFileSync(
       join(tmpRoot, "package.json"),
       JSON.stringify({ dependencies: { express: "^4.0.0" }, scripts: { dev: "node server.js" } }),
     );
     const { init } = await import("../../src/commands/init.js");
     await init({ tools: "none" });
-    expect(logs.some((l) => l.includes("request fixture"))).toBe(true);
-    expect(logs.some((l) => l.includes("app directory"))).toBe(true);
-    // Hint does not affect the install flow.
-    expect(existsSync(join(tmpRoot, "tests/playwright/seed.spec.ts"))).toBe(true);
+    // Minimal scaffold only.
+    expect(existsSync(join(tmpRoot, "tests/README.md"))).toBe(true);
+    // No Playwright scaffold, no e2e command, no MCP.
+    expect(existsSync(join(tmpRoot, "tests/playwright/seed.spec.ts"))).toBe(false);
+    expect(existsSync(join(tmpRoot, "playwright.config.ts"))).toBe(false);
+    expect(existsSync(join(tmpRoot, ".claude"))).toBe(false);
+    // Transparency line names the minimal mode.
+    expect(logs.some((l) => l.includes("Mode: minimal"))).toBe(true);
   });
 
-  it("prints no hint when a frontend signal is present", async () => {
+  it("minimal mode with claude selected: README + standards + wrapper, nothing else", async () => {
+    writeFileSync(
+      join(tmpRoot, "package.json"),
+      JSON.stringify({ dependencies: { express: "^4.0.0" }, scripts: { dev: "node server.js" } }),
+    );
+    const { init } = await import("../../src/commands/init.js");
+    await init({ tools: "claude", mcp: false, agents: true });
+    expect(existsSync(join(tmpRoot, "tests/README.md"))).toBe(true);
+    expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(true);
+    expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(true);
+    // No Playwright scaffold, e2e command, MCP, or vendored agents.
+    expect(existsSync(join(tmpRoot, "tests/playwright"))).toBe(false);
+    expect(existsSync(join(tmpRoot, "playwright.config.ts"))).toBe(false);
+    expect(existsSync(join(tmpRoot, ".claude/commands/opsx/e2e.md"))).toBe(false);
+    expect(existsSync(join(tmpRoot, ".claude/agents"))).toBe(false);
+  });
+
+  it("--frontend override enables vendored agents despite a missed signal", async () => {
+    writeFileSync(
+      join(tmpRoot, "package.json"),
+      JSON.stringify({ dependencies: { express: "^4.0.0" } }),
+    );
+    const { init } = await import("../../src/commands/init.js");
+    await init({ tools: "claude", mcp: false, agents: true, frontend: true });
+    for (const role of ["planner", "generator", "healer"]) {
+      expect(existsSync(join(tmpRoot, ".claude/agents", `playwright-test-${role}.md`))).toBe(true);
+    }
+  });
+
+  it("frontend signal present → frontend mode with signal attribution and full scaffold", async () => {
     writeFileSync(join(tmpRoot, "package.json"), JSON.stringify({ scripts: { dev: "vite" } }));
     const { init } = await import("../../src/commands/init.js");
     await init({ tools: "none" });
-    expect(logs.some((l) => l.includes("request fixture"))).toBe(false);
+    expect(logs.some((l) => l.includes("Mode: frontend"))).toBe(true);
+    expect(logs.some((l) => l.includes("dev script: vite"))).toBe(true);
+    expect(existsSync(join(tmpRoot, "tests/playwright/seed.spec.ts"))).toBe(true);
+    expect(existsSync(join(tmpRoot, "playwright.config.ts"))).toBe(true);
   });
 
-  it("prints no hint when findNpmRoot descends to a frontend app (monorepo)", async () => {
+  it("monorepo frontend app (findNpmRoot descends) → frontend mode", async () => {
     const appDir = join(tmpRoot, "apps", "web");
     mkdirSync(appDir, { recursive: true });
     writeFileSync(join(tmpRoot, "package.json"), JSON.stringify({ private: true, workspaces: ["apps/*"] }));
     writeFileSync(join(appDir, "package.json"), JSON.stringify({ scripts: { dev: "vite" } }));
     const { init } = await import("../../src/commands/init.js");
     await init({ tools: "none" });
-    expect(logs.some((l) => l.includes("request fixture"))).toBe(false);
+    expect(logs.some((l) => l.includes("Mode: frontend"))).toBe(true);
+    expect(existsSync(join(tmpRoot, "tests/playwright/seed.spec.ts"))).toBe(true);
   });
 
-  it("skips the hint and still scaffolds when no package.json exists", async () => {
+  it("no package.json → minimal mode with the not-a-node-project line", async () => {
     const { init } = await import("../../src/commands/init.js");
     await init({ tools: "none" });
-    expect(logs.some((l) => l.includes("request fixture"))).toBe(false);
+    expect(logs.some((l) => l.includes("No readable package.json"))).toBe(true);
+    expect(existsSync(join(tmpRoot, "tests/README.md"))).toBe(true);
+    expect(existsSync(join(tmpRoot, "tests/playwright/seed.spec.ts"))).toBe(false);
+  });
+
+  it("--frontend with no package.json keeps frontend mode (the info line stays neutral)", async () => {
+    const { init } = await import("../../src/commands/init.js");
+    await init({ tools: "none", frontend: true });
+    // Detection fact only — must not claim a mode (the flag overrides).
+    expect(logs.some((l) => l.includes("treating as non-frontend"))).toBe(false);
+    expect(logs.some((l) => l.includes("frontend signal undetectable"))).toBe(true);
+    expect(logs.some((l) => l.includes("Mode: frontend"))).toBe(true);
     expect(existsSync(join(tmpRoot, "tests/playwright/seed.spec.ts"))).toBe(true);
-    expect(existsSync(join(tmpRoot, "playwright.config.ts"))).toBe(true);
+  });
+
+  it("--frontend forces the full scaffold despite no signal", async () => {
+    writeFileSync(
+      join(tmpRoot, "package.json"),
+      JSON.stringify({ dependencies: { express: "^4.0.0" } }),
+    );
+    const { init } = await import("../../src/commands/init.js");
+    await init({ tools: "none", frontend: true });
+    expect(logs.some((l) => l.includes("Mode: frontend"))).toBe(true);
+    expect(existsSync(join(tmpRoot, "tests/playwright/seed.spec.ts"))).toBe(true);
+  });
+
+  it("--no-frontend forces minimal mode despite a hit", async () => {
+    writeFileSync(join(tmpRoot, "package.json"), JSON.stringify({ scripts: { dev: "vite" } }));
+    const { init } = await import("../../src/commands/init.js");
+    await init({ tools: "none", frontend: false });
+    expect(logs.some((l) => l.includes("Mode: minimal"))).toBe(true);
+    expect(existsSync(join(tmpRoot, "tests/playwright/seed.spec.ts"))).toBe(false);
+    expect(existsSync(join(tmpRoot, "tests/README.md"))).toBe(true);
+  });
+
+  it("upgrades a minimal-mode project: prunes the tool-owned README, installs the full scaffold", async () => {
+    writeFileSync(
+      join(tmpRoot, "package.json"),
+      JSON.stringify({ dependencies: { express: "^4.0.0" } }),
+    );
+    const { init } = await import("../../src/commands/init.js");
+    await init({ tools: "none" }); // minimal
+    expect(existsSync(join(tmpRoot, "tests/README.md"))).toBe(true);
+    // Frontend appears; re-run with the override flag.
+    writeFileSync(join(tmpRoot, "package.json"), JSON.stringify({ scripts: { dev: "vite" } }));
+    await init({ tools: "none", frontend: true });
+    expect(logs.some((l) => l.includes("Removed tests/README.md"))).toBe(true);
+    expect(existsSync(join(tmpRoot, "tests/README.md"))).toBe(false);
+    expect(existsSync(join(tmpRoot, "tests/playwright/seed.spec.ts"))).toBe(true);
+  });
+
+  it("keeps a user-modified tests/README.md when upgrading", async () => {
+    writeFileSync(
+      join(tmpRoot, "package.json"),
+      JSON.stringify({ dependencies: { express: "^4.0.0" } }),
+    );
+    const { init } = await import("../../src/commands/init.js");
+    await init({ tools: "none" });
+    writeFileSync(join(tmpRoot, "tests/README.md"), "# my own readme");
+    writeFileSync(join(tmpRoot, "package.json"), JSON.stringify({ scripts: { dev: "vite" } }));
+    await init({ tools: "none", frontend: true });
+    expect(logs.some((l) => l.includes("differs from the minimal-mode template"))).toBe(true);
+    expect(existsSync(join(tmpRoot, "tests/README.md"))).toBe(true);
+    expect(readFileSync(join(tmpRoot, "tests/README.md"), "utf-8")).toBe("# my own readme");
   });
 });
 
@@ -585,6 +693,9 @@ describe("init output signals detected vs selected", () => {
   beforeEach(() => {
     tmpRoot = mkdtempSync(join(tmpdir(), "ospw-pw-init-signals-"));
     mkdirSync(join(tmpRoot, "openspec"), { recursive: true });
+    // Frontend signal: these tests exercise editor-selection output, which
+    // runs in frontend mode (command files must install).
+    writeFileSync(join(tmpRoot, "package.json"), JSON.stringify({ scripts: { dev: "vite" } }));
     cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(tmpRoot);
     logs.length = 0;
     logSpy = vi.spyOn(console, "log").mockImplementation((...args: unknown[]) => {
@@ -627,7 +738,12 @@ describe("init output signals detected vs selected", () => {
     const { init } = await import("../../src/commands/init.js");
     await init(
       { mcp: false },
-      { isTTY: true, homeDir: blankHome, prompt: async () => ["claude"] },
+      {
+        isTTY: true,
+        homeDir: blankHome,
+        prompt: async () => ["claude"],
+        confirm: async () => false,
+      },
     );
     expect(logs.some((l) => l.includes("Detected (pre-select): cursor"))).toBe(true);
     expect(logs.some((l) => l.includes("Selected editors: claude"))).toBe(true);
@@ -670,6 +786,9 @@ describe("init credentials ignore hint", () => {
   beforeEach(() => {
     tmpRoot = mkdtempSync(join(tmpdir(), "ospw-pw-init-credhint-"));
     mkdirSync(join(tmpRoot, "openspec"), { recursive: true });
+    // Frontend signal: the advisory runs when the scaffold generates
+    // credentials.yaml (frontend mode).
+    writeFileSync(join(tmpRoot, "package.json"), JSON.stringify({ scripts: { dev: "vite" } }));
     cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(tmpRoot);
     logs.length = 0;
     logSpy = vi.spyOn(console, "log").mockImplementation((...args: unknown[]) => {
@@ -701,7 +820,7 @@ describe("init credentials ignore hint", () => {
       "tests/playwright/credentials.yaml\ntests/playwright/credentials.yaml.bak\n",
     );
     const { init } = await import("../../src/commands/init.js");
-    await init({ tools: "none" });
+    await init({ tools: "none", frontend: true });
     expect(
       logs.some((l) => l.includes("Test credentials are not git-ignored")),
     ).toBe(false);
@@ -711,7 +830,7 @@ describe("init credentials ignore hint", () => {
     const content = "# my rules\ntests/playwright/credentials.yaml\n";
     writeFileSync(join(tmpRoot, ".gitignore"), content);
     const { init } = await import("../../src/commands/init.js");
-    await init({ tools: "none" });
+    await init({ tools: "none", frontend: true });
     expect(readFileSync(join(tmpRoot, ".gitignore"), "utf-8")).toBe(content);
   });
 });

@@ -33,4 +33,5 @@ export { OPENSPEC_PW_MCP_SERVERS, CLAUDE_LEGACY_SKILL_REL, type AdapterArtifactI
 export { VENDORED_AGENT_ROLES, vendoredAgentRelPath, vendoredAgentRelPaths, type AgentsManifest, installedAgentsSnapshotDir, readAgentsManifest, loadAgentSnapshots, sha256Contents, roleForRelPath, classifyAgentFile, enumerateVendoredAgents, syncVendoredAgents, } from "./editors/agents.js";
 export { isEditorConfigured, anyEditorConfigured, agentsFileHasMarkers, } from "./editors/configured.js";
 export { intentFileEditors } from "./editors/preselect.js";
-export { readOpenSpecBlock, blockMatchesExpected, installOpenSpecBlock, claudeWrapperStandardsContent, installClaudeWrapper, installProjectRules, migrateLegacyMarkers, cleanProjectRules, removeMarkersFromFile, readEmployeeStandards, } from "./editors/project-rules.js";
+export { readOpenSpecBlock, blockMatchesExpected, installOpenSpecBlock, claudeWrapperStandardsContent, installClaudeWrapper, installProjectRules, migrateLegacyMarkers, cleanProjectRules, removeMarkersFromFile, readEmployeeStandards, hasRuleFileMarkers, claudeWrapperHasMarkers, } from "./editors/project-rules.js";
+export { normalizeEol } from "./editors/agents.js";

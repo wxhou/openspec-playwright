@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+- **feat(init): minimal-mode-init——无前端项目最小初始化，判定依据透明化 + `--frontend/--no-frontend` 覆盖**. 纯后端 / API-only 项目（含无 package.json 的 Python/Go）不再拿跑不通的浏览器脚手架：前端信号 false/null → 最小模式，仅交付 `tests/README.md`（验收落脚点契约 + 升级提示）与员工规范块；不装 e2e 命令、Playwright 脚手架、MCP、agents、CI workflow（MCP/agents 门统一为 mode，`--frontend` 覆盖后照常）。Summary 打印模式与命中信号归因（`Mode: frontend (signal: vite.config.ts)`），误判当场可见、flag 一票纠正。最小模式项目成为同步一等公民：`update` 的 wrapper 门控与块消失告警扩展为「命令工件 OR 我方标记块」（`hasRuleFileMarkers`），doctor 的 browsers/playwright-test 检查按脚手架存在 gate、领土检查/Sync 认最小模式项目，`uninstall` 清理工具拥有的 README 并兜底清仅标记块项目的规范块。升级路径：信号出现后重跑 init 增量补装全量并按内容所有权移除 README（修改过的保留）。前端模式（signal === true）行为零变化。检测信号集不扩（单体+子目录、vite 兼职 vitest 两个实测盲区靠透明化 + 覆盖 flag 补偿）；tests/README 为无状态资产（update 漂移提示不自动覆盖，用户自带 README 不被误伤）。
+  - `src/commands/init.ts`、`src/index.ts`、`src/shared/app-detect.ts`、`src/shared/index.ts`、`src/commands/update.ts`、`src/commands/doctor.ts`、`src/commands/uninstall.ts`、`src/commands/editors.ts`、`src/commands/editors/project-rules.ts`、`templates/tests-readme.md`、`tests/`（init/update/doctor/uninstall/app-detect 扩展）、`README.md`、`CHANGELOG.md`
+
 ## [0.3.88] - 2026-09-10
 - **docs(standards): §1 补平台假设 DO NOT + 两处清理**. 平台假设条款有本周两次真实事故背书：0.3.84 git autocrlf 把快照转 CRLF 致哈希比对挂（换行符假设）、锚报告字面 `"/"` 切路径致 Windows 输出绝对路径（路径分隔符假设）——新增「不假设平台路径分隔符与换行格式 → 用语言内建跨平台 API（path.sep/path.join），比较前归一化 EOL」，对齐全系「禁令 → 对策」格式。清理两处：验收主条尾悬空「；」（删前端尾段的标点残留）、§4「无论前后端一体还是纯前端」枚举前缀删除（漏纯后端，语义反而更全）。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`（ZH/EN 同步）、`CHANGELOG.md`

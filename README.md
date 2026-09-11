@@ -148,6 +148,40 @@ openspec-pw command artifacts in the project — it never adds new editors
 writes). To add an editor to an initialized project, re-run
 `openspec-pw init --tools <id>` (idempotent).
 
+### Init Modes: frontend vs minimal
+
+`openspec-pw init` picks an install mode from the frontend signal
+(`vite/next/nuxt/...` config files > framework dependencies > `dev` script
+keywords > monorepo workspace members):
+
+- **frontend mode** (signal hit): the full Playwright scaffold — e2e
+  command, seed test, `BasePage`, test plan, `playwright.config.ts`, auth
+  setup, credentials, MCP gate, agents gate. Behavior unchanged from
+  versions before the modes existed.
+- **minimal mode** (no signal, or no readable `package.json` — e.g.
+  Python/Go backends): only a `tests/README.md` describing the
+  acceptance-test contract (real requests against a real running service,
+  framework of your choice) plus the employee-grade standards block. No
+  Playwright scaffold, no e2e command, no MCP, no agents.
+
+The Summary prints the mode and its basis (`Mode: frontend (signal:
+vite.config.ts)` / `Mode: minimal (no frontend signal)`), so a misjudgment
+is visible on the spot. Detect blind spots (frontend in an untracked
+subdirectory; `vite.config.ts` hosting only vitest) are covered by an
+explicit override:
+
+```bash
+openspec-pw init --frontend      # force the full scaffold despite no signal
+openspec-pw init --no-frontend   # force minimal mode despite a hit
+```
+
+Upgrading later: once the project gains a frontend signal (or you pass
+`--frontend`), re-running `init` installs the full scaffold incrementally
+and prunes the tool-owned `tests/README.md` (a modified one is kept with a
+notice). Minimal-mode projects are first-class: `update` syncs their
+standards block and wrapper, `doctor` checks them without failing on
+missing Playwright, and `uninstall` cleans the README and markers.
+
 ### Official Playwright Agents (opt-in `--agents`)
 
 ```bash
@@ -165,9 +199,9 @@ loop) generates into `.claude/agents/`:
 Their `tools:` frontmatter references the `playwright-test` MCP server —
 the very entry `openspec-pw init` installs — so the MCP prerequisite is
 already satisfied. On the interactive path, init appends one confirmation
-(default **No**); API-only projects skip the phase alongside the MCP
-(phase follows the same frontend-signal gate, since the agents' tools are
-MCP tools). Ownership is content-based: files matching the bundled
+(default **No**); minimal-mode projects skip the phase alongside the MCP
+(phase follows the same frontend-mode gate — `--frontend` override included
+— since the agents' tools are MCP tools). Ownership is content-based: files matching the bundled
 snapshot (`templates/agents/SOURCE.md` records the upstream baseline) are
 tool-owned — `update` refreshes them when a newer snapshot ships and
 removal paths delete them; files you edited (or refreshed with a newer
@@ -202,7 +236,7 @@ AGENTS.md §6 binds agents from any source.
 ### CLI Commands
 
 ```bash
-openspec-pw init          # Initialize integration (--tools all|none|ids… to select editors; --agents adds the official agents)
+openspec-pw init          # Initialize integration (--tools all|none|ids… to select editors; --agents adds the official agents; --frontend/--no-frontend force the install mode)
 openspec-pw update        # Update CLI and commands to latest version
 openspec-pw doctor        # Check prerequisites (Node, Playwright, OpenSpec, config, tests) + app server diagnostics
 openspec-pw audit         # Audit tests for orphaned specs and issues

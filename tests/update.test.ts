@@ -552,3 +552,159 @@ describe("update.ts: single MCP server install (playwright-test)", () => {
     );
   });
 });
+
+// ─── minimal-mode first-class sync (init-minimal-mode) ────────────────────────
+
+describe("update.ts: minimal-mode first-class sync", () => {
+  const bundleDir = join(tmpdir(), "ospw-pw-minimal-bundle-" + Date.now());
+  const tmpRoot = join(tmpdir(), "ospw-pw-minimal-root-" + Date.now());
+
+  beforeEach(() => {
+    mkdirSync(join(bundleDir, "templates"), { recursive: true });
+    mkdirSync(tmpRoot, { recursive: true });
+    // Bundled templates in the fetched bundle dir.
+    writeFileSync(join(bundleDir, "employee-standards.md"), "# Standards v2");
+    writeFileSync(join(bundleDir, "templates", "tests-readme.md"), "# Acceptance Tests v2\n");
+  });
+
+  afterEach(() => {
+    rmSync(bundleDir, { recursive: true, force: true });
+    rmSync(tmpRoot, { recursive: true, force: true });
+  });
+
+  it("hasRuleFileMarkers: wrapper marker alone proves territory without command artifacts", async () => {
+    const { hasRuleFileMarkers } = await import("../../src/commands/editors/project-rules.js");
+    expect(hasRuleFileMarkers(tmpRoot)).toBe(false);
+    writeFileSync(join(tmpRoot, "CLAUDE.md"), "<!-- OPENSPEC-PW:START -->\nwrapper\n<!-- OPENSPEC-PW:END -->");
+    expect(hasRuleFileMarkers(tmpRoot)).toBe(true);
+  });
+
+  it("claudeWrapperHasMarkers: bare @AGENTS.md import never counts", async () => {
+    const { claudeWrapperHasMarkers } = await import("../../src/commands/editors/project-rules.js");
+    writeFileSync(join(tmpRoot, "CLAUDE.md"), "@AGENTS.md\n");
+    expect(claudeWrapperHasMarkers(tmpRoot)).toBe(false);
+  });
+
+  it("hasRuleFileMarkers: a bare signature mention in user prose is not territory", async () => {
+    const { hasRuleFileMarkers } = await import("../../src/commands/editors/project-rules.js");
+    // No markers at all — the phrase alone must not claim the file.
+    writeFileSync(join(tmpRoot, "AGENTS.md"), "# My own AI Coding Assistant Employee-Grade Standards\n");
+    expect(hasRuleFileMarkers(tmpRoot)).toBe(false);
+    // Legacy block WITH the containment gate (legacy START) does count.
+    writeFileSync(
+      join(tmpRoot, "AGENTS.md"),
+      "preamble\n<!-- OPENSPEC:START -->\n# Employee-Grade Standards\n<!-- OPENSPEC:END -->\n",
+    );
+    expect(hasRuleFileMarkers(tmpRoot)).toBe(true);
+  });
+
+  it("syncEmployeeStandards: refreshes the wrapper of a standards-only project", async () => {
+    const { syncEmployeeStandards } = await import("../../src/commands/update.js");
+    const { claudeWrapperHasMarkers } = await import("../../src/commands/editors/project-rules.js");
+    const { installClaudeWrapper, claudeWrapperStandardsContent } = await import("../../src/commands/editors.js");
+    writeFileSync(join(tmpRoot, "AGENTS.md"), "# project agents");
+    installClaudeWrapper(tmpRoot);
+    expect(claudeWrapperHasMarkers(tmpRoot)).toBe(true);
+    // Simulate version drift: overwrite the marker block with outdated text.
+    const claudePath = join(tmpRoot, "CLAUDE.md");
+    writeFileSync(claudePath, "preamble\n<!-- OPENSPEC-PW:START -->\noutdated\n<!-- OPENSPEC-PW:END -->\n");
+
+    // claudeAuthorized is computed by the caller as
+    // hasCommandArtifacts(claude) || claudeWrapperHasMarkers(root) — this
+    // fixture has no command artifacts, so the wrapper marker gates the sync.
+    syncEmployeeStandards(bundleDir, tmpRoot, true, true);
+    const refreshed = readFileSync(claudePath, "utf-8");
+    // Marker block replaced with the bundled wrapper content; block-external
+    // content (the preamble) is preserved.
+    expect(refreshed).toContain("preamble\n");
+    expect(refreshed).toContain("<!-- OPENSPEC-PW:START -->");
+    expect(refreshed).toContain(claudeWrapperStandardsContent().trim());
+    expect(refreshed).not.toContain("outdated");
+  });
+
+  it("syncProjectTemplates: hints on tests/README drift without overwriting (user README safe)", async () => {
+    const { syncProjectTemplates } = await import("../../src/commands/update.js");
+    mkdirSync(join(tmpRoot, "tests"), { recursive: true });
+    writeFileSync(join(tmpRoot, "tests", "README.md"), "# my own readme\n");
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((...args: unknown[]) => {
+      logs.push(args.join(" "));
+    });
+    try {
+      syncProjectTemplates(bundleDir, tmpRoot);
+    } finally {
+      spy.mockRestore();
+    }
+    expect(readFileSync(join(tmpRoot, "tests", "README.md"), "utf-8")).toBe("# my own readme\n");
+    expect(logs.some((l) => l.includes("tests/README.md differs from the bundled template"))).toBe(true);
+  });
+
+  it("syncProjectTemplates: README matching the template is a silent no-op", async () => {
+    const { syncProjectTemplates } = await import("../../src/commands/update.js");
+    mkdirSync(join(tmpRoot, "tests"), { recursive: true });
+    writeFileSync(join(tmpRoot, "tests", "README.md"), "# Acceptance Tests v2\n");
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((...args: unknown[]) => {
+      logs.push(args.join(" "));
+    });
+    try {
+      syncProjectTemplates(bundleDir, tmpRoot);
+    } finally {
+      spy.mockRestore();
+    }
+    expect(logs.some((l) => l.includes("tests/README.md differs"))).toBe(false);
+  });
+});
+
+describe("update.ts: minimal-mode block-removed alarm", () => {
+  const bundleDir = join(tmpdir(), "ospw-pw-minimal-alarm-b-" + Date.now());
+  const tmpRoot = join(tmpdir(), "ospw-pw-minimal-alarm-r-" + Date.now());
+
+  beforeEach(() => {
+    mkdirSync(bundleDir, { recursive: true });
+    mkdirSync(tmpRoot, { recursive: true });
+    writeFileSync(join(bundleDir, "employee-standards.md"), "# Standards v2");
+    // Minimal-mode project whose AGENTS.md block was wiped externally, but
+    // the CLAUDE.md wrapper marker survives → territory proven by markers.
+    writeFileSync(
+      join(tmpRoot, "CLAUDE.md"),
+      "preamble\n<!-- OPENSPEC-PW:START -->\nwrapper\n<!-- OPENSPEC-PW:END -->\n",
+    );
+    writeFileSync(join(tmpRoot, "AGENTS.md"), "# project agents — block removed");
+  });
+
+  afterEach(() => {
+    rmSync(bundleDir, { recursive: true, force: true });
+    rmSync(tmpRoot, { recursive: true, force: true });
+  });
+
+  it("prints the block-removed alarm for a minimal-mode project (no command artifacts)", async () => {
+    const { syncEmployeeStandards } = await import("../../src/commands/update.js");
+    const { claudeWrapperHasMarkers, hasRuleFileMarkers } = await import(
+      "../../src/commands/editors/project-rules.js"
+    );
+    expect(hasRuleFileMarkers(tmpRoot)).toBe(true);
+    // Caller computes: claudeAuthorized = ... || claudeWrapperHasMarkers(root),
+    // hasPwArtifacts = ... || hasRuleFileMarkers(root) — both true here with
+    // zero command artifacts.
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((...args: unknown[]) => {
+      logs.push(args.join(" "));
+    });
+    try {
+      syncEmployeeStandards(
+        bundleDir,
+        tmpRoot,
+        claudeWrapperHasMarkers(tmpRoot),
+        true,
+      );
+    } finally {
+      spy.mockRestore();
+    }
+    expect(
+      logs.some((l) =>
+        l.includes("AGENTS.md has no OPENSPEC-PW block — the employee-grade standards block is missing"),
+      ),
+    ).toBe(true);
+  });
+});

@@ -1,7 +1,8 @@
-import { existsSync, rmSync } from "fs";
+import { existsSync, readFileSync, rmSync, rmdirSync } from "fs";
 import { join, dirname } from "path";
+import { fileURLToPath } from "url";
 import chalk from "chalk";
-import { buildCommandMeta, cleanProjectRules, claudeAdapter, detectAdapters, listCommandArtifactPaths, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, cleanupEmptyDirs, } from "./editors.js";
+import { buildCommandMeta, cleanProjectRules, claudeAdapter, detectAdapters, listCommandArtifactPaths, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, cleanupEmptyDirs, hasRuleFileMarkers, normalizeEol, } from "./editors.js";
 import { removePlaywrightMcp, removeTestRunnerMcp, detectCodeGraphStatus, } from "../shared/index.js";
 export async function uninstall() {
     console.log(chalk.blue("\n🗑️  Uninstalling OpenSpec + Playwright E2E\n"));
@@ -90,10 +91,43 @@ export async function uninstall() {
     else {
         console.log(chalk.gray("  - Schema not found, skipping"));
     }
+    // 4b. Remove the minimal-mode scaffold (tests/README.md) — content-owned:
+    // byte-identical to the bundled template → tool-owned → removed; anything
+    // else is user-owned → kept with a notice.
+    console.log(chalk.blue("\n─── Removing Minimal Scaffold ───"));
+    const readmeDest = join(projectRoot, "tests", "README.md");
+    if (existsSync(readmeDest)) {
+        const template = readFileSync(fileURLToPath(new URL("../../templates/tests-readme.md", import.meta.url)), "utf-8");
+        if (normalizeEol(readFileSync(readmeDest, "utf-8")) === normalizeEol(template)) {
+            rmSync(readmeDest);
+            try {
+                rmdirSync(dirname(readmeDest)); // only succeeds when empty
+            }
+            catch {
+                // user content in tests/ — leave the directory
+            }
+            console.log(chalk.green("  ✓ Removed tests/README.md"));
+        }
+        else {
+            console.log(chalk.yellow("  ⚠ tests/README.md differs from the bundled template — kept (user-modified or user-owned)"));
+        }
+    }
+    else {
+        console.log(chalk.gray("  - tests/README.md not found, skipping"));
+    }
     // 5. Clean rules file markers for each detected editor
     console.log(chalk.blue("\n─── Cleaning Rules Files ───"));
     for (const adapter of detected) {
         cleanProjectRules(adapter, projectRoot);
+    }
+    // Minimal-mode projects carry standards without command artifacts (and
+    // without a .claude/ marker dir for claude) — detection may miss claude
+    // entirely (or the project may mix a detected editor with a claude-only
+    // wrapper). Clean the rules files whenever claude is not among the
+    // detected editors but our territory is present; removeMarkersFromFile
+    // stays quiet-ish (gray info lines) when the files carry no markers.
+    if (!detected.some((a) => a.id === "claude") && hasRuleFileMarkers(projectRoot)) {
+        cleanProjectRules(claudeAdapter, projectRoot);
     }
     // Summary
     console.log(chalk.blue("\n─── Summary ───"));

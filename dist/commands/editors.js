@@ -43,5 +43,6 @@ export { isEditorConfigured, anyEditorConfigured, agentsFileHasMarkers, } from "
 // Pre-select-only intent-file signals (first-run tier; never authorize writes)
 export { intentFileEditors } from "./editors/preselect.js";
 // Project rules file management (AGENTS.md SSOT + CLAUDE.md wrapper)
-export { readOpenSpecBlock, blockMatchesExpected, installOpenSpecBlock, claudeWrapperStandardsContent, installClaudeWrapper, installProjectRules, migrateLegacyMarkers, cleanProjectRules, removeMarkersFromFile, readEmployeeStandards, } from "./editors/project-rules.js";
+export { readOpenSpecBlock, blockMatchesExpected, installOpenSpecBlock, claudeWrapperStandardsContent, installClaudeWrapper, installProjectRules, migrateLegacyMarkers, cleanProjectRules, removeMarkersFromFile, readEmployeeStandards, hasRuleFileMarkers, claudeWrapperHasMarkers, } from "./editors/project-rules.js";
+export { normalizeEol } from "./editors/agents.js";
 //# sourceMappingURL=editors.js.map
