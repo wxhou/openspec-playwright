@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.89] - 2026-09-11
 - **fix(init): pre-existing `tests/README.md` 时 Summary 契约指引按所有权分叉**. E2E 复查发现的良性边界：用户已有自己的 tests/README.md 时最小模式 skip 生成，Summary 仍指向它（指向用户的文件，信息错位）。`generateTestsReadme` 返回三态（生成/已是我们的/用户的）：幂等重跑时"已是我们的"仍链接契约文档；仅用户拥有的文件指向员工规范，skip 行明示 "your file is kept"。
   - `src/commands/init.ts`、`tests/init.test.ts`、`CHANGELOG.md`
 
