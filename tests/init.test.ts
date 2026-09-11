@@ -615,6 +615,35 @@ describe("init mode selection & transparency", () => {
     expect(existsSync(join(tmpRoot, "tests/playwright/seed.spec.ts"))).toBe(false);
   });
 
+  it("pre-existing tests/README.md: kept untouched, Summary points at the standards", async () => {
+    mkdirSync(join(tmpRoot, "tests"), { recursive: true });
+    writeFileSync(join(tmpRoot, "tests", "README.md"), "# my docs");
+    writeFileSync(
+      join(tmpRoot, "package.json"),
+      JSON.stringify({ dependencies: { express: "^4.0.0" } }),
+    );
+    const { init } = await import("../../src/commands/init.js");
+    await init({ tools: "none" });
+    expect(logs.some((l) => l.includes("tests/README.md already exists — skipping (your file is kept"))).toBe(true);
+    expect(logs.some((l) => l.includes("the contract lives in the employee standards"))).toBe(true);
+    expect(logs.some((l) => l.includes("see tests/README.md for the contract"))).toBe(false);
+    expect(readFileSync(join(tmpRoot, "tests/README.md"), "utf-8")).toBe("# my docs");
+  });
+
+  it("idempotent re-run: our README is still ours — Summary keeps linking it", async () => {
+    writeFileSync(
+      join(tmpRoot, "package.json"),
+      JSON.stringify({ dependencies: { express: "^4.0.0" } }),
+    );
+    const { init } = await import("../../src/commands/init.js");
+    await init({ tools: "none" }); // generates the README
+    logs.length = 0; // pin the re-run's own Summary, not run 1's
+    await init({ tools: "none" }); // idempotent re-run
+    expect(logs.some((l) => l.includes("tests/README.md already current, skipping"))).toBe(true);
+    expect(logs.some((l) => l.includes("see tests/README.md for the contract"))).toBe(true);
+    expect(logs.some((l) => l.includes("the contract lives in the employee standards"))).toBe(false);
+  });
+
   it("--frontend with no package.json keeps frontend mode (the info line stays neutral)", async () => {
     const { init } = await import("../../src/commands/init.js");
     await init({ tools: "none", frontend: true });

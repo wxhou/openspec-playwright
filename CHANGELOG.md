@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- **fix(init): pre-existing `tests/README.md` 时 Summary 契约指引按所有权分叉**. E2E 复查发现的良性边界：用户已有自己的 tests/README.md 时最小模式 skip 生成，Summary 仍指向它（指向用户的文件，信息错位）。`generateTestsReadme` 返回三态（生成/已是我们的/用户的）：幂等重跑时"已是我们的"仍链接契约文档；仅用户拥有的文件指向员工规范，skip 行明示 "your file is kept"。
+  - `src/commands/init.ts`、`tests/init.test.ts`、`CHANGELOG.md`
+
 - **feat(init): minimal-mode-init——无前端项目最小初始化，判定依据透明化 + `--frontend/--no-frontend` 覆盖**. 纯后端 / API-only 项目（含无 package.json 的 Python/Go）不再拿跑不通的浏览器脚手架：前端信号 false/null → 最小模式，仅交付 `tests/README.md`（验收落脚点契约 + 升级提示）与员工规范块；不装 e2e 命令、Playwright 脚手架、MCP、agents、CI workflow（MCP/agents 门统一为 mode，`--frontend` 覆盖后照常）。Summary 打印模式与命中信号归因（`Mode: frontend (signal: vite.config.ts)`），误判当场可见、flag 一票纠正。最小模式项目成为同步一等公民：`update` 的 wrapper 门控与块消失告警扩展为「命令工件 OR 我方标记块」（`hasRuleFileMarkers`），doctor 的 browsers/playwright-test 检查按脚手架存在 gate、领土检查/Sync 认最小模式项目，`uninstall` 清理工具拥有的 README 并兜底清仅标记块项目的规范块。升级路径：信号出现后重跑 init 增量补装全量并按内容所有权移除 README（修改过的保留）。前端模式（signal === true）行为零变化。检测信号集不扩（单体+子目录、vite 兼职 vitest 两个实测盲区靠透明化 + 覆盖 flag 补偿）；tests/README 为无状态资产（update 漂移提示不自动覆盖，用户自带 README 不被误伤）。
   - `src/commands/init.ts`、`src/index.ts`、`src/shared/app-detect.ts`、`src/shared/index.ts`、`src/commands/update.ts`、`src/commands/doctor.ts`、`src/commands/uninstall.ts`、`src/commands/editors.ts`、`src/commands/editors/project-rules.ts`、`templates/tests-readme.md`、`tests/`（init/update/doctor/uninstall/app-detect 扩展）、`README.md`、`CHANGELOG.md`
 

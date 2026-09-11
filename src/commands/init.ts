@@ -424,6 +424,9 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   // (MCP, agents, scaffold, Summary) below.
   const frontendSignal = hasFrontendSignal(projectRoot);
   const mode = resolveInitMode(options, frontendSignal);
+  // Set in the minimal scaffold phase; the Summary links the contract doc
+  // only when this run generated it.
+  let readmeGenerated = false;
   if (frontendSignal === null) {
     // Detection fact only — the mode decision is printed in the Summary
     // (an explicit --frontend keeps frontend mode despite the unreadable
@@ -563,7 +566,7 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     // standards install in step 8 below (editor-driven), everything else
     // Playwright-specific is skipped.
     console.log(chalk.blue("\n─── Generating Minimal Scaffold ───"));
-    await generateTestsReadme(projectRoot);
+    readmeGenerated = await generateTestsReadme(projectRoot);
   } else {
     // Frontend mode: a tool-owned tests/README.md from a previous
     // minimal-mode run is an outdated marker — prune it (ownership-aware).
@@ -632,19 +635,6 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   if (mode === "frontend") {
     const basis = explainFrontendSignal(projectRoot);
     console.log(chalk.green(`  Mode: frontend${basis ? ` (signal: ${basis})` : ""}`));
-  } else {
-    // The minimal-mode reason reflects reality: a signal miss vs an explicit
-    // --no-frontend override (the signal may have actually hit).
-    const reason =
-      options.frontend === false ? "--no-frontend" : "no frontend signal";
-    console.log(
-      chalk.gray(
-        `  Mode: minimal (${reason}) — tests/README.md + employee standards installed`,
-      ),
-    );
-  }
-
-  if (mode === "frontend") {
     console.log(chalk.bold("Next steps:"));
     console.log(
       chalk.gray(
@@ -670,10 +660,23 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
       ),
     );
   } else {
-    console.log(chalk.bold("Next steps:"));
+    // The minimal-mode reason reflects reality: a signal miss vs an explicit
+    // --no-frontend override (the signal may have actually hit).
+    const reason =
+      options.frontend === false ? "--no-frontend" : "no frontend signal";
     console.log(
       chalk.gray(
-        "  1. Acceptance tests live in tests/ — see tests/README.md for the contract",
+        `  Mode: minimal (${reason}) — tests/README.md + employee standards installed`,
+      ),
+    );
+    console.log(chalk.bold("Next steps:"));
+    // Link the contract doc only when this run generated it — a pre-existing
+    // tests/README.md is the user's, not ours.
+    console.log(
+      chalk.gray(
+        readmeGenerated
+          ? "  1. Acceptance tests live in tests/ — see tests/README.md for the contract"
+          : "  1. Acceptance tests live in tests/ — the contract lives in the employee standards",
       ),
     );
     console.log(
@@ -728,18 +731,30 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
 
 /**
  * Minimal-mode scaffold: tests/README.md describing the acceptance-test
- * contract (init-minimal-mode). Exists → skip — drift sync belongs to the
- * update phase, ownership pruning to pruneMinimalModeReadme.
+ * contract (init-minimal-mode). Returns true when the file on disk is OURS
+ * (freshly generated, or already current — the Summary links the contract
+ * doc only then); a user-owned README returns false. Drift sync belongs to
+ * the update phase, ownership pruning to pruneMinimalModeReadme.
  */
-export async function generateTestsReadme(projectRoot: string) {
+export async function generateTestsReadme(projectRoot: string): Promise<boolean> {
   const readmeDest = join(projectRoot, "tests", "README.md");
   if (existsSync(readmeDest)) {
-    console.log(chalk.gray("  - tests/README.md already exists, skipping"));
-    return;
+    const ours =
+      normalizeEol(readFileSync(readmeDest, "utf-8")) ===
+      normalizeEol(readFileSync(TESTS_README_SRC, "utf-8"));
+    console.log(
+      chalk.gray(
+        ours
+          ? "  - tests/README.md already current, skipping"
+          : "  - tests/README.md already exists — skipping (your file is kept; the acceptance-test contract lives in the employee standards)",
+      ),
+    );
+    return ours;
   }
   mkdirSync(join(projectRoot, "tests"), { recursive: true });
   writeFileSync(readmeDest, readFileSync(TESTS_README_SRC));
   console.log(chalk.green("  ✓ Generated: tests/README.md"));
+  return true;
 }
 
 /**
