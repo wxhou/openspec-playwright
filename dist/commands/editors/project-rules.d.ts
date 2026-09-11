@@ -95,3 +95,19 @@ export declare const LEGACY_MAIN_SIGNATURE = "Employee-Grade Standards";
  * Returns true when any file was migrated.
  */
 export declare function migrateLegacyMarkers(projectRoot: string, hasPwArtifacts: boolean, claudeAuthorized: boolean): boolean;
+/**
+ * Any rules file carrying an openspec-pw marker block — the new
+ * `OPENSPEC-PW:` namespace, or our main signature inside a legacy block
+ * (legacy START required: a bare mention of the phrase in user prose is
+ * not territory — same containment gate as migrateLegacyMarkers).
+ * Extends the "standards block removed" authorization to minimal-mode
+ * projects (standards only, no command artifacts): a surviving marker
+ * block proves the project is ours (design D5 / init-minimal-mode).
+ */
+export declare function hasRuleFileMarkers(projectRoot: string): boolean;
+/**
+ * CLAUDE.md wrapper territory: true when the file carries our wrapper
+ * marker block — the minimal-mode claude gate (command artifacts absent
+ * per init-minimal-mode; a bare @AGENTS.md import never counts).
+ */
+export declare function claudeWrapperHasMarkers(projectRoot: string): boolean;

@@ -15,6 +15,7 @@ import {
 } from "../commands/editors.js";
 import { detectAppServer, isTestRunnerMcpInstalled, needsShell, detectCodeGraphStatus } from "../shared/index.js";
 import { bundledStandardsPath, compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
+import { hasRuleFileMarkers, claudeWrapperHasMarkers } from "./editors/project-rules.js";
 
 export interface DoctorOptions {
   json?: boolean;
@@ -131,14 +132,29 @@ export async function doctor(options: DoctorOptions = {}) {
     });
   }
 
-  // Playwright Config file
+  // Playwright Config file (all four extension variants)
   const configFiles = ["playwright.config.ts", "playwright.config.js", "playwright.config.mjs", "playwright.config.mts"];
   const configPath = configFiles.find((f) => existsSync(join(projectRoot, f)));
+
+  // Playwright scaffold presence gates every Playwright-specific check
+  // (config, browsers, @playwright/test, tests dir): minimal-mode projects
+  // (no frontend signal) have none and must not fail doctor on missing
+  // Playwright (init-minimal-mode — the checks degrade to ok:true info lines).
+  // Same config file set the check above accepts, plus the tests dir — a
+  // narrower gate here would contradict its own config verdict for
+  // .js/.mjs/.mts configs.
+  const hasPlaywrightScaffold =
+    Boolean(configPath) || existsSync(join(projectRoot, "tests", "playwright"));
+
   checks.push({
     category: "Playwright Config",
     name: "config",
-    ok: Boolean(configPath),
-    message: configPath ? `found ${configPath}` : "not found",
+    ok: hasPlaywrightScaffold ? Boolean(configPath) : true,
+    message: configPath
+      ? `found ${configPath}`
+      : hasPlaywrightScaffold
+        ? "not found"
+        : "no Playwright scaffold (minimal mode)",
   });
 
   // OpenSpec
@@ -159,50 +175,82 @@ export async function doctor(options: DoctorOptions = {}) {
     message: specCount > 0 ? `${specCount} spec(s) found` : "no .spec.md files",
   });
 
-  // Playwright CLI (package installed)
-  try {
-    const pw = execFileSync("npx", ["playwright", "--version"], {
-      encoding: "utf-8",
-      shell: needsShell,
-    }).trim();
+  // Playwright CLI (package installed) — gated on the scaffold presence
+  // like the other Playwright-specific checks (minimal-mode projects have
+  // no @playwright/test and get an ok:true info line instead).
+  if (!hasPlaywrightScaffold) {
     checks.push({
       category: "Playwright Browsers",
       name: "cli",
       ok: true,
-      message: pw,
+      message: "no Playwright scaffold (minimal mode)",
     });
-  } catch {
-    checks.push({
-      category: "Playwright Browsers",
-      name: "cli",
-      ok: false,
-      message: "not installed",
-    });
+  } else {
+    try {
+      const pw = execFileSync("npx", ["playwright", "--version"], {
+        encoding: "utf-8",
+        shell: needsShell,
+      }).trim();
+      checks.push({
+        category: "Playwright Browsers",
+        name: "cli",
+        ok: true,
+        message: pw,
+      });
+    } catch {
+      checks.push({
+        category: "Playwright Browsers",
+        name: "cli",
+        ok: false,
+        message: "not installed",
+      });
+    }
   }
+
+  // Playwright environment checks (browsers, @playwright/test) are gated on
+  // the Playwright scaffold presence computed above (minimal-mode projects
+  // degrade to ok:true info lines).
 
   // Playwright browser binaries installed
-  let hasBrowsers = false;
-  let browsersMsg = "not installed";
-  try {
-    execFileSync("node", ["-e", "const {chromium} = require('playwright'); chromium.executablePath()"], {
-      encoding: "utf-8",
-      shell: needsShell,
-      stdio: "pipe",
-      timeout: 5000,
+  if (!hasPlaywrightScaffold) {
+    checks.push({
+      category: "Playwright Browsers",
+      name: "browsers",
+      ok: true,
+      message: "no Playwright scaffold (minimal mode)",
     });
-    hasBrowsers = true;
-    browsersMsg = "chromium installed";
-  } catch {
-    browsersMsg = "not installed (run: npx playwright install chromium)";
+  } else {
+    let hasBrowsers = false;
+    let browsersMsg = "not installed";
+    try {
+      execFileSync("node", ["-e", "const {chromium} = require('playwright'); chromium.executablePath()"], {
+        encoding: "utf-8",
+        shell: needsShell,
+        stdio: "pipe",
+        timeout: 5000,
+      });
+      hasBrowsers = true;
+      browsersMsg = "chromium installed";
+    } catch {
+      browsersMsg = "not installed (run: npx playwright install chromium)";
+    }
+    checks.push({
+      category: "Playwright Browsers",
+      name: "browsers",
+      ok: hasBrowsers,
+      message: browsersMsg,
+    });
   }
-  checks.push({
-    category: "Playwright Browsers",
-    name: "browsers",
-    ok: hasBrowsers,
-    message: browsersMsg,
-  });
 
   // Playwright Test framework (imported by spec files)
+  if (!hasPlaywrightScaffold) {
+    checks.push({
+      category: "Playwright Test",
+      name: "playwright-test",
+      ok: true,
+      message: "no Playwright scaffold (minimal mode)",
+    });
+  } else {
   let hasPwTest = false;
   let pwTestMsg = "not installed";
   try {
@@ -227,6 +275,7 @@ export async function doctor(options: DoctorOptions = {}) {
     ok: hasPwTest,
     message: pwTestMsg,
   });
+  }
 
   // Playwright MCP — check each detected editor adapter
   const adapters = detectAdapters(projectRoot);
@@ -384,25 +433,29 @@ export async function doctor(options: DoctorOptions = {}) {
 
   // @playwright/cli — awareness only (0.x, no semver promise; never a
   // dependency). Editor-independent, hence outside the adapter branch.
-  let cliAvailable = false;
-  try {
-    execFileSync(
-      process.platform === "win32" ? "where" : "which",
-      ["playwright-cli"],
-      { stdio: "ignore", shell: needsShell },
-    );
-    cliAvailable = true;
-  } catch {
-    /* not installed — optional */
+  // Gated on the Playwright scaffold like the other browser-tooling checks:
+  // minimal-mode projects have no agents/MCP to feed it.
+  if (hasPlaywrightScaffold) {
+    let cliAvailable = false;
+    try {
+      execFileSync(
+        process.platform === "win32" ? "where" : "which",
+        ["playwright-cli"],
+        { stdio: "ignore", shell: needsShell },
+      );
+      cliAvailable = true;
+    } catch {
+      /* not installed — optional */
+    }
+    checks.push({
+      category: "Playwright MCP",
+      name: "playwright-cli",
+      ok: cliAvailable,
+      message: cliAvailable
+        ? "available"
+        : "not installed (optional token-efficient browser CLI for agents)",
+    });
   }
-  checks.push({
-    category: "Playwright MCP",
-    name: "playwright-cli",
-    ok: cliAvailable,
-    message: cliAvailable
-      ? "available"
-      : "not installed (optional token-efficient browser CLI for agents)",
-  });
 
   // Sync — employee standards drift (AGENTS.md / CLAUDE.md OPENSPEC blocks)
   // Gated on "initialized": a project that never ran init is `ok:true` so CI
@@ -431,21 +484,24 @@ export async function doctor(options: DoctorOptions = {}) {
 
     // AGENTS.md — 标记即领土: only the tool-owned block is maintained
     // (update repairs it when present). A wiped block IS a failure when pw
-    // command artifacts exist (authorized territory was removed — possibly
-    // by the official `openspec update` legacy cleanup); the message points
-    // at INIT, whose append branch repairs it (环闭合 — never at update,
+    // command artifacts exist OR another rules file carries our marker
+    // (minimal-mode projects — the surviving wrapper proves the territory;
+    // init-minimal-mode) — the removed territory was possibly taken by the
+    // official `openspec update` legacy cleanup; the message points at
+    // INIT, whose append branch repairs it (环闭合 — never at update,
     // avoiding the 0.3.76 doctor-nags → update-can't-fix loop). A surviving
     // legacy OPENSPEC block is still ours (signature-gated migration
     // converges on the next update) → ok:true info line.
+    const territory = hasCommand || hasRuleFileMarkers(projectRoot);
     const agentsPath = join(projectRoot, "AGENTS.md");
     if (!existsSync(agentsPath)) {
       checks.push({
         category: "Sync",
         name: "standards-agents",
         ok: true,
-        authorized: hasCommand,
-        message: hasCommand
-          ? 'AGENTS.md missing (standards block removed) — restore via "openspec-pw init --tools <id>"'
+        authorized: territory,
+        message: territory
+          ? 'AGENTS.md missing (standards block removed) — restore via "openspec-pw init"'
           : "not initialized (run openspec-pw init first)",
       });
     } else {
@@ -458,11 +514,11 @@ export async function doctor(options: DoctorOptions = {}) {
       checks.push({
         category: "Sync",
         name: "standards-agents",
-        ok: missing ? !hasCommand : !drift.stale,
-        authorized: missing ? hasCommand : true,
+        ok: missing ? !territory : !drift.stale,
+        authorized: missing ? territory : true,
         message: missing
-          ? hasCommand
-            ? 'AGENTS.md has no OPENSPEC-PW block (removed — possibly by the official `openspec update` legacy cleanup) — restore via "openspec-pw init --tools <id>"'
+          ? territory
+            ? 'AGENTS.md has no OPENSPEC-PW block (removed — possibly by the official `openspec update` legacy cleanup) — restore via "openspec-pw init"'
             : "not initialized (run openspec-pw init first)"
           : noMarkers
             ? "AGENTS.md carries a legacy OPENSPEC block — run openspec-pw update to migrate markers"
@@ -472,12 +528,14 @@ export async function doctor(options: DoctorOptions = {}) {
       });
     }
 
-    // CLAUDE.md wrapper is only checked when the claude editor is authorized
-    // (command artifacts exist) — not on detection: a global ~/.claude dir
-    // or a project .claude/ without openspec-pw artifacts never implies a
+    // CLAUDE.md wrapper is checked when the claude editor is authorized
+    // (command artifacts) OR the wrapper marker block itself is present
+    // (minimal-mode claude projects have standards but no command files —
+    // init-minimal-mode) — not on detection: a global ~/.claude dir or a
+    // project .claude/ without openspec-pw artifacts never implies a
     // wrapper. A bare `@AGENTS.md` import without markers is left
     // untouched — not stale.
-    if (hasCommandArtifacts(projectRoot, claudeAdapter)) {
+    if (hasCommandArtifacts(projectRoot, claudeAdapter) || claudeWrapperHasMarkers(projectRoot)) {
       const claudePath = join(projectRoot, "CLAUDE.md");
       // A symlinked CLAUDE.md (→ AGENTS.md, the official reuse pattern) is
       // covered by the standards-agents check above — comparing it against
@@ -531,14 +589,20 @@ export async function doctor(options: DoctorOptions = {}) {
     }
   }
 
-  // Tests directory structure
+  // Tests directory structure (Playwright-specific — minimal-mode projects
+  // have tests/ but no tests/playwright; gate like the env checks above,
+  // auth-setup/seed already carry "optional" semantics)
   const testsDir = join(projectRoot, "tests", "playwright");
   const hasTestsDir = existsSync(testsDir);
   checks.push({
     category: "Tests",
     name: "directory",
-    ok: hasTestsDir,
-    message: hasTestsDir ? "tests/playwright/ exists" : "not found",
+    ok: hasPlaywrightScaffold ? hasTestsDir : true,
+    message: hasPlaywrightScaffold
+      ? hasTestsDir
+        ? "tests/playwright/ exists"
+        : "not found"
+      : "no Playwright scaffold (minimal mode)",
   });
 
   const hasAuthSetup = existsSync(join(testsDir, "auth.setup.ts"));

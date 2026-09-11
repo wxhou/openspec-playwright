@@ -2,7 +2,13 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdirSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
-import { chooseDevScript, detectAppServer, parsePort, hasFrontendSignal } from "../../src/shared/app-detect.js";
+import {
+  chooseDevScript,
+  detectAppServer,
+  parsePort,
+  hasFrontendSignal,
+  explainFrontendSignal,
+} from "../../src/shared/app-detect.js";
 
 describe("app-detect", () => {
   const tmpDir = join(tmpdir(), "openspec-pw-app-detect-" + Date.now());
@@ -283,5 +289,46 @@ describe("app-detect", () => {
     const first = hasFrontendSignal(tmpDir);
     expect(first).toBe(false);
     expect(hasFrontendSignal(tmpDir)).toBe(first);
+  });
+
+  // ─── explainFrontendSignal ─────────────────────────────────────────────
+
+  it("explainFrontendSignal: attributes a framework config file hit", () => {
+    writeFileSync(join(tmpDir, "package.json"), JSON.stringify({ dependencies: { express: "^4.0.0" } }));
+    writeFileSync(join(tmpDir, "vite.config.ts"), "export default {};");
+    expect(explainFrontendSignal(tmpDir)).toBe("vite.config.ts");
+  });
+
+  it("explainFrontendSignal: attributes a dependency hit", () => {
+    writeFileSync(join(tmpDir, "package.json"), JSON.stringify({ dependencies: { express: "^4.0.0", react: "^19.0.0" } }));
+    expect(explainFrontendSignal(tmpDir)).toBe("dependency: react");
+  });
+
+  it("explainFrontendSignal: attributes a dev-script keyword hit", () => {
+    writeFileSync(join(tmpDir, "package.json"), JSON.stringify({ scripts: { dev: "next dev" } }));
+    expect(explainFrontendSignal(tmpDir)).toBe("dev script: next");
+  });
+
+  it("explainFrontendSignal: attributes a workspace member hit with a relative posix dir", () => {
+    const web = join(tmpDir, "apps", "web");
+    mkdirSync(web, { recursive: true });
+    writeFileSync(join(tmpDir, "package.json"), JSON.stringify({ workspaces: ["apps/*"] }));
+    writeFileSync(join(web, "package.json"), JSON.stringify({ dependencies: { react: "^19.0.0" } }));
+    expect(explainFrontendSignal(tmpDir)).toBe("workspace member: apps/web (react)");
+  });
+
+  it("explainFrontendSignal: config file beats dependency attribution (layer order)", () => {
+    writeFileSync(join(tmpDir, "package.json"), JSON.stringify({ dependencies: { react: "^19.0.0" } }));
+    writeFileSync(join(tmpDir, "next.config.mjs"), "export default {};");
+    expect(explainFrontendSignal(tmpDir)).toBe("next.config.mjs");
+  });
+
+  it("explainFrontendSignal: returns null when there is no signal", () => {
+    writeFileSync(join(tmpDir, "package.json"), JSON.stringify({ dependencies: { express: "^4.0.0" } }));
+    expect(explainFrontendSignal(tmpDir)).toBe(null);
+  });
+
+  it("explainFrontendSignal: returns null when package.json is unreadable", () => {
+    expect(explainFrontendSignal(tmpDir)).toBe(null);
   });
 });

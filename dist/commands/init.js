@@ -1,15 +1,16 @@
 import { execFileSync } from "child_process";
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync, rmdirSync, } from "fs";
 import { join } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { readFile } from "fs/promises";
-import { buildCommandMeta, detectAdapters, detectProjectAdapters, getAdapter, getAllAdapters, installCommand, installOptionalArtifacts, installProjectRules, migrateLegacyMarkers, readEmployeeStandards, resolveToolsArg, slashCommandForAdapter, intentFileEditors, enumerateAdapterArtifacts, enumerateVendoredAgents, installedAgentsSnapshotDir, isInventoryEmpty, removeAdapterMcp, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, removeClaudeLegacySkill, removeClaudeWrapper, removeMarkersFromFile, } from "./editors.js";
+import { buildCommandMeta, detectAdapters, detectProjectAdapters, getAdapter, getAllAdapters, installCommand, installOptionalArtifacts, installProjectRules, migrateLegacyMarkers, readEmployeeStandards, resolveToolsArg, slashCommandForAdapter, intentFileEditors, enumerateAdapterArtifacts, enumerateVendoredAgents, installedAgentsSnapshotDir, isInventoryEmpty, removeAdapterMcp, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, removeClaudeLegacySkill, removeClaudeWrapper, removeMarkersFromFile, normalizeEol, } from "./editors.js";
 import { isEditorConfigured, agentsFileHasMarkers, } from "./editors/configured.js";
-import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, TEST_RUNNER_MCP_SERVER, needsShell, hasFrontendSignal, detectCodeGraphStatus, codegraphHintLines, CREDENTIALS_RELPATHS, credentialsIgnoreHint, findUnignoredFiles, } from "../shared/index.js";
+import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, TEST_RUNNER_MCP_SERVER, needsShell, hasFrontendSignal, explainFrontendSignal, detectCodeGraphStatus, codegraphHintLines, CREDENTIALS_RELPATHS, credentialsIgnoreHint, findUnignoredFiles, } from "../shared/index.js";
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
 const E2E_COMMAND_SRC = fileURLToPath(new URL("../../templates/e2e-command.md", import.meta.url));
 const EMPLOYEE_STANDARDS_SRC = fileURLToPath(new URL("../../employee-standards.md", import.meta.url));
+const TESTS_README_SRC = fileURLToPath(new URL("../../templates/tests-readme.md", import.meta.url));
 /**
  * Interactive multi-select of all supported editors, pre-selecting the
  * editors passed in `preselected`. In the artifact-manifest tier those are
@@ -31,6 +32,20 @@ export async function promptSelectEditors(allEditors, preselected, configured = 
         })),
     });
     return selected;
+}
+/**
+ * Init modes: "frontend" keeps the full Playwright scaffold (existing
+ * behavior); "minimal" delivers only tests/README.md plus employee
+ * standards. Explicit --frontend/--no-frontend flags win over the detection
+ * signal; null (no readable package.json, e.g. Python/Go backends) is
+ * minimal mode — init-minimal-mode spec.
+ */
+export function resolveInitMode(options, frontendSignal) {
+    if (options.frontend === true)
+        return "frontend";
+    if (options.frontend === false)
+        return "minimal";
+    return frontendSignal === true ? "frontend" : "minimal";
 }
 export async function init(options, deps = {}) {
     console.log(chalk.blue("\n🔧 OpenSpec + Playwright E2E Setup\n"));
@@ -244,17 +259,24 @@ export async function init(options, deps = {}) {
             }
         }
     }
-    // 3b. Detect a frontend signal — computed once, reused for the MCP
-    // install gate (step 4) and the Summary guidance hint.
+    // 3b. Init mode: explicit flag wins, otherwise the frontend signal
+    // decides (false and null both → minimal). Reused by every phase gate
+    // (MCP, agents, scaffold, Summary) below.
     const frontendSignal = hasFrontendSignal(projectRoot);
+    const mode = resolveInitMode(options, frontendSignal);
+    if (frontendSignal === null) {
+        // Detection fact only — the mode decision is printed in the Summary
+        // (an explicit --frontend keeps frontend mode despite the unreadable
+        // package.json, so this line must not claim a mode).
+        console.log(chalk.gray("  - No readable package.json detected — frontend signal undetectable"));
+    }
     // 4. Install the Playwright test-runner MCP for each selected editor —
-    // only when a frontend signal was detected (API-only projects test via
-    // the request fixture and don't need the browser MCP; --mcp=false still
-    // overrides). Single project-scoped server, matching the official
-    // `playwright init-agents` layout: `playwright-test`
+    // only in frontend mode (minimal-mode projects test with their own stack;
+    // --mcp=false still overrides). Single project-scoped server, matching the
+    // official `playwright init-agents` layout: `playwright-test`
     // (npx playwright run-test-mcp-server) is a superset — it exposes both
     // browser_* tools and the test_run/test_debug/test_list workflow tools.
-    if (options.mcp !== false && editors.length > 0 && frontendSignal === true) {
+    if (options.mcp !== false && editors.length > 0 && mode === "frontend") {
         console.log(chalk.blue("\n─── Installing Playwright MCP ───"));
         for (const adapter of editors) {
             if (isTestRunnerMcpInstalled(adapter)) {
@@ -291,13 +313,14 @@ export async function init(options, deps = {}) {
         console.log(chalk.gray("  (server name \"playwright-test\" = the official `playwright init-agents` name; superset of @playwright/mcp — see README)"));
     }
     else if (options.mcp !== false && editors.length > 0) {
-        console.log(chalk.gray("  - No frontend signal detected — skipping Playwright MCP (API tests use the request fixture)"));
+        // Reaching here guarantees mode !== "frontend" (the if above consumed it).
+        console.log(chalk.gray("  - Minimal mode — skipping Playwright MCP (backend projects test with their own stack)"));
     }
     // 4b. Vendored official Playwright agents (claude only, opt-in). Every
     // tool the agents reference lives on the playwright-test MCP server, so
-    // the phase follows the same frontend-signal gate as the MCP install.
+    // the phase follows the same frontend-mode gate as the MCP install.
     const claudeEditor = editors.find((a) => a.id === "claude");
-    if (claudeEditor && frontendSignal === true) {
+    if (claudeEditor && mode === "frontend") {
         let agentsConsent = options.agents === true;
         if (!agentsConsent && interactiveSelection) {
             agentsConsent = await confirmPrompt("Install the official Playwright agents (planner/generator/healer) into .claude/agents/?");
@@ -311,10 +334,12 @@ export async function init(options, deps = {}) {
         }
     }
     else if (claudeEditor && options.agents === true) {
-        console.log(chalk.gray("  - No frontend signal detected — skipping vendored agents (their tools depend on the Playwright MCP)"));
+        console.log(chalk.gray("  - Minimal mode — skipping vendored agents (their tools depend on the Playwright MCP)"));
     }
-    // 5. Install E2E command for each selected editor
-    if (editors.length > 0) {
+    // 5. Install E2E command for each selected editor (frontend mode only —
+    // the command drives the Playwright E2E workflow, which minimal-mode
+    // projects don't run).
+    if (editors.length > 0 && mode === "frontend") {
         console.log(chalk.blue("\n─── Installing E2E Commands ───"));
         const body = await readFile(E2E_COMMAND_SRC, "utf-8");
         const meta = buildCommandMeta(body);
@@ -322,30 +347,46 @@ export async function init(options, deps = {}) {
             installCommand(adapter, meta, projectRoot);
         }
     }
-    // 6. Generate seed test
-    console.log(chalk.blue("\n─── Generating Seed Test ───"));
-    await generateSeedTest(projectRoot);
-    // 6b. Generate shared pages directory
-    console.log(chalk.blue("\n─── Generating Shared Pages ───"));
-    await generateSharedPages(projectRoot);
-    await generateTestPlanTemplate(projectRoot);
-    // 6c. Generate playwright.config.ts
-    console.log(chalk.blue("\n─── Generating Playwright Config ───"));
-    await generatePlaywrightConfig(projectRoot);
-    // 7. Generate app-knowledge.md
-    console.log(chalk.blue("\n─── Generating App Knowledge ───"));
-    await generateAppKnowledge(projectRoot);
+    else if (editors.length > 0) {
+        console.log(chalk.gray("  - Minimal mode — skipping E2E command (it drives the Playwright workflow)"));
+    }
+    if (mode !== "frontend") {
+        // Minimal mode: the only scaffold is tests/README.md. Employee
+        // standards install in step 8 below (editor-driven), everything else
+        // Playwright-specific is skipped.
+        console.log(chalk.blue("\n─── Generating Minimal Scaffold ───"));
+        await generateTestsReadme(projectRoot);
+    }
+    else {
+        // Frontend mode: a tool-owned tests/README.md from a previous
+        // minimal-mode run is an outdated marker — prune it (ownership-aware).
+        console.log(chalk.blue("\n─── Generating Seed Test ───"));
+        await pruneMinimalModeReadme(projectRoot);
+        await generateSeedTest(projectRoot);
+        // 6b. Generate shared pages directory
+        console.log(chalk.blue("\n─── Generating Shared Pages ───"));
+        await generateSharedPages(projectRoot);
+        await generateTestPlanTemplate(projectRoot);
+        // 6c. Generate playwright.config.ts
+        console.log(chalk.blue("\n─── Generating Playwright Config ───"));
+        await generatePlaywrightConfig(projectRoot);
+        // 7. Generate app-knowledge.md
+        console.log(chalk.blue("\n─── Generating App Knowledge ───"));
+        await generateAppKnowledge(projectRoot);
+    }
     // 7a. Advisory: real test credentials must not reach git history.
     // Detection only — the user's .gitignore is shared territory and is
     // never auto-edited. Runs whenever the scaffold completes with the
     // file present (freshly generated or pre-existing); .bak is named
-    // too when one exists.
+    // too when one exists. Unconditional: it still guards a pre-existing
+    // credentials.yaml in a project that later switched to --no-frontend.
     const unignoredCredentials = findUnignoredFiles(projectRoot, CREDENTIALS_RELPATHS);
     if (unignoredCredentials.length > 0) {
         console.log(chalk.yellow(`\n  ⚠ ${credentialsIgnoreHint(unignoredCredentials)}`));
     }
-    // 7b. Generate GitHub Actions workflow (if --ci)
-    if (options.ci) {
+    // 7b. Generate GitHub Actions workflow (if --ci; frontend mode only —
+    // the workflow runs Playwright, which minimal-mode projects don't have)
+    if (options.ci && mode === "frontend") {
         console.log(chalk.blue("\n─── Generating CI Workflow ───"));
         await generateGithubWorkflow(projectRoot);
     }
@@ -360,15 +401,33 @@ export async function init(options, deps = {}) {
             installProjectRules(projectRoot, standards, editors);
         }
     }
-    // 9. Summary
+    // 9. Summary — mode + basis line first (init-minimal-mode: 判定依据透明化;
+    // users should be able to spot a misjudgment and correct with --frontend).
     console.log(chalk.blue("\n─── Summary ───"));
     console.log(chalk.green("  ✓ Setup complete!\n"));
-    console.log(chalk.bold("Next steps:"));
-    console.log(chalk.gray("  1. Install Playwright browsers: npx playwright install --with-deps"));
-    console.log(chalk.gray("  2. Customize tests/playwright/credentials.yaml with your test user"));
-    console.log(chalk.gray("  3. Set credentials: export E2E_USERNAME=xxx E2E_PASSWORD=yyy"));
-    console.log(chalk.gray("  4. Run auth setup: npx playwright test --project=setup"));
-    console.log(chalk.gray("  5. Page objects: extend tests/playwright/pages/BasePage.ts for shared selectors"));
+    if (mode === "frontend") {
+        const basis = explainFrontendSignal(projectRoot);
+        console.log(chalk.green(`  Mode: frontend${basis ? ` (signal: ${basis})` : ""}`));
+    }
+    else {
+        // The minimal-mode reason reflects reality: a signal miss vs an explicit
+        // --no-frontend override (the signal may have actually hit).
+        const reason = options.frontend === false ? "--no-frontend" : "no frontend signal";
+        console.log(chalk.gray(`  Mode: minimal (${reason}) — tests/README.md + employee standards installed`));
+    }
+    if (mode === "frontend") {
+        console.log(chalk.bold("Next steps:"));
+        console.log(chalk.gray("  1. Install Playwright browsers: npx playwright install --with-deps"));
+        console.log(chalk.gray("  2. Customize tests/playwright/credentials.yaml with your test user"));
+        console.log(chalk.gray("  3. Set credentials: export E2E_USERNAME=xxx E2E_PASSWORD=yyy"));
+        console.log(chalk.gray("  4. Run auth setup: npx playwright test --project=setup"));
+        console.log(chalk.gray("  5. Page objects: extend tests/playwright/pages/BasePage.ts for shared selectors"));
+    }
+    else {
+        console.log(chalk.bold("Next steps:"));
+        console.log(chalk.gray("  1. Acceptance tests live in tests/ — see tests/README.md for the contract"));
+        console.log(chalk.gray("  2. Added a frontend? Re-run openspec-pw init (or with --frontend) to install the Playwright scaffold"));
+    }
     // Optional: CodeGraph hints — suggest `codegraph init` when the CLI is
     // installed but the project is not indexed, or `codegraph sync` +
     // (when the MCP is missing) `codegraph install` to refresh an existing
@@ -376,16 +435,12 @@ export async function init(options, deps = {}) {
     const cg = detectCodeGraphStatus(projectRoot);
     const hints = codegraphHintLines(cg);
     if (hints.length > 0) {
-        console.log(chalk.gray(`  6. ${hints[0]}`));
+        console.log(chalk.gray(`  ${mode === "frontend" ? 6 : 3}. ${hints[0]}`));
         for (const line of hints.slice(1)) {
             console.log(chalk.gray(`     ${line}`));
         }
     }
-    if (frontendSignal === false) {
-        console.log(chalk.gray("  • If your frontend lives in a subdirectory (monorepo): run openspec-pw init in the app directory (one Playwright config per app)"));
-        console.log(chalk.gray("  • If this is an API-only project: use Playwright's request fixture for API tests and point BASE_URL at the API address"));
-    }
-    if (editors.length > 0) {
+    if (mode === "frontend" && editors.length > 0) {
         for (const adapter of editors) {
             const slashCmd = slashCommandForAdapter(adapter);
             console.log(chalk.gray(`  • In ${adapter.label}, run: ${slashCmd} <change-name>`));
@@ -393,10 +448,54 @@ export async function init(options, deps = {}) {
         console.log(chalk.gray("  • Or: openspec-pw doctor to verify setup\n"));
         console.log(chalk.bold(`\n  Restart ${editors.map((a) => a.displayName).join(" + ")} to use the updated commands.`));
     }
-    console.log(chalk.bold("How it works:"));
-    console.log(chalk.gray("  /opsx:e2e (Claude), /opsx-e2e (OpenCode/Cline/Cursor/Pi/Oh My Pi) read your OpenSpec specs"));
-    console.log(chalk.gray("  and run Playwright E2E tests through a three-agent pipeline:"));
-    console.log(chalk.gray("  Planner → Generator → Healer\n"));
+    if (mode === "frontend") {
+        console.log(chalk.bold("How it works:"));
+        console.log(chalk.gray("  /opsx:e2e (Claude), /opsx-e2e (OpenCode/Cline/Cursor/Pi/Oh My Pi) read your OpenSpec specs"));
+        console.log(chalk.gray("  and run Playwright E2E tests through a three-agent pipeline:"));
+        console.log(chalk.gray("  Planner → Generator → Healer\n"));
+    }
+}
+/**
+ * Minimal-mode scaffold: tests/README.md describing the acceptance-test
+ * contract (init-minimal-mode). Exists → skip — drift sync belongs to the
+ * update phase, ownership pruning to pruneMinimalModeReadme.
+ */
+export async function generateTestsReadme(projectRoot) {
+    const readmeDest = join(projectRoot, "tests", "README.md");
+    if (existsSync(readmeDest)) {
+        console.log(chalk.gray("  - tests/README.md already exists, skipping"));
+        return;
+    }
+    mkdirSync(join(projectRoot, "tests"), { recursive: true });
+    writeFileSync(readmeDest, readFileSync(TESTS_README_SRC));
+    console.log(chalk.green("  ✓ Generated: tests/README.md"));
+}
+/**
+ * Frontend-mode counterpart: a tool-owned tests/README.md from a previous
+ * minimal-mode run describes the minimal contract and is outdated once the
+ * full Playwright scaffold installs. Byte-identical to the template →
+ * tool-owned → removed (empty tests/ dir goes too); anything else is
+ * user-owned → kept with a notice.
+ */
+export async function pruneMinimalModeReadme(projectRoot) {
+    const readmeDest = join(projectRoot, "tests", "README.md");
+    if (!existsSync(readmeDest))
+        return;
+    const template = readFileSync(TESTS_README_SRC, "utf-8");
+    if (normalizeEol(readFileSync(readmeDest, "utf-8")) === normalizeEol(template)) {
+        rmSync(readmeDest);
+        const testsDir = join(projectRoot, "tests");
+        try {
+            rmdirSync(testsDir); // only succeeds when empty
+        }
+        catch {
+            // user content in tests/ — leave the directory
+        }
+        console.log(chalk.green("  ✓ Removed tests/README.md (minimal-mode marker, full scaffold installed)"));
+    }
+    else {
+        console.log(chalk.yellow("  ⚠ tests/README.md differs from the minimal-mode template — left untouched"));
+    }
 }
 export async function generateSeedTest(projectRoot) {
     const testsDir = join(projectRoot, "tests", "playwright");

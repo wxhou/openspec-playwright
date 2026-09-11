@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
+import { fileURLToPath } from "url";
 
 // Keep real shared exports, stub only detectCodeGraphStatus so the
 // CodeGraph cleanup note is controllable without touching the real CLI.
@@ -160,5 +161,105 @@ describe("uninstall() characterization (section output + file removal)", () => {
       const content = (await import("fs")).readFileSync(agents, "utf-8");
       expect(content).toContain("user");
     }
+  });
+});
+describe("uninstall() minimal-mode project (standards only, no command artifacts)", () => {
+  let cwd2: string;
+
+  beforeEach(() => {
+    cwd2 = process.cwd();
+    process.chdir(tmp);
+  });
+
+  afterEach(() => {
+    process.chdir(cwd2);
+  });
+
+  it("removes the tool-owned tests/README.md and the standards block with zero detected editors", async () => {
+    mockedDetectAdapters.mockReturnValue([]);
+    mockedDetectCodeGraphStatus.mockReturnValue({
+      cliInstalled: false,
+      indexed: false,
+      mcpInstalledAdapters: [],
+    });
+    const template = readFileSync(
+      fileURLToPath(new URL("../../templates/tests-readme.md", import.meta.url)),
+      "utf-8",
+    );
+    mkdirSync(join(tmp, "tests"), { recursive: true });
+    writeFileSync(join(tmp, "tests", "README.md"), template);
+    writeFileSync(
+      join(tmp, "AGENTS.md"),
+      "user\n\n<!-- OPENSPEC-PW:START -->\nstandards\n<!-- OPENSPEC-PW:END -->\n",
+    );
+
+    await uninstall();
+
+    expect(existsSync(join(tmp, "tests", "README.md"))).toBe(false);
+    const agentsAfter = readFileSync(join(tmp, "AGENTS.md"), "utf-8");
+    expect(agentsAfter).toContain("user");
+    expect(agentsAfter).not.toContain("OPENSPEC-PW:START");
+    expect(agentsAfter).not.toContain("standards");
+  });
+
+  it("keeps a user-modified tests/README.md with a notice", async () => {
+    mockedDetectAdapters.mockReturnValue([]);
+    mockedDetectCodeGraphStatus.mockReturnValue({
+      cliInstalled: false,
+      indexed: false,
+      mcpInstalledAdapters: [],
+    });
+    mkdirSync(join(tmp, "tests"), { recursive: true });
+    writeFileSync(join(tmp, "tests", "README.md"), "# my own readme");
+
+    const lines: string[] = [];
+    const spy = vi.spyOn(console, "log");
+    spy.mockImplementation((msg?: unknown) => lines.push(String(msg)));
+    try {
+      await uninstall();
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(existsSync(join(tmp, "tests", "README.md"))).toBe(true);
+    expect(lines.some((l) => l.includes("kept (user-modified or user-owned)"))).toBe(true);
+  });
+});
+
+describe("uninstall() mixed project: cursor detected, claude wrapper only", () => {
+  let cwd3: string;
+
+  beforeEach(() => {
+    cwd3 = process.cwd();
+    process.chdir(tmp);
+  });
+
+  afterEach(() => {
+    process.chdir(cwd3);
+  });
+
+  it("cleans the CLAUDE.md wrapper even when claude is not detected", async () => {
+    mockedDetectAdapters.mockReturnValue([cursorAdapter]);
+    mockedDetectCodeGraphStatus.mockReturnValue({
+      cliInstalled: false,
+      indexed: false,
+      mcpInstalledAdapters: [],
+    });
+    writeFileSync(
+      join(tmp, "AGENTS.md"),
+      "user\n\n<!-- OPENSPEC-PW:START -->\nstandards\n<!-- OPENSPEC-PW:END -->\n",
+    );
+    writeFileSync(
+      join(tmp, "CLAUDE.md"),
+      "preamble\n<!-- OPENSPEC-PW:START -->\nwrapper\n<!-- OPENSPEC-PW:END -->\n",
+    );
+
+    await uninstall();
+
+    const agentsAfter = readFileSync(join(tmp, "AGENTS.md"), "utf-8");
+    const claudeAfter = readFileSync(join(tmp, "CLAUDE.md"), "utf-8");
+    expect(agentsAfter).not.toContain("OPENSPEC-PW:START");
+    expect(claudeAfter).not.toContain("OPENSPEC-PW:START");
+    expect(claudeAfter).toContain("preamble");
   });
 });

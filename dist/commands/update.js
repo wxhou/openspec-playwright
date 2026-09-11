@@ -6,9 +6,10 @@ import { tmpdir } from "os";
 import { promisify } from "util";
 import chalk from "chalk";
 import * as tar from "tar";
-import { buildCommandMeta, getAllAdapters, hasCommandArtifacts, installCommand, installOpenSpecBlock, installClaudeWrapper, migrateLegacyMarkers, claudeAdapter, claudeWrapperStandardsContent, opencodeAdapter, syncVendoredAgents, } from "./editors.js";
+import { buildCommandMeta, getAllAdapters, hasCommandArtifacts, installCommand, installOpenSpecBlock, installClaudeWrapper, migrateLegacyMarkers, claudeAdapter, claudeWrapperStandardsContent, opencodeAdapter, syncVendoredAgents, normalizeEol, } from "./editors.js";
 import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, hasFrontendSignal, needsShell, detectCodeGraphStatus, codegraphHintLines, CREDENTIALS_RELPATHS, credentialsIgnoreHint, findUnignoredFiles, } from "../shared/index.js";
 import { compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
+import { claudeWrapperHasMarkers, hasRuleFileMarkers } from "./editors/project-rules.js";
 const execFileAsync = promisify(execFile);
 export async function update(options) {
     console.log(chalk.blue("\n🔄 Updating OpenSpec + Playwright E2E\n"));
@@ -171,8 +172,9 @@ export async function update(options) {
             // Standards sync (drift-aware). Under --no-skill this phase still runs
             // via the else branch below — the flag only scopes command/template
             // installation, not standards. CLAUDE.md wrapper is gated on the
-            // claude editor's command-artifact authorization.
-            syncEmployeeStandards(tmpDir, projectRoot, hasCommandArtifacts(projectRoot, claudeAdapter), authorized.length > 0);
+            // claude editor's command-artifact authorization OR the wrapper
+            // marker block (minimal-mode projects — init-minimal-mode).
+            syncEmployeeStandards(tmpDir, projectRoot, hasCommandArtifacts(projectRoot, claudeAdapter) || claudeWrapperHasMarkers(projectRoot), authorized.length > 0 || hasRuleFileMarkers(projectRoot));
             rmSync(tmpDir, { recursive: true, force: true });
             console.log(chalk.green("  ✓ Commands & templates updated to latest"));
         }
@@ -203,7 +205,7 @@ export async function update(options) {
         console.log(chalk.blue("\n─── Standards Sync ───"));
         try {
             const tmpDir = await fetchLatestBundle();
-            syncEmployeeStandards(tmpDir, projectRoot, hasCommandArtifacts(projectRoot, claudeAdapter), getAllAdapters().some((a) => hasCommandArtifacts(projectRoot, a)));
+            syncEmployeeStandards(tmpDir, projectRoot, hasCommandArtifacts(projectRoot, claudeAdapter) || claudeWrapperHasMarkers(projectRoot), getAllAdapters().some((a) => hasCommandArtifacts(projectRoot, a)) || hasRuleFileMarkers(projectRoot));
             rmSync(tmpDir, { recursive: true, force: true });
         }
         catch (err) {
@@ -443,6 +445,18 @@ export function syncEmployeeStandards(tmpDir, projectRoot, claudeAuthorized, has
 }
 // Sync project-level templates
 export function syncProjectTemplates(tmpDir, projectRoot) {
+    // 0. tests/README.md — minimal-mode deliverable, independent of the
+    // tests/playwright gate (minimal-mode projects have no tests/playwright).
+    // Stateless asset: matching the bundled template → no-op; anything else is
+    // user-owned (or an outdated tool copy) — never auto-overwritten, hinted
+    // instead (asset-sync: no version tracking for a low-value static doc).
+    const readmeSrc = join(tmpDir, "templates", "tests-readme.md");
+    const readmeDest = join(projectRoot, "tests", "README.md");
+    if (existsSync(readmeSrc) && existsSync(readmeDest)) {
+        if (normalizeEol(readFileSync(readmeDest, "utf-8")) !== normalizeEol(readFileSync(readmeSrc, "utf-8"))) {
+            console.log(chalk.yellow("  ⚠ tests/README.md differs from the bundled template — update it manually, or delete it and re-run `openspec-pw init`"));
+        }
+    }
     const testsDir = join(projectRoot, "tests", "playwright");
     if (!existsSync(testsDir))
         return;

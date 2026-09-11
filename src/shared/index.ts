@@ -15,6 +15,7 @@ export {
   chooseDevScript,
   parsePort,
   hasFrontendSignal,
+  explainFrontendSignal,
 } from "./app-detect.js";
 export type { AppServerDetection } from "./app-detect.js";
 export {

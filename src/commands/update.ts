@@ -28,6 +28,7 @@ import {
   claudeWrapperStandardsContent,
   opencodeAdapter,
   syncVendoredAgents,
+  normalizeEol,
 } from "./editors.js";
 import {
   ensureTestRunnerMcp,
@@ -41,6 +42,7 @@ import {
   findUnignoredFiles,
 } from "../shared/index.js";
 import { compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
+import { claudeWrapperHasMarkers, hasRuleFileMarkers } from "./editors/project-rules.js";
 
 // `execFile` accepts stdio at runtime but the @types/node interface
 // doesn't expose it (the field lives on CommonSpawnOptions, which
@@ -284,12 +286,13 @@ export async function update(options: UpdateOptions) {
       // Standards sync (drift-aware). Under --no-skill this phase still runs
       // via the else branch below — the flag only scopes command/template
       // installation, not standards. CLAUDE.md wrapper is gated on the
-      // claude editor's command-artifact authorization.
+      // claude editor's command-artifact authorization OR the wrapper
+      // marker block (minimal-mode projects — init-minimal-mode).
       syncEmployeeStandards(
         tmpDir,
         projectRoot,
-        hasCommandArtifacts(projectRoot, claudeAdapter),
-        authorized.length > 0,
+        hasCommandArtifacts(projectRoot, claudeAdapter) || claudeWrapperHasMarkers(projectRoot),
+        authorized.length > 0 || hasRuleFileMarkers(projectRoot),
       );
 
       rmSync(tmpDir, { recursive: true, force: true });
@@ -332,8 +335,8 @@ export async function update(options: UpdateOptions) {
       syncEmployeeStandards(
         tmpDir,
         projectRoot,
-        hasCommandArtifacts(projectRoot, claudeAdapter),
-        getAllAdapters().some((a) => hasCommandArtifacts(projectRoot, a)),
+        hasCommandArtifacts(projectRoot, claudeAdapter) || claudeWrapperHasMarkers(projectRoot),
+        getAllAdapters().some((a) => hasCommandArtifacts(projectRoot, a)) || hasRuleFileMarkers(projectRoot),
       );
       rmSync(tmpDir, { recursive: true, force: true });
     } catch (err) {
@@ -683,6 +686,23 @@ export function syncEmployeeStandards(
 
 // Sync project-level templates
 export function syncProjectTemplates(tmpDir: string, projectRoot: string) {
+  // 0. tests/README.md — minimal-mode deliverable, independent of the
+  // tests/playwright gate (minimal-mode projects have no tests/playwright).
+  // Stateless asset: matching the bundled template → no-op; anything else is
+  // user-owned (or an outdated tool copy) — never auto-overwritten, hinted
+  // instead (asset-sync: no version tracking for a low-value static doc).
+  const readmeSrc = join(tmpDir, "templates", "tests-readme.md");
+  const readmeDest = join(projectRoot, "tests", "README.md");
+  if (existsSync(readmeSrc) && existsSync(readmeDest)) {
+    if (normalizeEol(readFileSync(readmeDest, "utf-8")) !== normalizeEol(readFileSync(readmeSrc, "utf-8"))) {
+      console.log(
+        chalk.yellow(
+          "  ⚠ tests/README.md differs from the bundled template — update it manually, or delete it and re-run `openspec-pw init`",
+        ),
+      );
+    }
+  }
+
   const testsDir = join(projectRoot, "tests", "playwright");
   if (!existsSync(testsDir)) return;
 

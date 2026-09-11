@@ -698,4 +698,65 @@ describe("doctor authorization tiers", () => {
     expect(agents?.ok).toBe(false);
     expect(agents?.message).toContain("run openspec-pw update");
   });
+
+  it("minimal-mode project: no Playwright scaffold → browsers/playwright-test degrade to ok:true info lines", async () => {
+    // Standards block present, no command artifacts, no playwright.config /
+    // tests/playwright → the environment checks must not fail doctor.
+    existingPaths.add(join(fixtureRoot, "AGENTS.md").replace(/\\/g, "/"));
+    existingPaths.add(join(fixtureRoot, "openspec").replace(/\\/g, "/"));
+    const checks = await doctorJsonChecks();
+    const browsers = checks.find((c) => c.name === "browsers");
+    const pwTest = checks.find((c) => c.name === "playwright-test");
+    expect(browsers?.ok).toBe(true);
+    expect(browsers?.message).toContain("minimal mode");
+    expect(pwTest?.ok).toBe(true);
+    expect(pwTest?.message).toContain("minimal mode");
+    // The Playwright-specific Tests directory check must degrade too — a
+    // minimal-mode project has tests/ but no tests/playwright.
+    const testsDir = checks.find((c) => c.name === "directory");
+    expect(testsDir?.ok).toBe(true);
+    expect(testsDir?.message).toContain("minimal mode");
+    // Same for the Playwright Config check.
+    const config = checks.find((c) => c.name === "config");
+    expect(config?.ok).toBe(true);
+    expect(config?.message).toContain("minimal mode");
+  });
+
+  it("minimal-mode project: wrapper survives but AGENTS.md block removed → ok:false pointing at init", async () => {
+    // CLAUDE.md wrapper carries our marker (proves territory); AGENTS.md is
+    // wiped and no command artifacts exist — the minimal-mode extension
+    // (init-minimal-mode) must still report the missing block.
+    existingPaths.add(join(fixtureRoot, "AGENTS.md").replace(/\\/g, "/"));
+    existingPaths.add(join(fixtureRoot, "CLAUDE.md").replace(/\\/g, "/"));
+    existingPaths.add(join(fixtureRoot, "openspec").replace(/\\/g, "/"));
+    readFileMock.mockImplementation((p: Parameters<typeof readFileSync>[0]) => {
+      const s = String(p);
+      if (s.endsWith(".mcp.json")) return "{}";
+      if (s.endsWith("AGENTS.md")) return "# project agents — no markers";
+      if (s.endsWith("CLAUDE.md")) {
+        return "preamble\n<!-- OPENSPEC-PW:START -->\nwrapper\n<!-- OPENSPEC-PW:END -->";
+      }
+      return "";
+    });
+    const checks = await doctorJsonChecks();
+    const agents = checks.find((c) => c.name === "standards-agents");
+    expect(agents?.ok).toBe(false);
+    expect(agents?.message).toContain("restore via \"openspec-pw init\"");
+  });
+
+  it("minimal-mode project: wrapper drift is checked (wrapper marker present, no command artifacts)", async () => {
+    const drift = await import("../../src/shared/drift.js");
+    // compareBlock is consumed first by the standards-agents check, then by
+    // the wrapper check — only the wrapper call must read as stale.
+    vi.mocked(drift.compareBlock)
+      .mockReturnValueOnce({ stale: false })
+      .mockReturnValueOnce({ stale: true });
+    existingPaths.add(join(fixtureRoot, "AGENTS.md").replace(/\\/g, "/"));
+    existingPaths.add(join(fixtureRoot, "CLAUDE.md").replace(/\\/g, "/"));
+    existingPaths.add(join(fixtureRoot, "openspec").replace(/\\/g, "/"));
+    const checks = await doctorJsonChecks();
+    const wrapper = checks.find((c) => c.name === "standards-claude");
+    expect(wrapper?.ok).toBe(false);
+    expect(wrapper?.message).toContain("run openspec-pw update");
+  });
 });

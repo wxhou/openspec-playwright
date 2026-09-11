@@ -432,3 +432,33 @@ export function migrateLegacyMarkers(
   }
   return migrated;
 }
+
+/**
+ * Any rules file carrying an openspec-pw marker block — the new
+ * `OPENSPEC-PW:` namespace, or our main signature inside a legacy block
+ * (legacy START required: a bare mention of the phrase in user prose is
+ * not territory — same containment gate as migrateLegacyMarkers).
+ * Extends the "standards block removed" authorization to minimal-mode
+ * projects (standards only, no command artifacts): a surviving marker
+ * block proves the project is ours (design D5 / init-minimal-mode).
+ */
+export function hasRuleFileMarkers(projectRoot: string): boolean {
+  for (const rel of ["AGENTS.md", "CLAUDE.md"]) {
+    const path = join(projectRoot, rel);
+    if (!existsSync(path)) continue;
+    const content = readFileSync(path, "utf-8");
+    if (content.includes(OPENSPEC_START)) return true;
+    if (hasLegacyTerritoryStart(content) && content.includes(LEGACY_MAIN_SIGNATURE)) return true;
+  }
+  return false;
+}
+
+/**
+ * CLAUDE.md wrapper territory: true when the file carries our wrapper
+ * marker block — the minimal-mode claude gate (command artifacts absent
+ * per init-minimal-mode; a bare @AGENTS.md import never counts).
+ */
+export function claudeWrapperHasMarkers(projectRoot: string): boolean {
+  const path = join(projectRoot, "CLAUDE.md");
+  return existsSync(path) && readFileSync(path, "utf-8").includes(OPENSPEC_START);
+}

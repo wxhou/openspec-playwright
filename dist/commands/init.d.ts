@@ -6,6 +6,11 @@ export interface InitOptions {
     tools?: string;
     /** Opt-in install of the vendored official Playwright agents (claude only). */
     agents?: boolean;
+    /**
+     * Init-mode override: true forces frontend mode, false forces minimal
+     * mode, undefined lets the frontend signal decide (init-minimal-mode).
+     */
+    frontend?: boolean;
 }
 export interface InitDeps {
     /** Interactive selection prompt; defaults to @inquirer/prompts checkbox.
@@ -33,7 +38,29 @@ export interface InitDeps {
  * runs never load it.
  */
 export declare function promptSelectEditors(allEditors: EditorAdapter[], preselected: ReadonlySet<EditorId>, configured?: ReadonlySet<EditorId>): Promise<EditorId[]>;
+/**
+ * Init modes: "frontend" keeps the full Playwright scaffold (existing
+ * behavior); "minimal" delivers only tests/README.md plus employee
+ * standards. Explicit --frontend/--no-frontend flags win over the detection
+ * signal; null (no readable package.json, e.g. Python/Go backends) is
+ * minimal mode — init-minimal-mode spec.
+ */
+export declare function resolveInitMode(options: InitOptions, frontendSignal: boolean | null): "frontend" | "minimal";
 export declare function init(options: InitOptions, deps?: InitDeps): Promise<void>;
+/**
+ * Minimal-mode scaffold: tests/README.md describing the acceptance-test
+ * contract (init-minimal-mode). Exists → skip — drift sync belongs to the
+ * update phase, ownership pruning to pruneMinimalModeReadme.
+ */
+export declare function generateTestsReadme(projectRoot: string): Promise<void>;
+/**
+ * Frontend-mode counterpart: a tool-owned tests/README.md from a previous
+ * minimal-mode run describes the minimal contract and is outdated once the
+ * full Playwright scaffold installs. Byte-identical to the template →
+ * tool-owned → removed (empty tests/ dir goes too); anything else is
+ * user-owned → kept with a notice.
+ */
+export declare function pruneMinimalModeReadme(projectRoot: string): Promise<void>;
 export declare function generateSeedTest(projectRoot: string): Promise<void>;
 export declare function generateAppKnowledge(projectRoot: string): Promise<void>;
 /**

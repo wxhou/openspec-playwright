@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync } from "fs";
-import { join } from "path";
+import { join, relative, sep } from "path";
 
 export interface PackageJson {
   scripts?: Record<string, string>;
@@ -197,8 +197,12 @@ const FRONTEND_CONFIG_FILES = [
 const WORKSPACE_SCAN_MAX_DEPTH = 3;
 const WORKSPACE_SCAN_MAX_MEMBERS = 50;
 
+function findFrontendConfigFile(dir: string): string | null {
+  return FRONTEND_CONFIG_FILES.find((file) => existsSync(join(dir, file))) ?? null;
+}
+
 function hasFrontendConfigFile(dir: string): boolean {
-  return FRONTEND_CONFIG_FILES.some((file) => existsSync(join(dir, file)));
+  return findFrontendConfigFile(dir) !== null;
 }
 
 function packageHasFrontendDeps(pkg: PackageJson): boolean {
@@ -275,31 +279,46 @@ function resolveMemberDirs(root: string, patterns: string[]): string[] | null {
  * Each seed gets `budget` directory levels below it; at most
  * WORKSPACE_SCAN_MAX_MEMBERS member package.jsons are inspected. Skips
  * node_modules and dot-directories (same convention as findNpmRoot).
+ * Returns a hit description ("<rel-posix dir> (<file-or-dep>)") for
+ * attribution, or null when nothing matches — hasFrontendSignal consumes
+ * it as a boolean, explainFrontendSignal surfaces it verbatim.
  */
-function hasFrontendInDirs(seeds: string[], budget: number): boolean {
+function findFrontendInDirs(seeds: string[], budget: number, baseDir: string): string | null {
   let checked = 0;
-  const visit = (dir: string, remaining: number): boolean => {
-    if (remaining < 0 || checked >= WORKSPACE_SCAN_MAX_MEMBERS) return false;
+  const relPosixFromBase = (dir: string): string => {
+    const rel = relative(baseDir, dir);
+    const posix = rel.split(sep).join("/");
+    return posix === "" ? "." : posix;
+  };
+  const visit = (dir: string, remaining: number): string | null => {
+    if (remaining < 0 || checked >= WORKSPACE_SCAN_MAX_MEMBERS) return null;
     const pkg = readPackageJson(join(dir, "package.json"));
     if (pkg) checked++;
-    if ((pkg !== null && packageHasFrontendDeps(pkg)) || hasFrontendConfigFile(dir)) return true;
-    if (remaining === 0) return false;
+    if (pkg !== null) {
+      const dep = FRONTEND_FRAMEWORK_DEPS.find((name) => dependencyExists(pkg, name));
+      if (dep) return `${relPosixFromBase(dir)} (${dep})`;
+    }
+    const config = findFrontendConfigFile(dir);
+    if (config) return `${relPosixFromBase(dir)} (${config})`;
+    if (remaining === 0) return null;
     let entries;
     try {
       entries = readdirSync(dir, { withFileTypes: true });
     } catch {
-      return false;
+      return null;
     }
     for (const entry of entries) {
       if (!entry.isDirectory() || entry.name.startsWith(".") || entry.name === "node_modules") continue;
-      if (visit(join(dir, entry.name), remaining - 1)) return true;
+      const hit = visit(join(dir, entry.name), remaining - 1);
+      if (hit) return hit;
     }
-    return false;
+    return null;
   };
   for (const seed of seeds) {
-    if (visit(seed, budget)) return true;
+    const hit = visit(seed, budget);
+    if (hit) return hit;
   }
-  return false;
+  return null;
 }
 
 /**
@@ -313,9 +332,10 @@ function hasFrontendInDirs(seeds: string[], budget: number): boolean {
  *      lives in member packages (e.g. pnpm apps/*) whose root package.json
  *      carries no frontend deps at all.
  * Returns null when no readable package.json is found at the located root —
- * callers skip the hint in that case (detection skipped, not "no frontend").
- * Deliberately biased toward "frontend": a false positive costs one extra
- * MCP install (--no-mcp skips it); a false negative silently skips the MCP.
+ * consumers select init's minimal mode for that case (init-minimal-mode) and
+ * print an informational line; "false" means no signal at all. The signal
+ * also selects init mode (frontend | minimal) and gates the Playwright MCP
+ * / vendored-agents installs — see explainFrontendSignal for attribution.
  */
 export function hasFrontendSignal(projectRoot: string): boolean | null {
   const npmRoot = findNpmRoot(projectRoot);
@@ -331,9 +351,45 @@ export function hasFrontendSignal(projectRoot: string): boolean | null {
   if (patterns === null) return false;
   const memberDirs = resolveMemberDirs(projectRoot, patterns);
   if (memberDirs !== null && memberDirs.length > 0) {
-    return hasFrontendInDirs(memberDirs, WORKSPACE_SCAN_MAX_DEPTH - 1);
+    return findFrontendInDirs(memberDirs, WORKSPACE_SCAN_MAX_DEPTH - 1, projectRoot) !== null;
   }
-  return hasFrontendInDirs([projectRoot], WORKSPACE_SCAN_MAX_DEPTH);
+  return findFrontendInDirs([projectRoot], WORKSPACE_SCAN_MAX_DEPTH, projectRoot) !== null;
+}
+
+/**
+ * Attribution companion to hasFrontendSignal: re-runs the same layers in the
+ * same order and returns a human-readable description of the hit
+ * ("vite.config.ts", "dependency: react", "dev script: vite",
+ * "workspace member: apps/web (react)") for init's Summary transparency
+ * line; null when there is no hit (signal false or undetectable — callers
+ * gate on the boolean first). Deliberately a separate re-computation instead
+ * of widening the hasFrontendSignal return type: existing callers keep their
+ * boolean contract, and the re-scan is bounded by the same workspace limits.
+ */
+export function explainFrontendSignal(projectRoot: string): string | null {
+  const npmRoot = findNpmRoot(projectRoot);
+  const pkg = readPackageJson(join(npmRoot, "package.json"));
+  if (!pkg) return null;
+
+  for (const dir of npmRoot !== projectRoot ? [projectRoot, npmRoot] : [projectRoot]) {
+    const config = findFrontendConfigFile(dir);
+    if (config) return config;
+  }
+  const dep = FRONTEND_FRAMEWORK_DEPS.find((name) => dependencyExists(pkg, name));
+  if (dep) return `dependency: ${dep}`;
+  const dev = pkg.scripts?.dev ?? "";
+  const keyword = FRONTEND_DEV_COMMAND_KEYWORDS.find((kw) => dev.includes(kw));
+  if (keyword) return `dev script: ${keyword}`;
+
+  const patterns = workspaceGlobPatterns(projectRoot, pkg);
+  if (patterns === null) return null;
+  const memberDirs = resolveMemberDirs(projectRoot, patterns);
+  if (memberDirs !== null && memberDirs.length > 0) {
+    const hit = findFrontendInDirs(memberDirs, WORKSPACE_SCAN_MAX_DEPTH - 1, projectRoot);
+    return hit === null ? null : `workspace member: ${hit}`;
+  }
+  const hit = findFrontendInDirs([projectRoot], WORKSPACE_SCAN_MAX_DEPTH, projectRoot);
+  return hit === null ? null : `workspace member: ${hit}`;
 }
 
 export function detectAppServer(projectRoot: string, env: NodeJS.ProcessEnv = process.env): AppServerDetection {

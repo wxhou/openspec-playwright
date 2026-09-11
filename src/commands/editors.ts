@@ -157,4 +157,7 @@ export {
   cleanProjectRules,
   removeMarkersFromFile,
   readEmployeeStandards,
+  hasRuleFileMarkers,
+  claudeWrapperHasMarkers,
 } from "./editors/project-rules.js";
+export { normalizeEol } from "./editors/agents.js";
