@@ -49,10 +49,12 @@ export declare function resolveInitMode(options: InitOptions, frontendSignal: bo
 export declare function init(options: InitOptions, deps?: InitDeps): Promise<void>;
 /**
  * Minimal-mode scaffold: tests/README.md describing the acceptance-test
- * contract (init-minimal-mode). Exists → skip — drift sync belongs to the
- * update phase, ownership pruning to pruneMinimalModeReadme.
+ * contract (init-minimal-mode). Returns true when the file on disk is OURS
+ * (freshly generated, or already current — the Summary links the contract
+ * doc only then); a user-owned README returns false. Drift sync belongs to
+ * the update phase, ownership pruning to pruneMinimalModeReadme.
  */
-export declare function generateTestsReadme(projectRoot: string): Promise<void>;
+export declare function generateTestsReadme(projectRoot: string): Promise<boolean>;
 /**
  * Frontend-mode counterpart: a tool-owned tests/README.md from a previous
  * minimal-mode run describes the minimal contract and is outdated once the
