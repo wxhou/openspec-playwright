@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+- **docs(standards): §6 单测生成禁令化——新增 UI 组件禁测试条款 + 3 项 AI 测试反模式**. 用户裁定对网页 UI 单测生成从严：缺口是"模糊地带默认测"兜底对 UI 反向激励（漏测代价低——浏览器双层兜底；多测代价高——mock DOM 维护/与 Playwright 交互测试冗余）。新增 🔴「UI 组件：禁止生成组件测试」——渲染冒烟、快照、纯存在断言类一律禁止，值得测的客户端逻辑（hook/组合式函数/纯函数）优先抽为独立单元；单测"不值得"清单升级为**禁止生成**并追加 3 项 AI 实证反模式（arXiv 2602.00409 mock 过用 36% vs 26%、2412.14137 oracle 从实现反推、VibeCheck 弱断言）：同义反复断言、mock 调用拓扑断言、无有效断言纯执行。措辞来源：Fowler Assertion-Free、Coulman Tautological Tests。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`（ZH/EN 同步）、`tests/docs-sync.test.ts`（+2 锚）、`CHANGELOG.md`
+- **docs(standards): §2 两处微修**. 「压缩上下文」从防循环纪律组移入 DO（上下文管理非防循环主题）；REQUIRE 格式化工具句改可读措辞「可用不改语义的格式化工具（ruff fmt/prettier）」。全篇逐章扫尾：其余章节无新冗余，🔴 密度全篇 ~22% 健康。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`（ZH/EN 同步）、`CHANGELOG.md`
+- **docs(standards): §6 结构统一为 DO / DO NOT**. 用户指出 §6 用自定义小节（触发/单测/验收/自检）与其他章节的 DO/DO NOT 结构不一致。纯结构重排语义零变化：正向行为（触发路由、值得单测、覆盖义务、真实请求验收、期望锚定、UI 逻辑抽取、产物/登录态核对）归 DO，禁令（UI 组件测试禁令、仅截图不算通过、单测生成禁令）归 DO NOT；场景词内化到条目文本。§6 无 REQUIRE 类条目，不设该组。重排后按精简判据复查削 2 处：「交互必须验证结果」（DO）与「仅截图不算通过」（DO NOT）正反双说合一为单条禁令句；UI 条尾「归浏览器验证」与 UI 禁令尾「UI 行为只归浏览器验证」跨条重复删前者。
+
 ## [0.3.89] - 2026-09-11
 - **fix(init): pre-existing `tests/README.md` 时 Summary 契约指引按所有权分叉**. E2E 复查发现的良性边界：用户已有自己的 tests/README.md 时最小模式 skip 生成，Summary 仍指向它（指向用户的文件，信息错位）。`generateTestsReadme` 返回三态（生成/已是我们的/用户的）：幂等重跑时"已是我们的"仍链接契约文档；仅用户拥有的文件指向员工规范，skip 行明示 "your file is kept"。
   - `src/commands/init.ts`、`tests/init.test.ts`、`CHANGELOG.md`

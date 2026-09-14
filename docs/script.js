@@ -40,7 +40,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🟡 变更完成告知用户可能遗漏区域，提示人工复查
 - 🔴 禁止用 sed/awk/node -e/python -c 等管道命令改写项目内已有文件——源码/文档/测试/配置同算（跳过编辑工具验证层）；确需批量改写，先征得用户同意
 - 不主动推送，除非用户明确要求
-- 格式化工具（ruff fmt/prettier 除外——不改语义）
+- 可用不改语义的格式化工具（ruff fmt/prettier）
 - 密钥与 .env 不入版本控制。示例用占位符（如 \`YOUR_API_KEY\`）。调试日志不打印凭据
 
 ## 大规模任务
@@ -64,13 +64,16 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🔴 禁止将临时文件提交到版本控制；超 24h 的文件应在 commit 前删除
 
 ## 测试与验证策略
-- 🟡 触发：改 DOM/交互/跳转/异步渲染/样式/响应式，或守卫/权限/多角色可见性 → 浏览器验证；纯逻辑按单测取舍，不开浏览器
-- 🟡 值得单测：业务核心计算/状态转换、含分支的纯函数、边界与错误处理路径、被多处复用的工具、修过 bug 的回归。不值得：纯透传、getter/装饰器/样板、类型系统已保证的行为、框架自带行为；模糊地带默认测，一个行为一组断言
+- 🟡 改了用户可见可交互的东西（DOM/交互/跳转/异步渲染/样式/响应式、守卫/权限/多角色可见性）→ 浏览器验证；纯逻辑 → 按单测取舍，不开浏览器
+- 🟡 值得单测：业务核心计算/状态转换、含分支的纯函数、边界与错误处理路径、被多处复用的工具、修过 bug 的回归；模糊地带默认测（UI 组件除外），一个行为一组断言
 - 🔴 验收标准点名的行为与业务核心逻辑必须被某层测试覆盖（单测或验收测试，一层即可）；不以本条为由跳过/删除既有测试
 - 🔴 后端/服务 → 对真实运行的服务发真实请求验证契约与端到端行为，落成集成测试（真实数据/依赖，遵守数据编撰节）
-- 🟡 所有验收期望锚定 spec/验收标准写「预期 X，实测 Y」（期望编造禁令见数据编撰节）
-- 🔴 截图 ≠ 行为验证：交互必须验证结果（点击后的状态/跳转/渲染），仅截图不算通过；断言只作辅助
-- 🟡 验证前核对加载的是本次产物（清缓存/停用 SW/核 hash）；权限类禁止注入 token，必须真实登录态，多角色各角色单独登录`;
+- 🟡 验收期望锚定 spec/验收标准写「预期 X，实测 Y」（期望编造禁令见数据编撰节）
+- 🔴 UI 组件：值得测的客户端逻辑（自定义 hook / 组合式函数 / 纯函数）抽为可独立测试的单元按单测清单测
+- 🟡 验证前核对加载的是本次产物（清缓存/停用 SW/核 hash）；权限类必须真实登录态（禁止注入 token），多角色各角色单独登录
+- 🔴 禁止生成 UI 组件测试：渲染冒烟、快照、纯存在断言——UI 行为只归浏览器验证
+- 🔴 仅截图不算通过——交互必须验证结果（点击后的状态/跳转/渲染），断言只作辅助证据
+- 🟡 禁止生成单测：纯透传、getter/装饰器/样板、类型系统已保证的行为、框架自带行为、期望从实现反推的同义反复断言、只断言 mock 调用拓扑而非可观察行为、无有效断言的纯执行`;
 
 const CLAUDE_MD_EN = `# Project Guidelines
 - Read \`openspec/config.yaml\` first (tech stack, structure, conventions, constraints, etc.); ignore if absent
@@ -114,7 +117,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🟡 After changes, inform user of areas that may be missed, prompt manual review
 - 🔴 No sed/awk/node -e/python -c pipelines for rewriting existing project files — source, docs, tests, config all count (bypasses edit tool validation); for bulk rewrites, get user consent first
 - No push unless explicitly requested
-- Formatters allowed (ruff fmt/prettier — don't change semantics)
+- Non-semantic formatters allowed (ruff fmt/prettier)
 - Secrets & .env out of version control. Use placeholders (e.g. \`YOUR_API_KEY\`). No credentials in debug logs
 
 ## Large-Scale Tasks
@@ -138,13 +141,16 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🔴 Never commit temp files to version control; delete files older than 24h before commit
 
 ## Testing & Verification Strategy
-- 🟡 Trigger: DOM/interaction/navigation/async-render/style/responsive changes OR guards/permissions/multi-role visibility → browser-verify; pure logic → per unit-test criteria, no browser
-- 🟡 Worth unit-testing: core business computation/state transitions, pure functions with branches, boundary & error paths, widely reused utilities, bug-fix regressions. Not worth: pass-through, getters/decorators/boilerplate, type-system-guaranteed behavior, framework built-ins; when ambiguous default to testing, one behavior one assertion set
+- 🟡 Anything user-visible/interactive changed (DOM/interaction/navigation/async-render/style/responsive, guards/permissions/multi-role visibility) → browser-verify; pure logic → per unit-test criteria, no browser
+- 🟡 Worth unit-testing: core business computation/state transitions, pure functions with branches, boundary & error paths, widely reused utilities, bug-fix regressions; when ambiguous default to testing (UI components excluded), one behavior one assertion set
 - 🔴 Behaviors named by acceptance criteria and core business logic must be covered by some test layer (unit OR acceptance — one is enough); never use this rule to skip/delete existing tests
 - 🔴 Backend/service → real requests against a real running service to verify contract and end-to-end behavior — lands as integration tests (real data/dependencies, per the Data Fabrication section)
 - 🟡 All acceptance expectations anchor to spec acceptance criteria ("expected X, got Y"); the no-fabricating-expectations rule lives in the Data Fabrication section
-- 🔴 Screenshot ≠ behavior proof: interactions must verify the result (state/navigation/render after click); screenshot alone does not pass; assertions serve only as auxiliary evidence
-- 🟡 Verify the tested build is the current one; permission checks need a real login state (no token injection); each role logs in separately`;
+- 🔴 UI components: extract client-side logic worth testing (custom hooks / composables / pure functions) into independently testable units per the unit-test list
+- 🟡 Verify the tested build is the current one; permission checks need a real login state (no token injection); each role logs in separately
+- 🔴 Never generate UI component tests: render-smoke, snapshot, or mere-existence — UI behavior belongs to browser verification only
+- 🔴 Screenshot alone does not pass — interactions must verify the result (state/navigation/render after click); assertions serve only as auxiliary evidence
+- 🟡 Never generate unit tests: pass-through, getters/decorators/boilerplate, type-system-guaranteed behavior, framework built-ins, tautological assertions with expectations reverse-engineered from the implementation, asserting mock call topology instead of observable behavior, execution without effective assertions`;
 
 function processInline(text) {
   // **bold** → <strong>

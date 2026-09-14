@@ -28,6 +28,8 @@ const ZH_ANCHORS: [string, string][] = [
   ["§6 单测取舍", "模糊地带默认测"],
   ["§6 覆盖义务", "必须被某层测试覆盖"],
   ["§6 验收定义", "对真实运行的服务发真实请求"],
+  ["§6 UI 组件禁令", "禁止生成 UI 组件测试"],
+  ["§6 单测禁令", "只断言 mock 调用拓扑"],
 ];
 
 const EN_ANCHORS: [string, string][] = [
@@ -36,10 +38,11 @@ const EN_ANCHORS: [string, string][] = [
   ["§1 delete obsolete", "Delete obsolete code outright"],
   ["§1 1500 line cap", "Code file line limit 1500"],
   ["§6 testing & verification", "Testing & Verification Strategy"],
-  ["§6 screenshot ≠ behavior", "Screenshot ≠ behavior proof"],
+  ["§6 screenshot ≠ behavior", "Screenshot alone does not pass"],
   ["§1 selection chain", "priority chain"],
   ["§6 coverage duty", "must be covered by some test layer"],
   ["§6 acceptance definition", "real requests against a real running service"],
+  ["§6 UI component ban", "Never generate UI component tests"],
 ];
 
 describe("docs/script.js embedded standards stay in sync", () => {
