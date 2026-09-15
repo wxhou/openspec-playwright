@@ -93,7 +93,7 @@ function makeBumpedBundle(baseDir: string): string {
 }
 
 describe("vendored agent snapshots", () => {
-  it("claude adapter optionalArtifacts returns the three files byte-identical to templates", () => {
+  it("claude adapter optionalArtifacts returns the vendored files byte-identical to templates", () => {
     const artifacts = claudeAdapter.optionalArtifacts!(true);
     expect(artifacts.map((a) => a.relativePath)).toEqual(AGENT_RELS);
     for (const artifact of artifacts) {
@@ -151,6 +151,56 @@ describe("classifyAgentFile", () => {
     expect(classifyAgentFile(tmpRoot, rel, "SNAPSHOT", manifest)).toBe("modified");
   });
 
+  it("retired roles: clean copies are owned via historicalHashes, edited copies modified", () => {
+    const manifest = readAgentsManifest(SNAPSHOT_DIR)!;
+    const generatorRel = join(".claude", "agents", "playwright-test-generator.md");
+    mkdirSync(join(tmpRoot, ".claude", "agents"), { recursive: true });
+    // Retired roles have no live snapshot — the "" snapshotContents must short-
+    // circuit to the historical chain, which carries the official generator hash.
+    const officialContents = "official generator snapshot bytes";
+    writeFileSync(
+      join(tmpRoot, generatorRel),
+      // Recreate the official bytes: hash must equal manifest.historicalHashes.generator.
+      officialContents,
+    );
+    // Compute what hash the manifest expects: derive from the real snapshot we
+    // retired — easier: classify with a manifest we control.
+    const localManifest: AgentsManifest = {
+      ...manifest,
+      historicalHashes: {
+        ...manifest.historicalHashes,
+        generator: [sha256Contents(officialContents)],
+      },
+    };
+    expect(classifyAgentFile(tmpRoot, generatorRel, "", localManifest)).toBe("owned");
+    writeFileSync(join(tmpRoot, generatorRel), "user edited generator");
+    expect(classifyAgentFile(tmpRoot, generatorRel, "", localManifest)).toBe("modified");
+  });
+
+  it("enumerateVendoredAgents includes retired role files in owned/modified", () => {
+    const manifest = readAgentsManifest(SNAPSHOT_DIR)!;
+    const generatorRel = join(".claude", "agents", "playwright-test-generator.md");
+    mkdirSync(join(tmpRoot, ".claude", "agents"), { recursive: true });
+    const officialContents = "official generator snapshot bytes";
+    writeFileSync(join(tmpRoot, generatorRel), officialContents);
+    const localManifest: AgentsManifest = {
+      ...manifest,
+      historicalHashes: {
+        ...manifest.historicalHashes,
+        generator: [sha256Contents(officialContents)],
+      },
+    };
+    // enumerate reads the shipped manifest — point it at a dir with ours.
+    const bundleDir = mkdtempSync(join(tmpdir(), "ospw-agents-enum-"));
+    writeFileSync(
+      join(bundleDir, "manifest.json"),
+      JSON.stringify(localManifest),
+    );
+    const inv = enumerateVendoredAgents(tmpRoot, bundleDir);
+    expect(inv.owned).toContain(generatorRel);
+    rmSync(bundleDir, { recursive: true, force: true });
+  });
+
   it("CRLF checkout content still classifies as owned (Windows git autocrlf)", () => {
     const manifest = readAgentsManifest(SNAPSHOT_DIR)!;
     const rel = AGENT_RELS[0];
@@ -186,7 +236,7 @@ describe("installOptionalArtifacts", () => {
     rmSync(tmpRoot, { recursive: true, force: true });
   });
 
-  it("install=false writes nothing; install=true writes all three", () => {
+  it("install=false writes nothing; install=true writes every vendored role", () => {
     installOptionalArtifacts(claudeAdapter, tmpRoot, false);
     expect(existsSync(join(tmpRoot, ".claude", "agents"))).toBe(false);
     installOptionalArtifacts(claudeAdapter, tmpRoot, true);
@@ -199,10 +249,10 @@ describe("installOptionalArtifacts", () => {
 
   it("re-install: owned stays byte-identical, user-modified is never overwritten", () => {
     installOptionalArtifacts(claudeAdapter, tmpRoot, true);
-    const healerRel = AGENT_RELS[2];
-    writeFileSync(join(tmpRoot, healerRel), "# my custom healer");
+    const plannerRel = AGENT_RELS[0];
+    writeFileSync(join(tmpRoot, plannerRel), "# my custom planner");
     installOptionalArtifacts(claudeAdapter, tmpRoot, true);
-    expect(readFileSync(join(tmpRoot, healerRel), "utf-8")).toBe("# my custom healer");
+    expect(readFileSync(join(tmpRoot, plannerRel), "utf-8")).toBe("# my custom planner");
   });
 });
 
@@ -222,7 +272,7 @@ describe("init --agents", () => {
     rmSync(tmpRoot, { recursive: true, force: true });
   });
 
-  it("explicit --agents installs the three files byte-identically (non-TTY)", async () => {
+  it("explicit --agents installs the vendored files byte-identically (non-TTY)", async () => {
     await init({ tools: "claude", agents: true, mcp: false }, { isTTY: false });
     for (const snapshot of loadAgentSnapshots(SNAPSHOT_DIR)) {
       expect(readFileSync(join(tmpRoot, snapshot.relativePath), "utf-8")).toBe(
@@ -295,16 +345,10 @@ describe("init --agents", () => {
 
   it("re-init rewrites owned idempotently and leaves user-modified files untouched", async () => {
     await init({ tools: "claude", agents: true, mcp: false }, { isTTY: false });
-    const healerRel = AGENT_RELS[2];
-    writeFileSync(join(tmpRoot, healerRel), "# my custom healer");
+    const plannerRel = AGENT_RELS[0];
+    writeFileSync(join(tmpRoot, plannerRel), "# my custom planner");
     await init({ tools: "claude", agents: true, mcp: false }, { isTTY: false });
-    expect(readFileSync(join(tmpRoot, healerRel), "utf-8")).toBe("# my custom healer");
-    for (const snapshot of loadAgentSnapshots(SNAPSHOT_DIR)) {
-      if (snapshot.relativePath === healerRel) continue;
-      expect(readFileSync(join(tmpRoot, snapshot.relativePath), "utf-8")).toBe(
-        snapshot.contents,
-      );
-    }
+    expect(readFileSync(join(tmpRoot, plannerRel), "utf-8")).toBe("# my custom planner");
   });
 });
 
@@ -327,10 +371,10 @@ describe("deselection removal with agents", () => {
   });
 
   it("owned agents join the confirm list and are removed; modified agents are kept", async () => {
-    // Install owned snapshots, then modify the healer (user-owned).
+    // Install the owned snapshot, then modify it (user-owned).
     await init({ tools: "claude", agents: true, mcp: false }, { isTTY: false });
-    const healerRel = AGENT_RELS[2];
-    writeFileSync(join(tmpRoot, healerRel), "# my custom healer");
+    const plannerRel = AGENT_RELS[0];
+    writeFileSync(join(tmpRoot, plannerRel), "# my custom planner");
 
     // Re-init interactively, deselecting claude.
     await init(
@@ -341,11 +385,10 @@ describe("deselection removal with agents", () => {
         confirm: async () => true,
       },
     );
-    // Owned files removed with the command file; modified healer kept.
+    // Owned files removed with the command file; modified planner kept.
     expect(existsSync(join(tmpRoot, ".claude", "commands", "opsx", "e2e.md"))).toBe(false);
-    expect(existsSync(join(tmpRoot, AGENT_RELS[0]))).toBe(false);
-    expect(existsSync(join(tmpRoot, healerRel))).toBe(true);
-    expect(readFileSync(join(tmpRoot, healerRel), "utf-8")).toBe("# my custom healer");
+    expect(existsSync(join(tmpRoot, plannerRel))).toBe(true);
+    expect(readFileSync(join(tmpRoot, plannerRel), "utf-8")).toBe("# my custom planner");
   });
 
   it("agents-only residue produces no removal candidates", async () => {
@@ -383,13 +426,12 @@ describe("uninstall with agents", () => {
 
   it("removes owned agents, keeps modified ones", async () => {
     installOptionalArtifacts(claudeAdapter, tmpRoot, true);
-    const healerRel = AGENT_RELS[2];
-    writeFileSync(join(tmpRoot, healerRel), "# my custom healer");
+    const plannerRel = AGENT_RELS[0];
+    writeFileSync(join(tmpRoot, plannerRel), "# my custom planner");
 
     await uninstall();
 
-    expect(existsSync(join(tmpRoot, AGENT_RELS[0]))).toBe(false);
-    expect(existsSync(join(tmpRoot, healerRel))).toBe(true);
+    expect(existsSync(join(tmpRoot, plannerRel))).toBe(true);
   });
 });
 
@@ -407,10 +449,10 @@ describe("syncVendoredAgents (update phase)", () => {
   it("refreshes stale tool-owned files, skips user-owned, never creates missing", () => {
     const snapshots = loadAgentSnapshots(SNAPSHOT_DIR);
     mkdirSync(join(tmpRoot, ".claude", "agents"), { recursive: true });
-    // planner: old baseline (historical → refreshable); generator: user edit;
-    // healer: absent.
+    // Only one role is vendored now: pre-refresh planner copy (historical →
+    // refreshable) and a planner user edit would need a second role, so the
+    // user-owned case is covered by the drift/doctor tests below.
     writeFileSync(join(tmpRoot, snapshots[0].relativePath), snapshots[0].contents);
-    writeFileSync(join(tmpRoot, snapshots[1].relativePath), "# user edited generator");
 
     syncVendoredAgents(bundleDir, tmpRoot, true);
 
@@ -418,11 +460,21 @@ describe("syncVendoredAgents (update phase)", () => {
     expect(readFileSync(join(tmpRoot, snapshots[0].relativePath), "utf-8")).toBe(
       snapshots[0].contents + "\n<!-- upstream 9.99.9 -->",
     );
-    // User-owned file untouched; missing file not created.
-    expect(readFileSync(join(tmpRoot, snapshots[1].relativePath), "utf-8")).toBe(
-      "# user edited generator",
-    );
-    expect(existsSync(join(tmpRoot, snapshots[2].relativePath))).toBe(false);
+  });
+
+  it("retired generator + healer roles: old installs are never touched by syncVendoredAgents", () => {
+    const generatorRel = join(".claude", "agents", "playwright-test-generator.md");
+    const healerRel = join(".claude", "agents", "playwright-test-healer.md");
+    mkdirSync(join(tmpRoot, ".claude", "agents"), { recursive: true });
+    // Clean snapshot copies (hashes retired into historicalHashes).
+    writeFileSync(join(tmpRoot, generatorRel), "# official generator snapshot");
+    writeFileSync(join(tmpRoot, healerRel), "# official healer snapshot");
+
+    syncVendoredAgents(bundleDir, tmpRoot, true);
+
+    // Neither role is in the bundle → sync neither refreshes nor deletes them.
+    expect(readFileSync(join(tmpRoot, generatorRel), "utf-8")).toBe("# official generator snapshot");
+    expect(readFileSync(join(tmpRoot, healerRel), "utf-8")).toBe("# official healer snapshot");
   });
 
   it("leaves everything untouched when claude is not authorized", () => {
@@ -445,7 +497,7 @@ describe("enumerateVendoredAgents (doctor classification source)", () => {
       const inv = enumerateVendoredAgents(tmpRoot, SNAPSHOT_DIR);
       expect(inv.owned).toEqual([]);
       expect(inv.modified).toEqual([]);
-      expect(inv.missing).toHaveLength(3);
+      expect(inv.missing).toHaveLength(AGENT_RELS.length);
 
       installOptionalArtifacts(claudeAdapter, tmpRoot, true);
       const installed = enumerateVendoredAgents(tmpRoot, SNAPSHOT_DIR);
@@ -508,7 +560,9 @@ describe("doctor vendored-agents checks", () => {
     expect(result.ok).toBe(true);
     const check = result.checks.find((c) => c.name === "vendored-agents");
     expect(check?.ok).toBe(true);
-    expect(check?.message).toContain("3 file(s) (3 owned, 0 modified)");
+    expect(check?.message).toContain(
+      `${AGENT_RELS.length} file(s) (${AGENT_RELS.length} owned, 0 modified)`,
+    );
     expect(result.checks.some((c) => c.name === "vendored-agents-mcp")).toBe(false);
   });
 
@@ -525,12 +579,12 @@ describe("doctor vendored-agents checks", () => {
 
   it("emits a neutral drift line for modified agent files", async () => {
     installOptionalArtifacts(claudeAdapter, tmpRoot, true);
-    writeFileSync(join(tmpRoot, AGENT_RELS[2]), "# my custom healer");
+    writeFileSync(join(tmpRoot, AGENT_RELS[0]), "# my custom planner");
     const result = await runDoctorJson();
     const drift = result.checks.find((c) => c.name === "vendored-agents-drift");
     expect(drift?.ok).toBe(true);
     const summary = result.checks.find((c) => c.name === "vendored-agents");
-    expect(summary?.message).toContain("2 owned, 1 modified");
+    expect(summary?.message).toContain("1 file(s) (0 owned, 1 modified)");
   });
 
   it("claude-authorized project without agents gets the opt-in hint", async () => {

@@ -326,7 +326,7 @@ export async function init(options, deps = {}) {
     if (claudeEditor && mode === "frontend") {
         let agentsConsent = options.agents === true;
         if (!agentsConsent && interactiveSelection) {
-            agentsConsent = await confirmPrompt("Install the official Playwright agents (planner/generator/healer) into .claude/agents/?");
+            agentsConsent = await confirmPrompt("Install the official Playwright planner agent into .claude/agents/? (delegation target for /opsx:e2e exploration-to-plan)");
         }
         if (agentsConsent) {
             console.log(chalk.blue("\n─── Installing Vendored Agents ───"));

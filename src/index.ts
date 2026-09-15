@@ -36,7 +36,7 @@ program
   )
   .option(
     "--agents",
-    "install the official Playwright agent definitions (planner/generator/healer) into .claude/agents/ (claude projects only)",
+    "install the official Playwright planner agent into .claude/agents/ (claude projects only)",
   )
   .option(
     "--frontend",

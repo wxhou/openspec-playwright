@@ -522,7 +522,7 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     let agentsConsent = options.agents === true;
     if (!agentsConsent && interactiveSelection) {
       agentsConsent = await confirmPrompt(
-        "Install the official Playwright agents (planner/generator/healer) into .claude/agents/?",
+        "Install the official Playwright planner agent into .claude/agents/? (delegation target for /opsx:e2e exploration-to-plan)",
       );
     }
     if (agentsConsent) {

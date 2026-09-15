@@ -324,49 +324,6 @@ function initTerminalCursor() {
   }
 }
 
-/* ── Whimsy: Counter Animation ───────────── */
-function prefersReducedMotion() {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
-
-function initCounters() {
-  if (prefersReducedMotion()) return;
-  const counters = document.querySelectorAll('.sidebar-stat-value');
-  if (!counters.length || !('IntersectionObserver' in window)) return;
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (!entry.isIntersecting || entry.target.dataset.counted) return;
-      const text = entry.target.textContent.trim();
-      let num = parseInt(text, 10);
-      if (isNaN(num)) {
-        const match = text.match(/\d+/);
-        if (!match) return;
-        num = parseInt(match[0], 10);
-      }
-      entry.target.dataset.counted = 'true';
-      animateCounter(entry.target, num);
-      observer.unobserve(entry.target);
-    });
-  }, { rootMargin: '0px 0px -50px 0px' });
-  counters.forEach(counter => observer.observe(counter));
-}
-
-function animateCounter(el, target) {
-  let current = 0;
-  const duration = 600;
-  const steps = 15;
-  const increment = target / steps;
-  const stepTime = duration / steps;
-  const timer = setInterval(() => {
-    current += increment;
-    if (current >= target) {
-      current = target;
-      clearInterval(timer);
-    }
-    el.textContent = Math.round(current);
-  }, stepTime);
-}
-
 /* ── Whimsy: Footer Easter Egg ────────────── */
 function initEasterEgg() {
   const logo = document.querySelector('.footer-brand-mark');
@@ -460,8 +417,71 @@ document.addEventListener('DOMContentLoaded', () => {
   // Whimsy: init playful features
   initProgressBar();
   initTerminalCursor();
-  initCounters();
   initEasterEgg();
   initCopyCelebration();
+  initNavScrolled();
+  initTypewriter();
 });
+
+/* ── Motion preference ────────────────────── */
+function prefersReducedMotion() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/* ── Nav border materializes once the page has scrolled ── */
+function initNavScrolled() {
+  const nav = document.querySelector('nav');
+  if (!nav) return;
+  const onScroll = () => nav.classList.toggle('scrolled', window.scrollY > 8);
+  onScroll();
+  window.addEventListener('scroll', onScroll, { passive: true });
+}
+
+/* ── Terminal typewriter: first command types in, the rest rise in sequence ── */
+function initTypewriter() {
+  const body = document.querySelector('.terminal-body');
+  if (!body) return;
+  const first = body.querySelector('.terminal-cmd[data-type]');
+  const hidden = body.querySelectorAll('.t-hidden');
+  if (!first) {
+    hidden.forEach(el => el.classList.add('t-shown'));
+    return;
+  }
+
+  const finish = () => {
+    first.textContent = first.getAttribute('data-type');
+    hidden.forEach((el, i) => setTimeout(() => el.classList.add('t-shown'), 120 + i * 140));
+  };
+
+  if (prefersReducedMotion()) {
+    finish();
+    return;
+  }
+
+  const type = () => {
+    const text = first.getAttribute('data-type');
+    let i = 0;
+    const timer = setInterval(() => {
+      first.textContent = text.slice(0, ++i);
+      if (i >= text.length) {
+        clearInterval(timer);
+        finish();
+      }
+    }, 34);
+  };
+
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          io.unobserve(entry.target);
+          type();
+        }
+      });
+    }, { threshold: 0.4 });
+    io.observe(body);
+  } else {
+    type();
+  }
+}
 
