@@ -23,9 +23,19 @@ import { existsSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
-export const VENDORED_AGENT_ROLES = ["planner", "generator", "healer"];
+export const VENDORED_AGENT_ROLES = ["planner"];
+/**
+ * Roles we used to vendor and no longer ship. Their hashes live in
+ * manifest.json historicalHashes so older installs' clean copies still
+ * classify as tool-owned (removable on uninstall/deselect) — the paths are
+ * derived from the manifest, never installed or refreshed.
+ */
+export const RETIRED_AGENT_ROLES = ["generator", "healer"];
 /** Project-relative install path for one vendored agent file. */
 export function vendoredAgentRelPath(role) {
+    return join(".claude", "agents", `playwright-test-${role}.md`);
+}
+function retiredAgentRelPath(role) {
     return join(".claude", "agents", `playwright-test-${role}.md`);
 }
 export function vendoredAgentRelPaths() {
@@ -69,10 +79,14 @@ export function normalizeEol(content) {
 export function sha256Contents(content) {
     return createHash("sha256").update(normalizeEol(content)).digest("hex");
 }
-/** Role for a vendored agent rel path, or null when it is not one of ours. */
+/** Role for a vendored or retired agent rel path, or null when foreign. */
 export function roleForRelPath(relPath) {
     for (const role of VENDORED_AGENT_ROLES) {
         if (relPath === vendoredAgentRelPath(role))
+            return role;
+    }
+    for (const role of RETIRED_AGENT_ROLES) {
+        if (relPath === retiredAgentRelPath(role))
             return role;
     }
     return null;
@@ -87,11 +101,15 @@ export function classifyAgentFile(projectRoot, relPath, snapshotContents, manife
     if (!existsSync(abs))
         return "missing";
     const existing = readFileSync(abs, "utf-8");
-    if (normalizeEol(existing) === normalizeEol(snapshotContents))
+    if (snapshotContents && normalizeEol(existing) === normalizeEol(snapshotContents)) {
         return "owned";
+    }
     const role = roleForRelPath(relPath);
     if (!role)
         return "modified";
+    // Retired roles have no live snapshot — only the historical chain decides.
+    // Their clean copies stay tool-owned so uninstall/deselect can reclaim them;
+    // edited copies are user-owned and never touched.
     if (manifest.historicalHashes?.[role]?.includes(sha256Contents(existing))) {
         return "owned";
     }
@@ -100,6 +118,9 @@ export function classifyAgentFile(projectRoot, relPath, snapshotContents, manife
 /**
  * Enumerate the vendored agent files one project has, classified by
  * ownership. Read-only and silent — safe for confirm-list building.
+ * Includes retired roles: their on-disk files (if any) are classified via
+ * the historical hash chain alone, so clean copies surface as owned
+ * (removable) and edited copies as modified (never touched).
  */
 export function enumerateVendoredAgents(projectRoot, dir) {
     const inventory = { owned: [], modified: [], missing: [] };
@@ -109,6 +130,12 @@ export function enumerateVendoredAgents(projectRoot, dir) {
     for (const snapshot of loadAgentSnapshots(dir)) {
         const state = classifyAgentFile(projectRoot, snapshot.relativePath, snapshot.contents, manifest);
         inventory[state].push(snapshot.relativePath);
+    }
+    for (const role of RETIRED_AGENT_ROLES) {
+        const relPath = retiredAgentRelPath(role);
+        const state = classifyAgentFile(projectRoot, relPath, "", manifest);
+        if (state !== "missing")
+            inventory[state].push(relPath);
     }
     return inventory;
 }
@@ -148,6 +175,13 @@ export function syncVendoredAgents(dir, projectRoot, claudeAuthorized) {
     }
     if (inventory.missing.length > 0) {
         console.log(chalk.gray(`  - claude: ${inventory.owned.length + inventory.modified.length}/${VENDORED_AGENT_ROLES.length} vendored agents installed (missing are opt-in: openspec-pw init --agents)`));
+    }
+    // Retired roles: report once so users know why the files are still there.
+    for (const role of RETIRED_AGENT_ROLES) {
+        const relPath = retiredAgentRelPath(role);
+        if (inventory.owned.includes(relPath)) {
+            console.log(chalk.gray(`  - claude: ${relPath} is retired (no longer installed by --agents) — run "openspec-pw uninstall" to remove it`));
+        }
     }
 }
 //# sourceMappingURL=agents.js.map

@@ -1,6 +1,15 @@
 import type { ExtraArtifact } from "./types.js";
-export declare const VENDORED_AGENT_ROLES: readonly ["planner", "generator", "healer"];
+export declare const VENDORED_AGENT_ROLES: readonly ["planner"];
 export type VendoredAgentRole = (typeof VENDORED_AGENT_ROLES)[number];
+/**
+ * Roles we used to vendor and no longer ship. Their hashes live in
+ * manifest.json historicalHashes so older installs' clean copies still
+ * classify as tool-owned (removable on uninstall/deselect) — the paths are
+ * derived from the manifest, never installed or refreshed.
+ */
+export declare const RETIRED_AGENT_ROLES: readonly ["generator", "healer"];
+export type RetiredAgentRole = Exclude<(typeof RETIRED_AGENT_ROLES)[number], VendoredAgentRole>;
+export type KnownAgentRole = VendoredAgentRole | RetiredAgentRole;
 /** Project-relative install path for one vendored agent file. */
 export declare function vendoredAgentRelPath(role: VendoredAgentRole): string;
 export declare function vendoredAgentRelPaths(): string[];
@@ -8,8 +17,9 @@ export declare function vendoredAgentRelPaths(): string[];
 export interface AgentsManifest {
     baseline: string;
     files: Record<VendoredAgentRole, string>;
-    /** Snapshots of previous baselines — keep old installs refreshable. */
-    historicalHashes?: Partial<Record<VendoredAgentRole, string[]>>;
+    /** Snapshots of previous baselines — keep old installs refreshable. Also
+     * carries retired roles' hashes (see RETIRED_AGENT_ROLES). */
+    historicalHashes?: Partial<Record<KnownAgentRole, string[]>>;
 }
 /** Directory of the installed package's agents templates (dist-relative). */
 export declare function installedAgentsSnapshotDir(): string;
@@ -25,8 +35,8 @@ export declare function loadAgentSnapshots(dir: string): ExtraArtifact[];
 export declare function normalizeEol(content: string): string;
 export declare function sha256Contents(content: string): string;
 export type AgentFileState = "missing" | "owned" | "modified";
-/** Role for a vendored agent rel path, or null when it is not one of ours. */
-export declare function roleForRelPath(relPath: string): VendoredAgentRole | null;
+/** Role for a vendored or retired agent rel path, or null when foreign. */
+export declare function roleForRelPath(relPath: string): KnownAgentRole | null;
 /**
  * Classify one installed agent file against a snapshot set: missing on disk,
  * tool-owned (hash matches the current or any historical snapshot), or
@@ -44,6 +54,9 @@ export interface VendoredAgentsInventory {
 /**
  * Enumerate the vendored agent files one project has, classified by
  * ownership. Read-only and silent — safe for confirm-list building.
+ * Includes retired roles: their on-disk files (if any) are classified via
+ * the historical hash chain alone, so clean copies surface as owned
+ * (removable) and edited copies as modified (never touched).
  */
 export declare function enumerateVendoredAgents(projectRoot: string, dir: string): VendoredAgentsInventory;
 /**

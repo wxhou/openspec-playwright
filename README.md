@@ -188,13 +188,21 @@ missing Playwright, and `uninstall` cleans the README and markers.
 openspec-pw init --tools claude --agents   # additionally install the official agent definitions
 ```
 
-`--agents` (off by default) installs byte-identical snapshots of the three
-agent definitions Playwright's official `playwright init-agents` (claude
-loop) generates into `.claude/agents/`:
+`--agents` (off by default) installs a byte-identical snapshot of the one
+agent definition Playwright's official `playwright init-agents` (claude loop)
+generates into `.claude/agents/` that fits this tool's pipeline:
 
 - `playwright-test-planner.md` — explore the app, produce a test plan
-- `playwright-test-generator.md` — generate test code
-- `playwright-test-healer.md` — debug and fix failing tests
+  (delegation target for `/opsx:e2e` Step 5, for context isolation)
+
+The official `generator` and `healer` agents are not vendored: generation
+runs inside the `/opsx:e2e` pipeline (recording flow), which carries the
+workflow rules a delegated subagent would not inherit, and the official
+healer edits assertions/expected values to force tests green — the opposite
+of the pipeline's honest-failure exit. Projects with older installs keep
+those files: unmodified copies are still recognized as tool-owned (listed by
+`doctor`, removed by `uninstall`), edited copies are user-owned and never
+touched.
 
 Their `tools:` frontmatter references the `playwright-test` MCP server —
 the very entry `openspec-pw init` installs — so the MCP prerequisite is
@@ -217,14 +225,11 @@ workflow, the Planner and Generator steps may delegate to their subagents
 when installed (the rules travel with the delegation prompt, and you verify
 the output); the Healer step **never delegates** — the pipeline's guardrails
 replace the official healer's autonomous assertion editing. The project's
-AGENTS.md §6 binds agents from any source.
-
-> **Official healer vs our guardrails**: the official healer is instructed
-> not to ask the user and to fix failing tests by modifying assertions and
-> expected values. This tool's Healer pipeline **never loosens assertions
-> without approval** — updating an assertion or the spec is a Phase 3 human
-> decision. Invoking the standalone official healer for a quick fix is your
-> call; just don't mix its output into a `/opsx:e2e` delivery.
+AGENTS.md §6 binds agents from any source. This is also why the official
+healer agent is not vendored: its prompt is instructed to never ask the user
+and to modify assertions/expected values to force tests green — the opposite
+of this pipeline's honest-failure exit. Never mix official-healer output into
+a `/opsx:e2e` delivery.
 
 > **If you insist on running `npx playwright init-agents` yourself**: it is
 > clobber-type — it rewrites `.mcp.json` wholesale (your own MCP entries are

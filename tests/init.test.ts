@@ -581,9 +581,9 @@ describe("init mode selection & transparency", () => {
     );
     const { init } = await import("../../src/commands/init.js");
     await init({ tools: "claude", mcp: false, agents: true, frontend: true });
-    for (const role of ["planner", "generator", "healer"]) {
-      expect(existsSync(join(tmpRoot, ".claude/agents", `playwright-test-${role}.md`))).toBe(true);
-    }
+    expect(existsSync(join(tmpRoot, ".claude/agents", "playwright-test-planner.md"))).toBe(true);
+    expect(existsSync(join(tmpRoot, ".claude/agents", "playwright-test-generator.md"))).toBe(false);
+    expect(existsSync(join(tmpRoot, ".claude/agents", "playwright-test-healer.md"))).toBe(false);
   });
 
   it("frontend signal present → frontend mode with signal attribution and full scaffold", async () => {
