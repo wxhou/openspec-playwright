@@ -24,7 +24,7 @@ export interface AgentsManifest {
 /** Directory of the installed package's agents templates (dist-relative). */
 export declare function installedAgentsSnapshotDir(): string;
 export declare function readAgentsManifest(dir: string): AgentsManifest | null;
-/** Current snapshot contents for all three roles; [] when templates are missing. */
+/** Current snapshot contents for every vendored role; [] when templates are missing. */
 export declare function loadAgentSnapshots(dir: string): ExtraArtifact[];
 /**
  * Normalize CRLF to LF before content-based ownership decisions. Git's

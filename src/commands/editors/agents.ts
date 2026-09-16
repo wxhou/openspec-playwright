@@ -77,7 +77,7 @@ export function readAgentsManifest(dir: string): AgentsManifest | null {
   }
 }
 
-/** Current snapshot contents for all three roles; [] when templates are missing. */
+/** Current snapshot contents for every vendored role; [] when templates are missing. */
 export function loadAgentSnapshots(dir: string): ExtraArtifact[] {
   const manifest = readAgentsManifest(dir);
   if (!manifest) return [];
@@ -224,9 +224,11 @@ export function syncVendoredAgents(
     );
   }
   if (inventory.missing.length > 0) {
+    // Numerator counts live roles only — retired files in owned/modified must
+    // not inflate it past VENDORED_AGENT_ROLES.length.
     console.log(
       chalk.gray(
-        `  - claude: ${inventory.owned.length + inventory.modified.length}/${VENDORED_AGENT_ROLES.length} vendored agents installed (missing are opt-in: openspec-pw init --agents)`,
+        `  - claude: ${VENDORED_AGENT_ROLES.length - inventory.missing.length}/${VENDORED_AGENT_ROLES.length} vendored agents installed (missing are opt-in: openspec-pw init --agents)`,
       ),
     );
   }
