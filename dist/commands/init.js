@@ -412,7 +412,7 @@ export async function init(options, deps = {}) {
         const basis = explainFrontendSignal(projectRoot);
         console.log(chalk.green(`  Mode: frontend${basis ? ` (signal: ${basis})` : ""}`));
         console.log(chalk.bold("Next steps:"));
-        console.log(chalk.gray("  1. Install Playwright browsers: npx playwright install --with-deps"));
+        console.log(chalk.gray("  1. Install Playwright browsers: npx playwright install chromium"));
         console.log(chalk.gray("  2. Customize tests/playwright/credentials.yaml with your test user"));
         console.log(chalk.gray("  3. Set credentials: export E2E_USERNAME=xxx E2E_PASSWORD=yyy"));
         console.log(chalk.gray("  4. Run auth setup: npx playwright test --project=setup"));

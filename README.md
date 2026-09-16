@@ -335,7 +335,7 @@ Browser exploration is provided out of the box by Playwright MCP and `openspec-p
 4. Generates `playwright.config.ts` with automatic dev script and port detection (Vite/Next/Nuxt/Astro, `.env`, and `--port`)
 5. Detects a frontend signal (layered detection: framework config files → framework dependencies → frontend dev commands, plus monorepo workspace member detection so a pnpm/npm workspace with the frontend in `apps/*` is recognized); with none found, prints guidance in the Summary — run `openspec-pw init` in the app directory (monorepo), or use Playwright's `request` fixture for API-only projects
 
-> **Note**: After running `openspec-pw init`, manually install Playwright browsers: `npx playwright install --with-deps`
+> **Note**: After running `openspec-pw init`, manually install the Chromium browser: `npx playwright install chromium`
 
 ## First-Time Setup Checklist
 
@@ -347,7 +347,7 @@ Run through these steps in order when using the E2E workflow for the first time:
 | 2. Install OpenSpec | `npm install -g @fission-ai/openspec@latest && openspec init` | `npm cache clean -f && npm install -g @fission-ai/openspec@latest` |
 | 3. Initialize E2E | `openspec-pw init` | Run `openspec-pw doctor` to see what's missing |
 | 4. Install Playwright MCP | `claude mcp add --scope project playwright-test npx playwright run-test-mcp-server` (Claude, writes project-root `.mcp.json`), or add `mcp["playwright-test"]` to `opencode.jsonc` (OpenCode), or `mcpServers["playwright-test"]` in `.cline/mcp.json` / `.cursor/mcp.json` | `cat .mcp.json` (Claude, check `mcpServers["playwright-test"]`) / `cat opencode.jsonc` (OpenCode) / `cat .cline/mcp.json` (Cline) / `cat .cursor/mcp.json` (Cursor) |
-| 5. Install browsers | `npx playwright install --with-deps` | macOS may need `xcode-select --install` first |
+| 5. Install browsers | `npx playwright install chromium` | Linux CI images may need system deps: `npx playwright install --with-deps chromium` (macOS may need `xcode-select --install` first) |
 | 6. Start dev server | `npm run dev` (in a separate terminal) | Confirm port, set `BASE_URL` if non-standard |
 | 7. Validate env | `npx playwright test tests/playwright/seed.spec.ts` | Check `webServer` in `playwright.config.ts` |
 | 8. Configure auth (if needed) | See "Authentication" below | Debug with `npx playwright test --project=setup` |

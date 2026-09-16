@@ -159,6 +159,11 @@ function processInline(text) {
   text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
   // [text](url) → <a>
   text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  // Priority dots → classed spans (mono glyphs keep the dark preview single-voice;
+  // raw emoji introduce stray red/yellow hues)
+  text = text.replace(/🔴/g, '<span class="prio prio-critical"></span>');
+  text = text.replace(/🟡/g, '<span class="prio prio-important"></span>');
+  text = text.replace(/⚪/g, '<span class="prio prio-standard"></span>');
   return text;
 }
 
@@ -167,6 +172,9 @@ function renderMarkdown(md) {
   let html = '';
   let inList = false;
 
+  // Demote every heading one level: the embed lives under the page's h1, so
+  // its own "# title" must not compete in the document outline.
+  let offset = 1;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const trimmed = line.trim();
@@ -180,26 +188,12 @@ function renderMarkdown(md) {
       continue;
     }
 
-    // H1
-    if (trimmed.startsWith('# ')) {
+    // H1-H5 (demoted one level: # → h2 … so the embed stays under the page h1)
+    if (/^#{1,5} /.test(trimmed)) {
       if (inList) { html += '</ul>\n'; inList = false; }
-      html += '<h1>' + processInline(trimmed.slice(2)) + '</h1>\n';
-      continue;
-    }
-
-    // H2
-    if (trimmed.startsWith('## ')) {
-      if (inList) { html += '</ul>\n'; inList = false; }
-      html += '<h2>' + processInline(trimmed.slice(3)) + '</h2>\n';
-      continue;
-    }
-
-    // H3-H6
-    if (/^#{3,6} /.test(trimmed)) {
-      if (inList) { html += '</ul>\n'; inList = false; }
-      const level = trimmed.match(/^(#{3,6}) /)[1].length;
+      const level = trimmed.match(/^#{1,5} /)[0].length - 1;
       const content = trimmed.slice(level + 1);
-      html += `<h${level}>` + processInline(content) + `</h${level}>\n`;
+      html += `<h${level + offset}>` + processInline(content) + `</h${level + offset}>\n`;
       continue;
     }
 
