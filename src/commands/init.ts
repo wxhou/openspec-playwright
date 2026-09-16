@@ -638,7 +638,7 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     console.log(chalk.bold("Next steps:"));
     console.log(
       chalk.gray(
-        "  1. Install Playwright browsers: npx playwright install --with-deps",
+        "  1. Install Playwright browsers: npx playwright install chromium",
       ),
     );
     console.log(

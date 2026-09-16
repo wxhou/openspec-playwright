@@ -56,7 +56,7 @@ Before each release action, confirm the target version has already been explicit
 - [ ] `npm run lint` passes
 - [ ] `npm run typecheck` passes
 - [ ] `npm run build && npm run test:run` passes
-- [ ] `npm run build && npm pack && tar tf openspec-playwright-*.tgz | grep scripts` succeeds (verifies `scripts/bump-docs.js` is included) and `tar tf openspec-playwright-*.tgz | grep templates/agents` lists the three vendored agent files + SOURCE.md
+- [ ] `npm run build && npm pack && tar tf openspec-playwright-*.tgz | grep scripts` succeeds (verifies `scripts/bump-docs.js` is included) and `tar tf openspec-playwright-*.tgz | grep templates/agents` lists the vendored planner agent + SOURCE.md
 - [ ] `git status` is clean (no uncommitted changes)
 - [ ] `git log --oneline` shows expected changes
 - [ ] Check `npm view openspec-playwright version` to verify the target version is not already published. **Do not change the version number to work around a conflict.** If the requested version already exists or publish fails, wait for explicit user instruction before taking any versioning action.

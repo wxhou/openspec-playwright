@@ -6,8 +6,10 @@
 <title>OpenSpec Playwright: AI-Driven E2E Testing for OpenSpec Projects</title>
 <meta name="description" content="自动化 E2E 测试框架，专为 OpenSpec 规范驱动开发设计。AI 生成测试、Healer 自愈、Claude Code、OpenCode、Cline、Cursor、Pi 和 Oh My Pi 一键执行。">
 <meta property="og:title" content="OpenSpec Playwright">
-<meta property="og:description" content="AI-Driven E2E Testing for OpenSpec Projects">
+<meta property="og:description" content="AI-Driven E2E Testing for OpenSpec Projects — spec to test, automated.">
 <meta property="og:type" content="website">
+<meta property="og:url" content="https://openspec-playwright.pages.dev/">
+<meta name="twitter:card" content="summary">
 <meta name="theme-color" content="#0a0a0a">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23e85d04'/><circle cx='35' cy='40' r='8' fill='white'/><circle cx='65' cy='40' r='8' fill='white'/><path d='M30 60 Q50 80 70 60' stroke='white' stroke-width='5' fill='none' stroke-linecap='round'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -35,8 +37,8 @@
         <button class="lang-btn active" data-lang="zh">中</button>
         <button class="lang-btn" data-lang="en">EN</button>
       </li>
-      <li><button class="nav-copy-btn" onclick="copyClaudeMd()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+      <li><button class="nav-copy-btn" onclick="copyClaudeMd()" title="复制 CLAUDE.md 配置到剪贴板">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
         <span class="copy-text-zh">复制配置</span><span class="copy-text-en" style="display:none;">Copy Config</span>
       </button></li>
     </ul>
@@ -63,14 +65,21 @@
       GitHub
     </a>
   </div>
+  <div class="hero-facts anim anim-4">
+    <div class="hero-fact"><span class="hero-fact-k">OpenSpec</span><span class="hero-fact-v">spec → plan → test</span></div>
+    <div class="hero-fact-sep"></div>
+    <div class="hero-fact"><span class="hero-fact-k">Healer</span><span class="hero-fact-v">3-phase repair loop</span></div>
+    <div class="hero-fact-sep"></div>
+    <div class="hero-fact"><span class="hero-fact-k">Report</span><span class="hero-fact-v">markdown, per change</span></div>
+  </div>
 </section>
 
 <!-- ── 2. Quickstart ── -->
 <section class="section" id="quickstart">
-  <div class="section-header anim">
-    <div class="section-label"><span class="qs-label-zh">快速开始</span><span class="qs-label-en" style="display:none;">Quick Start</span></div>
+  <div class="section-header section-header-center anim">
+    <div class="section-label section-label-center"><span class="qs-label-zh">快速开始</span><span class="qs-label-en" style="display:none;">Quick Start</span></div>
     <h2 class="section-title"><span class="qs-title-zh">5 分钟上手</span><span class="qs-title-en" style="display:none;">Get Started in 5 Minutes</span></h2>
-    <p class="section-desc">
+    <p class="section-desc section-desc-center">
       <span class="qs-desc-zh">安装后跑一次 init，剩下的交给命令：init 自动检测编辑器并按各自规范装好命令工件；Claude Code 里用 <code>/opsx:e2e</code>，OpenCode / Cline / Cursor / Pi / Oh My Pi 用 <code>/opsx-e2e</code>。</span>
       <span class="qs-desc-en" style="display:none;">Install, run init once, and let the command take over: init auto-detects your editors and installs the command artifacts in each editor's convention. Use <code>/opsx:e2e</code> in Claude Code, <code>/opsx-e2e</code> in OpenCode, Cline, Cursor, Pi, and Oh My Pi.</span>
     </p>
@@ -82,10 +91,11 @@
       <span class="terminal-title">terminal</span>
     </div>
     <div class="terminal-body" id="terminal-body">
-      <div><span class="terminal-prompt">$</span> <span class="terminal-cmd" data-type="npm install -g openspec-playwright@latest">npm install -g openspec-playwright@latest</span></div>
-      <div class="t-hidden"><span class="terminal-prompt">$</span> <span class="terminal-cmd">npm install -g @fission-ai/openspec@latest &amp;&amp; openspec init</span></div>
+      <div><span class="terminal-prompt">$</span> <span class="terminal-cmd" data-type="npm install -g @fission-ai/openspec@latest">npm install -g @fission-ai/openspec@latest</span></div>
+      <div class="t-hidden"><span class="terminal-prompt">$</span> <span class="terminal-cmd">openspec init</span></div>
+      <div class="t-hidden"><span class="terminal-prompt">$</span> <span class="terminal-cmd">npm install -g openspec-playwright@latest</span></div>
       <div class="t-hidden"><span class="terminal-prompt">$</span> <span class="terminal-cmd">openspec-pw init</span></div>
-      <div class="t-hidden"><span class="terminal-prompt">$</span> <span class="terminal-cmd">npx playwright install --with-deps</span></div>
+      <div class="t-hidden"><span class="terminal-prompt">$</span> <span class="terminal-cmd">npx playwright install chromium</span></div>
       <div class="t-hidden terminal-comment"># In Claude Code:</div>
       <div class="t-hidden"><span class="terminal-prompt">$</span> <span class="terminal-cmd terminal-cmd-accent">/opsx:e2e &lt;change-name&gt;</span></div>
     </div>
@@ -96,8 +106,8 @@
       <span class="claude-config-filename">CLAUDE.md</span>
       <div class="claude-config-actions">
         <span class="claude-config-badge">Preview</span>
-        <button class="claude-copy-btn" onclick="copyClaudeMd()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        <button class="claude-copy-btn" onclick="copyClaudeMd()" title="复制 CLAUDE.md 配置到剪贴板">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
           <span class="copy-text-zh">复制配置</span><span class="copy-text-en" style="display:none;">Copy Config</span>
         </button>
       </div>
@@ -108,16 +118,17 @@
 
 <!-- ── 3. 支持的工具 ── -->
 <section class="section editors-row-section" id="editors">
-  <div class="section-header anim">
-    <div class="section-label"><span class="ed-label-zh">支持的工具</span><span class="ed-label-en" style="display:none;">Supported Tools</span></div>
+  <div class="section-header section-header-center anim">
+    <div class="section-label section-label-center"><span class="ed-label-zh">支持的工具</span><span class="ed-label-en" style="display:none;">Supported Tools</span></div>
+    <p class="editors-sub"><span class="ed-desc-zh">init 自动检测已装编辑器，按各自命名规范安装命令工件</span><span class="ed-desc-en" style="display:none;">init auto-detects installed editors and installs command artifacts in each one's convention</span></p>
   </div>
   <ul class="editors-row reveal">
-    <li><a href="https://github.com/wxhou/openspec-playwright#in-claude-code" target="_blank">Claude Code</a></li>
-    <li><a href="https://github.com/wxhou/openspec-playwright#in-opencode" target="_blank">OpenCode</a></li>
-    <li><a href="https://github.com/wxhou/openspec-playwright#in-cline" target="_blank">Cline</a></li>
-    <li><a href="https://github.com/wxhou/openspec-playwright#in-cursor" target="_blank">Cursor</a></li>
-    <li><a href="https://github.com/wxhou/openspec-playwright#in-pi" target="_blank">Pi</a></li>
-    <li><a href="https://github.com/wxhou/openspec-playwright#in-oh-my-pi" target="_blank">Oh My Pi</a></li>
+    <li><a href="https://claude.com/product/claude-code" target="_blank" title="Claude Code 官网">Claude Code</a></li>
+    <li><a href="https://opencode.ai" target="_blank" title="OpenCode 官网">OpenCode</a></li>
+    <li><a href="https://cline.bot" target="_blank" title="Cline 官网">Cline</a></li>
+    <li><a href="https://cursor.com" target="_blank" title="Cursor 官网">Cursor</a></li>
+    <li><a href="https://pi.dev" target="_blank" title="Pi 官网">Pi</a></li>
+    <li><a href="https://omp.sh" target="_blank" title="Oh My Pi 官网">Oh My Pi</a></li>
   </ul>
 </section>
 

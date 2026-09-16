@@ -69,4 +69,19 @@ describe("docs/script.js embedded standards stay in sync", () => {
     const zhHeadings = (zh.match(/^## /gm) ?? []).length;
     expect(zhHeadings).toBeGreaterThanOrEqual(sectionCount - 1);
   });
+
+  // Landing-page rendering contracts in script.js (beyond the embed text):
+  // the dark preview renders priority emoji as single-voice glyphs, and the
+  // embed's headings are demoted so the page keeps exactly one h1. Both were
+  // deliberate (0.3.90-era tuning) and are easy to lose in a rewrite.
+  it("renders priority emoji as monochrome prio spans, not raw emoji", () => {
+    expect(scriptJs).toContain(".replace(/🔴/g, '<span class=\"prio prio-critical\"></span>')");
+    expect(scriptJs).toContain(".replace(/🟡/g, '<span class=\"prio prio-important\"></span>')");
+    expect(scriptJs).toContain(".replace(/⚪/g, '<span class=\"prio prio-standard\"></span>')");
+  });
+
+  it("demotes embed headings (renderMarkdown never emits an h1)", () => {
+    expect(scriptJs).not.toMatch(/<h1>/);
+    expect(scriptJs).toContain('h${level + offset}');
+  });
 });

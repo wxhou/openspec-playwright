@@ -117,6 +117,7 @@ code {
 .anim-1 { animation-delay: 80ms; }
 .anim-2 { animation-delay: 180ms; }
 .anim-3 { animation-delay: 280ms; }
+.anim-4 { animation-delay: 380ms; }
 
 /* Reveal on scroll (initially hidden, animates when .in-view class added) */
 .reveal {
@@ -357,9 +358,14 @@ nav.scrolled {
 
 /* ── Sections ───────────────────────── */
 .section {
-  padding: 96px 32px;
+  padding: 88px 32px;
   max-width: 1100px;
   margin: 0 auto;
+}
+
+#editors {
+  padding-top: 40px;
+  padding-bottom: 88px;
 }
 
 .section-header {
@@ -419,6 +425,8 @@ nav.scrolled {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
+  text-align: center;
   padding: 140px 32px 100px;
   max-width: 1100px;
   margin: 0 auto;
@@ -486,16 +494,59 @@ nav.scrolled {
   margin-bottom: 40px;
 }
 
+.hero-actions,
+.hero-facts {
+  justify-content: center;
+}
+
 .hero-actions {
   display: flex;
   gap: 14px;
   flex-wrap: wrap;
 }
 
+/* Quiet engineering anchor: three facts pin the hero's lower half so the
+   whitespace reads as composition, not emptiness */
+.hero-facts {
+  margin-top: 88px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+/* Centered hero: the vertical separators read better as full-height rules */
+.hero-fact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.hero-fact-k {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.hero-fact-v {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.hero-fact-sep {
+  width: 1px;
+  height: 32px;
+  background: var(--border);
+}
+
 /* ── Quickstart: terminal ───────────── */
 .qs-terminal {
   max-width: 760px;
-  margin-bottom: 72px;
+  margin: 0 auto 72px;
   border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
@@ -658,6 +709,30 @@ nav.scrolled {
   background: var(--accent-dark);
 }
 
+/* Priority dots: quiet monochrome-only versions (the copy payload keeps the
+   real emoji — only this preview renders the tamed glyphs) */.prio {
+  display: inline-block;
+  width: 0.62em;
+  height: 0.62em;
+  border-radius: 50%;
+  vertical-align: -0.05em;
+  margin-right: 0.3em;
+}
+
+.prio-critical {
+  background: var(--accent);
+}
+
+.prio-important {
+  background: none;
+  border: 1.5px solid var(--text-secondary);
+}
+
+.prio-standard {
+  background: none;
+  border: 1.5px solid var(--border-strong);
+}
+
 /* renderMarkdown output (h1-h6 / ul / li / p + inline strong/em/code) */
 .claude-config-rendered {
   padding: 24px 28px 28px;
@@ -665,21 +740,14 @@ nav.scrolled {
   overflow-y: auto;
 }
 
-.claude-config-rendered h1 {
+/* renderMarkdown demotes the embed's # to h2 — the card's top-level style */
+.claude-config-rendered h2 {
   font-family: var(--font-display);
   font-size: 1.15rem;
   font-weight: 700;
   color: var(--text);
   letter-spacing: var(--tracking-heading);
   margin-bottom: 12px;
-}
-
-.claude-config-rendered h2 {
-  font-family: var(--font-display);
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--text);
-  margin: 18px 0 8px;
 }
 
 .claude-config-rendered h3,
@@ -732,7 +800,32 @@ nav.scrolled {
 
 /* ── Editors row ────────────────────── */
 .editors-row-section .section-header {
-  margin-bottom: 32px;
+  margin-bottom: 36px;
+}
+
+.section-label-center {
+  justify-content: center;
+}
+
+/* Centered section header (quickstart & editors share the centered composition) */
+.section-header-center {
+  text-align: center;
+}
+
+.section-header-center .section-label::before {
+  display: none;
+}
+
+.section-desc-center {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.editors-sub {
+  text-align: center;
+  font-size: 0.95rem;
+  color: var(--muted);
+  max-width: none;
 }
 
 .editors-row {
@@ -740,6 +833,7 @@ nav.scrolled {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 8px 0;
 }
 
@@ -751,20 +845,23 @@ nav.scrolled {
 .editors-row li:not(:last-child)::after {
   content: '·';
   color: var(--border-strong);
-  margin: 0 16px;
+  margin: 0 18px;
 }
 
 .editors-row a {
   font-family: var(--font-mono);
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   font-weight: 500;
   color: var(--text-secondary);
   text-decoration: none;
   transition: color 150ms;
+  padding: 4px 2px;
+  border-bottom: 1px solid transparent;
 }
 
 .editors-row a:hover {
-  color: var(--accent);
+  color: var(--text);
+  border-bottom-color: var(--accent);
 }
 
 /* ── Footer ─────────────────────────── */
@@ -777,15 +874,22 @@ footer {
 .footer-inner {
   max-width: 1100px;
   margin: 0 auto;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 40px;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 28px;
+}
+
+.footer-desc {
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .footer-brand {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   font-family: var(--font-display);
   font-weight: 700;
@@ -844,6 +948,7 @@ footer {
   border-top: 1px solid var(--border);
   font-size: 0.8rem;
   color: var(--muted);
+  text-align: center;
 }
 
 /* ── Whimsy: easter egg & sparkles ──── */
@@ -909,11 +1014,6 @@ footer {
 
   .nav-links {
     gap: 2px;
-  }
-
-  .footer-inner {
-    grid-template-columns: 1fr;
-    gap: 24px;
   }
 
   .editors-row li:not(:last-child)::after {
