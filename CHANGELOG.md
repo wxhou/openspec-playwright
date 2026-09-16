@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.90] - 2026-09-16
+## [0.3.91] - 2026-09-16
 - **docs(landing): 全页居中构图 + 终端命令序修正 + 浏览器安装命令收窄**. 用户逐轮裁定的打磨批：Hero（标题/描述/CTA/facts 条）、快速开始、支持的工具、Footer 全部走中轴居中；hero 新增三格 facts 条压住下半区留白；CLAUDE.md 预览卡的 🔴🟡⚪ emoji 圆点转单色 glyph（renderMarkdown 加 prio span，复制 payload 保留原始 emoji 不受影响）；编辑器行直链各官网（claude.com/opencode.ai/cline.bot/cursor.com/pi.dev/omp.sh，逐个实测 200，Pi/Oh My Pi 经 npm registry + GitHub 双重溯源）；终端命令按依赖链重排（openspec 安装/初始化提前，`openspec-pw init` 不再先于 `openspec init`）；`npx playwright install --with-deps` 收窄为 `install chromium`（--with-deps 无浏览器参数时会连 firefox/webkit 一起下载 ~500MB，管线只用 chromium；init Next steps 与 README Note 同步收窄）。补 og:url/twitter:card meta、复制按钮 aria/title、renderMarkdown 标题降级消除双 h1。改 init 输出文案 → dist 同步。
   - `docs/index.html`、`docs/style.css`、`docs/script.js`、`src/commands/init.ts`、`README.md`、`dist/`
 
