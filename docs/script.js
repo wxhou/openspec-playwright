@@ -76,7 +76,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🟡 禁止生成单测：纯透传、getter/装饰器/样板、类型系统已保证的行为、框架自带行为、期望从实现反推的同义反复断言、只断言 mock 调用拓扑而非可观察行为、无有效断言的纯执行
 
 ## 性能与资源边界
-- 🟡 写处理外部数据的代码（查询、文件、网络、并发、大批量集合遍历——含测试造数与测试并发）前先确认量级（预期行数/文件大小/并发度）：openspec/config.yaml 有记录则以它为准；未知 → 问用户
+- 🟡 写处理运行时数据的代码（查询、文件、网络、并发、大批量集合遍历——含测试造数与测试并发）前先确认量级（预期行数/文件大小/并发度）：openspec/config.yaml 有记录则以它为准；未知 → 问用户
 - 🟡 集合内查找用哈希结构（Map/Set/dict）；CPU 密集任务分片或移入后台（worker/子进程），不阻塞主线程/事件循环
 - 🔴 禁止无界读取进内存：整文件读入、无 LIMIT 全表查询、全量结果攒齐再处理——除非量级已确认有界；大数据一律流式/分批（数据侧：流/游标/分页/chunk；展示侧：分页/虚拟列表），单批大小显式设定
 - 🔴 禁止无界并发：大批量任务不限并发度地一次性发起、无上限开连接/进程/线程——并发池/信号量显式限流
@@ -161,7 +161,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🟡 Never generate unit tests: pass-through, getters/decorators/boilerplate, type-system-guaranteed behavior, framework built-ins, tautological assertions with expectations reverse-engineered from the implementation, asserting mock call topology instead of observable behavior, execution without effective assertions
 
 ## Performance & Resource Bounds
-- 🟡 Confirm data scale (expected rows / file size / concurrency) before writing code that consumes external data (queries, files, network, concurrency, bulk collection iteration — incl. test fixtures & test parallelism): openspec/config.yaml records take precedence; unknown → ask the user
+- 🟡 Confirm data scale (expected rows / file size / concurrency) before writing code that processes runtime data (queries, files, network, concurrency, bulk collection iteration — incl. test fixtures & test parallelism): openspec/config.yaml records take precedence; unknown → ask the user
 - 🟡 Use hash structures for in-collection lookups (Map/Set/dict); shard CPU-heavy work or move it to a worker/subprocess — never block the main thread/event loop
 - 🔴 Never read unbounded data into memory: whole-file reads, queries without LIMIT, accumulate-then-process — unless the scale is confirmed bounded. Stream/batch by default (data side: streams/cursors/pagination/chunks; display side: pagination/virtual lists) with an explicit batch size
 - 🔴 Never fan out unbounded concurrency: launching a large batch of tasks all at once without a concurrency cap, or opening connections/processes/threads without a limit — bound them with an explicit pool/semaphore
