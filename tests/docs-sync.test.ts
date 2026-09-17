@@ -30,6 +30,9 @@ const ZH_ANCHORS: [string, string][] = [
   ["§6 验收定义", "对真实运行的服务发真实请求"],
   ["§6 UI 组件禁令", "禁止生成 UI 组件测试"],
   ["§6 单测禁令", "只断言 mock 调用拓扑"],
+  ["§7 量级确认", "前先确认量级"],
+  ["§7 无界读取禁令", "禁止无界读取进内存"],
+  ["§7 无界并发禁令", "禁止无界并发"],
 ];
 
 const EN_ANCHORS: [string, string][] = [
@@ -43,6 +46,9 @@ const EN_ANCHORS: [string, string][] = [
   ["§6 coverage duty", "must be covered by some test layer"],
   ["§6 acceptance definition", "real requests against a real running service"],
   ["§6 UI component ban", "Never generate UI component tests"],
+  ["§7 performance section", "Performance & Resource Bounds"],
+  ["§7 unbounded reads", "Never read unbounded data into memory"],
+  ["§7 unbounded concurrency", "Never fan out unbounded concurrency"],
 ];
 
 describe("docs/script.js embedded standards stay in sync", () => {
@@ -60,11 +66,11 @@ describe("docs/script.js embedded standards stay in sync", () => {
     expect(en, `docs/script.js CLAUDE_MD_EN missing: ${phrase}`).toContain(phrase);
   });
 
-  it("every standards section number 0..6 is represented in the ZH embed", () => {
+  it("every standards section number 0..7 is represented in the ZH embed", () => {
     // Section HEADINGS drift in wording between the full standards and the
     // condensed copy, so match by number coverage instead of exact titles.
     const sectionCount = (standards.match(/^## \d+\./gm) ?? []).length;
-    expect(sectionCount).toBeGreaterThanOrEqual(7); // §0..§6
+    expect(sectionCount).toBeGreaterThanOrEqual(8); // §0..§7
     // The condensed ZH copy carries all major sections as headings too.
     const zhHeadings = (zh.match(/^## /gm) ?? []).length;
     expect(zhHeadings).toBeGreaterThanOrEqual(sectionCount - 1);
