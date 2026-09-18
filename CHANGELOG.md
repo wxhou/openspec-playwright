@@ -5,8 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
+## [0.3.92] - 2026-09-18
 - **docs(standards): 新增 §7 性能与资源边界**. 用户痛点：AI 编码不考虑数据规模，处理大批量数据时 CPU/内存占满卡死。六章结构（§0-§6）扩为七章，新节覆盖：量级确认先行（openspec/config.yaml 记录优先、未知问用户，测试造数/并发同算）、哈希查找与 CPU 密集分片、🔴 无界读取进内存禁令（整文件读入/无 LIMIT 全表/攒齐再处理；流式/分批兜底）、🔴 无界并发禁令（并发池/信号量显式限流）、循环内逐条 I/O 与无界缓存。五件套同一 commit：employee-standards.md（SSOT）、AGENTS.md（本地镜像）、docs/script.js 双语嵌入（CLAUDE_MD_ZH/EN 各加 condensed 节）、tests/docs-sync.test.ts（+6 锚，section count 守卫 §0..§7）。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 
