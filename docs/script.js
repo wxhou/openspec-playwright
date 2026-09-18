@@ -9,10 +9,11 @@ const CLAUDE_MD_ZH = `# 项目规范
 - ⚪ 未执行的检查步骤明确标注「未运行」，不暗示已通过
 - 🟡 需求理解不清或存在可见风险时，先停下来提问，不直接执行。偏离标准实践需说明理由
 - 🟡 动手前列假设 → 逐条验证。需求不清或有风险 → 停下来提问。多解释则全列，更简单方案则提出并坚持
-- 🟡 多步任务先列计划（\`1. [Step] → verify: [check]\`），循环验证直到成功。lint 失败时优先运行对应语言的 auto-fix（如 \`npm run lint:fix\` / \`ruff format .\` / \`go fmt ./...\`）
+- 🟡 多步任务先列计划（\`1. [Step] → verify: [check]\`），循环验证直到成功。lint 失败时优先运行对应语言的 auto-fix（如 \`npm run lint:fix\` / \`ruff format .\` / \`go fmt ./...\`）；修复循环最多 2 轮，仍失败即停
 - 🟡 只写被要求的：不加"灵活"/"可配置"/单次使用抽象，不为想象中的场景写防御。200行能50行则重写
 - 🔴 过时的直接删：删除/修改时不留兼容层、不写迁移、不留 fallback
 - 🔴 方案选型按优先级链：项目已有依赖 → 成熟有人维护的库 → 自己实现；同类问题先用成熟产品验证过的模式解决
+- 🔴 引入新依赖前先实查 registry——AI 会幻觉包名（抢注攻击）；装前看 install scripts，可疑即弃
 - 🟡 精准改动：只改必要的，改完清理自己造成的垃圾。匹配现有风格
 - 🟡 注释纪律：只写代码无法表达的 why（约束、workaround 原因、反直觉决策）；改动叙述（原来/现在/不再/已删除等）、对已删代码的引用、注释掉的代码一律不留——历史归 git log；改动时顺手删掉已失效的相邻注释；spec 锚与 TODO(user) 属机制标注，不在其列
 - 🟡 代码文件行数上限 1500：超过即违例，按职责拆分，不得继续堆叠
@@ -94,10 +95,11 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - ⚪ Unexecuted verification steps must be explicitly marked "not run", never implied as passed
 - 🟡 When requirements are unclear or risks are visible, pause and ask before executing. Deviations from standard practice must be justified.
 - 🟡 List assumptions before coding → verify each one. If unclear → stop and ask. Present all interpretations; suggest simpler approaches and insist
-- 🟡 Multi-step tasks: plan first (\`1. [Step] → verify: [check]\`), loop until verified. On lint failure, run the language's auto-fix first (e.g. \`npm run lint:fix\` / \`ruff format .\` / \`go fmt ./...\`)
+- 🟡 Multi-step tasks: plan first (\`1. [Step] → verify: [check]\`), loop until verified. On lint failure, run the language's auto-fix first (e.g. \`npm run lint:fix\` / \`ruff format .\` / \`go fmt ./...\`); the fix loop runs at most 2 rounds — still failing, stop
 - 🟡 Write only what's requested: No flexibility/configurability/single-use abstractions, no defensive code for imagined scenarios. Rewrite if 200 lines can be 50
 - 🔴 Delete obsolete code outright: no compat layers, migrations, or fallbacks when removing/editing
 - 🔴 Solution selection follows the priority chain: existing project deps → mature maintained libraries → write it yourself; solve similar problems with proven patterns first
+- 🔴 Before adding any new dependency, verify it on its registry first — LLMs hallucinate package names (squatting attacks); check install scripts before installing, discard if suspicious
 - 🟡 Surgical changes: Touch only what's needed, clean up your own mess. Match existing style
 - 🟡 Comment discipline: write only the why the code cannot express (constraints, workaround reasons, counterintuitive decisions); change narration ("originally/now/no longer/removed" etc.), references to deleted code, and commented-out code are never kept — history belongs in git log; prune adjacent stale comments while editing; machine-readable anchors (spec anchors) and TODO(user) markers are exempt
 - 🟡 Code file line limit 1500: over 1500 is a violation — split by responsibility, never extend

@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **docs(standards): 新增 §7 性能与资源边界**. 用户痛点：AI 编码不考虑数据规模，处理大批量数据时 CPU/内存占满卡死。六章结构（§0-§6）扩为七章，新节覆盖：量级确认先行（openspec/config.yaml 记录优先、未知问用户，测试造数/并发同算）、哈希查找与 CPU 密集分片、🔴 无界读取进内存禁令（整文件读入/无 LIMIT 全表/攒齐再处理；流式/分批兜底）、🔴 无界并发禁令（并发池/信号量显式限流）、循环内逐条 I/O 与无界缓存。五件套同一 commit：employee-standards.md（SSOT）、AGENTS.md（本地镜像）、docs/script.js 双语嵌入（CLAUDE_MD_ZH/EN 各加 condensed 节）、tests/docs-sync.test.ts（+6 锚，section count 守卫 §0..§7）。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 
+- **docs(standards): §1 补依赖幻觉禁令与有界修复循环**. Exa 调研大厂规范（Anthropic 官方 CLAUDE.md 守则/Shopify AI-first playbook/Stripe Minions/Tenable AI 安全政策）后对齐的两条：🔴 引入新依赖前实查 registry（AI 幻觉包名，slopsquatting 抢注是真实供应链攻击；装前看 install scripts 可疑即弃）——补选型链的存在性验证真空；修复循环显式上限 2 轮（Stripe 纪律：本地修完即止——两轮后仍失败意味着理解错了而非没修够，继续盲修会"修"出削断言/删测试）折进既有 lint gate 条，零新条。+4 docs-sync 锚。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
+
 ## [0.3.91] - 2026-09-16
 - **docs(landing): 全页居中构图 + 终端命令序修正 + 浏览器安装命令收窄**. 用户逐轮裁定的打磨批：Hero（标题/描述/CTA/facts 条）、快速开始、支持的工具、Footer 全部走中轴居中；hero 新增三格 facts 条压住下半区留白；CLAUDE.md 预览卡的 🔴🟡⚪ emoji 圆点转单色 glyph（renderMarkdown 加 prio span，复制 payload 保留原始 emoji 不受影响）；编辑器行直链各官网（claude.com/opencode.ai/cline.bot/cursor.com/pi.dev/omp.sh，逐个实测 200，Pi/Oh My Pi 经 npm registry + GitHub 双重溯源）；终端命令按依赖链重排（openspec 安装/初始化提前，`openspec-pw init` 不再先于 `openspec init`）；`npx playwright install --with-deps` 收窄为 `install chromium`（--with-deps 无浏览器参数时会连 firefox/webkit 一起下载 ~500MB，管线只用 chromium；init Next steps 与 README Note 同步收窄）。补 og:url/twitter:card meta、复制按钮 aria/title、renderMarkdown 标题降级消除双 h1。改 init 输出文案 → dist 同步。
   - `docs/index.html`、`docs/style.css`、`docs/script.js`、`src/commands/init.ts`、`README.md`、`dist/`
