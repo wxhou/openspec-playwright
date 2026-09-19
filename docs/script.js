@@ -2,22 +2,23 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 动手前读 \`openspec/config.yaml\`（技术栈、结构、约定、约束等），无内容则忽略
 - OpenSpec 命令：跑 \`npx openspec --help\` 查看
 - 优先级：🔴 CRITICAL（违反→静默 bug/安全漏洞，停下确认后执行）｜🟡 IMPORTANT（偏离说明理由，谨慎执行）｜⚪ STANDARD（按标准执行）
+- 🟡 提案/任务范围内，有明确正确答案的工作自主推进，不请示；影响接口、数据、架构的取舍或需偏离范围才停下问。自主不延伸到 OpenSpec 阶段切换——阶段始终由用户触发
+- 🟡 被用户纠正后，将防再犯规则以修订形式沉淀回规范文件；重大修订经用户确认后合入
 
 ## 代码质量
 - 🔴 **lint+typecheck 每次编辑后自动执行，通过才算成功**。扫源码扩展名判断主语言：\`.ts\`→ESLint+tsc、\`.py\`→ruff+mypy、\`.go\`→gofmt+vet 等。工具不存在时告知用户，不假装跑过
-- 🟡 不隐藏任何 gate 失败结果——lint / typecheck / test 任一失败时，完整输出错误日志并停止，不继续后续步骤
-- ⚪ 未执行的检查步骤明确标注「未运行」，不暗示已通过
-- 🟡 需求理解不清或存在可见风险时，先停下来提问，不直接执行。偏离标准实践需说明理由
-- 🟡 动手前列假设 → 逐条验证。需求不清或有风险 → 停下来提问。多解释则全列，更简单方案则提出并坚持
+- 🟡 gate 结果不造假：仍失败 → 完整输出错误日志并停止，不继续；未运行的检查标注「未运行」，不暗示已通过
+- 🟡 动手前列假设 → 逐条验证；理解不清或有可见风险 → 先提问再执行。多解释则全列，更简单方案则提出并坚持
 - 🟡 多步任务先列计划（\`1. [Step] → verify: [check]\`），循环验证直到成功。lint 失败时优先运行对应语言的 auto-fix（如 \`npm run lint:fix\` / \`ruff format .\` / \`go fmt ./...\`）；修复循环最多 2 轮，仍失败即停
 - 🟡 只写被要求的：不加"灵活"/"可配置"/单次使用抽象，不为想象中的场景写防御。200行能50行则重写
-- 🔴 过时的直接删：删除/修改时不留兼容层、不写迁移、不留 fallback
-- 🔴 方案选型按优先级链：项目已有依赖 → 成熟有人维护的库 → 自己实现；同类问题先用成熟产品验证过的模式解决
+- 🟡 简化有边界，永不简化掉：信任边界的输入校验、防数据丢失的错误处理、安全措施、无障碍基础、用户明确要求的东西；刻意砍角且有已知天花板的简化（全局锁、O(n²) 扫描、朴素启发式）用 \`debt:\` 注释标明天花板和升级路径——debt 只属性能取舍，不豁免性能节已标 🔴 的无界类禁令与正确性/安全措施
+- 🔴 过时的直接删：删除/修改时不留兼容层、不写迁移、不留 fallback（仅限本次改动触及的范围）
+- 🔴 方案选型按优先级链依次判断，停在第一个成立的：要不要存在（YAGNI）→ 代码库已有可复用 → 标准库 → 平台原生特性 → 已装依赖 → 成熟有人维护的库 → 自己实现；同类问题先用成熟产品验证过的模式解决
 - 🔴 引入新依赖前先实查 registry——AI 会幻觉包名（抢注攻击）；装前看 install scripts，可疑即弃
-- 🟡 精准改动：只改必要的，改完清理自己造成的垃圾。匹配现有风格
-- 🟡 注释纪律：只写代码无法表达的 why（约束、workaround 原因、反直觉决策）；改动叙述（原来/现在/不再/已删除等）、对已删代码的引用、注释掉的代码一律不留——历史归 git log；改动时顺手删掉已失效的相邻注释；spec 锚与 TODO(user) 属机制标注，不在其列
+- 🟡 精准改动：只改必要的，每一行都应能直接追溯到用户的请求；不"改进"相邻的代码/注释/格式，不重构没坏的东西；改完清理自己造成的垃圾（未使用的 import/export/prop/console.log 等；清理与重构分开提交）。匹配现有风格
+- 🟡 注释纪律：只写代码无法表达的 why（约束、workaround 原因、反直觉决策）；改动叙述、对已删代码的引用、注释掉的代码一律不留——历史归 git log；spec 锚与 TODO(user) 属机制标注，不在其列
+- 🟡 交付前自问：资深工程师会觉得过于复杂吗？会批准吗？任一为否 → 先简化/重写再交付
 - 🟡 代码文件行数上限 1500：超过即违例，按职责拆分，不得继续堆叠
-- ⚪ 重构前清理未使用的 import/export/prop/console.log 等，单独提交再做重构
 
 ## 禁止非通用性改动
 - 不写只适配特定输入值的逻辑
@@ -46,18 +47,18 @@ const CLAUDE_MD_ZH = `# 项目规范
 
 ## 大规模任务
 - 🔴 200+ 行修改或架构变更（新增服务/API 契约/数据模型重构）必须走 OpenSpec（\`/opsx:propose\`），禁止直接修改
+- 🟡 执行中一旦发现走偏（方案不成立、前提变化、验证反复失败），立刻停下重新评估并回报，不硬推到结尾
 
 ## 工作流参考
 - 提案→实现→自审→E2E→归档，**所有阶段由用户手动触发，AI 不自动进入下一阶段**
 
 ## 数据编撰
-- 🔴 严禁主动编撰任何数据填充代码，除非用户明确同意
+- 🔴 严禁主动编撰任何数据填充代码
 - 编撰示例：mock 用户/邮箱/手机号、编造测试期望值、凭空出现配置默认值、假装存在的接口/字段/枚举值
 - 不编造 URL/路径/字段名 → 引用真实来源
-- 遇需数据的代码位必须显式询问用户
+- 遇需数据的代码位 → 显式询问用户；用户拒绝 → 用 stub/throw/null 显式失败，禁止静默编造
 - 用户同意占位 → \`TODO(user)\` 标注并附问询上下文
 - 用户提供数据 → 使用真实数据
-- 用户拒绝 → 用 stub/throw/null 显式失败，禁止静默编造
 - 存在 OpenAPI/接口文档 → 查阅真实定义并标注来源（如 \`// 来源: docs/api/openapi.yaml#/paths/...\`）
 
 ## 临时文件管理
@@ -66,13 +67,14 @@ const CLAUDE_MD_ZH = `# 项目规范
 
 ## 测试与验证策略
 - 🟡 改了用户可见可交互的东西（DOM/交互/跳转/异步渲染/样式/响应式、守卫/权限/多角色可见性）→ 浏览器验证；纯逻辑 → 按单测取舍，不开浏览器
-- 🟡 值得单测：业务核心计算/状态转换、含分支的纯函数、边界与错误处理路径、被多处复用的工具、修过 bug 的回归；模糊地带默认测（UI 组件除外），一个行为一组断言
+- 🟡 值得单测：业务核心计算/状态转换、含分支的纯函数、边界与错误处理路径、被多处复用的工具、修过 bug 的回归；模糊地带默认测（漏测代价 > 多测代价），一个行为一组断言
 - 🔴 验收标准点名的行为与业务核心逻辑必须被某层测试覆盖（单测或验收测试，一层即可）；不以本条为由跳过/删除既有测试
 - 🔴 后端/服务 → 对真实运行的服务发真实请求验证契约与端到端行为，落成集成测试（真实数据/依赖，遵守数据编撰节）
-- 🟡 验收期望锚定 spec/验收标准写「预期 X，实测 Y」（期望编造禁令见数据编撰节）
+- 🟡 验收期望锚定验收标准写「预期 X，实测 Y」（期望编造禁令见数据编撰节）
 - 🔴 UI 组件：值得测的客户端逻辑（自定义 hook / 组合式函数 / 纯函数）抽为可独立测试的单元按单测清单测
 - 🟡 验证前核对加载的是本次产物（清缓存/停用 SW/核 hash）；权限类必须真实登录态（禁止注入 token），多角色各角色单独登录
-- 🔴 禁止生成 UI 组件测试：渲染冒烟、快照、纯存在断言——UI 行为只归浏览器验证
+- 🟡 验证证据（截图/日志/输出）取自本次实际运行，不编造、不复用旧证据
+- 🔴 禁止生成 UI 组件测试：渲染冒烟、快照、纯存在断言
 - 🔴 仅截图不算通过——交互必须验证结果（点击后的状态/跳转/渲染），断言只作辅助证据
 - 🟡 禁止生成单测：纯透传、getter/装饰器/样板、类型系统已保证的行为、框架自带行为、期望从实现反推的同义反复断言、只断言 mock 调用拓扑而非可观察行为、无有效断言的纯执行
 
@@ -88,22 +90,23 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - Read \`openspec/config.yaml\` first (tech stack, structure, conventions, constraints, etc.); ignore if absent
 - OpenSpec commands: run \`npx openspec --help\` to list them
 - Priority: 🔴 CRITICAL (violation → silent bug/security hole, stop and confirm before acting)｜🟡 IMPORTANT (deviations need justification, proceed with caution)｜⚪ STANDARD (follow as standard practice)
+- 🟡 Within an agreed proposal/task scope, work with a clear correct answer proceeds autonomously without asking; stop only for trade-offs affecting interfaces, data, or architecture, or when leaving scope. Autonomy does not extend to OpenSpec phase transitions — phases are always user-triggered
+- 🟡 When corrected by the user, distill the prevention rule back into the standards file as a revision; major revisions land after user confirmation
 
 ## Code Quality
 - 🔴 **lint+typecheck runs after every edit, both must pass**. Detect language by extension: \`.ts\`→ESLint+tsc, \`.py\`→ruff+mypy, \`.go\`→gofmt+vet, etc. If tool missing, tell user, don't pretend it ran
-- 🟡 Never hide gate failures — when lint, typecheck, or test fails, output the full error log and stop. Do not proceed to subsequent steps.
-- ⚪ Unexecuted verification steps must be explicitly marked "not run", never implied as passed
-- 🟡 When requirements are unclear or risks are visible, pause and ask before executing. Deviations from standard practice must be justified.
-- 🟡 List assumptions before coding → verify each one. If unclear → stop and ask. Present all interpretations; suggest simpler approaches and insist
+- 🟡 Never fake gate results: still failing → output the full error log and stop; unexecuted checks are explicitly marked "not run", never implied as passed
+- 🟡 List assumptions before coding → verify each one; if unclear or risks are visible → ask first. Present all interpretations; suggest simpler approaches and insist
 - 🟡 Multi-step tasks: plan first (\`1. [Step] → verify: [check]\`), loop until verified. On lint failure, run the language's auto-fix first (e.g. \`npm run lint:fix\` / \`ruff format .\` / \`go fmt ./...\`); the fix loop runs at most 2 rounds — still failing, stop
 - 🟡 Write only what's requested: No flexibility/configurability/single-use abstractions, no defensive code for imagined scenarios. Rewrite if 200 lines can be 50
-- 🔴 Delete obsolete code outright: no compat layers, migrations, or fallbacks when removing/editing
-- 🔴 Solution selection follows the priority chain: existing project deps → mature maintained libraries → write it yourself; solve similar problems with proven patterns first
+- 🟡 Simplification has boundaries, never simplify away: input validation at trust boundaries, error handling that prevents data loss, security measures, accessibility basics, anything the user explicitly asked for; deliberate corner-cutting with a known ceiling (global locks, O(n²) scans, naive heuristics) gets a \`debt:\` comment marking the ceiling and upgrade path — debt is a performance trade-off only, it never exempts the 🔴 unbounded-resource bans in the Performance section or correctness/security measures
+- 🔴 Delete obsolete code outright: no compat layers, migrations, or fallbacks when removing/editing (within the scope of the current change only)
+- 🔴 Solution selection walks the priority chain, stopping at the first that holds: should it exist at all (YAGNI) → reuse from the codebase → standard library → platform-native features → installed dependencies → mature maintained libraries → write it yourself; solve similar problems with proven patterns first
 - 🔴 Before adding any new dependency, verify it on its registry first — LLMs hallucinate package names (squatting attacks); check install scripts before installing, discard if suspicious
-- 🟡 Surgical changes: Touch only what's needed, clean up your own mess. Match existing style
-- 🟡 Comment discipline: write only the why the code cannot express (constraints, workaround reasons, counterintuitive decisions); change narration ("originally/now/no longer/removed" etc.), references to deleted code, and commented-out code are never kept — history belongs in git log; prune adjacent stale comments while editing; machine-readable anchors (spec anchors) and TODO(user) markers are exempt
+- 🟡 Surgical changes: touch only what's needed, every line traceable to the user's request; don't "improve" adjacent code/comments/formatting, don't refactor what isn't broken; clean up your own mess (unused imports/exports/props/console.log etc.; cleanup and refactor in separate commits). Match existing style
+- 🟡 Comment discipline: write only the why the code cannot express (constraints, workaround reasons, counterintuitive decisions); change narration, references to deleted code, and commented-out code are never kept — history belongs in git log; machine-readable anchors (spec anchors) and TODO(user) markers are exempt
+- 🟡 Before delivery, ask: would a senior engineer find this overcomplicated? Would they approve it? Either answer no → simplify/rewrite first
 - 🟡 Code file line limit 1500: over 1500 is a violation — split by responsibility, never extend
-- ⚪ Before refactoring, clean unused imports/exports/props/console.log etc. in a separate commit
 
 ## No Non-Generic Changes
 - Don't write logic that only fits specific input values
@@ -132,18 +135,18 @@ const CLAUDE_MD_EN = `# Project Guidelines
 
 ## Large-Scale Tasks
 - 🔴 200+ line changes or architecture changes (new services/API contracts/data model refactors) must use OpenSpec (\`/opsx:propose\`), no direct edits
+- 🟡 The moment execution goes off track (plan untenable, premises changed, verification repeatedly failing), stop immediately, re-evaluate, and report — never push through to the end
 
 ## Workflow Reference
 - Propose→Apply→Verify→E2E→Archive, **all phases manually triggered by user, AI does not auto-advance**
 
 ## Data Fabrication
-- 🔴 Never fabricate any data to fill code without explicit user consent
+- 🔴 Never fabricate any data to fill code
 - Examples: mock users/emails/phone numbers, fabricated test expectations, imaginary config defaults, pretended APIs/fields/enum values
 - Don't fabricate URLs/paths/field names → cite real sources
-- When data is needed → ask user explicitly
+- When data is needed → ask the user explicitly; user refuses → stub/throw/null for explicit failure, never silently fabricate
 - User agrees → mark with \`TODO(user)\` and attach context
 - User provides data → use real data
-- User refuses → use stub/throw/null for explicit failure, never silently fabricate
 - If OpenAPI/API docs exist → consult real definitions and cite source (e.g. \`// source: docs/api/openapi.yaml#/paths/...\`)
 
 ## Temp File Management
@@ -152,13 +155,14 @@ const CLAUDE_MD_EN = `# Project Guidelines
 
 ## Testing & Verification Strategy
 - 🟡 Anything user-visible/interactive changed (DOM/interaction/navigation/async-render/style/responsive, guards/permissions/multi-role visibility) → browser-verify; pure logic → per unit-test criteria, no browser
-- 🟡 Worth unit-testing: core business computation/state transitions, pure functions with branches, boundary & error paths, widely reused utilities, bug-fix regressions; when ambiguous default to testing (UI components excluded), one behavior one assertion set
+- 🟡 Worth unit-testing: core business computation/state transitions, pure functions with branches, boundary & error paths, widely reused utilities, bug-fix regressions; when ambiguous default to testing (missing a test costs more than an extra one), one behavior one assertion set
 - 🔴 Behaviors named by acceptance criteria and core business logic must be covered by some test layer (unit OR acceptance — one is enough); never use this rule to skip/delete existing tests
 - 🔴 Backend/service → real requests against a real running service to verify contract and end-to-end behavior — lands as integration tests (real data/dependencies, per the Data Fabrication section)
-- 🟡 All acceptance expectations anchor to spec acceptance criteria ("expected X, got Y"); the no-fabricating-expectations rule lives in the Data Fabrication section
+- 🟡 All acceptance expectations anchor to acceptance criteria ("expected X, got Y"); the no-fabricating-expectations rule lives in the Data Fabrication section
 - 🔴 UI components: extract client-side logic worth testing (custom hooks / composables / pure functions) into independently testable units per the unit-test list
 - 🟡 Verify the tested build is the current one; permission checks need a real login state (no token injection); each role logs in separately
-- 🔴 Never generate UI component tests: render-smoke, snapshot, or mere-existence — UI behavior belongs to browser verification only
+- 🟡 Verification evidence (screenshots/logs/output) comes from this run only — never fabricated, never reused from earlier runs
+- 🔴 Never generate UI component tests: render-smoke, snapshot, or mere-existence
 - 🔴 Screenshot alone does not pass — interactions must verify the result (state/navigation/render after click); assertions serve only as auxiliary evidence
 - 🟡 Never generate unit tests: pass-through, getters/decorators/boilerplate, type-system-guaranteed behavior, framework built-ins, tautological assertions with expectations reverse-engineered from the implementation, asserting mock call topology instead of observable behavior, execution without effective assertions
 
