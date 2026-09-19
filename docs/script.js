@@ -162,7 +162,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🔴 UI components: extract client-side logic worth testing (custom hooks / composables / pure functions) into independently testable units per the unit-test list
 - 🟡 Verify the tested build is the current one; permission checks need a real login state (no token injection); each role logs in separately
 - 🟡 Verification evidence (screenshots/logs/output) comes from this run only — never fabricated, never reused from earlier runs
-- 🔴 Never generate UI component tests: render-smoke, snapshot, or mere-existence — UI behavior belongs to browser verification only
+- 🔴 Never generate UI component tests: render-smoke, snapshot, or mere-existence
 - 🔴 Screenshot alone does not pass — interactions must verify the result (state/navigation/render after click); assertions serve only as auxiliary evidence
 - 🟡 Never generate unit tests: pass-through, getters/decorators/boilerplate, type-system-guaranteed behavior, framework built-ins, tautological assertions with expectations reverse-engineered from the implementation, asserting mock call topology instead of observable behavior, execution without effective assertions
 
