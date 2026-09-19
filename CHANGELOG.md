@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- **refactor(standards): CLAUDE.md wrapper 的 CodeGraph 块精简至核心指令**. `CODE_GRAPH_FIRST_BLOCK` 删除"grep/read 仅作补充（字面文本、已打开文件、结果不足）"与"不派子 agent 重建索引"两句后果说明——AGENTS.md SSOT 的 §2 搜索分层条款完整覆盖 grep/read 分工，"不派子 agent"由 §0 自主边界条款承接；wrapper 内属重复表述。保留核心四要素：触发条件（结构性任务）→ 首选工具（`codegraph_explore`）→ 使用方式（直接用结果回答）→ 跳过条件（无 `.codegraph/`）。⚠ 已安装项目下次 `openspec-pw update` 会因块内容漂移自动重写 wrapper（一次性变更，update 正常职责）。所有测试仅锚 `"CodeGraph 优先"` 标题，无断言依赖被删文本。
+  - `src/commands/editors/project-rules.ts`
+
 - **docs(standards): §0 自主边界/经验沉淀 + 选型链扩展 + debt 机制 + §3/§6 补强**. 四组语义修改与一轮去重收拢：① §0 新增「询问与自主的边界」（有明确正确答案才自主推进；影响接口/数据/架构的取舍才停；自主不延伸到 OpenSpec 阶段切换）与「经验沉淀」（被纠正后防再犯规则回沉淀，工具中立）；② §1 方案选型链扩为七级（YAGNI → 代码库复用 → 标准库 → 平台原生 → 已装依赖 → 成熟库 → 自实现）并新增「简化有边界」条款——debt: 注释机制标明性能取舍的天花板与升级路径，显式不豁免 §7 🔴 无界禁令与正确性/安全措施；③ §3 新增执行中止条款（走偏即停，不硬推到结尾）；④ §6 新增验证证据条（截图/日志/输出取自本次实际运行，不编造不复用——接住 §4 的引用落空）。去重收拢：gate 不谎报条合并（原两条）、§4 内嵌豁免下游化（询问流程即唯一合法通道）、UI 组件豁免 3 处表述削为 2 处、§0 两条精简；按用户决定回撤"跨 3+ 文件"OpenSpec 触发点（只看行数）。landing page 的 CLAUDE.md 预览模板（CLAUDE_MD_ZH/EN）全量同步。另：`.workbuddy/` 入 .gitignore。
   - `employee-standards.md`、`docs/script.js`、`.gitignore`、`CHANGELOG.md`
 
