@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+- **docs(standards): §0 自主边界/经验沉淀 + 选型链扩展 + debt 机制 + §3/§6 补强**. 四组语义修改与一轮去重收拢：① §0 新增「询问与自主的边界」（有明确正确答案才自主推进；影响接口/数据/架构的取舍才停；自主不延伸到 OpenSpec 阶段切换）与「经验沉淀」（被纠正后防再犯规则回沉淀，工具中立）；② §1 方案选型链扩为七级（YAGNI → 代码库复用 → 标准库 → 平台原生 → 已装依赖 → 成熟库 → 自实现）并新增「简化有边界」条款——debt: 注释机制标明性能取舍的天花板与升级路径，显式不豁免 §7 🔴 无界禁令与正确性/安全措施；③ §3 新增执行中止条款（走偏即停，不硬推到结尾）；④ §6 新增验证证据条（截图/日志/输出取自本次实际运行，不编造不复用——接住 §4 的引用落空）。去重收拢：gate 不谎报条合并（原两条）、§4 内嵌豁免下游化（询问流程即唯一合法通道）、UI 组件豁免 3 处表述削为 2 处、§0 两条精简；按用户决定回撤"跨 3+ 文件"OpenSpec 触发点（只看行数）。landing page 的 CLAUDE.md 预览模板（CLAUDE_MD_ZH/EN）全量同步。另：`.workbuddy/` 入 .gitignore。
+  - `employee-standards.md`、`docs/script.js`、`.gitignore`、`CHANGELOG.md`
+
 ## [0.3.92] - 2026-09-18
 - **docs(standards): 新增 §7 性能与资源边界**. 用户痛点：AI 编码不考虑数据规模，处理大批量数据时 CPU/内存占满卡死。六章结构（§0-§6）扩为七章，新节覆盖：量级确认先行（openspec/config.yaml 记录优先、未知问用户，测试造数/并发同算）、哈希查找与 CPU 密集分片、🔴 无界读取进内存禁令（整文件读入/无 LIMIT 全表/攒齐再处理；流式/分批兜底）、🔴 无界并发禁令（并发池/信号量显式限流）、循环内逐条 I/O 与无界缓存。五件套同一 commit：employee-standards.md（SSOT）、AGENTS.md（本地镜像）、docs/script.js 双语嵌入（CLAUDE_MD_ZH/EN 各加 condensed 节）、tests/docs-sync.test.ts（+6 锚，section count 守卫 §0..§7）。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
