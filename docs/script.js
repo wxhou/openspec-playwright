@@ -501,3 +501,84 @@ function initTypewriter() {
   }
 }
 
+
+/* ── Live npm downloads ───────────────────── */
+/* Two window points from the public npm API (CORS-open, npm-side cached
+   5 min). "PAST YEAR" not "all time": the API caps lookback at 18 months.
+   Facts stay hidden until fetch succeeds — failed live data disappears,
+   it doesn't render a dash. Values cache in localStorage for 1h so repeat
+   visitors see numbers instantly; a background refresh replaces them.
+   Screen readers read the settled aria-label only — the count-up is
+   aria-hidden so intermediate frames never reach the accessibility tree. */
+const DL_CACHE_KEY = 'ospw-downloads-v1';
+const DL_CACHE_TTL = 60 * 60 * 1000; // 1h
+
+function formatDownloads(n) {
+  return n.toLocaleString('en-US');
+}
+
+function setLiveAria(month, year) {
+  const zh = currentLang === 'zh';
+  const facts = document.querySelectorAll('[data-live-fact]');
+  if (facts[0]) facts[0].setAttribute('aria-label', zh ? `下载量 ${formatDownloads(month)} 每月` : `Downloads ${formatDownloads(month)} per month`);
+  if (facts[1]) facts[1].setAttribute('aria-label', zh ? `年下载 ${formatDownloads(year)} 每年` : `Yearly downloads ${formatDownloads(year)} per year`);
+}
+
+function revealLiveStats(month, year, animate) {
+  document.querySelectorAll('[data-live-fact]').forEach(el => el.classList.add('is-live'));
+  document.querySelectorAll('[data-live-sep]').forEach(el => { el.style.display = ''; });
+  const monthEl = document.getElementById('dl-month');
+  const yearEl = document.getElementById('dl-year');
+  if (monthEl) animate ? countUp(monthEl, month) : (monthEl.textContent = formatDownloads(month));
+  if (yearEl) animate ? countUp(yearEl, year) : (yearEl.textContent = formatDownloads(year));
+  setLiveAria(month, year);
+}
+
+function countUp(el, target) {
+  if (prefersReducedMotion()) {
+    el.textContent = formatDownloads(target);
+    return;
+  }
+  const start = performance.now();
+  const duration = 600;
+  function tick(now) {
+    const p = Math.min((now - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - p, 3); // ease-out cubic
+    el.textContent = formatDownloads(Math.round(target * eased));
+    if (p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+async function fetchDownloads() {
+  const pkg = 'openspec-playwright';
+  const [monthRes, yearRes] = await Promise.all([
+    fetch(`https://api.npmjs.org/downloads/point/last-month/${pkg}`, { signal: AbortSignal.timeout(5000) }),
+    fetch(`https://api.npmjs.org/downloads/point/last-year/${pkg}`, { signal: AbortSignal.timeout(5000) }),
+  ]);
+  if (!monthRes.ok || !yearRes.ok) return null;
+  const month = (await monthRes.json()).downloads;
+  const year = (await yearRes.json()).downloads;
+  if (typeof month !== 'number' || typeof year !== 'number') return null;
+  return { month, year };
+}
+
+async function initDownloads() {
+  // Warm cache: show instantly, then refresh in the background.
+  try {
+    const cached = JSON.parse(localStorage.getItem(DL_CACHE_KEY) || 'null');
+    if (cached && Date.now() - cached.at < DL_CACHE_TTL) {
+      revealLiveStats(cached.month, cached.year, false);
+    }
+  } catch { /* corrupt cache — ignore, fresh fetch decides */ }
+
+  try {
+    const fresh = await fetchDownloads();
+    if (!fresh) return;
+    try { localStorage.setItem(DL_CACHE_KEY, JSON.stringify({ ...fresh, at: Date.now() })); } catch { /* storage unavailable */ }
+    revealLiveStats(fresh.month, fresh.year, true);
+  } catch {
+    /* fetch failed or timed out — live facts stay hidden (or show cached) */
+  }
+}
+initDownloads();

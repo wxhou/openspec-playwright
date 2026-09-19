@@ -14,6 +14,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23e85d04'/><circle cx='35' cy='40' r='8' fill='white'/><circle cx='65' cy='40' r='8' fill='white'/><path d='M30 60 Q50 80 70 60' stroke='white' stroke-width='5' fill='none' stroke-linecap='round'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.npmjs.org" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Instrument+Serif:ital@1&family=Noto+Serif+SC:wght@600&family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <!-- Cloudflare Web Analytics -->
@@ -71,6 +72,16 @@
     <div class="hero-fact"><span class="hero-fact-k">Healer</span><span class="hero-fact-v">3-phase repair loop</span></div>
     <div class="hero-fact-sep"></div>
     <div class="hero-fact"><span class="hero-fact-k">Report</span><span class="hero-fact-v">markdown, per change</span></div>
+    <div class="hero-fact-sep hero-fact-sep--live" data-live-sep></div>
+    <div class="hero-fact hero-fact--live" data-live-fact title="npm 官方统计 · 滚动 30 天窗口">
+      <span class="hero-fact-k" aria-hidden="true"><span class="fact-label-zh">下载量</span><span class="fact-label-en" style="display:none;">DOWNLOADS</span></span>
+      <span class="hero-fact-v hero-fact-v--live" aria-hidden="true"><span id="dl-month" data-countup>0</span><span class="dl-suffix"><span class="suffix-zh"> / 月</span><span class="suffix-en" style="display:none;"> / mo</span></span></span>
+    </div>
+    <div class="hero-fact-sep" data-live-sep></div>
+    <div class="hero-fact hero-fact--live" data-live-fact title="npm 官方统计 · 过去 12 个月">
+      <span class="hero-fact-k" aria-hidden="true"><span class="fact-label-zh">年下载</span><span class="fact-label-en" style="display:none;">YEARLY DL</span></span>
+      <span class="hero-fact-v hero-fact-v--live" aria-hidden="true"><span id="dl-year" data-countup>0</span><span class="dl-suffix"><span class="suffix-zh"> / 年</span><span class="suffix-en" style="display:none;"> / yr</span></span></span>
+    </div>
   </div>
 </section>
 
