@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.93] - 2026-09-20
 - **refactor(standards): CLAUDE.md wrapper 的 CodeGraph 块精简至核心指令**. `CODE_GRAPH_FIRST_BLOCK` 删除"grep/read 仅作补充（字面文本、已打开文件、结果不足）"与"不派子 agent 重建索引"两句后果说明——AGENTS.md SSOT 的 §2 搜索分层条款完整覆盖 grep/read 分工，"不派子 agent"由 §0 自主边界条款承接；wrapper 内属重复表述。保留核心四要素：触发条件（结构性任务）→ 首选工具（`codegraph_explore`）→ 使用方式（直接用结果回答）→ 跳过条件（无 `.codegraph/`）。⚠ 已安装项目下次 `openspec-pw update` 会因块内容漂移自动重写 wrapper（一次性变更，update 正常职责）。所有测试仅锚 `"CodeGraph 优先"` 标题，无断言依赖被删文本。
   - `src/commands/editors/project-rules.ts`
 
