@@ -537,6 +537,36 @@ nav.scrolled {
   color: var(--text-secondary);
 }
 
+/* Live npm stats: serif italics mark "this number is alive" — the only
+   data on the page fetched at view time, vs the static facts around it.
+   Hidden entirely (facts + separators) until fetch succeeds. */
+.hero-fact--live {
+  display: none;
+}
+.hero-fact--live.is-live {
+  display: flex;
+}
+.hero-fact-sep--live {
+  display: none;
+}
+.hero-fact--live.is-live {
+  display: flex;
+}
+.hero-fact-v--live {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 1.08rem;
+  color: var(--text);
+}
+
+/* Window suffix ("/ 月", "/ mo") — smaller, back to the quiet voice */
+.dl-suffix {
+  font-family: var(--font-body);
+  font-style: normal;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
 .hero-fact-sep {
   width: 1px;
   height: 32px;
