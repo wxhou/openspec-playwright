@@ -117,7 +117,32 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # npm occasionally enters a maintenance window (E503 on PUT) — retry
+      # through it with backoff instead of failing and paging the owner.
+      # Only transient registry errors retry; auth/publish-config errors
+      # fail immediately. Total backoff covers ~58 minutes.
       - name: Publish to npm
-        run: npm publish --access public
+        run: |
+          ATTEMPTS=6
+          DELAYS=(60 120 300 600 1200 1200)
+          for i in $(seq 1 $ATTEMPTS); do
+            ERR=$(npm publish --access public 2>&1) && {
+              echo "Published on attempt $i"
+              exit 0
+            }
+            echo "$ERR"
+            if [ "$i" -eq "$ATTEMPTS" ]; then
+              echo "All $ATTEMPTS attempts exhausted"
+              exit 1
+            fi
+            if echo "$ERR" | grep -qE "E503|E429|maintenance"; then
+              WAIT=${DELAYS[$((i-1))]}
+              echo "Registry transient error (attempt $i/$ATTEMPTS) — retrying in ${WAIT}s"
+              sleep "$WAIT"
+            else
+              echo "Non-transient npm error — failing fast"
+              exit 1
+            fi
+          done
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
