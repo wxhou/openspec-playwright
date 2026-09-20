@@ -7,7 +7,7 @@ import { promisify } from "util";
 import chalk from "chalk";
 import * as tar from "tar";
 import { buildCommandMeta, getAllAdapters, hasCommandArtifacts, installCommand, installOpenSpecBlock, installClaudeWrapper, migrateLegacyMarkers, claudeAdapter, claudeWrapperStandardsContent, opencodeAdapter, syncVendoredAgents, normalizeEol, } from "./editors.js";
-import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, hasFrontendSignal, needsShell, detectCodeGraphStatus, codegraphHintLines, CREDENTIALS_RELPATHS, credentialsIgnoreHint, findUnignoredFiles, } from "../shared/index.js";
+import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, hasFrontendSignal, needsShell, detectCodeGraphStatus, codegraphHintLines, findUncoveredManagedPaths, managedBlockAdvisoryHint, ensureGitignoreEntries, } from "../shared/index.js";
 import { compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
 import { claudeWrapperHasMarkers, hasRuleFileMarkers } from "./editors/project-rules.js";
 const execFileAsync = promisify(execFile);
@@ -515,6 +515,19 @@ export function syncProjectTemplates(tmpDir, projectRoot) {
     }
     // 4. Sync credentials.yaml — preserve user credentials
     syncCredentials(tmpDir, projectRoot);
+    // 4b. Managed .gitignore block (revised from v0.3.86's advisory-only
+    // stance): auto-ignore runtime output and credentials. Idempotent —
+    // covers credentials.yaml/.bak newly created by the sync above. On write
+    // failure, degrade to the (now degradation-only) credential advisory.
+    try {
+        const result = ensureGitignoreEntries(projectRoot);
+        if (result.changed) {
+            console.log(chalk.green(`  ✓ .gitignore: managed block updated (+${result.added.length} paths)`));
+        }
+    }
+    catch {
+        printCredentialsIgnoreHint(projectRoot);
+    }
 }
 /**
  * Sync credentials.yaml — update template structure while preserving user data.
@@ -531,7 +544,9 @@ export function syncCredentials(tmpDir, projectRoot) {
         mkdirSync(join(projectRoot, "tests", "playwright"), { recursive: true });
         writeFileSync(credsDest, latest);
         console.log(chalk.green("  ✓ Generated: tests/playwright/credentials.yaml"));
-        printCredentialsIgnoreHint(projectRoot);
+        // Coverage advisory lives in the managed-block degradation path (4b)
+        // — no hint here, or a successful managed-block write would be
+        // followed by a stale warning (review S3).
         return;
     }
     const existing = readFileSync(credsDest, "utf-8");
@@ -570,18 +585,18 @@ export function syncCredentials(tmpDir, projectRoot) {
     }
     writeFileSync(credsDest, updated);
     console.log(chalk.green("  ✓ Updated: tests/playwright/credentials.yaml (preserved user data)"));
-    printCredentialsIgnoreHint(projectRoot);
 }
 /**
- * Advisory after credentials.yaml was created or rewritten (both write
- * paths call this): warn when the file — or the .bak backup just written —
- * is not covered by the project's ignore rules. Detection only; the user's
- * .gitignore is never modified.
+ * Degradation-only advisory (see 4b): printed when the managed-block write
+ * fails, listing managed paths still uncovered. The per-write-path calls
+ * that used to live in syncCredentials were folded into this single
+ * degradation branch (review S3) — a successful managed-block write covers
+ * the credentials, so no warning follows a green ✓ line.
  */
 function printCredentialsIgnoreHint(projectRoot) {
-    const unignored = findUnignoredFiles(projectRoot, CREDENTIALS_RELPATHS);
-    if (unignored.length > 0) {
-        console.log(chalk.yellow(`\n  ⚠ ${credentialsIgnoreHint(unignored)}`));
+    const uncovered = findUncoveredManagedPaths(projectRoot);
+    if (uncovered.length > 0) {
+        console.log(chalk.yellow(`\n  ⚠ ${managedBlockAdvisoryHint(uncovered)}`));
     }
 }
 //# sourceMappingURL=update.js.map
