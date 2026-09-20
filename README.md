@@ -2,7 +2,14 @@
 
 [中文说明](./README.zh-CN.md)
 
-A setup tool that integrates OpenSpec's spec-driven development with Playwright's three-agent test pipeline for automated E2E verification.
+[![npm version](https://img.shields.io/npm/v/openspec-playwright.svg)](https://www.npmjs.com/package/openspec-playwright)
+[![npm downloads](https://img.shields.io/npm/dm/openspec-playwright.svg)](https://www.npmjs.com/package/openspec-playwright)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Node >= 20](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org)
+
+**OpenSpec projects get AI-driven E2E verification that lives where your code does.** One `/opsx:e2e <change>` command — six editors supported — plans, generates, executes, and self-heals Playwright tests against the spec, with a per-change report and no manual harness wiring.
+
+> **Why this exists**: spec-driven development without test automation is a half-finished loop. This tool completes it — write a change spec, run one command, get tests traceable to spec anchors and a report on what passed, what healed, and what is left for human review.
 
 ## Install
 
@@ -22,17 +29,16 @@ openspec-pw init          # Install Playwright E2E integration (--tools to pick 
 
 ## Supported AI Coding Assistants
 
-**Claude Code** (Anthropic) — E2E workflow is driven by the `/opsx:e2e` command using a browser exploration tool (Playwright MCP or `openspec-pw explore`) + Playwright MCP (test execution).
+| Editor | Command | Playwright MCP | AGENTS.md hook |
+|---|---|---|---|
+| **Claude Code** (Anthropic) | `/opsx:e2e` | yes (project `.mcp.json`) | via `CLAUDE.md` → `@AGENTS.md` |
+| **OpenCode** (SST) | `/opsx-e2e` | yes (`opencode.jsonc`) | `instructions` field |
+| **Cline** | `/opsx-e2e` | yes (`.cline/mcp.json`) | native |
+| **Cursor** | `/opsx-e2e` | yes (`.cursor/mcp.json`) | native |
+| **Pi** (earendil-works) | `/opsx-e2e` | **no** — uses `openspec-pw explore` + `npx playwright test` | native |
+| **Oh My Pi (omp)** | `/opsx-e2e` | yes (`.omp/mcp.json`) | native |
 
-**OpenCode** (SST) — E2E workflow is driven by the `/opsx-e2e` command (hyphenated per OpenSpec convention) using the same browser exploration + Playwright MCP stack. Playwright MCP is configured under `mcp["playwright-test"]` in `opencode.jsonc`.
-
-**Cline** — E2E workflow is driven by the `/opsx-e2e` skill (installed as `.cline/skills/opsx-e2e/SKILL.md`) using the same browser exploration + Playwright MCP stack. Playwright MCP is configured in `.cline/mcp.json` under `mcpServers["playwright-test"]`. Cline auto-detects `AGENTS.md` as project rules — no wrapper file needed.
-
-**Cursor** — E2E workflow is dual-installed: slash command at `.cursor/commands/opsx-e2e.md` (plain markdown, `$1` = change name) and Agent Skill at `.cursor/skills/opsx-e2e/SKILL.md` (`disable-model-invocation: true`). Invoke `/opsx-e2e`. Playwright MCP is merged into `.cursor/mcp.json` under `mcpServers["playwright-test"]`. Cursor auto-detects `AGENTS.md`. Skill name is `opsx-e2e` (not OpenSpec's `openspec-*` skill prefix). If you want Cursor support but have no `.cursor/` yet: `mkdir -p .cursor`.
-
-**Pi** (earendil-works) — E2E workflow is driven by the `/opsx-e2e` prompt template (installed as `.pi/prompts/opsx-e2e.md`; the filename becomes the command name). Pi has **no MCP client**, so browser exploration runs through `openspec-pw explore` and test execution through `npx playwright test` in the shell. Pi loads `AGENTS.md` natively — no wrapper file needed. Detected via a project `.pi/` dir or the global `~/.pi/agent/` config dir.
-
-**Oh My Pi (omp)** — E2E workflow is driven by the `/opsx-e2e` command (installed as `.omp/commands/opsx-e2e.md`). Playwright MCP is configured in `.omp/mcp.json` under `mcpServers["playwright-test"]` (omp also inherits `.claude/`/`.cursor/`/opencode MCP configs when present). omp auto-detects `AGENTS.md` — no wrapper file needed. Detected via a project `.omp/` dir or the global `~/.omp/agent/` config dir.
+The command body is identical across editors (`/opsx:` → `/opsx-` rewrite at install time). Per-editor install paths, detection signals, and auth/MCP nuances are detailed in the [Usage](#usage) and [Prerequisites](#prerequisites) sections below.
 
 ## Usage
 

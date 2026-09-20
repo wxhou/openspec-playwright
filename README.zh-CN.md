@@ -2,7 +2,14 @@
 
 [English version](./README.md)
 
-将 OpenSpec 的规格驱动开发工作流与 Playwright 三 Agent 测试管道集成，实现自动化 E2E 验证。
+[![npm version](https://img.shields.io/npm/v/openspec-playwright.svg)](https://www.npmjs.com/package/openspec-playwright)
+[![npm 下载量（月）](https://img.shields.io/npm/dm/openspec-playwright.svg)](https://www.npmjs.com/package/openspec-playwright)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Node >= 20](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org)
+
+**OpenSpec 项目获得与代码同住的 AI 驱动 E2E 验证。** 一条 `/opsx:e2e <change>` 命令（支持六款编辑器）按 spec 规划、生成、执行并自愈 Playwright 测试，附每 change 报告，无需手搭脚手架。
+
+> **为什么有这个工具**：spec 驱动的开发没有测试自动化是半截闭环。本工具把它补完——写 change spec，跑一条命令，拿到可追溯到 spec 锚的测试，外加一份说明什么通过、什么自愈、什么留待人工的报告。
 
 ## 安装
 
@@ -46,19 +53,16 @@ openspec-pw init          # 安装 Playwright E2E 集成（--tools 选编辑器�
 
 ## 支持的 AI 编码助手
 
-**Claude Code**（Anthropic）— E2E 工作流由 `探索 + 测试执行` 两步组成：Playwright MCP + `openspec-pw explore`。
+| 编辑器 | 命令 | Playwright MCP | AGENTS.md 加载方式 |
+|---|---|---|---|
+| **Claude Code**（Anthropic） | `/opsx:e2e` | 是（项目 `.mcp.json`） | 经 `CLAUDE.md` → `@AGENTS.md` |
+| **OpenCode**（SST） | `/opsx-e2e` | 是（`opencode.jsonc`） | `instructions` 字段 |
+| **Cline** | `/opsx-e2e` | 是（`.cline/mcp.json`） | 原生 |
+| **Cursor** | `/opsx-e2e` | 是（`.cursor/mcp.json`） | 原生 |
+| **Pi**（earendil-works） | `/opsx-e2e` | **否** — 改用 `openspec-pw explore` + `npx playwright test` | 原生 |
+| **Oh My Pi（omp）** | `/opsx-e2e` | 是（`.omp/mcp.json`） | 原生 |
 
-**OpenCode**（SST）— E2E 工作流由 `/opsx-e2e` 命令驱动（按 OpenSpec 惯例使用连字符），使用相同的浏览器探索 + Playwright MCP 技术栈。Playwright MCP 通过 `opencode.jsonc` 的 `mcp["playwright-test"]` 配置。
-
-**Cline** — E2E 工作流由 `/opsx-e2e` skill 驱动（安装为 `.cline/skills/opsx-e2e/SKILL.md`），使用相同的浏览器探索 + Playwright MCP 技术栈。Playwright MCP 通过 `.cline/mcp.json` 的 `mcpServers["playwright-test"]` 配置。Cline 原生自动识别 `AGENTS.md` 作为项目规则 — 无需包装文件。
-
-**Cursor** — E2E 工作流双份安装：斜杠命令 `.cursor/commands/opsx-e2e.md`（纯 markdown，`$1` = change 名）+ Agent Skill `.cursor/skills/opsx-e2e/SKILL.md`（`disable-model-invocation: true`）。调用 `/opsx-e2e`。Playwright MCP 合并进 `.cursor/mcp.json` 的 `mcpServers["playwright-test"]`。Cursor 原生识别 `AGENTS.md`。Skill 名为 `opsx-e2e`（不是 OpenSpec 的 `openspec-*` 前缀）。若要用 Cursor 但还没有 `.cursor/`：`mkdir -p .cursor`。
-
-**Pi**（earendil-works）— E2E 工作流由 `/opsx-e2e` 提示词模板驱动（安装为 `.pi/prompts/opsx-e2e.md`，文件名即命令名）。Pi **没有 MCP 客户端**，浏览器探索改用 `openspec-pw explore`，测试执行用 shell 跑 `npx playwright test`。Pi 原生加载 `AGENTS.md` — 无需包装文件。检测信号：项目 `.pi/` 目录或全局 `~/.pi/agent/` 配置目录。
-
-**Oh My Pi（omp）** — E2E 工作流由 `/opsx-e2e` 命令驱动（安装为 `.omp/commands/opsx-e2e.md`）。Playwright MCP 配置在 `.omp/mcp.json` 的 `mcpServers["playwright-test"]`（omp 也会继承 `.claude/` / `.cursor/` / opencode 的 MCP 配置）。omp 原生识别 `AGENTS.md` — 无需包装文件。检测信号：项目 `.omp/` 目录或全局 `~/.omp/agent/` 配置目录。
-
-**Oh My Pi（omp）** — E2E 工作流由 `/opsx-e2e` 命令驱动（安装为 `.omp/commands/opsx-e2e.md`）。Playwright MCP 配置在 `.omp/mcp.json` 的 `mcpServers["playwright-test"]`（omp 也会继承 `.claude/` / `.cursor/` / opencode 已有 MCP 配置）。omp 原生自动识别 `AGENTS.md` — 无需包装文件。检测信号：项目 `.omp/` 目录或全局 `~/.omp/agent/` 配置目录。
+各编辑器命令体完全相同（安装时 `/opsx:` → `/opsx-` 改写）。具体安装路径、检测信号、auth/MCP 细节见下方 [使用](#使用) 与 [前置条件](#前置条件) 两节。
 
 ## 使用
 
