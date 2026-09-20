@@ -518,9 +518,8 @@ function formatDownloads(n) {
 }
 
 function setLiveAria(month) {
-  const zh = currentLang === 'zh';
   const fact = document.querySelector('[data-live-fact]');
-  if (fact) fact.setAttribute('aria-label', zh ? `下载量 ${formatDownloads(month)} 每月` : `Downloads ${formatDownloads(month)} per month`);
+  if (fact) fact.setAttribute('aria-label', `Downloads ${formatDownloads(month)} per month`);
 }
 
 function revealLiveStats(month, animate) {
