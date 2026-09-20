@@ -11,6 +11,25 @@
 
 > **为什么有这个工具**：spec 驱动的开发没有测试自动化是半截闭环。本工具把它补完——写 change spec，跑一条命令，拿到可追溯到 spec 锚的测试，外加一份说明什么通过、什么自愈、什么留待人工的报告。
 
+## 目录
+
+- [安装](#安装)
+- [前置条件](#前置条件)
+- [初始化](#初始化)
+- [支持的 AI 编码助手](#支持的-ai-编码助手)
+- [使用](#使用)
+- [工作原理](#工作原理)
+- [CLI 命令](#cli-命令)
+- [初始化时选择编辑器](#初始化时选择编辑器)
+- [官方 Playwright Agents](#官方-playwright-agents)
+- [`openspec-pw init` 做了什么](#openspec-pw-init-做了什么)
+- [首次配置清单](#首次配置清单)
+- [`openspec-pw doctor` 检查清单](#openspec-pw-doctor-检查清单)
+- [认证配置](#认证配置)
+- [自定义](#自定义)
+- [架构](#架构)
+- [许可](#许可)
+
 ## 安装
 
 ```bash
@@ -66,53 +85,30 @@ openspec-pw init          # 安装 Playwright E2E 集成（--tools 选编辑器�
 
 ## 使用
 
-### 在 Claude Code 中
+选匹配你项目的编辑器，发同一命令。六款编辑器共用同一工作流——`/opsx:` 在安装时改写为 `/opsx-`，正文完全一致，只有命令工件的落盘位置不同。
 
-```bash
-/opsx:e2e <change-name>
-```
+| 编辑器 | 命令 | 安装位置 |
+|---|---|---|
+| Claude Code | `/opsx:e2e <change-name>` | `.claude/commands/opsx/e2e.md` |
+| OpenCode | `/opsx-e2e <change-name>` | `.opencode/commands/opsx-e2e.md` |
+| Cline | `/opsx-e2e <change-name>` | `.cline/skills/opsx-e2e/SKILL.md` |
+| Cursor | `/opsx-e2e <change-name>` | `.cursor/commands/opsx-e2e.md` + `.cursor/skills/opsx-e2e/SKILL.md` |
+| Pi | `/opsx-e2e <change-name>` | `.pi/prompts/opsx-e2e.md`（文件名即命令名） |
+| Oh My Pi | `/opsx-e2e <change-name>` | `.omp/commands/opsx-e2e.md` |
 
-### 在 OpenCode 中
+<details>
+<summary><strong>各编辑器的差异</strong>（默认折叠；只有 init 报错时才需要展开）</summary>
 
-```bash
-/opsx-e2e <change-name>
-```
+- **Cursor**：skill 设置 `disable-model-invocation: true`（仅在显式调用时加载）。若要用 Cursor 但还没有 `.cursor/`：`mkdir -p .cursor`。
+- **Pi**：没有 MCP 客户端——浏览器探索改用 `openspec-pw explore`，测试执行用 shell 跑 `npx playwright test`（无 Healer 步骤）。
+- **Oh My Pi**：若 `.claude/` / `.cursor/` / `opencode.jsonc` 已存在并配置了 MCP，omp 会一并继承。
 
-命令 id 按 OpenSpec 惯例使用连字符；正文在安装时从 `/opsx:` 改写为 `/opsx-`，存储在 `.opencode/commands/opsx-e2e.md`。
-
-### 在 Cline 中
-
-```bash
-/opsx-e2e <change-name>
-```
-
-Skill 安装在 `.cline/skills/opsx-e2e/SKILL.md`，通过 `/opsx-e2e` 斜杠命令触发。正文在安装时从 `/opsx:` 改写为 `/opsx-`。
-
-### 在 Cursor 中
-
-```bash
-/opsx-e2e <change-name>
-```
-
-安装为 `.cursor/commands/opsx-e2e.md` 与 `.cursor/skills/opsx-e2e/SKILL.md`。命令正文为纯 markdown（无 frontmatter）；skill 设置 `disable-model-invocation: true`，仅在显式调用时加载。
-
-### 在 Pi 中
-
-```bash
-/opsx-e2e <change-name>
-```
-
-安装为 `.pi/prompts/opsx-e2e.md` — 提示词模板，文件名即命令名。Pi 没有 MCP 客户端，浏览器探索改用 `openspec-pw explore`，测试执行用 `npx playwright test`（无 Healer）。
-
-### 在 Oh My Pi 中
-
-```bash
-/opsx-e2e <change-name>
-```
-
-安装为 `.omp/commands/opsx-e2e.md`（omp 原生命令，含 `name` + `description` frontmatter）。Playwright MCP 配置在 `.omp/mcp.json`；omp 也会继承 `.claude/` / `.cursor/` / `opencode.json` 中已有的 MCP 配置。
+</details>
 
 ### 初始化时选择编辑器
+
+<details>
+<summary>预选逻辑、取消勾选 = 移除、编辑器领土</summary>
 
 `openspec-pw init` 默认自动检测项目中的编辑器并全部配置。如需只装一部分（或不装），用 `--tools` —— 语义与 `openspec init --tools` 一致：
 
@@ -132,7 +128,12 @@ init 打印两种输出信号：预选提示行（仅未传 `--tools` 时出现�
 
 **编辑器领土**：`update` 只维护项目内已有 openspec-pw 命令工件的编辑器——不会新增编辑器（全局配置目录或手建的 `.cursor/` 不构成写入授权）。给已初始化项目新增编辑器请重跑 `openspec-pw init --tools <id>`（幂等）。
 
+</details>
+
 ### 官方 Playwright Agents（opt-in `--agents`）
+
+<details>
+<summary>装哪些、归属规则、与工作流的分工</summary>
 
 ```bash
 openspec-pw init --tools claude --agents   # 额外安装官方三个 agent 定义
@@ -151,6 +152,8 @@ openspec-pw init --tools claude --agents   # 额外安装官方三个 agent 定�
 > **官方 healer 与本工具护栏的差异**：官方 healer 被指示「不要问用户、可通过修改断言和期望值修复失败测试」；本工具的 Healer 管道**禁止未授权放宽断言**——更新断言或 spec 是 Phase 3 的人工决策。单独召唤官方 healer 快速修测试是你的选择，但不要把它的输出混入 `/opsx:e2e` 交付流。
 
 > **如果你坚持自己跑 `npx playwright init-agents`**：它是清场重写型——整文件重写 `.mcp.json`（你自装的 MCP 条目会被销毁，fixture 已实证）、已有 `opencode.jsonc` 时另立 `opencode.json`、且要求随 Playwright 升级重跑。必须跑的话请在 `openspec-pw init` **之前**，跑完 `git diff .mcp.json` 检查其他条目幸存。用 `--agents` 则不需要跑它——官方新版快照由 `update` 同步。
+
+</details>
 
 ### CLI 命令
 
@@ -188,6 +191,9 @@ test('coupon expires after 7 days', async ({ page }) => { ... });
 
 audit **只报告、绝不删除**——测试退役永远是人工决策。存量无锚测试不迁移，随新测试自然带锚而逐步退役。MCP 录制流（`generator_write_test`）产物按操作步骤切、天然无锚，模板 review 清单含补锚步骤。
 
+<details>
+<summary><strong>工作流树</strong> —— 从 change 选择到报告共 11 步</summary>
+
 ```
 # 由 /opsx:e2e <change-name>（Claude Code）或 /opsx-e2e <change-name>（OpenCode/Cline/Cursor/Pi/Oh My Pi）触发
 /opsx:e2e <change-name>
@@ -220,6 +226,8 @@ audit **只报告、绝不删除**——测试退役永远是人工决策。存�
   │
   └── 11. 报告 → openspec/reports/playwright-e2e-<name>-<timestamp>.md
 ```
+
+</details>
 
 ## `openspec-pw init` 做了什么
 
@@ -307,6 +315,9 @@ npx playwright test --project=setup
 
 ## 架构
 
+<details>
+<summary>模板、CLI、编辑器、规范、测试资产、探索文件树</summary>
+
 ```
 模板（内置于 npm 包，安装到 tests/playwright/）
   └── seed.spec.ts, auth.setup.ts, credentials.yaml, app-knowledge.md, pages/BasePage.ts
@@ -378,6 +389,8 @@ Cline 与 Cursor 原生自动识别 `AGENTS.md`，无需包装文件。
 Healer Agent (playwright-test MCP server)
   └── browser_snapshot, browser_navigate, browser_run_code 等
 ```
+
+</details>
 
 ## 许可
 

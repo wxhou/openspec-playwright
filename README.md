@@ -11,6 +11,27 @@
 
 > **Why this exists**: spec-driven development without test automation is a half-finished loop. This tool completes it — write a change spec, run one command, get tests traceable to spec anchors and a report on what passed, what healed, and what is left for human review.
 
+## Contents
+
+- [Install](#install)
+- [Setup](#setup)
+- [Supported AI Coding Assistants](#supported-ai-coding-assistants)
+- [Usage](#usage)
+- [Prerequisites](#prerequisites)
+- [Init Modes: frontend vs minimal](#init-modes-frontend-vs-minimal)
+- [How It Works](#how-it-works)
+- [CLI Commands](#cli-commands)
+- [Selecting Editors on Init](#selecting-editors-on-init)
+- [Official Playwright Agents](#official-playwright-agents)
+- [What `openspec-pw init` Does](#what-openspec-pw-init-does)
+- [First-Time Setup Checklist](#first-time-setup-checklist)
+- [`openspec-pw doctor` Checks](#what-openspec-pw-doctor-checks)
+- [App Server Detection](#app-server-detection)
+- [Authentication](#authentication)
+- [Customization](#customization)
+- [Architecture](#architecture)
+- [License](#license)
+
 ## Install
 
 ```bash
@@ -42,53 +63,30 @@ The command body is identical across editors (`/opsx:` → `/opsx-` rewrite at i
 
 ## Usage
 
-### In Claude Code
+Pick the editor that matches your project and invoke the same command. All six editors share an identical workflow — `/opsx:` is rewritten to `/opsx-` at install time, only the file location of the command artifact differs.
 
-```bash
-/opsx:e2e <change-name>
-```
+| Editor | Command | Install location |
+|---|---|---|
+| Claude Code | `/opsx:e2e <change-name>` | `.claude/commands/opsx/e2e.md` |
+| OpenCode | `/opsx-e2e <change-name>` | `.opencode/commands/opsx-e2e.md` |
+| Cline | `/opsx-e2e <change-name>` | `.cline/skills/opsx-e2e/SKILL.md` |
+| Cursor | `/opsx-e2e <change-name>` | `.cursor/commands/opsx-e2e.md` + `.cursor/skills/opsx-e2e/SKILL.md` |
+| Pi | `/opsx-e2e <change-name>` | `.pi/prompts/opsx-e2e.md` (filename = command) |
+| Oh My Pi | `/opsx-e2e <change-name>` | `.omp/commands/opsx-e2e.md` |
 
-### In OpenCode
+<details>
+<summary><strong>Per-editor nuances</strong> (expand only if init reports a divergence)</summary>
 
-```bash
-/opsx-e2e <change-name>
-```
+- **Cursor**: skill uses `disable-model-invocation: true` (only runs when explicitly invoked). If you want Cursor support but have no `.cursor/` yet: `mkdir -p .cursor`.
+- **Pi**: no MCP client — browser exploration runs via `openspec-pw explore`, test execution via `npx playwright test` in the shell (no Healer step).
+- **Oh My Pi**: also inherits MCP servers already configured in `.claude/` / `.cursor/` / `opencode.jsonc` when those are present.
 
-The command id is hyphenated per the OpenSpec convention; the body is rewritten from `/opsx:` to `/opsx-` during install and stored at `.opencode/commands/opsx-e2e.md`.
-
-### In Cline
-
-```bash
-/opsx-e2e <change-name>
-```
-
-The skill is installed at `.cline/skills/opsx-e2e/SKILL.md` and triggered via the `/opsx-e2e` slash command. The body is rewritten from `/opsx:` to `/opsx-` during install.
-
-### In Cursor
-
-```bash
-/opsx-e2e <change-name>
-```
-
-Installed as `.cursor/commands/opsx-e2e.md` plus `.cursor/skills/opsx-e2e/SKILL.md`. The command body is plain markdown (no frontmatter); the skill uses `disable-model-invocation: true` so it only runs when invoked explicitly.
-
-### In Pi
-
-```bash
-/opsx-e2e <change-name>
-```
-
-Installed as `.pi/prompts/opsx-e2e.md` — a prompt template whose filename is the command name. Pi has no MCP client, so the workflow uses `openspec-pw explore` for browser exploration and `npx playwright test` for execution (no Healer).
-
-### In Oh My Pi
-
-```bash
-/opsx-e2e <change-name>
-```
-
-Installed as `.omp/commands/opsx-e2e.md` (native omp command with `name` + `description` frontmatter). Playwright MCP is configured in `.omp/mcp.json`; omp also inherits MCP servers from `.claude/` / `.cursor/` / `opencode.json` when those are present.
+</details>
 
 ### Selecting Editors on Init
+
+<details>
+<summary>Pre-select logic, deselect = remove, editor territory</summary>
 
 `openspec-pw init` normally auto-detects the editors in your project and
 configures all of them. To install only a subset (or none), use `--tools` —
@@ -154,6 +152,8 @@ openspec-pw command artifacts in the project — it never adds new editors
 writes). To add an editor to an initialized project, re-run
 `openspec-pw init --tools <id>` (idempotent).
 
+</details>
+
 ### Init Modes: frontend vs minimal
 
 `openspec-pw init` picks an install mode from the frontend signal
@@ -189,6 +189,9 @@ standards block and wrapper, `doctor` checks them without failing on
 missing Playwright, and `uninstall` cleans the README and markers.
 
 ### Official Playwright Agents (opt-in `--agents`)
+
+<details>
+<summary>What gets vendored, ownership rules, division of labor with the pipeline</summary>
 
 ```bash
 openspec-pw init --tools claude --agents   # additionally install the official agent definitions
@@ -244,6 +247,9 @@ a `/opsx:e2e` delivery.
 > upgrade. Run it *before* `openspec-pw init` if you must, and check
 > `git diff .mcp.json` afterward. With `--agents` you never need it —
 > `update` ships newer official snapshots.
+
+</details>
+
 ### CLI Commands
 
 ```bash
@@ -280,6 +286,9 @@ The anchor's `<capability>#<requirement>` uses the requirement's **exact title t
 
 Audit is **report-only** — it never deletes or edits tests; retiring a test is always a human decision. Existing anchor-free tests are not migrated; they age out as new tests carry anchors. Recorded (`generator_write_test`) output is step-cut and carries no anchors — the template's review checklist adds them.
 
+<details>
+<summary><strong>Workflow tree</strong> — 11 steps from change selection to per-change report</summary>
+
 ```
 /opsx:e2e <change-name>          # Claude Code
 /opsx-e2e <change-name>          # OpenCode / Cline / Cursor / Pi / Oh My Pi
@@ -312,6 +321,8 @@ Audit is **report-only** — it never deletes or edits tests; retiring a test is
   │
   └── 11. Report → openspec/reports/playwright-e2e-<name>-<timestamp>.md
 ```
+
+</details>
 
 ## Prerequisites
 
@@ -383,6 +394,9 @@ Run with `--json` for machine-readable output.
 
 ## App Server Detection
 
+<details>
+<summary>Priority chain, sample output, existing-config handling</summary>
+
 Generated `playwright.config.ts` automatically detects the app URL in this priority order:
 
 1. `BASE_URL` environment variable
@@ -404,6 +418,8 @@ Run `openspec-pw doctor` to see the detected dev script and base URL:
 ```
 
 If your project already has `playwright.config.ts`, `openspec-pw init` will not overwrite it. It prints patch hints for missing `webServer`, `testDir`, `storageState`, and setup-project wiring.
+
+</details>
 
 ## Authentication
 
@@ -447,6 +463,9 @@ Edit `tests/playwright/credentials.yaml`:
 - Add multiple users for role-based tests
 
 ## Architecture
+
+<details>
+<summary>Templates, CLI, editors, standards, test assets, exploration tree</summary>
 
 ```
 Templates (in npm package, installed to tests/playwright/)
@@ -523,6 +542,8 @@ Exploration (openspec/changes/<name>/specs/playwright/)
 Healer Agent (playwright-test MCP server)
   └── browser_snapshot, browser_navigate, browser_run_code, etc.
 ```
+
+</details>
 
 ## License
 
