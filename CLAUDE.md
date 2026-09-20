@@ -31,8 +31,8 @@ npm run typecheck         # TypeScript type-check
 
 - **CI runs on every push to `main` and every PR** — lint, typecheck, build, tests
 - **Release runs on tag push (`v*`)** — verify job must pass before publish job runs
-- Always merge to `main` via PR so CI gates the code before it reaches `main`
-- **PR 授权门 🔴**：创建 PR（含 push 分支）与 merge 都必须先经用户明确授权——改动完成、gates 全绿后汇报并停下；CI 绿后再次汇报并停下等 merge 授权。未经授权不 push、不合并
+- **PR vs 直推 main 分级**：src 代码变更、跨多文件、或发版相关 → 走 PR（CI 合入前把关）；`docs/` 静态站改动、单文件小改（文案/样式/CHANGELOG/README）→ 直接 push main（push 同样触发 CI，红了即修）
+- **PR 授权门 🔴**（仅适用于走 PR 的改动）：创建 PR（含 push 分支）与 merge 都必须先经用户明确授权——改动完成、gates 全绿后汇报并停下；CI 绿后再次汇报并停下等 merge 授权。未经授权不 push、不合并。直推 main 的改动：commit + push 前仍需用户授权，push 后汇报 CI 结果
 - **Version lock**: Only publish the exact version explicitly requested by the user. Never bump `package.json`, create a new tag, or run `npm version patch/minor/major` unless the user has named that target version.
 - If the requested version already exists in npm or the release job fails on publish, do not invent a new version number on your own. Stop and report the blocker unless the user explicitly approves a new version.
 
