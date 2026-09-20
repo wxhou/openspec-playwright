@@ -31,23 +31,23 @@ npm run typecheck         # TypeScript type-check
 
 - **CI runs on every push to `main` and every PR** — lint, typecheck, build, tests
 - **Release runs on tag push (`v*`)** — verify job must pass before publish job runs
-- **PR vs 直推 main 分级**：src 代码变更、跨多文件、或发版相关 → 走 PR（CI 合入前把关）；`docs/` 静态站改动、单文件小改（文案/样式/CHANGELOG/README）→ 直接 push main（push 同样触发 CI，红了即修）
-- **PR 授权门 🔴**（仅适用于走 PR 的改动）：创建 PR（含 push 分支）与 merge 都必须先经用户明确授权——改动完成、gates 全绿后汇报并停下；CI 绿后再次汇报并停下等 merge 授权。未经授权不 push、不合并。直推 main 的改动：commit + push 前仍需用户授权，push 后汇报 CI 结果
+- **PR vs direct-push tiering**: `src/` code changes, multi-file work, or release-related commits → go through a PR (CI gates before merge); `docs/` static-site changes and single-file touch-ups (copy/styles/CHANGELOG/README) → push straight to `main` (push triggers CI either way — a red main gets an immediate fix)
+- **PR authorization gate 🔴** (only for changes that go through PR): creating a PR (including pushing the branch) and merging both require explicit user authorization — when the change is done and gates are green, report and stop; once CI is green, report again and stop, waiting for merge authorization. No pushing or merging without authorization. For direct pushes to `main`: user authorization is still required before commit + push; report the CI result after pushing.
 - **Version lock**: Only publish the exact version explicitly requested by the user. Never bump `package.json`, create a new tag, or run `npm version patch/minor/major` unless the user has named that target version.
 - If the requested version already exists in npm or the release job fails on publish, do not invent a new version number on your own. Stop and report the blocker unless the user explicitly approves a new version.
 
 ## Code × Docs Sync Rule
 
-改这些文件时，**必须同步更新**文档：
+When touching these files, the docs **must be updated in the same commit**:
 
-| 修改了 | 必须更新 |
-|--------|---------|
-| `src/commands/*.ts` 或 `src/index.ts` | `README.md`（CLI树）、`CHANGELOG.md` |
-| `.claude/skills/openspec-e2e/SKILL.md` | `README.md`（架构图）、`CHANGELOG.md` |
-| `templates/*` | `README.md`（如涉及路径）、`CHANGELOG.md` |
-| 任何 CLI 逻辑变更 | `README.md`（CLI说明）、`CHANGELOG.md` |
+| Modified | Must update |
+|----------|-------------|
+| `src/commands/*.ts` or `src/index.ts` | `README.md` (CLI tree), `CHANGELOG.md` |
+| `.claude/skills/openspec-e2e/SKILL.md` | `README.md` (architecture diagram), `CHANGELOG.md` |
+| `templates/*` | `README.md` (if paths are involved), `CHANGELOG.md` |
+| Any CLI logic change | `README.md` (CLI docs), `CHANGELOG.md` |
 
-> 规则：文档更新和代码变更在**同一个 commit** 里，不要单独拆出来。
+> Rule: doc updates land in the **same commit** as the code change — never split them out.
 
 ## Release Checklist
 
@@ -68,7 +68,7 @@ Before each release action, confirm the target version has already been explicit
 4. `git add docs/index.html && git push` — pushes docs update
 5. `git push --tags` — pushes tags → **CI pipeline handles npm publish**
 
-> ⚠️ **只走 CI 发布，不要手动执行 `npm publish`。** 本地 npm publish 会和 CI publish 冲突（"cannot publish over the previously published versions"）。发布流程：本地 `git push --tags` → CI verify 通过 → CI 自动发布 npm + GitHub Release。
+> ⚠️ **Publish via CI only — never run `npm publish` manually.** A local npm publish conflicts with the CI publish ("cannot publish over the previously published versions"). Release flow: `git push --tags` locally → CI verify passes → CI publishes to npm + creates the GitHub Release.
 
 **Important**: Do not use `npm run release` when the version must remain fixed. This project may only publish the version the user explicitly asked for; automatic patch bumps are forbidden unless the user requests a new version.
 
@@ -76,33 +76,33 @@ Before each release action, confirm the target version has already been explicit
 - CI workflow must NEVER modify git history (no amend, no force-push)
 - Tests must not use hardcoded absolute paths — use `process.cwd()` or env vars
 - Periodically regenerate lockfile: `rm -rf node_modules package-lock.json && npm install`
-- **不主动发布**：未经用户明确要求，不执行 `npm run release`
+- **No proactive releases**: never run `npm run release` without an explicit user request
 
 ## Commit Message Style
 
-本项目 commit message 走**严谨精炼**风格：
+Commit messages follow a strict, concise style:
 
 ```
 <scope>(<area>): <action> <object>
 
-≤ 4 行：关键变更（不复述 diff）+ 一行影响
+≤ 4 lines: key changes (no diff narration) + one line of impact
 Tests: X/X pass. <gate> clean. No version bump.
 ```
 
-硬性要求：
-- Subject 必填 `<scope>(<area>):` 前缀；scope: `feat` `fix` `docs` `chore` `refactor`
-- 动作现在时祈使语气（`extend` `add` `bump`，非 `extended` / `added`）
-- Body 不超 4 行，不复述 diff 内容
-- 禁放 "Same X" 复述 / "per Version Lock rule" 之类项目惯例
-- 禁放 preemptive CTA ("如果要发 vX.Y.Z 你说一声" 这类)
-- Footer 必列已跑过的 CI gate + 版本号变更（`Bump to vX.Y.Z` / `No version bump`）
+Hard requirements:
+- Subject must carry the `<scope>(<area>):` prefix; scopes: `feat` `fix` `docs` `chore` `refactor`
+- Actions in present-tense imperative (`extend` `add` `bump`, not `extended` / `added`)
+- Body ≤ 4 lines; never narrate the diff
+- No "Same X" restatements or project-convention quotes like "per Version Lock rule"
+- No preemptive CTAs ("say the word and I'll cut vX.Y.Z" and the like)
+- Footer must list the CI gates already run + the version outcome (`Bump to vX.Y.Z` / `No version bump`)
 
-例：
+Example:
 
 ```
 docs(standards): extend anti-fabrication rule to pure front-end + API docs
 
-§6 covers full-stack and pure front-end. OpenAPI / 接口文档 / MCP endpoints
+§6 covers full-stack and pure front-end. OpenAPI / API docs / MCP endpoints
 must be cited, not invented.
 
 templates/e2e-command.md test-data reminder references §6.
@@ -121,12 +121,12 @@ Tests: 197/197 pass. No version bump.
 
 <!-- OPENSPEC-PW:END -->
 
-## Standards 精简判据 🔧
+## Standards slimming criteria 🔧
 
-修订 `employee-standards.md` 时的冗余判定尺（standards-section6-slim 审视产出）：
+Redundancy yardstick for revising `employee-standards.md` (produced by the standards-section6-slim review):
 
-- 同一规则 **≤2 次**且表述一致 = 有效强化，保留；**≥3 次** = 削到 1-2 处
-- **WHY + 操作化规则** = 意图/操作配对，非冗余，WHY 不删（立法意图支撑边界外推）
-- **路由性重复**（两处各自服务不同任务阶段）= 保留，引用处极简
-- 🔴 标记只挂禁令/义务型条目；路由条/定义条不得占 🔴（>50% 密度即标记体系失效）
-- 其他章节同构问题（重复计数、正反表述、标记-类型错配）复用此尺；语义修改与措辞压缩分开立 change
+- The same rule appearing **≤2 times** with consistent wording = effective reinforcement, keep it; **≥3 times** = cut down to 1–2 places
+- **WHY + operationalized rule** = intent/action pairing, not redundancy — keep the WHY (legislative intent supports boundary extrapolation)
+- **Routing duplication** (each copy serves a different task phase) = keep, with minimal wording at the reference site
+- 🔴 markers attach only to prohibition/obligation items; routing items and definitions must not hold 🔴 (above 50% density the marker system fails)
+- Apply the same yardstick to isomorphic issues in other sections (duplicate counts, positive/negative phrasing, marker-type mismatches); semantic changes and wording compression go through separate changes
