@@ -188,10 +188,10 @@ notice). Minimal-mode projects are first-class: `update` syncs their
 standards block and wrapper, `doctor` checks them without failing on
 missing Playwright, and `uninstall` cleans the README and markers.
 
-### Official Playwright Agents (opt-in `--agents`)
+### Official Playwright Agents
 
 <details>
-<summary>What gets vendored, ownership rules, division of labor with the pipeline</summary>
+<summary>opt-in <code>--agents</code> — what gets vendored, ownership rules, division of labor with the pipeline</summary>
 
 ```bash
 openspec-pw init --tools claude --agents   # additionally install the official agent definitions

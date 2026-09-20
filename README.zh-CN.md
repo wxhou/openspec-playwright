@@ -130,10 +130,10 @@ init 打印两种输出信号：预选提示行（仅未传 `--tools` 时出现�
 
 </details>
 
-### 官方 Playwright Agents（opt-in `--agents`）
+### 官方 Playwright Agents
 
 <details>
-<summary>装哪些、归属规则、与工作流的分工</summary>
+<summary>opt-in <code>--agents</code> —— 装哪些、归属规则、与工作流的分工</summary>
 
 ```bash
 openspec-pw init --tools claude --agents   # 额外安装官方三个 agent 定义
