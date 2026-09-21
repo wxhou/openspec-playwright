@@ -37,9 +37,9 @@ import {
   needsShell,
   detectCodeGraphStatus,
   codegraphHintLines,
-  CREDENTIALS_RELPATHS,
-  credentialsIgnoreHint,
-  findUnignoredFiles,
+  findUncoveredManagedPaths,
+  managedBlockAdvisoryHint,
+  ensureGitignoreEntries,
 } from "../shared/index.js";
 import { compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
 import { claudeWrapperHasMarkers, hasRuleFileMarkers } from "./editors/project-rules.js";
@@ -704,6 +704,22 @@ export function syncProjectTemplates(tmpDir: string, projectRoot: string) {
   }
 
   const testsDir = join(projectRoot, "tests", "playwright");
+  // Minimal-mode projects (no tests/playwright/) still get managed-block
+  // maintenance — the block is a forward-looking declaration (review F4):
+  // the early return below must not skip it, or a minimal project whose
+  // .gitignore lost the block silently stops ignoring openspec/ etc.
+  try {
+    const result = ensureGitignoreEntries(projectRoot);
+    if (result.changed) {
+      console.log(
+        chalk.green(
+          `  ✓ .gitignore: managed block updated (+${result.added.length} paths)`,
+        ),
+      );
+    }
+  } catch {
+    printCredentialsIgnoreHint(projectRoot);
+  }
   if (!existsSync(testsDir)) return;
 
   // 1. Sync BasePage.ts — always update if content differs
@@ -785,6 +801,9 @@ export function syncProjectTemplates(tmpDir: string, projectRoot: string) {
 
   // 4. Sync credentials.yaml — preserve user credentials
   syncCredentials(tmpDir, projectRoot);
+
+  // (Managed-block maintenance runs at the top of this function — before
+  // the minimal-mode early return — see review F4.)
 }
 
 /**
@@ -811,7 +830,9 @@ export function syncCredentials(tmpDir: string, projectRoot: string) {
     console.log(
       chalk.green("  ✓ Generated: tests/playwright/credentials.yaml"),
     );
-    printCredentialsIgnoreHint(projectRoot);
+    // Coverage advisory lives in the managed-block degradation path (4b)
+    // — no hint here, or a successful managed-block write would be
+    // followed by a stale warning (review S3).
     return;
   }
 
@@ -872,18 +893,18 @@ export function syncCredentials(tmpDir: string, projectRoot: string) {
       "  ✓ Updated: tests/playwright/credentials.yaml (preserved user data)",
     ),
   );
-  printCredentialsIgnoreHint(projectRoot);
 }
 
 /**
- * Advisory after credentials.yaml was created or rewritten (both write
- * paths call this): warn when the file — or the .bak backup just written —
- * is not covered by the project's ignore rules. Detection only; the user's
- * .gitignore is never modified.
+ * Degradation-only advisory (see 4b): printed when the managed-block write
+ * fails, listing managed paths still uncovered. The per-write-path calls
+ * that used to live in syncCredentials were folded into this single
+ * degradation branch (review S3) — a successful managed-block write covers
+ * the credentials, so no warning follows a green ✓ line.
  */
 function printCredentialsIgnoreHint(projectRoot: string): void {
-  const unignored = findUnignoredFiles(projectRoot, CREDENTIALS_RELPATHS);
-  if (unignored.length > 0) {
-    console.log(chalk.yellow(`\n  ⚠ ${credentialsIgnoreHint(unignored)}`));
+  const uncovered = findUncoveredManagedPaths(projectRoot);
+  if (uncovered.length > 0) {
+    console.log(chalk.yellow(`\n  ⚠ ${managedBlockAdvisoryHint(uncovered)}`));
   }
 }

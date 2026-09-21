@@ -3,7 +3,7 @@ import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { buildCommandMeta, cleanProjectRules, claudeAdapter, detectAdapters, listCommandArtifactPaths, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, cleanupEmptyDirs, hasRuleFileMarkers, normalizeEol, } from "./editors.js";
-import { removePlaywrightMcp, removeTestRunnerMcp, detectCodeGraphStatus, } from "../shared/index.js";
+import { removePlaywrightMcp, removeTestRunnerMcp, detectCodeGraphStatus, removeManagedBlock, } from "../shared/index.js";
 export async function uninstall() {
     console.log(chalk.blue("\n🗑️  Uninstalling OpenSpec + Playwright E2E\n"));
     const projectRoot = process.cwd();
@@ -128,6 +128,20 @@ export async function uninstall() {
     // stays quiet-ish (gray info lines) when the files carry no markers.
     if (!detected.some((a) => a.id === "claude") && hasRuleFileMarkers(projectRoot)) {
         cleanProjectRules(claudeAdapter, projectRoot);
+    }
+    // 5b. Remove the managed .gitignore block. Idempotent — no block is a
+    // silent no-op. Credentials stay on disk: deleting user credentials is
+    // data loss — they just lose the ignore protection.
+    console.log(chalk.blue("\n─── Removing Managed .gitignore Block ───"));
+    const blockResult = removeManagedBlock(projectRoot);
+    if (blockResult.removed) {
+        console.log(chalk.green("  ✓ Removed openspec-pw managed block from .gitignore"));
+        if (existsSync(join(projectRoot, "tests", "playwright", "credentials.yaml"))) {
+            console.log(chalk.yellow("  ⚠ tests/playwright/credentials.yaml kept on disk — no longer ignore-protected, handle it yourself"));
+        }
+    }
+    else {
+        console.log(chalk.gray("  - No managed block found, skipping"));
     }
     // Summary
     console.log(chalk.blue("\n─── Summary ───"));

@@ -4,4 +4,5 @@ export { needsShell } from "./platform.js";
 export { detectCodeGraphStatus, codegraphHintLines } from "./codegraph.js";
 export { detectAppServer, findNpmRoot, chooseDevScript, parsePort, hasFrontendSignal, explainFrontendSignal, } from "./app-detect.js";
 export { CREDENTIALS_RELPATHS, credentialsIgnoreHint, findUnignoredFiles, } from "./ignore-check.js";
+export { MANAGED_GITIGNORE_PATHS, GITIGNORE_BLOCK_BEGIN, GITIGNORE_BLOCK_END, findUncoveredManagedPaths, ensureGitignoreEntries, removeManagedBlock, detectTrackedFiles, managedBlockAdvisoryHint, } from "./gitignore-managed.js";
 //# sourceMappingURL=index.js.map

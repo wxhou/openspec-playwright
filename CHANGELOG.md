@@ -5,13 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+<<<<<<< HEAD
 ## [Unreleased]
 
-- **docs(standards): §1 DO NOT 九条压缩为两条 + AGENTS.md 入库跟踪**. 按用户哲学「模型已聪明，少要求」划界：能力型条款压缩、激励型条款保留。DO NOT 九条并两簇——「不假设外部输入可信」（数据/响应/异步/精度/资源）与「写法纪律」（样例过拟合/魔法数字/脆断言/EOL），EOL 因 windows CI 有事故土壤特意保留；「防 NPE 和注入」字样删（校验动作已含）。**AGENTS.md 从 .gitignore 移出入库**：根治跨机漂移（0.3.93 批次就曾因 gitignore 不随 git 而本地丢失）——用户项目的 AGENTS.md 本来就 tracked，本仓库没理由例外；入库后 CI 可加镜像守卫，漏同步从隐形漂移变成可见 diff。顺手修复：根 CLAUDE.md wrapper 的 CodeGraph 段对齐 0.3.93 已裁剪的内置模板（d9db98d 裁了模板没裁根文件，doctor 一直报 standards-claude ✗）——doctor 双 sync 项转绿。五件套同步。
+- **docs(standards): §1 DO NOT 九条压缩为两条 + AGENTS.md 入库跟踪**. 按用户哲学「模型已聪明，少要求」划界：能力型条款压缩、激励型条款保留。DO NOT 九条并两簇——「不假设外部输入可信」（数据/响应/异步/精度/资源）与「写法纪律」（样例过拟合/魔法数字/脆断言/EOL），EOL 因 windows CI 有事故土壤特意保留；「防 NPE 和注入」字样删（校验动作已含）。**根 AGENTS.md 出 .gitignore 入库**：根治跨机漂移（0.3.93 批次就曾因 gitignore 不随 git 而本地丢失）——本仓库的根 AGENTS.md 是 SSOT 的手工镜像而非生成产物，与用户项目 0.3.94 起「生成的 AGENTS.md/CLAUDE.md 受管忽略、产物留本地」的策略分饰两角不冲突；入库后 doctor 双 sync 项天然守卫镜像，漏同步从隐形漂移变成可见 diff。顺手修复：根 CLAUDE.md wrapper 的 CodeGraph 段对齐 0.3.93 已裁剪的内置模板（d9db98d 裁了模板没裁根文件，doctor 一直报 standards-claude ✗）——doctor 双 sync 项转绿。五件套同步。
   - `employee-standards.md`、`AGENTS.md`、`.gitignore`、`CLAUDE.md`、`docs/script.js`、`CHANGELOG.md`
 
 - **docs(standards): 删「交付前自问」独立条与「即使你更倾向别的写法」尾缀**. 用户裁定：交付前自问与简化类条款（只写被要求的/简化有边界）同主题第三处，按精简判据砍；「匹配现有风格」删口味尾缀（强加偏好反违匹配本意）；「重写不扩范围」括号不保留——精准改动条的「不重构没坏的东西/每行可追溯」已完整覆盖。顺手修复：本地 AGENTS.md 镜像缺整个 0.3.93 批次（.gitignore 不随 git 跨机），以 SSOT 全文重建镜像消除漂移。五件套同步：standards、AGENTS.md（镜像）、script.js 双语嵌入（各删 1 行）。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`CHANGELOG.md`
+## [0.3.94] - 2026-09-21
+- **feat(init/update/uninstall): .gitignore 受管标记块——生成的敏感/运行时文件自动忽略（`managed-gitignore-block`）**. 对 v0.3.86 "绝不改写用户 .gitignore" 承诺的正式修订：凭据泄漏是团队级安全事故，advisory 黄字警告用户可以完全不看；改为受管标记块模式——init/update 在 `.gitignore` 尾部维护 `# openspec-pw: begin/end managed block` 标记块（只增删块内行，块外一字节不动），受管路径 14 项：第一层名 `.claude/` `.cursor/` `.opencode/` `.cline/` `.pi/` `.omp/` `openspec/` `AGENTS.md` `CLAUDE.md` `app-exploration.md` `opencode.json`（用户知情拍板：产物留本地的策略）+ tests 精确三条 `tests/playwright/test-results/` `tests/playwright/credentials.yaml` `.bak`（`tests/` 整目录不忽略——保住测试代码进库与 CI 可用，用户否决整目录方案）。要点：① 判定**与磁盘存在性无关**（gitignore 是前瞻性声明——首次 init 时 test-results 尚不存在也必须写入；复用 findUnignoredFiles 会因 existsSync 门控漏写最关键路径，故新增 `findUncoveredManagedPaths`，规则加载逻辑与 ignore-check 共享）；② 幂等 + 块内补行 + CRLF 容错（Windows 编辑器行尾不产生重复块）+ 多块/孤儿标记安全策略 + 尾换行不翻倍；③ `.git/info/exclude` 已覆盖的路径不重复写入（尊重本地策略）；④ 写入失败降级为受管通用 advisory（`managedBlockAdvisoryHint`），现有凭据 advisory 收编为降级分支专用（消除双黄字）；⑤ **已追踪检测**（`git ls-files` best-effort）：ignore 对已追踪文件无效，凭据曾提交过的项目会得到 `git rm --cached` 指引（按目录聚合计数封顶 5 条，不自动执行）；⑥ uninstall 反向清理标记块（块外保留、空文件删除、凭据文件保留+安全提示）；⑦ minimal mode 同样维护块。`.github/` 明确排除。
+  - 新增 `src/shared/gitignore-managed.ts`；修改 `src/commands/{init,update,uninstall}.ts`、`src/shared/index.ts`（barrel）
+  - 新增 `tests/gitignore-managed.test.ts`（16 用例）；`tests/init.test.ts`（advisory→受管块断言更新）
+  - `README.md`、`README.zh-CN.md`
 
 ## [0.3.93] - 2026-09-20
 - **refactor(standards): CLAUDE.md wrapper 的 CodeGraph 块精简至核心指令**. `CODE_GRAPH_FIRST_BLOCK` 删除"grep/read 仅作补充（字面文本、已打开文件、结果不足）"与"不派子 agent 重建索引"两句后果说明——AGENTS.md SSOT 的 §2 搜索分层条款完整覆盖 grep/read 分工，"不派子 agent"由 §0 自主边界条款承接；wrapper 内属重复表述。保留核心四要素：触发条件（结构性任务）→ 首选工具（`codegraph_explore`）→ 使用方式（直接用结果回答）→ 跳过条件（无 `.codegraph/`）。⚠ 已安装项目下次 `openspec-pw update` 会因块内容漂移自动重写 wrapper（一次性变更，update 正常职责）。所有测试仅锚 `"CodeGraph 优先"` 标题，无断言依赖被删文本。

@@ -162,28 +162,25 @@ describe("syncCredentials: credentials ignore hint", () => {
     return logs;
   }
 
-  it("hints on fresh generation when nothing is git-ignored", async () => {
+  it("stays silent on fresh generation — coverage advisory moved to the managed-block degradation branch (review S3)", async () => {
     const projectDir = join(tmpdir(), "ospw-cred-hint-gen-" + Date.now());
     mkdirSync(projectDir, { recursive: true });
     try {
       const logs = await runSync(projectDir);
       expect(
-        logs.some(
-          (l) =>
-            l.includes("Test credentials are not git-ignored") &&
-            l.includes("tests/playwright/credentials.yaml"),
-        ),
-      ).toBe(true);
+        logs.some((l) => l.includes("Test credentials are not git-ignored")),
+      ).toBe(false);
     } finally {
       rmSync(projectDir, { recursive: true, force: true });
     }
   });
 
-  it("rewrite path names the .bak backup specifically", async () => {
+  it("stays silent on the rewrite path — no .bak hint from syncCredentials (review S3)", async () => {
     const projectDir = join(tmpdir(), "ospw-cred-hint-bak-" + Date.now());
     mkdirSync(join(projectDir, "tests", "playwright"), { recursive: true });
     // .gitignore covers credentials.yaml but NOT the .bak update is about
-    // to write — the hint must name the .bak.
+    // to write — since the managed-block change, coverage advisory lives
+    // in update's degradation branch, not here.
     writeFileSync(
       join(projectDir, ".gitignore"),
       "tests/playwright/credentials.yaml\n",
@@ -195,12 +192,8 @@ describe("syncCredentials: credentials ignore hint", () => {
     try {
       const logs = await runSync(projectDir);
       expect(
-        logs.some((l) =>
-          l.includes(
-            "not git-ignored: tests/playwright/credentials.yaml.bak —",
-          ),
-        ),
-      ).toBe(true);
+        logs.some((l) => l.includes("not git-ignored")),
+      ).toBe(false);
     } finally {
       rmSync(projectDir, { recursive: true, force: true });
     }

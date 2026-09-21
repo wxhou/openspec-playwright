@@ -23,3 +23,13 @@ export {
   credentialsIgnoreHint,
   findUnignoredFiles,
 } from "./ignore-check.js";
+export {
+  MANAGED_GITIGNORE_PATHS,
+  GITIGNORE_BLOCK_BEGIN,
+  GITIGNORE_BLOCK_END,
+  findUncoveredManagedPaths,
+  ensureGitignoreEntries,
+  removeManagedBlock,
+  detectTrackedFiles,
+  managedBlockAdvisoryHint,
+} from "./gitignore-managed.js";
