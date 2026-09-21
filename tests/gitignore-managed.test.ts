@@ -166,14 +166,17 @@ describe("removeManagedBlock", () => {
     expect(readFileSync(join(projectRoot, ".gitignore"), "utf-8")).toBe("# mine\n");
   });
 
-  it("collapses blank runs left by removal instead of leaving gaps", () => {
+  it("removes only the block; blank-line structure outside stays byte-identical (task 3.8 / review F5)", () => {
+    const user = "# mine\n\n\n\n\n# tail\n";
     writeFileSync(
       join(projectRoot, ".gitignore"),
-      "# mine\n\n\n" + GITIGNORE_BLOCK_BEGIN + "\nx\n" + GITIGNORE_BLOCK_END + "\n\n\n# tail\n",
+      user + GITIGNORE_BLOCK_BEGIN + "\nx\n" + GITIGNORE_BLOCK_END + "\n",
     );
-    removeManagedBlock(projectRoot);
-    const after = readFileSync(join(projectRoot, ".gitignore"), "utf-8");
-    expect(after).toBe("# mine\n\n# tail\n");
+    const result = removeManagedBlock(projectRoot);
+    expect(result.removed).toBe(true);
+    expect(result.fileDeleted).toBe(false);
+    // The user's deliberate blank runs are NOT collapsed — byte-for-byte.
+    expect(readFileSync(join(projectRoot, ".gitignore"), "utf-8")).toBe(user);
   });
 });
 

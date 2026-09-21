@@ -6,28 +6,30 @@ export declare const GITIGNORE_BLOCK_END = "# openspec-pw: end managed block";
 /**
  * Managed paths NOT yet covered by any ignore rule — existence-independent
  * (a path that does not exist on disk is exactly the forward-looking case
- * this module exists for). Rule-file read errors are swallowed: an
- * unreadable rule file means "not covered" — the write path then either
- * repairs coverage or fails, and the caller degrades to an advisory.
+ * this module exists for). Never throws (review F1): rule-file read errors
+ * are swallowed by loadIgnoreRules; the ignore matcher itself cannot throw
+ * on plain path strings.
  */
 export declare function findUncoveredManagedPaths(projectRoot: string): string[];
 /**
  * Ensure every managed path is covered: locate the marker block in the
  * project's .gitignore (CRLF-tolerant) and add missing lines inside it;
  * no block → append one at the file tail; no file → create one containing
- * only the block. Lines outside the block are preserved byte-for-byte
- * (separator rule: an extra blank line is inserted only when the file
- * lacks a trailing newline). Write errors propagate to the caller, which
- * degrades to an advisory.
+ * only the block. Lines outside the block keep their bytes — including
+ * CRLF endings (F2) and blank-line structure (F5). Write errors propagate
+ * to the caller, which degrades to an advisory.
  */
 export declare function ensureGitignoreEntries(projectRoot: string): {
     changed: boolean;
     added: string[];
 };
 /**
- * Remove the managed block (uninstall). Block-external lines are preserved;
- * a file left empty by the removal is deleted. No well-formed block →
- * no-op (idempotent). CRLF-tolerant. Write errors propagate.
+ * Remove the managed block (uninstall). Block-external lines are preserved
+ * byte-for-byte — no blank-run collapsing, no leading/trailing whitespace
+ * trims (review F5); the file's original trailing-newline state is kept.
+ * A file left with no content at all is deleted. No well-formed block →
+ * no-op (idempotent; malformed marker pairs are user-file content, F3).
+ * Write errors propagate.
  */
 export declare function removeManagedBlock(projectRoot: string): {
     removed: boolean;
@@ -47,10 +49,9 @@ export declare function managedBlockAdvisoryHint(uncovered: string[]): string;
  * rules do not apply to tracked files — review S2/scenario 3.9). Single
  * `git ls-files` spawn covering all managed paths; aggregates per managed
  * top-level path. Any failure (no git binary, not a repo, timeout) degrades
- * silently to [] — this check is advisory and never blocks.
- *
- * Aggregation: a managed DIRECTORY (e.g. `openspec/`) with any tracked
- * content is reported once as the directory name with a count; managed
- * FILE paths are reported verbatim.
+ * silently to [] — this check is advisory and never blocks. Works from a
+ * repo subdirectory too: the old `existsSync(projectRoot/.git)` gate made
+ * the advisory dead there while the block itself still got written
+ * (review F6) — git resolves the repo upward from -C on its own.
  */
 export declare function detectTrackedFiles(projectRoot: string): string[];

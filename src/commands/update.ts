@@ -704,6 +704,22 @@ export function syncProjectTemplates(tmpDir: string, projectRoot: string) {
   }
 
   const testsDir = join(projectRoot, "tests", "playwright");
+  // Minimal-mode projects (no tests/playwright/) still get managed-block
+  // maintenance — the block is a forward-looking declaration (review F4):
+  // the early return below must not skip it, or a minimal project whose
+  // .gitignore lost the block silently stops ignoring openspec/ etc.
+  try {
+    const result = ensureGitignoreEntries(projectRoot);
+    if (result.changed) {
+      console.log(
+        chalk.green(
+          `  ✓ .gitignore: managed block updated (+${result.added.length} paths)`,
+        ),
+      );
+    }
+  } catch {
+    printCredentialsIgnoreHint(projectRoot);
+  }
   if (!existsSync(testsDir)) return;
 
   // 1. Sync BasePage.ts — always update if content differs
@@ -786,22 +802,8 @@ export function syncProjectTemplates(tmpDir: string, projectRoot: string) {
   // 4. Sync credentials.yaml — preserve user credentials
   syncCredentials(tmpDir, projectRoot);
 
-  // 4b. Managed .gitignore block (revised from v0.3.86's advisory-only
-  // stance): auto-ignore runtime output and credentials. Idempotent —
-  // covers credentials.yaml/.bak newly created by the sync above. On write
-  // failure, degrade to the (now degradation-only) credential advisory.
-  try {
-    const result = ensureGitignoreEntries(projectRoot);
-    if (result.changed) {
-      console.log(
-        chalk.green(
-          `  ✓ .gitignore: managed block updated (+${result.added.length} paths)`,
-        ),
-      );
-    }
-  } catch {
-    printCredentialsIgnoreHint(projectRoot);
-  }
+  // (Managed-block maintenance runs at the top of this function — before
+  // the minimal-mode early return — see review F4.)
 }
 
 /**

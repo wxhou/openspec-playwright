@@ -6,11 +6,12 @@
  *
  * Philosophy (revised from v0.3.86's "never touch .gitignore"): the tool
  * writes ONLY inside its begin/end marker block — lines outside the block
- * are preserved byte-for-byte. Detection is existence-independent:
- * .gitignore is a forward-looking declaration, so paths that do not exist
- * on disk yet (first init, before the first test run) must still be written
- * (review B1) — unlike findUnignoredFiles, whose existsSync gate is correct
- * for the advisory semantics (report files the user already generated).
+ * are preserved byte-for-byte, including their original CRLF line endings
+ * (code-review F2) and blank-line structure (F5). Detection is
+ * existence-independent: .gitignore is a forward-looking declaration, so
+ * paths that do not exist on disk yet (first init, before the first test
+ * run) must still be written (review B1) — unlike findUnignoredFiles,
+ * whose existsSync gate is correct for the advisory semantics.
  */
 import { existsSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
@@ -39,57 +40,65 @@ export const GITIGNORE_BLOCK_BEGIN = "# openspec-pw: begin managed block";
 export const GITIGNORE_BLOCK_END = "# openspec-pw: end managed block";
 /**
  * Load the run directory's ignore rules (.git/info/exclude first, then
- * .gitignore) — shared semantics with ignore-check.ts (exclude wins).
+ * .gitignore). Per-file read tolerance (review F1): an unreadable rule
+ * file is skipped — "not covered by that file's rules" — so detectors
+ * built on this never throw while degrading an advisory.
  */
 function loadIgnoreRules(projectRoot) {
     const ig = ignore();
     for (const ruleFile of [join(".git", "info", "exclude"), ".gitignore"]) {
         const abs = join(projectRoot, ruleFile);
-        if (existsSync(abs))
-            ig.add(readFileSync(abs, "utf-8"));
+        try {
+            if (existsSync(abs))
+                ig.add(readFileSync(abs, "utf-8"));
+        }
+        catch {
+            /* unreadable rule file — treat as absent (review F1) */
+        }
     }
     return ig;
 }
 /**
  * Managed paths NOT yet covered by any ignore rule — existence-independent
  * (a path that does not exist on disk is exactly the forward-looking case
- * this module exists for). Rule-file read errors are swallowed: an
- * unreadable rule file means "not covered" — the write path then either
- * repairs coverage or fails, and the caller degrades to an advisory.
+ * this module exists for). Never throws (review F1): rule-file read errors
+ * are swallowed by loadIgnoreRules; the ignore matcher itself cannot throw
+ * on plain path strings.
  */
 export function findUncoveredManagedPaths(projectRoot) {
     const ig = loadIgnoreRules(projectRoot);
-    return MANAGED_GITIGNORE_PATHS.filter((rel) => {
-        try {
-            return !ig.ignores(rel);
-        }
-        catch {
-            return true;
-        }
-    });
+    return MANAGED_GITIGNORE_PATHS.filter((rel) => !ig.ignores(rel));
 }
-/** Split a .gitignore's content into lines, CRLF-tolerant. */
-function readLines(gitignorePath) {
-    return readFileSync(gitignorePath, "utf-8")
-        .split(/\r?\n/)
-        .map((l) => l.replace(/\r$/, ""));
+/** Split content into lines, keeping each line's original `\r` (F2). */
+function toLines(content) {
+    return content.split("\n").map((l) => l.replace(/\n$/, ""));
 }
-/** Locate a well-formed marker block. Returns [-1, -1] when absent. */
+/** Locate a well-formed marker block: the first BEGIN whose next marker
+ * (before any other BEGIN) is an END. An orphan BEGIN followed by another
+ * BEGIN means the pair is malformed — reported as absent (review F3:
+ * a malformed pair must never swallow user lines between its markers,
+ * on write or on uninstall). */
 function locateBlock(lines) {
-    const beginIdx = lines.findIndex((l) => l.trim() === GITIGNORE_BLOCK_BEGIN);
-    const endIdx = lines.findIndex((l) => l.trim() === GITIGNORE_BLOCK_END);
-    if (beginIdx === -1 || endIdx === -1 || endIdx <= beginIdx)
-        return [-1, -1];
-    return [beginIdx, endIdx];
+    for (let b = 0; b < lines.length; b++) {
+        if (lines[b].trim() !== GITIGNORE_BLOCK_BEGIN)
+            continue;
+        for (let e = b + 1; e < lines.length; e++) {
+            const t = lines[e].trim();
+            if (t === GITIGNORE_BLOCK_BEGIN)
+                break; // nested/orphaned BEGIN → malformed
+            if (t === GITIGNORE_BLOCK_END)
+                return [b, e];
+        }
+    }
+    return [-1, -1];
 }
 /**
  * Ensure every managed path is covered: locate the marker block in the
  * project's .gitignore (CRLF-tolerant) and add missing lines inside it;
  * no block → append one at the file tail; no file → create one containing
- * only the block. Lines outside the block are preserved byte-for-byte
- * (separator rule: an extra blank line is inserted only when the file
- * lacks a trailing newline). Write errors propagate to the caller, which
- * degrades to an advisory.
+ * only the block. Lines outside the block keep their bytes — including
+ * CRLF endings (F2) and blank-line structure (F5). Write errors propagate
+ * to the caller, which degrades to an advisory.
  */
 export function ensureGitignoreEntries(projectRoot) {
     const uncovered = findUncoveredManagedPaths(projectRoot);
@@ -97,15 +106,18 @@ export function ensureGitignoreEntries(projectRoot) {
         return { changed: false, added: [] };
     const gitignorePath = join(projectRoot, ".gitignore");
     const hadFile = existsSync(gitignorePath);
-    // Strip ONE trailing newline before splitting: the trailing "" produced
-    // by split is a split artifact, not a real blank line — treating it as
-    // content would insert a stray blank line before the block (review O3).
+    // Raw line model (F2 + O3): each element keeps its original bytes (CRLF
+    // lines keep their \r); ONE trailing newline is stripped before splitting
+    // so the split never leaves a phantom empty last line — the write below
+    // restores exactly one trailing newline when the file had one.
     let lines = [];
+    let hadTrailingNewline = false;
     if (hadFile) {
         let raw = readFileSync(gitignorePath, "utf-8");
-        if (raw.endsWith("\n"))
+        hadTrailingNewline = raw.endsWith("\n");
+        if (hadTrailingNewline)
             raw = raw.slice(0, -1);
-        lines = raw.split(/\r?\n/).map((l) => l.replace(/\r$/, ""));
+        lines = toLines(raw);
     }
     const [beginIdx, endIdx] = locateBlock(lines);
     let added;
@@ -118,40 +130,45 @@ export function ensureGitignoreEntries(projectRoot) {
         lines.splice(beginIdx + 1, 0, ...added);
     }
     else {
-        // No (well-formed) block: append one at the tail. Orphan markers or a
-        // duplicated block, if any, stay — they are user-file content. The
-        // trailing newline was stripped above, so the block joins seamlessly.
+        // No well-formed block: append one at the tail. Orphan markers, if
+        // any, stay — they are user-file content and never participate in
+        // pairing (F3). Line separation is the "\n" of the join itself; the
+        // final newline written below restores the file's terminated state.
         added = [...uncovered];
         lines.push(GITIGNORE_BLOCK_BEGIN, ...added, GITIGNORE_BLOCK_END);
     }
-    writeFileSync(gitignorePath, lines.join("\n") + "\n");
+    // join("\n") preserves every original line's bytes (CRLF lines keep
+    // their \r as part of the line content); the file's original trailing
+    // newline state is restored.
+    writeFileSync(gitignorePath, lines.join("\n") + (hadTrailingNewline || !hadFile ? "\n" : ""));
     return { changed: true, added };
 }
 /**
- * Remove the managed block (uninstall). Block-external lines are preserved;
- * a file left empty by the removal is deleted. No well-formed block →
- * no-op (idempotent). CRLF-tolerant. Write errors propagate.
+ * Remove the managed block (uninstall). Block-external lines are preserved
+ * byte-for-byte — no blank-run collapsing, no leading/trailing whitespace
+ * trims (review F5); the file's original trailing-newline state is kept.
+ * A file left with no content at all is deleted. No well-formed block →
+ * no-op (idempotent; malformed marker pairs are user-file content, F3).
+ * Write errors propagate.
  */
 export function removeManagedBlock(projectRoot) {
     const gitignorePath = join(projectRoot, ".gitignore");
     if (!existsSync(gitignorePath))
         return { removed: false, fileDeleted: false };
-    const lines = readLines(gitignorePath);
+    const raw = readFileSync(gitignorePath, "utf-8");
+    const hadTrailingNewline = raw.endsWith("\n");
+    const body = hadTrailingNewline ? raw.slice(0, -1) : raw;
+    const lines = toLines(body);
     const [beginIdx, endIdx] = locateBlock(lines);
     if (beginIdx === -1)
         return { removed: false, fileDeleted: false };
     const kept = [...lines.slice(0, beginIdx), ...lines.slice(endIdx + 1)];
-    if (kept.every((l) => l.trim() === "")) {
+    const content = kept.join("\n");
+    if (content.trim() === "") {
         rmSync(gitignorePath);
         return { removed: true, fileDeleted: true };
     }
-    // Collapse blank runs left behind by the removal, keep a trailing newline.
-    const cleaned = kept
-        .join("\n")
-        .replace(/\n{3,}/g, "\n\n")
-        .replace(/^\n+/, "")
-        .trimEnd();
-    writeFileSync(gitignorePath, cleaned + "\n");
+    writeFileSync(gitignorePath, hadTrailingNewline ? content + "\n" : content);
     return { removed: true, fileDeleted: false };
 }
 /** Normalize EOL helper re-exported for callers comparing file content. */
@@ -172,15 +189,12 @@ export function managedBlockAdvisoryHint(uncovered) {
  * rules do not apply to tracked files — review S2/scenario 3.9). Single
  * `git ls-files` spawn covering all managed paths; aggregates per managed
  * top-level path. Any failure (no git binary, not a repo, timeout) degrades
- * silently to [] — this check is advisory and never blocks.
- *
- * Aggregation: a managed DIRECTORY (e.g. `openspec/`) with any tracked
- * content is reported once as the directory name with a count; managed
- * FILE paths are reported verbatim.
+ * silently to [] — this check is advisory and never blocks. Works from a
+ * repo subdirectory too: the old `existsSync(projectRoot/.git)` gate made
+ * the advisory dead there while the block itself still got written
+ * (review F6) — git resolves the repo upward from -C on its own.
  */
 export function detectTrackedFiles(projectRoot) {
-    if (!existsSync(join(projectRoot, ".git")))
-        return [];
     const args = [
         "-C",
         projectRoot,
@@ -188,15 +202,17 @@ export function detectTrackedFiles(projectRoot) {
         "--",
         ...MANAGED_GITIGNORE_PATHS,
     ];
-    let stdout;
+    let stdout = "";
     try {
+        // `?? ""` also guards mocked/odd runtimes returning undefined — an
+        // empty result simply means "nothing tracked".
         stdout = execFileSync("git", args, {
             encoding: "utf-8",
             timeout: 5000,
             stdio: ["pipe", "pipe", "pipe"],
             shell: needsShell,
             maxBuffer: 1024 * 1024,
-        });
+        }) ?? "";
     }
     catch {
         return []; // no git binary / not a repo / timeout — advisory only
@@ -214,7 +230,7 @@ export function detectTrackedFiles(projectRoot) {
         if (isDir) {
             reported.push(`${rel} (${hits.length} files tracked)`);
         }
-        else if (overflow < 5 - reported.length) {
+        else if (reported.length < 5) {
             reported.push(rel);
         }
         else {
