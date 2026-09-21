@@ -37,7 +37,6 @@ npm-debug.log*
 .claude/
 
 # AI agent dev-local config
-/AGENTS.md
 /.mcp.json
 .omo/
 .playwright-mcp/

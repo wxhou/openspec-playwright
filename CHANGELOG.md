@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+- **docs(standards): §1 DO NOT 九条压缩为两条 + AGENTS.md 入库跟踪**. 按用户哲学「模型已聪明，少要求」划界：能力型条款压缩、激励型条款保留。DO NOT 九条并两簇——「不假设外部输入可信」（数据/响应/异步/精度/资源）与「写法纪律」（样例过拟合/魔法数字/脆断言/EOL），EOL 因 windows CI 有事故土壤特意保留；「防 NPE 和注入」字样删（校验动作已含）。**AGENTS.md 从 .gitignore 移出入库**：根治跨机漂移（0.3.93 批次就曾因 gitignore 不随 git 而本地丢失）——用户项目的 AGENTS.md 本来就 tracked，本仓库没理由例外；入库后 CI 可加镜像守卫，漏同步从隐形漂移变成可见 diff。顺手修复：根 CLAUDE.md wrapper 的 CodeGraph 段对齐 0.3.93 已裁剪的内置模板（d9db98d 裁了模板没裁根文件，doctor 一直报 standards-claude ✗）——doctor 双 sync 项转绿。五件套同步。
+  - `employee-standards.md`、`AGENTS.md`、`.gitignore`、`CLAUDE.md`、`docs/script.js`、`CHANGELOG.md`
+
+- **docs(standards): 删「交付前自问」独立条与「即使你更倾向别的写法」尾缀**. 用户裁定：交付前自问与简化类条款（只写被要求的/简化有边界）同主题第三处，按精简判据砍；「匹配现有风格」删口味尾缀（强加偏好反违匹配本意）；「重写不扩范围」括号不保留——精准改动条的「不重构没坏的东西/每行可追溯」已完整覆盖。顺手修复：本地 AGENTS.md 镜像缺整个 0.3.93 批次（.gitignore 不随 git 跨机），以 SSOT 全文重建镜像消除漂移。五件套同步：standards、AGENTS.md（镜像）、script.js 双语嵌入（各删 1 行）。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`CHANGELOG.md`
+
 ## [0.3.93] - 2026-09-20
 - **refactor(standards): CLAUDE.md wrapper 的 CodeGraph 块精简至核心指令**. `CODE_GRAPH_FIRST_BLOCK` 删除"grep/read 仅作补充（字面文本、已打开文件、结果不足）"与"不派子 agent 重建索引"两句后果说明——AGENTS.md SSOT 的 §2 搜索分层条款完整覆盖 grep/read 分工，"不派子 agent"由 §0 自主边界条款承接；wrapper 内属重复表述。保留核心四要素：触发条件（结构性任务）→ 首选工具（`codegraph_explore`）→ 使用方式（直接用结果回答）→ 跳过条件（无 `.codegraph/`）。⚠ 已安装项目下次 `openspec-pw update` 会因块内容漂移自动重写 wrapper（一次性变更，update 正常职责）。所有测试仅锚 `"CodeGraph 优先"` 标题，无断言依赖被删文本。
   - `src/commands/editors/project-rules.ts`
