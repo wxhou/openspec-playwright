@@ -5,7 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-<<<<<<< HEAD
 ## [Unreleased]
 
 - **docs(standards): §1 DO NOT 九条压缩为两条 + AGENTS.md 入库跟踪**. 按用户哲学「模型已聪明，少要求」划界：能力型条款压缩、激励型条款保留。DO NOT 九条并两簇——「不假设外部输入可信」（数据/响应/异步/精度/资源）与「写法纪律」（样例过拟合/魔法数字/脆断言/EOL），EOL 因 windows CI 有事故土壤特意保留；「防 NPE 和注入」字样删（校验动作已含）。**根 AGENTS.md 出 .gitignore 入库**：根治跨机漂移（0.3.93 批次就曾因 gitignore 不随 git 而本地丢失）——本仓库的根 AGENTS.md 是 SSOT 的手工镜像而非生成产物，与用户项目 0.3.94 起「生成的 AGENTS.md/CLAUDE.md 受管忽略、产物留本地」的策略分饰两角不冲突；入库后 doctor 双 sync 项天然守卫镜像，漏同步从隐形漂移变成可见 diff。顺手修复：根 CLAUDE.md wrapper 的 CodeGraph 段对齐 0.3.93 已裁剪的内置模板（d9db98d 裁了模板没裁根文件，doctor 一直报 standards-claude ✗）——doctor 双 sync 项转绿。五件套同步。
