@@ -2,7 +2,6 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 动手前读 \`openspec/config.yaml\`（技术栈、结构、约定、约束等），无内容则忽略
 - OpenSpec 命令：跑 \`npx openspec --help\` 查看
 - 优先级：🔴 CRITICAL（违反→静默 bug/安全漏洞，停下确认后执行）｜🟡 IMPORTANT（偏离说明理由，谨慎执行）｜⚪ STANDARD（按标准执行）
-- 🟡 提案/任务范围内，有明确正确答案的工作自主推进，不请示；影响接口、数据、架构的取舍或需偏离范围才停下问。自主不延伸到 OpenSpec 阶段切换——阶段始终由用户触发
 - 🟡 被用户纠正后，将防再犯规则以修订形式沉淀回规范文件；重大修订经用户确认后合入
 
 ## 代码质量
@@ -17,19 +16,11 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🔴 引入新依赖前先实查 registry——AI 会幻觉包名（抢注攻击）；装前看 install scripts，可疑即弃
 - 🟡 精准改动：只改必要的，每一行都应能直接追溯到用户的请求；不"改进"相邻的代码/注释/格式，不重构没坏的东西；改完清理自己造成的垃圾（未使用的 import/export/prop/console.log 等；清理与重构分开提交）。匹配现有风格
 - 🟡 注释纪律：只写代码无法表达的 why（约束、workaround 原因、反直觉决策）；改动叙述、对已删代码的引用、注释掉的代码一律不留——历史归 git log；spec 锚与 TODO(user) 属机制标注，不在其列
-- 🟡 交付前自问：资深工程师会觉得过于复杂吗？会批准吗？任一为否 → 先简化/重写再交付
 - 🟡 代码文件行数上限 1500：超过即违例，按职责拆分，不得继续堆叠
 
 ## 禁止非通用性改动
-- 不写只适配特定输入值的逻辑
-- 不假设外部数据有效 → 校验类型/范围/null，处理空/异常/边界值，防 NPE 和注入
-- 不假设异步/外部操作一定成功
-- 不假设响应结构一定如预期 → 先校验再访问深层属性
-- 不假设精度/范围安全 → 计算前确认安全范围
-- 不假设资源自动释放 → 文件/连接/cursor 用后必须释放
-- 不写魔法数字 → 用常量或枚举并注释原因
-- 不断言具体值（除非明确要求）→ 脆性断言
-- 不假设平台路径分隔符与换行格式 → 用语言内建跨平台 API（\`path.sep\`/\`path.join\`），比较前归一化 EOL
+- 不假设外部输入可信：数据、响应、异步结果、精度先校验（类型/范围/null/空/边界）再使用；资源用后必须释放
+- 不写只适配样例输入的逻辑、魔法数字（入常量并注释原因）、具体值断言（除非明确要求）；路径/换行用语言内建跨平台 API（\`path.sep\`/\`path.join\`），比较前归一化 EOL
 - linter/typechecker 不存在 → 告知用户并建议安装
 - mock 数据/fixture → 参见数据编撰禁令
 
@@ -90,7 +81,6 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - Read \`openspec/config.yaml\` first (tech stack, structure, conventions, constraints, etc.); ignore if absent
 - OpenSpec commands: run \`npx openspec --help\` to list them
 - Priority: 🔴 CRITICAL (violation → silent bug/security hole, stop and confirm before acting)｜🟡 IMPORTANT (deviations need justification, proceed with caution)｜⚪ STANDARD (follow as standard practice)
-- 🟡 Within an agreed proposal/task scope, work with a clear correct answer proceeds autonomously without asking; stop only for trade-offs affecting interfaces, data, or architecture, or when leaving scope. Autonomy does not extend to OpenSpec phase transitions — phases are always user-triggered
 - 🟡 When corrected by the user, distill the prevention rule back into the standards file as a revision; major revisions land after user confirmation
 
 ## Code Quality
@@ -105,19 +95,11 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🔴 Before adding any new dependency, verify it on its registry first — LLMs hallucinate package names (squatting attacks); check install scripts before installing, discard if suspicious
 - 🟡 Surgical changes: touch only what's needed, every line traceable to the user's request; don't "improve" adjacent code/comments/formatting, don't refactor what isn't broken; clean up your own mess (unused imports/exports/props/console.log etc.; cleanup and refactor in separate commits). Match existing style
 - 🟡 Comment discipline: write only the why the code cannot express (constraints, workaround reasons, counterintuitive decisions); change narration, references to deleted code, and commented-out code are never kept — history belongs in git log; machine-readable anchors (spec anchors) and TODO(user) markers are exempt
-- 🟡 Before delivery, ask: would a senior engineer find this overcomplicated? Would they approve it? Either answer no → simplify/rewrite first
 - 🟡 Code file line limit 1500: over 1500 is a violation — split by responsibility, never extend
 
 ## No Non-Generic Changes
-- Don't write logic that only fits specific input values
-- Don't assume external data is valid → validate type/range/null, handle empty/edge/boundary values, prevent NPE and injection
-- Don't assume async/external ops always succeed
-- Don't assume response structure stays as expected → validate before accessing deep properties
-- Don't assume precision/range safety → verify range before computation
-- Don't assume resources auto-release → files/connections/cursors must be released
-- No magic numbers → use constants or enums with comments
-- Don't assert specific values (unless explicitly requested) → brittle
-- Don't assume platform path separators or newline formats → use the language's built-in cross-platform APIs (\`path.sep\`/\`path.join\`), normalize EOL before comparing
+- Don't assume external input is trusted: data, responses, async results, precision — validate (type/range/null/empty/boundary) before use; release resources after use
+- No logic that only fits sample inputs, no magic numbers (constants with a reason), no specific-value assertions (unless explicitly requested); paths/newlines via the language's built-in cross-platform APIs (\`path.sep\`/\`path.join\`), normalize EOL before comparing
 - If linter/typechecker missing → tell user and suggest installing
 - Mock data / fixtures → see Data Fabrication section below
 

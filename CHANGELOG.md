@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+- **docs(standards): §1 DO NOT 九条压缩为两条**. 按用户哲学「模型已聪明，少要求」划界：能力型条款压缩、激励型条款保留。DO NOT 九条并两簇——「不假设外部输入可信」（数据/响应/异步/精度/资源）与「写法纪律」（样例过拟合/魔法数字/脆断言/EOL），EOL 因 windows CI 有事故土壤特意保留；「防 NPE 和注入」字样删（校验动作已含）。AGENTS.md 维持 gitignore 忽略（用户裁定：镜像不入库，跨机同步靠手工）；顺手修复：根 CLAUDE.md wrapper 的 CodeGraph 段对齐 0.3.93 已裁剪的内置模板（d9db98d 裁了模板没裁根文件，doctor 一直报 standards-claude ✗）——doctor 双 sync 项转绿。五件套同步。
+  - `employee-standards.md`、`AGENTS.md`（本地镜像）、`CLAUDE.md`、`docs/script.js`、`CHANGELOG.md`
+
+- **docs(standards): 删「交付前自问」独立条与「即使你更倾向别的写法」尾缀**. 用户裁定：交付前自问与简化类条款（只写被要求的/简化有边界）同主题第三处，按精简判据砍；「匹配现有风格」删口味尾缀（强加偏好反违匹配本意）；「重写不扩范围」括号不保留——精准改动条的「不重构没坏的东西/每行可追溯」已完整覆盖。顺手修复：本地 AGENTS.md 镜像缺整个 0.3.93 批次（.gitignore 不随 git 跨机），以 SSOT 全文重建镜像消除漂移。五件套同步：standards、AGENTS.md（镜像）、script.js 双语嵌入（各删 1 行）。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`CHANGELOG.md`
 ## [0.3.94] - 2026-09-21
 - **feat(init/update/uninstall): .gitignore 受管标记块——生成的敏感/运行时文件自动忽略（`managed-gitignore-block`）**. 对 v0.3.86 "绝不改写用户 .gitignore" 承诺的正式修订：凭据泄漏是团队级安全事故，advisory 黄字警告用户可以完全不看；改为受管标记块模式——init/update 在 `.gitignore` 尾部维护 `# openspec-pw: begin/end managed block` 标记块（只增删块内行，块外一字节不动），受管路径 14 项：第一层名 `.claude/` `.cursor/` `.opencode/` `.cline/` `.pi/` `.omp/` `openspec/` `AGENTS.md` `CLAUDE.md` `app-exploration.md` `opencode.json`（用户知情拍板：产物留本地的策略）+ tests 精确三条 `tests/playwright/test-results/` `tests/playwright/credentials.yaml` `.bak`（`tests/` 整目录不忽略——保住测试代码进库与 CI 可用，用户否决整目录方案）。要点：① 判定**与磁盘存在性无关**（gitignore 是前瞻性声明——首次 init 时 test-results 尚不存在也必须写入；复用 findUnignoredFiles 会因 existsSync 门控漏写最关键路径，故新增 `findUncoveredManagedPaths`，规则加载逻辑与 ignore-check 共享）；② 幂等 + 块内补行 + CRLF 容错（Windows 编辑器行尾不产生重复块）+ 多块/孤儿标记安全策略 + 尾换行不翻倍；③ `.git/info/exclude` 已覆盖的路径不重复写入（尊重本地策略）；④ 写入失败降级为受管通用 advisory（`managedBlockAdvisoryHint`），现有凭据 advisory 收编为降级分支专用（消除双黄字）；⑤ **已追踪检测**（`git ls-files` best-effort）：ignore 对已追踪文件无效，凭据曾提交过的项目会得到 `git rm --cached` 指引（按目录聚合计数封顶 5 条，不自动执行）；⑥ uninstall 反向清理标记块（块外保留、空文件删除、凭据文件保留+安全提示）；⑦ minimal mode 同样维护块。`.github/` 明确排除。
   - 新增 `src/shared/gitignore-managed.ts`；修改 `src/commands/{init,update,uninstall}.ts`、`src/shared/index.ts`（barrel）
