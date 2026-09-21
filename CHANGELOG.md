@@ -7,8 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- **docs(standards): §1 DO NOT 九条压缩为两条 + AGENTS.md 入库跟踪**. 按用户哲学「模型已聪明，少要求」划界：能力型条款压缩、激励型条款保留。DO NOT 九条并两簇——「不假设外部输入可信」（数据/响应/异步/精度/资源）与「写法纪律」（样例过拟合/魔法数字/脆断言/EOL），EOL 因 windows CI 有事故土壤特意保留；「防 NPE 和注入」字样删（校验动作已含）。**根 AGENTS.md 出 .gitignore 入库**：根治跨机漂移（0.3.93 批次就曾因 gitignore 不随 git 而本地丢失）——本仓库的根 AGENTS.md 是 SSOT 的手工镜像而非生成产物，与用户项目 0.3.94 起「生成的 AGENTS.md/CLAUDE.md 受管忽略、产物留本地」的策略分饰两角不冲突；入库后 doctor 双 sync 项天然守卫镜像，漏同步从隐形漂移变成可见 diff。顺手修复：根 CLAUDE.md wrapper 的 CodeGraph 段对齐 0.3.93 已裁剪的内置模板（d9db98d 裁了模板没裁根文件，doctor 一直报 standards-claude ✗）——doctor 双 sync 项转绿。五件套同步。
-  - `employee-standards.md`、`AGENTS.md`、`.gitignore`、`CLAUDE.md`、`docs/script.js`、`CHANGELOG.md`
+- **docs(standards): §1 DO NOT 九条压缩为两条**. 按用户哲学「模型已聪明，少要求」划界：能力型条款压缩、激励型条款保留。DO NOT 九条并两簇——「不假设外部输入可信」（数据/响应/异步/精度/资源）与「写法纪律」（样例过拟合/魔法数字/脆断言/EOL），EOL 因 windows CI 有事故土壤特意保留；「防 NPE 和注入」字样删（校验动作已含）。AGENTS.md 维持 gitignore 忽略（用户裁定：镜像不入库，跨机同步靠手工）；顺手修复：根 CLAUDE.md wrapper 的 CodeGraph 段对齐 0.3.93 已裁剪的内置模板（d9db98d 裁了模板没裁根文件，doctor 一直报 standards-claude ✗）——doctor 双 sync 项转绿。五件套同步。
+  - `employee-standards.md`、`AGENTS.md`（本地镜像）、`CLAUDE.md`、`docs/script.js`、`CHANGELOG.md`
 
 - **docs(standards): 删「交付前自问」独立条与「即使你更倾向别的写法」尾缀**. 用户裁定：交付前自问与简化类条款（只写被要求的/简化有边界）同主题第三处，按精简判据砍；「匹配现有风格」删口味尾缀（强加偏好反违匹配本意）；「重写不扩范围」括号不保留——精准改动条的「不重构没坏的东西/每行可追溯」已完整覆盖。顺手修复：本地 AGENTS.md 镜像缺整个 0.3.93 批次（.gitignore 不随 git 跨机），以 SSOT 全文重建镜像消除漂移。五件套同步：standards、AGENTS.md（镜像）、script.js 双语嵌入（各删 1 行）。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`CHANGELOG.md`
