@@ -6,3 +6,4 @@ export type { CodeGraphStatus } from "./codegraph.js";
 export { detectAppServer, findNpmRoot, chooseDevScript, parsePort, hasFrontendSignal, explainFrontendSignal, } from "./app-detect.js";
 export type { AppServerDetection } from "./app-detect.js";
 export { CREDENTIALS_RELPATHS, credentialsIgnoreHint, findUnignoredFiles, } from "./ignore-check.js";
+export { MANAGED_GITIGNORE_PATHS, GITIGNORE_BLOCK_BEGIN, GITIGNORE_BLOCK_END, findUncoveredManagedPaths, ensureGitignoreEntries, removeManagedBlock, detectTrackedFiles, managedBlockAdvisoryHint, } from "./gitignore-managed.js";

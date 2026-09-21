@@ -51,9 +51,10 @@ import {
   explainFrontendSignal,
   detectCodeGraphStatus,
   codegraphHintLines,
-  CREDENTIALS_RELPATHS,
-  credentialsIgnoreHint,
-  findUnignoredFiles,
+  ensureGitignoreEntries,
+  findUncoveredManagedPaths,
+  detectTrackedFiles,
+  managedBlockAdvisoryHint,
 } from "../shared/index.js";
 
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
@@ -588,19 +589,37 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     await generateAppKnowledge(projectRoot);
   }
 
-  // 7a. Advisory: real test credentials must not reach git history.
-  // Detection only — the user's .gitignore is shared territory and is
-  // never auto-edited. Runs whenever the scaffold completes with the
-  // file present (freshly generated or pre-existing); .bak is named
-  // too when one exists. Unconditional: it still guards a pre-existing
-  // credentials.yaml in a project that later switched to --no-frontend.
-  const unignoredCredentials = findUnignoredFiles(
-    projectRoot,
-    CREDENTIALS_RELPATHS,
-  );
-  if (unignoredCredentials.length > 0) {
+  // 7a. Managed .gitignore block: auto-ignore runtime output and test
+  // credentials (revised from v0.3.86's advisory-only stance — the block
+  // is tool-owned territory inside .gitignore; lines outside are never
+  // touched). Then a best-effort check for ALREADY-TRACKED managed paths:
+  // git does not apply ignore rules to tracked files, so those need a
+  // manual `git rm --cached` (user decision — never auto-executed).
+  // Detection-only credential advisory now runs only on the degradation
+  // path (block write failed) — on success the managed block covers them.
+  try {
+    const result = ensureGitignoreEntries(projectRoot);
+    if (result.changed) {
+      console.log(
+        chalk.green(
+          `  ✓ .gitignore: managed block updated (+${result.added.length} paths)`,
+        ),
+      );
+    }
+  } catch {
+    const uncovered = findUncoveredManagedPaths(projectRoot);
+    if (uncovered.length > 0) {
+      console.log(chalk.yellow(`\n  ⚠ ${managedBlockAdvisoryHint(uncovered)}`));
+    }
+  }
+  const tracked = detectTrackedFiles(projectRoot);
+  if (tracked.length > 0) {
     console.log(
-      chalk.yellow(`\n  ⚠ ${credentialsIgnoreHint(unignoredCredentials)}`),
+      chalk.yellow(
+        `\n  ⚠ These generated files/dirs are already git-tracked — ignore rules do NOT apply to them:` +
+          `\n    ${tracked.join("\n    ")}` +
+          `\n    Fix: git rm -r --cached <path> (then commit to share with your team)`,
+      ),
     );
   }
 

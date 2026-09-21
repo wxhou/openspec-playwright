@@ -831,16 +831,17 @@ describe("init credentials ignore hint", () => {
     rmSync(tmpRoot, { recursive: true, force: true });
   });
 
-  it("hints when credentials.yaml is not git-ignored", async () => {
+  it("writes managed block when credentials.yaml is not git-ignored (revised advisory)", async () => {
     const { init } = await import("../../src/commands/init.js");
     await init({ tools: "none" });
-    expect(
-      logs.some(
-        (l) =>
-          l.includes("Test credentials are not git-ignored") &&
-          l.includes("tests/playwright/credentials.yaml"),
-      ),
-    ).toBe(true);
+    // v0.3.93+: the advisory became an auto-managed block — credentials.yaml
+    // lands inside the openspec-pw managed block instead of a hint line.
+    const gitignore = readFileSync(join(tmpRoot, ".gitignore"), "utf-8");
+    expect(gitignore).toContain("# openspec-pw: begin managed block");
+    expect(gitignore).toContain("tests/playwright/credentials.yaml");
+    expect(logs.some((l) => l.includes("✓ .gitignore: managed block updated"))).toBe(
+      true,
+    );
   });
 
   it("no hint when .gitignore covers both credential files", async () => {
@@ -855,11 +856,18 @@ describe("init credentials ignore hint", () => {
     ).toBe(false);
   });
 
-  it("never edits the project .gitignore", async () => {
+  it("managed block edits stay inside the markers; user rules preserved", async () => {
     const content = "# my rules\ntests/playwright/credentials.yaml\n";
     writeFileSync(join(tmpRoot, ".gitignore"), content);
     const { init } = await import("../../src/commands/init.js");
     await init({ tools: "none", frontend: true });
-    expect(readFileSync(join(tmpRoot, ".gitignore"), "utf-8")).toBe(content);
+    const after = readFileSync(join(tmpRoot, ".gitignore"), "utf-8");
+    // User's own lines are byte-identical and still come first
+    expect(after.startsWith(content)).toBe(true);
+    // Only the managed block was appended after them
+    expect(after).toContain("# openspec-pw: begin managed block");
+    // The already-covered credentials line is NOT duplicated inside the block
+    const block = after.slice(after.indexOf("# openspec-pw: begin"));
+    expect(block).not.toContain("tests/playwright/credentials.yaml\n");
   });
 });

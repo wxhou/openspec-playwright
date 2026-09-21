@@ -278,7 +278,7 @@ audit **只报告、绝不删除**——测试退役永远是人工决策。存�
 
 如果你的应用需要登录，配置一次凭证后，所有测试自动以已登录状态运行。
 
-> **别把凭证提交进 git**：把 `tests/playwright/credentials.yaml`（以及 `openspec-pw update` 会写的 `credentials.yaml.bak`）加入 `.gitignore`，或改用 `E2E_USERNAME` / `E2E_PASSWORD` 环境变量。未忽略时 init 和 update 会打印黄色警告行。
+> **凭据自动忽略**：init 和 update 会在 `.gitignore` 尾部维护一个标记块，忽略 `tests/playwright/credentials.yaml`、其 `.bak` 和 `tests/playwright/test-results/`——以及第一层名如 `.claude/`、`.cursor/`、`openspec/`、`AGENTS.md`、`CLAUDE.md`（生成的产物按设计留在本地）。标记块幂等、不碰你自己的规则，`uninstall` 时自动清理。无法写入时会降级为警告并列出未覆盖路径。注意：ignore 规则对已被 git 追踪的文件无效——若凭据曾提交过，请执行 `git rm --cached tests/playwright/credentials.yaml`。也可以改用 `E2E_USERNAME` / `E2E_PASSWORD` 环境变量。
 
 ```bash
 # 1. 编辑凭证
