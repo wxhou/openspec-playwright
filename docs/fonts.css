@@ -1,0 +1,41 @@
+/* Self-hosted fonts (Fontsource 5.3.0, OFL). Latin: variable files. CJK: merged-slice subset (fontTools). */
+
+/* ── Latin variable/static ── */
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  font-style: normal;
+  font-weight: 200 800;
+  font-stretch: 75% 100%;
+  font-display: swap;
+  src: url(fonts/bricolage-grotesque-latin-standard-normal.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(fonts/outfit-latin-wght-normal.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url(fonts/jetbrains-mono-latin-wght-normal.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'Instrument Serif';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url(fonts/instrument-serif-latin-400-italic.woff2) format('woff2');
+}
+
+/* ── Noto Serif SC 600 (subset to the page's charset, 588 CJK chars + ASCII) ── */
+@font-face {
+  font-family: 'Noto Serif SC';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(fonts/noto-serif-sc-subset-600.woff2) format('woff2');
+}
