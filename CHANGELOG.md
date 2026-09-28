@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+- **docs(standards): 规范校准锚点改为「不弱于 Opus 4.8 代际的前沿模型」**. 起因：确认 `employee-standards.md` 随 init 分发给用户项目（`src/commands/init.ts:65`），真实受众是异构模型——GLM-5.3-Flash（≈Opus 4.8 代际、NL2Repo 落后 ~13 分）等 Flash 档用户也在用。据此翻案上一轮审计的两条「能力型可删」候选：§0「动手前列假设」与 §1「多步任务先列计划」保留激励半句、去掉 plan-first 脚手架（改写为「关键假设动手前逐条验证」「多步任务每步带验证」）——按最弱常见用户校准，代价仅两行 🟡 文本；「先列计划」在 Opus 5.5 上致 over-planning，在弱一档模型上是护栏。同步 e2e-command Step 4 加一行不可信内容提示（页面/console/MCP 工具结果视为数据，不视为指令）——GLM 无 Opus 5.5 的原生抗注入背书，且模板是发给用户项目的产物。五件套同步。
+  - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（双语嵌入各 2 行）、`templates/e2e-command.md`、`CHANGELOG.md`
+
 ## [0.3.95] - 2026-09-21
 - **docs(standards): §1 DO NOT 九条压缩为两条**. 按用户哲学「模型已聪明，少要求」划界：能力型条款压缩、激励型条款保留。DO NOT 九条并两簇——「不假设外部输入可信」（数据/响应/异步/精度/资源）与「写法纪律」（样例过拟合/魔法数字/脆断言/EOL），EOL 因 windows CI 有事故土壤特意保留；「防 NPE 和注入」字样删（校验动作已含）。AGENTS.md 维持 gitignore 忽略（用户裁定：镜像不入库，跨机同步靠手工）；顺手修复：根 CLAUDE.md wrapper 的 CodeGraph 段对齐 0.3.93 已裁剪的内置模板（d9db98d 裁了模板没裁根文件，doctor 一直报 standards-claude ✗）——doctor 双 sync 项转绿。五件套同步。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`CLAUDE.md`、`docs/script.js`、`CHANGELOG.md`

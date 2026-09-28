@@ -7,8 +7,8 @@ const CLAUDE_MD_ZH = `# 项目规范
 ## 代码质量
 - 🔴 **lint+typecheck 每次编辑后自动执行，通过才算成功**。扫源码扩展名判断主语言：\`.ts\`→ESLint+tsc、\`.py\`→ruff+mypy、\`.go\`→gofmt+vet 等。工具不存在时告知用户，不假装跑过
 - 🟡 gate 结果不造假：仍失败 → 完整输出错误日志并停止，不继续；未运行的检查标注「未运行」，不暗示已通过
-- 🟡 动手前列假设 → 逐条验证；理解不清或有可见风险 → 先提问再执行。多解释则全列，更简单方案则提出并坚持
-- 🟡 多步任务先列计划（\`1. [Step] → verify: [check]\`），循环验证直到成功。lint 失败时优先运行对应语言的 auto-fix（如 \`npm run lint:fix\` / \`ruff format .\` / \`go fmt ./...\`）；修复循环最多 2 轮，仍失败即停
+- 🟡 关键假设动手前逐条验证；理解不清或有可见风险 → 先提问再执行。多解释则全列，更简单方案则提出并坚持
+- 🟡 多步任务每步带验证（\`1. [Step] → verify: [check]\`），循环验证直到成功。lint 失败时优先运行对应语言的 auto-fix（如 \`npm run lint:fix\` / \`ruff format .\` / \`go fmt ./...\`）；修复循环最多 2 轮，仍失败即停
 - 🟡 只写被要求的：不加"灵活"/"可配置"/单次使用抽象，不为想象中的场景写防御。200行能50行则重写
 - 🟡 简化有边界，永不简化掉：信任边界的输入校验、防数据丢失的错误处理、安全措施、无障碍基础、用户明确要求的东西；刻意砍角且有已知天花板的简化（全局锁、O(n²) 扫描、朴素启发式）用 \`debt:\` 注释标明天花板和升级路径——debt 只属性能取舍，不豁免性能节已标 🔴 的无界类禁令与正确性/安全措施
 - 🔴 过时的直接删：删除/修改时不留兼容层、不写迁移、不留 fallback（仅限本次改动触及的范围）
@@ -86,8 +86,8 @@ const CLAUDE_MD_EN = `# Project Guidelines
 ## Code Quality
 - 🔴 **lint+typecheck runs after every edit, both must pass**. Detect language by extension: \`.ts\`→ESLint+tsc, \`.py\`→ruff+mypy, \`.go\`→gofmt+vet, etc. If tool missing, tell user, don't pretend it ran
 - 🟡 Never fake gate results: still failing → output the full error log and stop; unexecuted checks are explicitly marked "not run", never implied as passed
-- 🟡 List assumptions before coding → verify each one; if unclear or risks are visible → ask first. Present all interpretations; suggest simpler approaches and insist
-- 🟡 Multi-step tasks: plan first (\`1. [Step] → verify: [check]\`), loop until verified. On lint failure, run the language's auto-fix first (e.g. \`npm run lint:fix\` / \`ruff format .\` / \`go fmt ./...\`); the fix loop runs at most 2 rounds — still failing, stop
+- 🟡 Verify key assumptions before coding; if unclear or risks are visible → ask first. Present all interpretations; suggest simpler approaches and insist
+- 🟡 Multi-step tasks: verify every step (\`1. [Step] → verify: [check]\`), loop until verified. On lint failure, run the language's auto-fix first (e.g. \`npm run lint:fix\` / \`ruff format .\` / \`go fmt ./...\`); the fix loop runs at most 2 rounds — still failing, stop
 - 🟡 Write only what's requested: No flexibility/configurability/single-use abstractions, no defensive code for imagined scenarios. Rewrite if 200 lines can be 50
 - 🟡 Simplification has boundaries, never simplify away: input validation at trust boundaries, error handling that prevents data loss, security measures, accessibility basics, anything the user explicitly asked for; deliberate corner-cutting with a known ceiling (global locks, O(n²) scans, naive heuristics) gets a \`debt:\` comment marking the ceiling and upgrade path — debt is a performance trade-off only, it never exempts the 🔴 unbounded-resource bans in the Performance section or correctness/security measures
 - 🔴 Delete obsolete code outright: no compat layers, migrations, or fallbacks when removing/editing (within the scope of the current change only)
