@@ -83,12 +83,20 @@ describe("ensureGitignoreEntries", () => {
   it("wide rules covering the tests trio still let other managed paths in (task 3.4)", () => {
     writeFileSync(join(projectRoot, ".gitignore"), "tests/\n");
     const result = ensureGitignoreEntries(projectRoot);
-    // `tests/` covers the trio, the other 11 first-tier names are still added
+    // `tests/` covers the trio, the other 15 managed names are still added
     expect(result.added).not.toContain("tests/playwright/test-results/");
     expect(result.added).not.toContain("tests/playwright/credentials.yaml");
     expect(result.added).toContain(".claude/");
     const after = readFileSync(join(projectRoot, ".gitignore"), "utf-8");
     expect(after).not.toContain("tests/playwright/credentials.yaml\n");
+  });
+
+  it("covers tool-local data, mcp config, and auth credentials (user-decided batch, 2026-09)", () => {
+    ensureGitignoreEntries(projectRoot);
+    const content = readFileSync(join(projectRoot, ".gitignore"), "utf-8");
+    for (const p of [".codegraph/", ".playwright-mcp/", ".mcp.json", "playwright/.auth/"]) {
+      expect(content).toContain(p);
+    }
   });
 
   it("zero action when user rules cover ALL managed paths (task 3.2)", () => {

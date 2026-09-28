@@ -19,7 +19,7 @@ import { execFileSync } from "child_process";
 import ignore from "ignore";
 import { normalizeEol } from "../commands/editors/agents.js";
 import { needsShell } from "./platform.js";
-/** Managed paths (first-tier names user-decided + precise tests/ trio). */
+/** Managed paths (user-decided artifacts/config + credentials + regenerable local data). */
 export const MANAGED_GITIGNORE_PATHS = [
     ".claude/",
     ".cursor/",
@@ -27,11 +27,15 @@ export const MANAGED_GITIGNORE_PATHS = [
     ".cline/",
     ".pi/",
     ".omp/",
+    ".codegraph/",
+    ".playwright-mcp/",
     "openspec/",
     "AGENTS.md",
     "CLAUDE.md",
     "app-exploration.md",
     "opencode.json",
+    ".mcp.json",
+    "playwright/.auth/",
     "tests/playwright/test-results/",
     "tests/playwright/credentials.yaml",
     "tests/playwright/credentials.yaml.bak",
