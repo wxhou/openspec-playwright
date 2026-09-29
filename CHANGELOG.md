@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.96] - 2026-09-29
 - **chore(scripts): 字体子集化工具链固化为 `npm run fonts:subset`（`subset-fonts`）**. 2026-09-28 的一次性手工流程（npm pack @fontsource/noto-serif-sc → 按页面字符集选切片 → fontTools 切片合并 → 子集化 1.4MB→113KB）固化为可重跑脚本：landing 文案改动引入新中文字符后重跑即可，不再依赖临时目录里的手工产物。fonts.css CJK 段确定性重写（实测逐字节一致）；woff2 因切片合并顺序不同二进制有差、字形覆盖等价，本地截图渲染一致。依赖 python3 + fonttools + brotli（缺失时报安装指引）。
   - `scripts/subset-fonts.py`（新增，~180 行）、`package.json`（`fonts:subset`）、`docs/fonts/noto-serif-sc-subset-600.woff2`（脚本再生成）、`CHANGELOG.md`
 
