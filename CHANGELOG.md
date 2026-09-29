@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- **chore(scripts): 字体子集化工具链固化为 `npm run fonts:subset`（`subset-fonts`）**. 2026-09-28 的一次性手工流程（npm pack @fontsource/noto-serif-sc → 按页面字符集选切片 → fontTools 切片合并 → 子集化 1.4MB→113KB）固化为可重跑脚本：landing 文案改动引入新中文字符后重跑即可，不再依赖临时目录里的手工产物。fonts.css CJK 段确定性重写（实测逐字节一致）；woff2 因切片合并顺序不同二进制有差、字形覆盖等价，本地截图渲染一致。依赖 python3 + fonttools + brotli（缺失时报安装指引）。
+  - `scripts/subset-fonts.py`（新增，~180 行）、`package.json`（`fonts:subset`）、`docs/fonts/noto-serif-sc-subset-600.woff2`（脚本再生成）、`CHANGELOG.md`
+
 - **feat(init/update/uninstall): 受管 .gitignore 块新增 4 条路径（`managed-gitignore-paths`）**. `.codegraph/`（本地 SQLite 索引，外部 CLI 生成，可再生）、`.playwright-mcp/`（官方 Playwright MCP 会话产物目录——e2e 工作流重度使用该 MCP，用户项目必然出现）、`.mcp.json`（openspec-pw 经 `claude mcp add` 生成 + 用户自加 server 常在 env/headers 放 API key——沿用 0.3.94 `.claude/` 整目录忽略的既定裁决，官方「可共享」定位让位于凭据安全）、`playwright/.auth/`（auth.setup.ts 写的 storageState = 已登录会话 cookie，受管清单里最接近真凭据的漏项）。存量项目下次 `init/update` 块内自动补行；已入库项目走既有 `git rm --cached` advisory。14 → 18 项。
   - `src/shared/gitignore-managed.ts`、`tests/gitignore-managed.test.ts`（新增 1 用例）、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
 
