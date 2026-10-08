@@ -180,12 +180,13 @@ Generator 生成的每条测试上方带一行 **spec 锚** 注释：
 test('coupon expires after 7 days', async ({ page }) => { ... });
 ```
 
-锚的 `<capability>#<requirement>` 直接使用 delta spec 中 requirement 的**标题原文**（不做 slug 转换），`openspec-pw audit` 因此能用纯文本匹配对主 spec 核验。审计报告四态：
+锚的 `<capability>#<requirement>` 直接使用 delta spec 中 requirement 的**标题原文**（不做 slug 转换），`openspec-pw audit` 因此能用纯文本匹配对主 spec 核验。审计报告五态：
 
 | 状态 | 信号 | 含义 |
 |---|---|---|
 | 锚指向的 requirement 已不在主 spec | ⚠ issue，引证删除它的归档 change | 测试是候删项——删除 / `test.fixme` 附理由 / 行为仍存活则保留 |
-| 锚指向的 capability 目录缺失 | ⚠ issue（单独类别） | 大概率是 capability 改名——先核验再处置 |
+| 锚的 capability 段写成了 change/提案名 | ⚠ issue，精确诊断 | 生成端笔误——修锚即可，测试本身无需 review |
+| 锚指向的 capability 目录缺失（且非 change 名） | ⚠ issue（单独类别） | 大概率是 capability 改名——先核验再处置 |
 | 某 change 目录下有测试无锚 | ℹ 每目录一行 info | 锚机制之前的存量或漏写——仅可见性提示，不计入 issue 数 |
 | `test.fixme` 的测试 | 跳过 | fixme 即「已知过时、故意保留」的声明，报告它是噪音 |
 

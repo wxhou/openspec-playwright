@@ -275,12 +275,13 @@ Every test the Generator writes carries a **spec anchor** — one comment line a
 test('coupon expires after 7 days', async ({ page }) => { ... });
 ```
 
-The anchor's `<capability>#<requirement>` uses the requirement's **exact title text** from the delta spec (no slug conversion), so `openspec-pw audit` can check it against the live main spec with plain text matching. The audit reports four states:
+The anchor's `<capability>#<requirement>` uses the requirement's **exact title text** from the delta spec (no slug conversion), so `openspec-pw audit` can check it against the live main spec with plain text matching. The audit reports five states:
 
 | State | Signal | Meaning |
 |---|---|---|
 | Anchor's requirement gone from the main spec | ⚠ issue, cites the archived change that removed it | Test is a retire candidate — delete, `test.fixme` with reason, or keep if the behavior lives on |
-| Anchor's capability directory missing | ⚠ issue (separate class) | Likely a capability rename — verify before retiring |
+| Anchor's capability segment is a change/proposal name | ⚠ issue, precise diagnosis | Generator slip — fix the anchor; the test itself needs no review |
+| Anchor's capability directory missing (not a change name) | ⚠ issue (separate class) | Likely a capability rename — verify before retiring |
 | Anchor-free tests in a change dir | ℹ one info line per directory | Pre-anchors legacy or missing anchors — visibility only, never an issue count |
 | `test.fixme` tests | skipped | A declared "known-stale, kept on purpose" — reporting it would be noise |
 
