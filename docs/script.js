@@ -59,17 +59,18 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🔴 禁止将临时文件提交到版本控制；超 24h 的文件应在 commit 前删除
 
 ## 测试与验证策略
-- 🟡 改了用户可见可交互的东西（DOM/交互/跳转/异步渲染/样式/响应式、守卫/权限/多角色可见性）→ 浏览器验证；纯逻辑 → 按单测取舍，不开浏览器
-- 🟡 值得单测：业务核心计算/状态转换、含分支的纯函数、边界与错误处理路径、被多处复用的工具、修过 bug 的回归；模糊地带默认测（漏测代价 > 多测代价），一个行为一组断言
-- 🔴 验收标准点名的行为与业务核心逻辑必须被某层测试覆盖（单测或验收测试，一层即可）；不以本条为由跳过/删除既有测试
-- 🔴 后端/服务 → 对真实运行的服务发真实请求验证契约与端到端行为，落成集成测试（真实数据/依赖，遵守数据编撰节）
+- 🟡 测试只随验收存在：验收条款（规范 requirement / change 完成条 / 任务验收标准）点名才写；未点名的有价值场景（业务核心计算/状态转换、边界与错误处理路径、被多处复用的工具、修过 bug 的回归）→ 提议用户，不静默略过；一个行为一组断言
+- 🔴 保持现有测试通过；不以本条为由跳过/删除既有测试
+- 🔴 验收条款点名的行为必须被某层测试覆盖（单测或验收测试，一层即可）
+- 🟡 后端/服务的验证对真实运行的服务发真实请求（真实数据/依赖，遵守数据编撰节）；是否落成测试按点名门判断
+- 🟡 按点名写测试时，UI 组件的可测客户端逻辑（自定义 hook / 组合式函数 / 纯函数）抽为独立单元测；改了用户可见可交互的东西 → 浏览器验证；纯逻辑 → 证据验证，不开浏览器
+- 🟡 修复类任务先复现后修复：完成前后各重现 bug 一次（修前 = 证明它存在，修后 = 证明它消失），辅以截图或测量
 - 🟡 验收期望锚定验收标准写「预期 X，实测 Y」（期望编造禁令见数据编撰节）
-- 🔴 UI 组件：值得测的客户端逻辑（自定义 hook / 组合式函数 / 纯函数）抽为可独立测试的单元按单测清单测
 - 🟡 验证前核对加载的是本次产物（清缓存/停用 SW/核 hash）；权限类必须真实登录态（禁止注入 token），多角色各角色单独登录
 - 🟡 验证证据（截图/日志/输出）取自本次实际运行，不编造、不复用旧证据
 - 🔴 禁止生成 UI 组件测试：渲染冒烟、快照、纯存在断言
 - 🔴 仅截图不算通过——交互必须验证结果（点击后的状态/跳转/渲染），断言只作辅助证据
-- 🟡 禁止生成单测：纯透传、getter/装饰器/样板、类型系统已保证的行为、框架自带行为、期望从实现反推的同义反复断言、只断言 mock 调用拓扑而非可观察行为、无有效断言的纯执行
+- 🟡 无断言价值的测试一律不写，点名不豁免：纯透传、getter/样板、类型系统已保证的行为、期望从实现反推的同义反复断言、只断言 mock 拓扑而非可观察行为
 
 ## 性能与资源边界
 - 🟡 写处理运行时数据的代码（查询、文件、网络、并发、大批量集合遍历——含测试造数与测试并发）前先确认量级（预期行数/文件大小/并发度）：openspec/config.yaml 有记录则以它为准；未知 → 问用户
@@ -140,17 +141,18 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🔴 Never commit temp files to version control; delete files older than 24h before commit
 
 ## Testing & Verification Strategy
-- 🟡 Anything user-visible/interactive changed (DOM/interaction/navigation/async-render/style/responsive, guards/permissions/multi-role visibility) → browser-verify; pure logic → per unit-test criteria, no browser
-- 🟡 Worth unit-testing: core business computation/state transitions, pure functions with branches, boundary & error paths, widely reused utilities, bug-fix regressions; when ambiguous default to testing (missing a test costs more than an extra one), one behavior one assertion set
-- 🔴 Behaviors named by acceptance criteria and core business logic must be covered by some test layer (unit OR acceptance — one is enough); never use this rule to skip/delete existing tests
-- 🔴 Backend/service → real requests against a real running service to verify contract and end-to-end behavior — lands as integration tests (real data/dependencies, per the Data Fabrication section)
+- 🟡 Tests exist only where acceptance demands them: write tests only for cases named by acceptance clauses (spec requirements / change acceptance criteria / task acceptance standards); for valuable un-named scenarios (core business computation/state transitions, boundary & error paths, widely reused utilities, bug-fix regressions) → propose to the user, never skip silently; one behavior one assertion set
+- 🔴 Keep existing tests passing; never use this to skip/delete existing tests
+- 🔴 Behaviors named by acceptance clauses must be covered by some test layer (unit OR acceptance — one is enough)
+- 🟡 Verify backend/service behavior with real requests against a real running service (real data/dependencies, per the Data Fabrication section); whether it lands as a test is decided by the naming gate
+- 🟡 When writing named tests, extract testable client-side logic (custom hooks / composables / pure functions) into independent unit tests; user-visible/interactive changes → browser-verify; pure logic → evidence verification, no browser
+- 🟡 Fix tasks: reproduce before and after completion (before = prove it exists, after = prove it's gone), with screenshots or measurements as support
 - 🟡 All acceptance expectations anchor to acceptance criteria ("expected X, got Y"); the no-fabricating-expectations rule lives in the Data Fabrication section
-- 🔴 UI components: extract client-side logic worth testing (custom hooks / composables / pure functions) into independently testable units per the unit-test list
 - 🟡 Verify the tested build is the current one; permission checks need a real login state (no token injection); each role logs in separately
 - 🟡 Verification evidence (screenshots/logs/output) comes from this run only — never fabricated, never reused from earlier runs
 - 🔴 Never generate UI component tests: render-smoke, snapshot, or mere-existence
 - 🔴 Screenshot alone does not pass — interactions must verify the result (state/navigation/render after click); assertions serve only as auxiliary evidence
-- 🟡 Never generate unit tests: pass-through, getters/decorators/boilerplate, type-system-guaranteed behavior, framework built-ins, tautological assertions with expectations reverse-engineered from the implementation, asserting mock call topology instead of observable behavior, execution without effective assertions
+- 🟡 Tests without assertion value are never written — naming by acceptance doesn't exempt them: pass-throughs, getters/boilerplate, type-system-guaranteed behavior, tautological assertions with expectations reverse-engineered from the implementation, asserting mock topology instead of observable behavior
 
 ## Performance & Resource Bounds
 - 🟡 Confirm data scale (expected rows / file size / concurrency) before writing code that processes runtime data (queries, files, network, concurrency, bulk collection iteration — incl. test fixtures & test parallelism): openspec/config.yaml records take precedence; unknown → ask the user
