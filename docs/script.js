@@ -20,6 +20,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 
 ## 禁止非通用性改动
 - 不假设外部输入可信：数据、响应、异步结果、精度先校验（类型/范围/null/空/边界）再使用；资源用后必须释放
+- 🔴 禁止静默吞错：捕获的异常/错误必须处理、记录或上抛；确可安全忽略的（如 cleanup 二次异常）注释原因——不留空 catch / \`except: pass\` / \`_ = err\` / \`.ok()\` 类黑洞
 - 不写只适配样例输入的逻辑、魔法数字（入常量并注释原因）、具体值断言（除非明确要求）；路径/换行用语言内建跨平台 API（\`path.sep\`/\`path.join\`），比较前归一化 EOL
 - linter/typechecker 不存在 → 告知用户并建议安装
 - mock 数据/fixture → 参见数据编撰禁令
@@ -28,6 +29,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🔴 发现自己正在重复生成相同调用 → 立即停止，重新评估
 - 🟡 长会话接近上下文上限时，复杂任务前先压缩上下文
 - 🟡 搜索分层：结构性问题（定义/调用/影响/流）优先用 CodeGraph；字面文本用全文搜索；文件名模式用文件名匹配。跳过依赖目录和缓存目录（调试依赖时除外），搜子目录时按需缩小
+- 🟡 引用作依据的文件先通读再断言；未通读就下的结论显式标注低置信，不冒充已充分验证
 - 🟡 重命名覆盖：调用、类型、字符串、import、barrel file、测试 mock，不得假设一次覆盖
 - 🟡 编辑 → 重新读取确认 → lint+typecheck → 任一失败则回退
 - 🟡 变更完成告知用户可能遗漏区域，提示人工复查
@@ -99,6 +101,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 
 ## No Non-Generic Changes
 - Don't assume external input is trusted: data, responses, async results, precision — validate (type/range/null/empty/boundary) before use; release resources after use
+- 🔴 No silent error swallowing: caught exceptions/errors must be handled, logged, or rethrown; safe-to-ignore cases (e.g. cleanup secondary errors) get a reason comment — never bare catch / \`except: pass\` / \`_ = err\` / \`.ok()\` black holes
 - No logic that only fits sample inputs, no magic numbers (constants with a reason), no specific-value assertions (unless explicitly requested); paths/newlines via the language's built-in cross-platform APIs (\`path.sep\`/\`path.join\`), normalize EOL before comparing
 - If linter/typechecker missing → tell user and suggest installing
 - Mock data / fixtures → see Data Fabrication section below
@@ -107,6 +110,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🔴 If you catch yourself generating the same call repeatedly → stop immediately, re-evaluate
 - 🟡 In long sessions near the context limit, compact context before complex tasks
 - 🟡 Search in layers: structural queries (definitions/calls/impact/flow) prefer CodeGraph; literal text → full-text search; filename patterns → filename matching. Skip dependency and cache directories (except when debugging deps); narrow scope in subdirectories
+- 🟡 Read every file you cite as evidence end-to-end before asserting; conclusions drawn from partial reads are marked low-confidence explicitly, never presented as verified
 - 🟡 Renaming must cover: calls, types, strings, imports, barrel files, test mocks — don't assume one pass covers everything
 - 🟡 Edit → re-read to confirm → lint+typecheck → rollback on any failure
 - 🟡 After changes, inform user of areas that may be missed, prompt manual review
