@@ -191,7 +191,7 @@ function anchorIsFixmeExempt(fixmeLines, line) {
  * wires this into audit().
  */
 export function auditAnchorsCore(input) {
-    const { testsDir, specFiles, readMainSpec, readArchivedDeltas } = input;
+    const { testsDir, specFiles, readMainSpec, readArchivedDeltas, changeDirNames } = input;
     const results = [];
     const unanchoredByDir = new Map();
     // POSIX-normalize paths so reports and dir derivation are identical on
@@ -235,6 +235,18 @@ export function auditAnchorsCore(input) {
                 continue;
             const mainSpec = getMainSpec(anchor.capability);
             if (mainSpec === null) {
+                // A missing capability dir has two very different causes: the anchor
+                // misuses a change name (generator slip — the test itself is fine) or
+                // the capability was genuinely renamed/removed. Distinguishing them
+                // keeps "retired capability" from becoming a delete-live-tests trap.
+                if (changeDirNames.includes(anchor.capability)) {
+                    results.push({
+                        fileName: relPath,
+                        issue: "Anchor uses a change name, not a capability",
+                        detail: `Anchor capability \`${anchor.capability}\` is a change name — the first segment must be a capability dir under openspec/specs/ (e.g. \`// spec: user-auth#Login times out\`). Fix the anchor; the test itself needs no review.`,
+                    });
+                    continue;
+                }
                 results.push({
                     fileName: relPath,
                     issue: "Anchored to retired capability",
@@ -267,6 +279,7 @@ function auditSpecAnchors(projectRoot, testsDir, specFiles, results) {
         projectRoot,
         testsDir,
         specFiles,
+        changeDirNames: listChangeDirNames(projectRoot),
         readMainSpec: (cap) => {
             const specPath = join(projectRoot, "openspec", "specs", ...cap.split("/"), "spec.md");
             if (!existsSync(specPath))
@@ -291,6 +304,25 @@ function auditSpecAnchors(projectRoot, testsDir, specFiles, results) {
     });
     results.push(...output.results);
     return output.infoLines;
+}
+/** Active (openspec/changes/*) + archived change dir names, excluding bookkeeping entries. */
+function listChangeDirNames(projectRoot) {
+    const names = [];
+    const changesDir = join(projectRoot, "openspec", "changes");
+    if (existsSync(changesDir)) {
+        for (const e of readdirSync(changesDir, { withFileTypes: true })) {
+            if (e.isDirectory() && e.name !== "archive")
+                names.push(e.name);
+        }
+    }
+    const archiveDir = join(changesDir, "archive");
+    if (existsSync(archiveDir)) {
+        for (const e of readdirSync(archiveDir, { withFileTypes: true })) {
+            if (e.isDirectory())
+                names.push(e.name);
+        }
+    }
+    return names;
 }
 export async function getSitemapRoutes(projectRoot) {
     // detectAppServer already prefers process.env.BASE_URL and falls back

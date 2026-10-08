@@ -172,4 +172,36 @@ describe("audit spec-anchor check (fixture)", () => {
     expect(report()).toContain("Anchored to retired capability");
     expect(report()).not.toContain("Anchored to removed requirement");
   });
+
+  it("anchor misusing an active change name → precise fix hint, not retired-capability", async () => {
+    // The generator sometimes writes the change/proposal name as the anchor's
+    // first segment. That must read as "fix the anchor", never as "retire the
+    // test" — a retired-capability report here would bait live-test deletion.
+    const changeName = "add-dark-mode";
+    writeTestFile("coupon", [
+      `// spec: ${changeName}#优惠券七天后过期`,
+      "test('coupon expires', async ({ page }) => {",
+      "});",
+    ].join("\n"));
+    mkdirSync(join(root, "openspec", "changes", changeName), { recursive: true });
+    await audit();
+    const r = report();
+    expect(r).toContain("Anchor uses a change name, not a capability");
+    expect(r).toContain(`\`${changeName}\` is a change name`);
+    expect(r).not.toContain("Anchored to retired capability");
+  });
+
+  it("anchor misusing an archived change name → same fix hint (archive counts too)", async () => {
+    const changeName = "2026-09-01-old-change";
+    writeTestFile("coupon", [
+      `// spec: ${changeName}#优惠券七天后过期`,
+      "test('coupon expires', async ({ page }) => {",
+      "});",
+    ].join("\n"));
+    mkdirSync(join(root, "openspec", "changes", "archive", changeName), { recursive: true });
+    await audit();
+    const r = report();
+    expect(r).toContain("Anchor uses a change name, not a capability");
+    expect(r).not.toContain("Anchored to retired capability");
+  });
 });

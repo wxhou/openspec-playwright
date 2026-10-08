@@ -45,6 +45,8 @@ export declare function auditAnchorsCore(input: AnchorAuditInput & {
         change: string;
         content: string;
     }>;
+    /** Active + archived change dir names, for detecting change-name anchors. */
+    changeDirNames: string[];
 }): AnchorAuditOutput;
 export declare function getSitemapRoutes(projectRoot: string): Promise<{
     routes: string[];
