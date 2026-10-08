@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.97] - 2026-10-08
 - **docs(standards): §1 DO NOT 新增 🔴 静默吞错禁令 + §2 新增分析断言证据纪律**. 两条同属用量报告驱动的诚实家族扩充：①吞错条款补全错误处理链路后半程——v1 起规范只有「不假设成功 → 先校验」前半程，「错误发生 → 别静默藏起来」从第一天就是空白（`except: pass` 恰好从缝里漏过：不违反假设成功，只是把失败藏了）；🔴 级依据 §0 定义（吞异常 = 制造静默 bug 的机制），多语言按形态抽象不穷举（空 catch / `except: pass` / `_ = err` / `.ok()` 四族代表），豁免口 = 确可安全忽略 + 注释原因（保住合法 best-effort cleanup）；②通读断言条款起因 Claude Code 用量报告（2026-08-10→09-29）——分析声明基于部分阅读的文件，被质询后才承认不准确，未被质询的同类不进统计（幸存者偏差下界）；措辞双分支同构 §1 gate 条，「冒充」沿用 §6 WHY 先例；规则对象限定「引用作依据的文件」，略读探索不受限。五件套同步。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（双语嵌入各 2 行）、`CHANGELOG.md`
 
