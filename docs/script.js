@@ -15,7 +15,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🔴 方案选型按优先级链依次判断，停在第一个成立的：要不要存在（YAGNI）→ 代码库已有可复用 → 标准库 → 平台原生特性 → 已装依赖 → 成熟有人维护的库 → 自己实现；同类问题先用成熟产品验证过的模式解决
 - 🔴 引入新依赖前先实查 registry——AI 会幻觉包名（抢注攻击）；装前看 install scripts，可疑即弃
 - 🟡 精准改动：只改必要的，每一行都应能直接追溯到用户的请求；不"改进"相邻的代码/注释/格式，不重构没坏的东西；改完清理自己造成的垃圾（未使用的 import/export/prop/console.log 等；清理与重构分开提交）。匹配现有风格
-- 🟡 注释纪律：只写代码无法表达的 why（约束、workaround 原因、反直觉决策）；改动叙述、对已删代码的引用、注释掉的代码一律不留——历史归 git log；spec 锚与 TODO(user) 属机制标注，不在其列
+- 🟡 注释纪律：默认不写；仅写代码无法表达的 why（约束、workaround 原因、反直觉决策），一行以内（\`// 上游 429 无退避头故固定重试 3 次\`，非 \`// 重试次数\`——合并即噪音）；改动叙述、分步叙述、对已删代码的引用、注释掉的代码、复述代码字面含义、复述签名/参数的 docstring 一律不留——历史归 git log；迭代时同理；交付前自检每条：非 why 内容或命中名单 → 删；spec 锚与 TODO(user) 属机制标注，不在其列
 - 🟡 代码文件行数上限 1500：超过即违例，按职责拆分，不得继续堆叠
 
 ## 禁止非通用性改动
@@ -97,7 +97,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🔴 Solution selection walks the priority chain, stopping at the first that holds: should it exist at all (YAGNI) → reuse from the codebase → standard library → platform-native features → installed dependencies → mature maintained libraries → write it yourself; solve similar problems with proven patterns first
 - 🔴 Before adding any new dependency, verify it on its registry first — LLMs hallucinate package names (squatting attacks); check install scripts before installing, discard if suspicious
 - 🟡 Surgical changes: touch only what's needed, every line traceable to the user's request; don't "improve" adjacent code/comments/formatting, don't refactor what isn't broken; clean up your own mess (unused imports/exports/props/console.log etc.; cleanup and refactor in separate commits). Match existing style
-- 🟡 Comment discipline: write only the why the code cannot express (constraints, workaround reasons, counterintuitive decisions); change narration, references to deleted code, and commented-out code are never kept — history belongs in git log; machine-readable anchors (spec anchors) and TODO(user) markers are exempt
+- 🟡 Comment discipline: default to no comments; write only the why the code cannot express (constraints, workaround reasons, counterintuitive decisions), one line max (\`// upstream 429s with no Retry-After header, so retry 3 times\`, not \`// retry count\` — noise once merged); change narration, step narration, references to deleted code, commented-out code, literal-meaning restatements, and docstrings restating signature or parameters are never kept — history belongs in git log; likewise when iterating; before delivery self-check each comment: no why content or a blacklist hit → delete; machine-readable anchors (spec anchors) and TODO(user) markers are exempt
 - 🟡 Code file line limit 1500: over 1500 is a violation — split by responsibility, never extend
 
 ## No Non-Generic Changes
