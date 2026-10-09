@@ -6,7 +6,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 
 ## 代码质量
 - 🔴 **lint+typecheck 每次编辑后自动执行，通过才算成功**。扫源码扩展名判断主语言：\`.ts\`→ESLint+tsc、\`.py\`→ruff+mypy、\`.go\`→gofmt+vet 等。工具不存在时告知用户，不假装跑过
-- 🟡 gate 结果不造假：仍失败 → 完整输出错误日志并停止，不继续；未运行的检查标注「未运行」，不暗示已通过
+- 🟡 gate 结果不造假：仍失败 → 完整输出错误日志并停止；未运行的检查标注「未运行」
 - 🟡 关键假设动手前逐条验证；理解不清或有可见风险 → 先提问再执行。多解释则全列，更简单方案则提出并坚持
 - 🟡 多步任务每步带验证（\`1. [Step] → verify: [check]\`），循环验证直到成功。lint 失败时优先运行对应语言的 auto-fix（如 \`npm run lint:fix\` / \`ruff format .\` / \`go fmt ./...\`）；修复循环最多 2 轮，仍失败即停
 - 🟡 只写被要求的：不加"灵活"/"可配置"/单次使用抽象，不为想象中的场景写防御。200行能50行则重写
@@ -22,7 +22,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 不假设外部输入可信：数据、响应、异步结果、精度先校验（类型/范围/null/空/边界）再使用；资源用后必须释放
 - 🔴 禁止静默吞错：捕获的异常/错误必须处理、记录或上抛；确可安全忽略的（如 cleanup 二次异常）注释原因——不留空 catch / \`except: pass\` / \`_ = err\` / \`.ok()\` 类黑洞
 - 不写只适配样例输入的逻辑、魔法数字（入常量并注释原因）、具体值断言（除非明确要求）；路径/换行用语言内建跨平台 API（\`path.sep\`/\`path.join\`），比较前归一化 EOL
-- linter/typechecker 不存在（如该栈适用）→ 告知用户并建议安装；装上之前每次编辑后对改动自查并在响应中注明结果，重点：模块级 import 必须置文件顶部（PEP8 E402）、未用变量/import
+- linter/typechecker 不存在（如该栈适用）→ 告知用户并建议安装；装上之前每次编辑后对改动自查并在响应中注明结果，重点：模块级 import 置顶部、未用变量/import
 - mock 数据/fixture → 参见数据编撰禁令
 
 ## 工具限制
@@ -30,7 +30,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🟡 长会话接近上下文上限时，复杂任务前先压缩上下文
 - 🟡 搜索分层：结构性问题（定义/调用/影响/流）优先用 CodeGraph；字面文本用全文搜索；文件名模式用文件名匹配。跳过依赖目录和缓存目录（调试依赖时除外），搜子目录时按需缩小
 - 🟡 引用作依据的文件先通读再断言；未通读就下的结论显式标注低置信，不冒充已充分验证
-- 🟡 重命名/挪动覆盖：调用、类型、字符串、import（含 CJS require）、barrel file、测试 mock，不得假设一次覆盖；抽出/搬移到其他文件时其 import 随迁；静态模块级 import 一律置文件顶部（无既有 import 区则置文件头），不在代码中部补挂——豁免仅限正当事由：循环依赖、可选依赖、按需加载、模块级运行顺序依赖（如 django.setup()、sys.path 调整），且例外须行内注明缘由
+- 🟡 重命名/挪动覆盖：调用、类型、字符串、import（含 CJS require）、barrel file、测试 mock，不得假设一次覆盖；抽出/搬移到其他文件时其 import 随迁；静态模块级 import 一律置文件顶部，不在代码中部补挂——豁免仅限：循环依赖、可选依赖、按需加载、运行顺序依赖（如 django.setup()），例外须行内注明缘由
 - 🟡 编辑 → 重新读取确认 → lint+typecheck → 任一失败则回退
 - 🟡 变更完成告知用户可能遗漏区域，提示人工复查
 - 🔴 禁止用 sed/awk/node -e/python -c 等管道命令改写项目内已有文件——源码/文档/测试/配置同算（跳过编辑工具验证层）；确需批量改写，先征得用户同意
@@ -59,7 +59,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🔴 禁止将临时文件提交到版本控制；超 24h 的文件应在 commit 前删除
 
 ## 测试与验证策略
-- 🟡 测试只随验收存在：验收条款（规范 requirement / change 完成条 / 任务验收标准）或用户在会话中明确要求，点名才写；未点名的有价值场景（业务核心计算/状态转换、边界与错误处理路径、被多处复用的工具、修过 bug 的回归）→ 提议用户（收尾汇总一次提出），不静默略过；一个行为一组断言
+- 🟡 测试只随验收存在：验收条款（规范 requirement / change 完成条 / 任务验收标准）或用户在会话中明确要求，点名才写；未点名的有价值场景（业务核心计算/状态转换、边界与错误路径、被多处复用的工具、修过 bug 的回归）→ 提议用户（收尾汇总一次提出），不静默略过；一个行为一组断言
 - 🔴 保持现有测试通过；不以本条为由跳过/删除既有测试
 - 🔴 验收条款点名的行为必须被某层测试覆盖（单测或验收测试，一层即可）；点名项若落本节 DO NOT 滤网（如纯透传、同义反复断言），停下向用户裁决——不静默写，也不静默不写
 - 🟡 后端/服务的验证对真实运行的服务发真实请求（真实数据/依赖，遵守数据编撰节）；是否落成测试按点名门判断
@@ -88,7 +88,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 
 ## Code Quality
 - 🔴 **lint+typecheck runs after every edit, both must pass**. Detect language by extension: \`.ts\`→ESLint+tsc, \`.py\`→ruff+mypy, \`.go\`→gofmt+vet, etc. If tool missing, tell user, don't pretend it ran
-- 🟡 Never fake gate results: still failing → output the full error log and stop; unexecuted checks are explicitly marked "not run", never implied as passed
+- 🟡 Never fake gate results: still failing → output the full error log and stop; unexecuted checks are explicitly marked "not run"
 - 🟡 Verify key assumptions before coding; if unclear or risks are visible → ask first. Present all interpretations; suggest simpler approaches and insist
 - 🟡 Multi-step tasks: verify every step (\`1. [Step] → verify: [check]\`), loop until verified. On lint failure, run the language's auto-fix first (e.g. \`npm run lint:fix\` / \`ruff format .\` / \`go fmt ./...\`); the fix loop runs at most 2 rounds — still failing, stop
 - 🟡 Write only what's requested: No flexibility/configurability/single-use abstractions, no defensive code for imagined scenarios. Rewrite if 200 lines can be 50
@@ -104,7 +104,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - Don't assume external input is trusted: data, responses, async results, precision — validate (type/range/null/empty/boundary) before use; release resources after use
 - 🔴 No silent error swallowing: caught exceptions/errors must be handled, logged, or rethrown; safe-to-ignore cases (e.g. cleanup secondary errors) get a reason comment — never bare catch / \`except: pass\` / \`_ = err\` / \`.ok()\` black holes
 - No logic that only fits sample inputs, no magic numbers (constants with a reason), no specific-value assertions (unless explicitly requested); paths/newlines via the language's built-in cross-platform APIs (\`path.sep\`/\`path.join\`), normalize EOL before comparing
-- If linter/typechecker missing (if applicable to the stack) → tell user and suggest installing; until then, self-check the changes after every edit and note the result in the reply, focus: module-level imports at file top (PEP8 E402), unused variables/imports
+- If linter/typechecker missing (if applicable to the stack) → tell user and suggest installing; until then, self-check the changes after every edit and note the result in the reply, focus: module-level imports at file top, unused variables/imports
 - Mock data / fixtures → see Data Fabrication section below
 
 ## Tool Constraints
@@ -112,7 +112,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🟡 In long sessions near the context limit, compact context before complex tasks
 - 🟡 Search in layers: structural queries (definitions/calls/impact/flow) prefer CodeGraph; literal text → full-text search; filename patterns → filename matching. Skip dependency and cache directories (except when debugging deps); narrow scope in subdirectories
 - 🟡 Read every file you cite as evidence end-to-end before asserting; conclusions drawn from partial reads are marked low-confidence explicitly, never presented as verified
-- 🟡 Renaming/moving must cover: calls, types, strings, imports (incl. CJS require), barrel files, test mocks — don't assume one pass covers everything; when code moves to another file its imports migrate with it; static module-level imports always sit at the file top (the head of the file when no import block exists), never added mid-file — exemptions only for justifiable cases: circular deps, optional deps, on-demand loading, module-level runtime-order dependencies (e.g. django.setup(), sys.path adjustments), each annotated inline with its reason
+- 🟡 Renaming/moving must cover: calls, types, strings, imports (incl. CJS require), barrel files, test mocks — don't assume one pass covers everything; when code moves to another file its imports migrate with it; static module-level imports always sit at the file top, never added mid-file — exemptions only for: circular deps, optional deps, on-demand loading, runtime-order deps (e.g. django.setup()), annotated inline with its reason
 - 🟡 Edit → re-read to confirm → lint+typecheck → rollback on any failure
 - 🟡 After changes, inform user of areas that may be missed, prompt manual review
 - 🔴 No sed/awk/node -e/python -c pipelines for rewriting existing project files — source, docs, tests, config all count (bypasses edit tool validation); for bulk rewrites, get user consent first
