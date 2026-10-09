@@ -5,8 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
+## [0.3.98] - 2026-10-09
 ## [0.3.98] - 2026-10-09
 - **fix(audit): 锚的 capability 段误用 change 名时给精确诊断，不再误报「retired capability」（`anchor-change-name-diagnosis`）**. 起因：生成端把提案/change 名写进 spec 锚第一段（模板只定义了第二段 requirement title，第一段无定义无示例）——audit 对这类锚跑 `readMainSpec` 必报「Anchored to retired capability」，把活测试标成退役候选，误导删除。修复分两层：①audit 层（机器契约升级为代码强制）——`auditAnchorsCore` 注入 change 目录枚举（active + archive），capability 不存在时先查是否 change 名，是则报「Anchor uses a change name, not a capability + 修锚指引」并明示 test 本身无需 review，不再是退役信号；②模板层（降发生率）——e2e-command Step 6 spec-anchor 规则补第一段定义 + 正误示例（`user-auth#✓` / `add-dark-mode#✗`）。审计语义不变：capability 真退役仍走原「retired capability」分支。
   - `src/commands/audit.ts`、`tests/commands/audit.anchors.test.ts`（+2 用例：active/archive change 名各一）、`templates/e2e-command.md`、`CHANGELOG.md`
