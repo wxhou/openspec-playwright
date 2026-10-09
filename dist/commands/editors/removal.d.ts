@@ -16,8 +16,8 @@ export interface AdapterArtifactInventory {
     legacySkillPath: string | null;
     /** openspec-pw MCP server entries present in this editor's config. */
     mcpServers: string[];
-    /** True when CLAUDE.md holds an openspec-pw wrapper block (claude only). */
-    hasClaudeWrapper: boolean;
+    /** True when the adapter's wrapper file (CLAUDE.md / CODEBUDDY.md) holds an openspec-pw wrapper block. */
+    hasWrapper: boolean;
 }
 /**
  * Enumerate the openspec-pw artifacts one editor owns in this project —
@@ -46,11 +46,12 @@ export declare function removeOwnedVendoredAgents(projectRoot: string, adapter: 
 /** Delete claude's retired-install skill directory. Returns the path or null. */
 export declare function removeClaudeLegacySkill(projectRoot: string): string | null;
 /**
- * Remove the openspec-pw wrapper block from CLAUDE.md (claude-owned
- * territory). Skips symlinked CLAUDE.md entirely — writing through the
+ * Remove the openspec-pw wrapper block from the adapter's wrapper file
+ * (CLAUDE.md for claude, CODEBUDDY.md for codebuddy — adapter-owned
+ * territory). Skips symlinked wrappers entirely — writing through the
  * symlink would strip the shared block out of AGENTS.md.
  */
-export declare function removeClaudeWrapper(projectRoot: string): string | null;
+export declare function removeWrapper(adapter: EditorAdapter, projectRoot: string): string | null;
 /**
  * Delete empty directories up to (not including) `stopAt`. Moved here from
  * uninstall.ts so both the section loop and the per-editor removals share it.

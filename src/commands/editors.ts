@@ -16,8 +16,8 @@
  * Re-export order matters for adapter self-registration: importing the
  * adapter modules loads them, and each calls `registerAdapter()` — the
  * order below fixes ADAPTERS registration order (claude → opencode →
- * cline → cursor → pi → omp), which `resolveToolsArg("all")`, the
- * interactive prompt order, and tests/editors-tools.test.ts depend on.
+ * cline → cursor → pi → omp → codebuddy), which `resolveToolsArg("all")`,
+ * the interactive prompt order, and tests/editors-tools.test.ts depend on.
  */
 
 // Types & factory (zero internal deps)
@@ -100,6 +100,12 @@ export {
   hasOmp,
   ompAdapter,
 } from "./editors/adapters/omp.js";
+export {
+  formatCodebuddyCommand,
+  getCodebuddyCommandPath,
+  hasCodebuddy,
+  codebuddyAdapter,
+} from "./editors/adapters/codebuddy.js";
 
 // Tool selection (--tools flag parsing)
 export { resolveToolsArg } from "./editors/tool-selection.js";
@@ -115,7 +121,7 @@ export {
   removeAdapterCommandArtifacts,
   removeOwnedVendoredAgents,
   removeClaudeLegacySkill,
-  removeClaudeWrapper,
+  removeWrapper,
   cleanupEmptyDirs,
 } from "./editors/removal.js";
 
@@ -145,19 +151,22 @@ export {
 // Pre-select-only intent-file signals (first-run tier; never authorize writes)
 export { intentFileEditors } from "./editors/preselect.js";
 
-// Project rules file management (AGENTS.md SSOT + CLAUDE.md wrapper)
+// Project rules file management (AGENTS.md SSOT + CLAUDE.md / CODEBUDDY.md wrappers)
 export {
   readOpenSpecBlock,
   blockMatchesExpected,
   installOpenSpecBlock,
   claudeWrapperStandardsContent,
+  installThinWrapper,
   installClaudeWrapper,
+  installCodebuddyWrapper,
   installProjectRules,
   migrateLegacyMarkers,
   cleanProjectRules,
   removeMarkersFromFile,
   readEmployeeStandards,
   hasRuleFileMarkers,
-  claudeWrapperHasMarkers,
+  wrapperRulesFile,
+  wrapperHasMarkers,
 } from "./editors/project-rules.js";
 export { normalizeEol } from "./editors/agents.js";

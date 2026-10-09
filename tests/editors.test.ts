@@ -1316,7 +1316,7 @@ describe("update.ts: symlinked CLAUDE.md drift check (source guard)", () => {
       "utf-8",
     );
     expect(src).toMatch(
-      /existsSync\(claudePath\) && lstatSync\(claudePath\)\.isSymbolicLink\(\)/,
+      /existsSync\(wrapperPath\) && lstatSync\(wrapperPath\)\.isSymbolicLink\(\)/,
     );
   });
 
@@ -1326,7 +1326,7 @@ describe("update.ts: symlinked CLAUDE.md drift check (source guard)", () => {
       "utf-8",
     );
     expect(src).toMatch(
-      /existsSync\(claudePath\) && lstatSync\(claudePath\)\.isSymbolicLink\(\)/,
+      /existsSync\(wrapperFile\) && lstatSync\(wrapperFile\)\.isSymbolicLink\(\)/,
     );
   });
 });

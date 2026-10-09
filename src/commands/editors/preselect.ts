@@ -23,6 +23,7 @@ const INTENT_FILES: Partial<Record<EditorId, string[]>> = {
   claude: ["CLAUDE.md"],
   cursor: [".cursorrules"],
   opencode: ["opencode.json", "opencode.jsonc"],
+  codebuddy: ["CODEBUDDY.md"],
 };
 
 /** Editors whose root project-intent files exist in the project. */

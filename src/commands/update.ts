@@ -1,6 +1,6 @@
 import { execFile, execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
-import { join } from "path";
+import { join, basename } from "path";
 import type { CommonOptions } from "node:child_process";
 import {
   existsSync,
@@ -23,8 +23,10 @@ import {
   installCommand,
   installOpenSpecBlock,
   installClaudeWrapper,
+  installCodebuddyWrapper,
   migrateLegacyMarkers,
   claudeAdapter,
+  codebuddyAdapter,
   claudeWrapperStandardsContent,
   opencodeAdapter,
   syncVendoredAgents,
@@ -42,7 +44,14 @@ import {
   ensureGitignoreEntries,
 } from "../shared/index.js";
 import { compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
-import { claudeWrapperHasMarkers, hasRuleFileMarkers } from "./editors/project-rules.js";
+import { wrapperHasMarkers, hasRuleFileMarkers } from "./editors/project-rules.js";
+import type { EditorAdapter } from "./editors.js";
+
+/** Editors whose project rules file is a thin wrapper (not AGENTS.md), with their installers. */
+const WRAPPER_EDITORS: Array<[EditorAdapter, (root: string) => void]> = [
+  [claudeAdapter, installClaudeWrapper],
+  [codebuddyAdapter, installCodebuddyWrapper],
+];
 
 // `execFile` accepts stdio at runtime but the @types/node interface
 // doesn't expose it (the field lives on CommonSpawnOptions, which
@@ -285,14 +294,15 @@ export async function update(options: UpdateOptions) {
 
       // Standards sync (drift-aware). Under --no-skill this phase still runs
       // via the else branch below — the flag only scopes command/template
-      // installation, not standards. CLAUDE.md wrapper is gated on the
-      // claude editor's command-artifact authorization OR the wrapper
-      // marker block (minimal-mode projects — init-minimal-mode).
+      // installation, not standards. Wrapper files (CLAUDE.md / CODEBUDDY.md)
+      // are gated on the editor's command-artifact authorization OR the
+      // wrapper marker block (minimal-mode projects — init-minimal-mode).
       syncEmployeeStandards(
         tmpDir,
         projectRoot,
-        hasCommandArtifacts(projectRoot, claudeAdapter) || claudeWrapperHasMarkers(projectRoot),
+        hasCommandArtifacts(projectRoot, claudeAdapter) || wrapperHasMarkers(claudeAdapter, projectRoot),
         authorized.length > 0 || hasRuleFileMarkers(projectRoot),
+        hasCommandArtifacts(projectRoot, codebuddyAdapter) || wrapperHasMarkers(codebuddyAdapter, projectRoot),
       );
 
       rmSync(tmpDir, { recursive: true, force: true });
@@ -335,8 +345,9 @@ export async function update(options: UpdateOptions) {
       syncEmployeeStandards(
         tmpDir,
         projectRoot,
-        hasCommandArtifacts(projectRoot, claudeAdapter) || claudeWrapperHasMarkers(projectRoot),
+        hasCommandArtifacts(projectRoot, claudeAdapter) || wrapperHasMarkers(claudeAdapter, projectRoot),
         getAllAdapters().some((a) => hasCommandArtifacts(projectRoot, a)) || hasRuleFileMarkers(projectRoot),
+        hasCommandArtifacts(projectRoot, codebuddyAdapter) || wrapperHasMarkers(codebuddyAdapter, projectRoot),
       );
       rmSync(tmpDir, { recursive: true, force: true });
     } catch (err) {
@@ -558,15 +569,17 @@ export function syncEmployeeStandards(
   projectRoot: string,
   claudeAuthorized: boolean,
   hasPwArtifacts: boolean,
+  codebuddyAuthorized = false,
 ): void {
-  // Update employee-grade standards in project rules files (AGENTS.md + CLAUDE.md).
-  // Drift-aware: only rewrite a rules file when its OPENSPEC block differs
-  // from the bundled template; matching content is left untouched (no mtime
-  // change). 标记即领土, judged per artifact: AGENTS.md is only maintained
-  // when it already carries the tool-owned OPENSPEC block — a missing file
-  // or one without markers is NOT created/appended here (run
-  // `openspec-pw init` to install). The CLAUDE.md wrapper is gated on the
-  // claude editor's command-artifact authorization, not its own markers.
+  // Update employee-grade standards in project rules files (AGENTS.md +
+  // wrapper files CLAUDE.md / CODEBUDDY.md). Drift-aware: only rewrite a
+  // rules file when its OPENSPEC block differs from the bundled template;
+  // matching content is left untouched (no mtime change). 标记即领土,
+  // judged per artifact: AGENTS.md is only maintained when it already
+  // carries the tool-owned OPENSPEC block — a missing file or one without
+  // markers is NOT created/appended here (run `openspec-pw init` to
+  // install). Wrapper files are gated on their editor's command-artifact
+  // authorization, not their own markers.
   const standardsSrc = join(tmpDir, "employee-standards.md");
   if (!existsSync(standardsSrc)) return;
   const standards = readFileSync(standardsSrc, "utf-8");
@@ -575,7 +588,7 @@ export function syncEmployeeStandards(
   // below reads the migrated file. (Ordering is load-bearing: a legacy
   // wrapper's inner @AGENTS.md line would otherwise false-match the
   // bare-import check before migration fixes it.)
-  migrateLegacyMarkers(projectRoot, hasPwArtifacts, claudeAuthorized);
+  migrateLegacyMarkers(projectRoot, hasPwArtifacts, claudeAuthorized, codebuddyAuthorized);
 
   const agentsPath = join(projectRoot, "AGENTS.md");
   let agentsStale = false;
@@ -628,46 +641,50 @@ export function syncEmployeeStandards(
     }
   }
 
-  // CLAUDE.md wrapper is only maintained when the claude editor is
-  // authorized. A bare `@AGENTS.md` import without markers is left
+  // Wrapper files (CLAUDE.md / CODEBUDDY.md) are only maintained when their
+  // editor is authorized. A bare `@AGENTS.md` import without markers is left
   // untouched (added by the openspec CLI or the user) — not stale.
-  let claudeStale = false;
-  if (claudeAuthorized) {
-    const claudePath = join(projectRoot, "CLAUDE.md");
-    // A symlinked CLAUDE.md (→ AGENTS.md, the official reuse pattern)
-    // is what Claude Code reads; the AGENTS.md check above already
+  const staleWrapperInstallers: Array<(root: string) => void> = [];
+  for (const [adapter, installer] of WRAPPER_EDITORS) {
+    const authorized = adapter.id === "claude" ? claudeAuthorized : codebuddyAuthorized;
+    if (!authorized) continue;
+    const wrapperPath = adapter.projectRulesPath(projectRoot);
+    const wrapperLabel = basename(wrapperPath);
+    // A symlinked wrapper (→ AGENTS.md, the official reuse pattern)
+    // is what the editor reads; the AGENTS.md check above already
     // tracks its content drift, and rewriting a wrapper would overwrite
     // the standards through the symlink. Not stale.
-    if (existsSync(claudePath) && lstatSync(claudePath).isSymbolicLink()) {
+    if (existsSync(wrapperPath) && lstatSync(wrapperPath).isSymbolicLink()) {
       console.log(
         chalk.gray(
-          "  - CLAUDE.md is a symlink to AGENTS.md — drift tracked via AGENTS.md",
+          `  - ${wrapperLabel} is a symlink to AGENTS.md — drift tracked via AGENTS.md`,
         ),
       );
-    } else {
-      claudeStale = !existsSync(claudePath);
-      if (!claudeStale) {
-        const fileContent = readFileSync(claudePath, "utf-8");
-        if (!fileContent.includes(OPENSPEC_START)) {
-          claudeStale = !/^@AGENTS\.md\r?$/m.test(fileContent);
-          if (!claudeStale) {
-            console.log(
-              chalk.yellow(
-                "  ⚠ CLAUDE.md 是裸 @AGENTS.md 导入（无 OPENSPEC 标记），CodeGraph 优先约束未写入。如需启用：删除该行后重跑 openspec-pw update。",
-              ),
-            );
-          }
-        } else {
-          claudeStale = compareBlock(
-            fileContent,
-            claudeWrapperStandardsContent(),
-          ).stale;
+      continue;
+    }
+    let wrapperStale = !existsSync(wrapperPath);
+    if (!wrapperStale) {
+      const fileContent = readFileSync(wrapperPath, "utf-8");
+      if (!fileContent.includes(OPENSPEC_START)) {
+        wrapperStale = !/^@AGENTS\.md\r?$/m.test(fileContent);
+        if (!wrapperStale) {
+          console.log(
+            chalk.yellow(
+              `  ⚠ ${wrapperLabel} 是裸 @AGENTS.md 导入（无 OPENSPEC 标记），CodeGraph 优先约束未写入。如需启用：删除该行后重跑 openspec-pw update。`,
+            ),
+          );
         }
+      } else {
+        wrapperStale = compareBlock(
+          fileContent,
+          claudeWrapperStandardsContent(),
+        ).stale;
       }
     }
+    if (wrapperStale) staleWrapperInstallers.push(installer);
   }
 
-  if (agentsStale || claudeStale) {
+  if (agentsStale || staleWrapperInstallers.length > 0) {
     console.log(
       chalk.gray(
         "  检测到非模板内容将被覆盖 — OPENSPEC block differs from bundled version",
@@ -676,8 +693,8 @@ export function syncEmployeeStandards(
     if (agentsStale) {
       installOpenSpecBlock(projectRoot, standards, opencodeAdapter);
     }
-    if (claudeStale) {
-      installClaudeWrapper(projectRoot);
+    for (const installer of staleWrapperInstallers) {
+      installer(projectRoot);
     }
   } else if (agentsInTerritory) {
     console.log(chalk.green("  ✓ employee-grade standards already in sync"));

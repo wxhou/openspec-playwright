@@ -32,7 +32,7 @@ program
   .option("--ci", "generate GitHub Actions CI workflow")
   .option(
     "--tools <tools>",
-    'Select editors to configure non-interactively: "all", "none", or a comma-separated list (claude,opencode,cline,cursor,pi,omp; oh-my-pi aliases omp)',
+    'Select editors to configure non-interactively: "all", "none", or a comma-separated list (claude,opencode,cline,cursor,pi,omp,codebuddy; oh-my-pi aliases omp)',
   )
   .option(
     "--agents",

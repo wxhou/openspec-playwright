@@ -1,6 +1,6 @@
 import { normalizeEol } from "../commands/editors/agents.js";
 /** Managed paths (user-decided artifacts/config + credentials + regenerable local data). */
-export declare const MANAGED_GITIGNORE_PATHS: readonly [".claude/", ".cursor/", ".opencode/", ".cline/", ".pi/", ".omp/", ".codegraph/", ".playwright-mcp/", "openspec/", "AGENTS.md", "CLAUDE.md", "app-exploration.md", "opencode.json", ".mcp.json", "playwright/.auth/", "tests/playwright/test-results/", "tests/playwright/credentials.yaml", "tests/playwright/credentials.yaml.bak"];
+export declare const MANAGED_GITIGNORE_PATHS: readonly [".claude/", ".cursor/", ".opencode/", ".cline/", ".pi/", ".omp/", ".codebuddy/", ".codegraph/", ".playwright-mcp/", "openspec/", "AGENTS.md", "CLAUDE.md", "CODEBUDDY.md", "app-exploration.md", "opencode.json", ".mcp.json", "playwright/.auth/", "tests/playwright/test-results/", "tests/playwright/credentials.yaml", "tests/playwright/credentials.yaml.bak"];
 export declare const GITIGNORE_BLOCK_BEGIN = "# openspec-pw: begin managed block";
 export declare const GITIGNORE_BLOCK_END = "# openspec-pw: end managed block";
 /**

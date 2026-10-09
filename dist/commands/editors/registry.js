@@ -5,7 +5,7 @@
  * the dependency graph stays acyclic (adapters -> registry).
  *
  * Registration order is load order and MUST stay:
- *   claude, opencode, cline, cursor, pi, omp
+ *   claude, opencode, cline, cursor, pi, omp, codebuddy
  * (editors.ts re-exports the adapter modules in exactly that order;
  * tests/editors-tools.test.ts asserts it.)
  */
@@ -53,7 +53,9 @@ export function registerAdapter(adapter) {
 }
 /** Slash-command hint for user-facing messages. */
 export function slashCommandForAdapter(adapter) {
-    return adapter.id === "claude" ? "/opsx:e2e" : "/opsx-e2e";
+    return adapter.id === "claude" || adapter.id === "codebuddy"
+        ? "/opsx:e2e"
+        : "/opsx-e2e";
 }
 /** Relative paths installCommand writes for this adapter + meta. */
 export function listCommandArtifactPaths(adapter, meta) {

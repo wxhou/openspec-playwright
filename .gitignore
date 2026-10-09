@@ -70,3 +70,11 @@ tmp/
 
 # Local assistant tooling (workbuddy)
 .workbuddy/
+# openspec-pw: begin managed block
+.cursor/
+.codebuddy/
+CODEBUDDY.md
+app-exploration.md
+opencode.json
+playwright/.auth/
+# openspec-pw: end managed block

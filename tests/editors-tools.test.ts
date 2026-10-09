@@ -15,7 +15,7 @@ import {
 // ─── resolveToolsArg (--tools flag parsing) ──────────────────────────────
 
 describe("resolveToolsArg", () => {
-  const ALL = ["claude", "opencode", "cline", "cursor", "pi", "omp"];
+  const ALL = ["claude", "opencode", "cline", "cursor", "pi", "omp", "codebuddy"];
 
   it("returns null when no --tools flag was provided", () => {
     expect(resolveToolsArg(undefined)).toBeNull();
@@ -151,5 +151,34 @@ describe("hasCommandArtifacts (write authorization)", () => {
       hasCommandArtifacts(tmp, a),
     );
     expect(authorized.map((a) => a.id)).toEqual(["claude"]);
+  });
+});
+
+// ─── codebuddy (7th editor) ──────────────────────────────────────────────
+
+describe("codebuddy tool selection", () => {
+  it("resolves --tools codebuddy to the codebuddy adapter", () => {
+    expect(resolveToolsArg("codebuddy")).toEqual(["codebuddy"]);
+  });
+
+  it("lists codebuddy among the valid ids on unknown-id errors", () => {
+    try {
+      resolveToolsArg("claude,unknown-editor");
+      expect.unreachable();
+    } catch (err) {
+      expect((err as Error).message).toContain("codebuddy");
+    }
+  });
+
+  it("pre-select signal set: root CODEBUDDY.md is a codebuddy intent file", async () => {
+    const { intentFileEditors } = await import("../src/commands/editors.js");
+    const root = mkdtempSync(join(tmpdir(), "ospw-intent-"));
+    try {
+      expect(intentFileEditors(root)).toEqual([]);
+      writeFileSync(join(root, "CODEBUDDY.md"), "# notes\n");
+      expect(intentFileEditors(root)).toEqual(["codebuddy"]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

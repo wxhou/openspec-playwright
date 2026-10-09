@@ -1,10 +1,10 @@
 import { execFileSync } from "child_process";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync, rmdirSync, } from "fs";
-import { join } from "path";
+import { join, basename } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { readFile } from "fs/promises";
-import { buildCommandMeta, detectAdapters, detectProjectAdapters, getAdapter, getAllAdapters, installCommand, installOptionalArtifacts, installProjectRules, migrateLegacyMarkers, readEmployeeStandards, resolveToolsArg, slashCommandForAdapter, intentFileEditors, enumerateAdapterArtifacts, enumerateVendoredAgents, installedAgentsSnapshotDir, isInventoryEmpty, removeAdapterMcp, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, removeClaudeLegacySkill, removeClaudeWrapper, removeMarkersFromFile, normalizeEol, } from "./editors.js";
+import { buildCommandMeta, detectAdapters, detectProjectAdapters, getAdapter, getAllAdapters, installCommand, installOptionalArtifacts, installProjectRules, migrateLegacyMarkers, readEmployeeStandards, resolveToolsArg, slashCommandForAdapter, intentFileEditors, enumerateAdapterArtifacts, enumerateVendoredAgents, installedAgentsSnapshotDir, isInventoryEmpty, removeAdapterMcp, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, removeClaudeLegacySkill, removeWrapper, removeMarkersFromFile, normalizeEol, } from "./editors.js";
 import { isEditorConfigured, agentsFileHasMarkers, } from "./editors/configured.js";
 import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, TEST_RUNNER_MCP_SERVER, needsShell, hasFrontendSignal, explainFrontendSignal, detectCodeGraphStatus, codegraphHintLines, ensureGitignoreEntries, findUncoveredManagedPaths, detectTrackedFiles, managedBlockAdvisoryHint, } from "../shared/index.js";
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
@@ -168,7 +168,7 @@ export async function init(options, deps = {}) {
     console.log(chalk.gray(`  Selected editors: ${editors.map((a) => a.label).join(", ") || "none"}`));
     // No flag, non-TTY, and nothing detected → fail with --tools guidance.
     if (selectedIds === null && editors.length === 0) {
-        console.log(chalk.yellow("\n  ⚠ No supported editor detected in the project (need .claude/, .opencode/, .cline/, .cursor/, .pi/, or .omp/)."));
+        console.log(chalk.yellow("\n  ⚠ No supported editor detected in the project (need .claude/, .opencode/, .cline/, .cursor/, .pi/, .omp/, or .codebuddy/)."));
         console.log(chalk.gray("  For Cursor without an existing .cursor/ dir: mkdir -p .cursor\n"));
         throw new Error('No supported editor detected and no --tools flag provided. Use --tools all, --tools none, or a comma-separated list: claude, opencode, cline, cursor, pi, omp (oh-my-pi aliases omp).');
     }
@@ -222,8 +222,8 @@ export async function init(options, deps = {}) {
                 for (const server of inv.mcpServers) {
                     console.log(chalk.gray(`    - ${adapter.label}: ${server} MCP entry`));
                 }
-                if (inv.hasClaudeWrapper) {
-                    console.log(chalk.gray(`    - ${adapter.label}: CLAUDE.md wrapper block`));
+                if (inv.hasWrapper) {
+                    console.log(chalk.gray(`    - ${adapter.label}: ${basename(adapter.projectRulesPath(projectRoot))} wrapper block`));
                 }
                 // Consent-gated optional artifacts (vendored agents): only the
                 // tool-owned files join the list — user-modified files are kept.
@@ -248,8 +248,8 @@ export async function init(options, deps = {}) {
                     if (inv.legacySkillPath) {
                         removeClaudeLegacySkill(projectRoot);
                     }
-                    if (inv.hasClaudeWrapper) {
-                        removeClaudeWrapper(projectRoot);
+                    if (inv.hasWrapper) {
+                        removeWrapper(adapter, projectRoot);
                     }
                 }
                 if (agentsHasBlock) {
@@ -416,7 +416,7 @@ export async function init(options, deps = {}) {
         if (standards) {
             // Migrate surviving legacy OPENSPEC blocks first (same ordering rule as
             // syncEmployeeStandards — migration precedes any marker judgment).
-            migrateLegacyMarkers(projectRoot, editors.length > 0, editors.some((a) => a.id === "claude"));
+            migrateLegacyMarkers(projectRoot, editors.length > 0, editors.some((a) => a.id === "claude"), editors.some((a) => a.id === "codebuddy"));
             installProjectRules(projectRoot, standards, editors);
         }
     }
@@ -469,7 +469,7 @@ export async function init(options, deps = {}) {
     }
     if (mode === "frontend") {
         console.log(chalk.bold("How it works:"));
-        console.log(chalk.gray("  /opsx:e2e (Claude), /opsx-e2e (OpenCode/Cline/Cursor/Pi/Oh My Pi) read your OpenSpec specs"));
+        console.log(chalk.gray("  /opsx:e2e (Claude, CodeBuddy), /opsx-e2e (OpenCode/Cline/Cursor/Pi/Oh My Pi) read your OpenSpec specs"));
         console.log(chalk.gray("  and run Playwright E2E tests through a three-agent pipeline:"));
         console.log(chalk.gray("  Planner → Generator → Healer\n"));
     }
