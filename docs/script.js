@@ -22,7 +22,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 不假设外部输入可信：数据、响应、异步结果、精度先校验（类型/范围/null/空/边界）再使用；资源用后必须释放
 - 🔴 禁止静默吞错：捕获的异常/错误必须处理、记录或上抛；确可安全忽略的（如 cleanup 二次异常）注释原因——不留空 catch / \`except: pass\` / \`_ = err\` / \`.ok()\` 类黑洞
 - 不写只适配样例输入的逻辑、魔法数字（入常量并注释原因）、具体值断言（除非明确要求）；路径/换行用语言内建跨平台 API（\`path.sep\`/\`path.join\`），比较前归一化 EOL
-- linter/typechecker 不存在 → 告知用户并建议安装
+- linter/typechecker 不存在 → 告知用户并建议安装；装上之前按该语言风格规范自查（如 PEP8 E402）
 - mock 数据/fixture → 参见数据编撰禁令
 
 ## 工具限制
@@ -30,7 +30,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🟡 长会话接近上下文上限时，复杂任务前先压缩上下文
 - 🟡 搜索分层：结构性问题（定义/调用/影响/流）优先用 CodeGraph；字面文本用全文搜索；文件名模式用文件名匹配。跳过依赖目录和缓存目录（调试依赖时除外），搜子目录时按需缩小
 - 🟡 引用作依据的文件先通读再断言；未通读就下的结论显式标注低置信，不冒充已充分验证
-- 🟡 重命名覆盖：调用、类型、字符串、import、barrel file、测试 mock，不得假设一次覆盖
+- 🟡 重命名/挪动覆盖：调用、类型、字符串、import、barrel file、测试 mock，不得假设一次覆盖；抽出/搬移到其他文件时其 import 随迁，静态模块级 import 一律置文件顶部既有 import 区——不在代码中部补挂（动态 import 及函数内 import 仅限正当事由：循环依赖、可选依赖、按需加载）
 - 🟡 编辑 → 重新读取确认 → lint+typecheck → 任一失败则回退
 - 🟡 变更完成告知用户可能遗漏区域，提示人工复查
 - 🔴 禁止用 sed/awk/node -e/python -c 等管道命令改写项目内已有文件——源码/文档/测试/配置同算（跳过编辑工具验证层）；确需批量改写，先征得用户同意
@@ -104,7 +104,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - Don't assume external input is trusted: data, responses, async results, precision — validate (type/range/null/empty/boundary) before use; release resources after use
 - 🔴 No silent error swallowing: caught exceptions/errors must be handled, logged, or rethrown; safe-to-ignore cases (e.g. cleanup secondary errors) get a reason comment — never bare catch / \`except: pass\` / \`_ = err\` / \`.ok()\` black holes
 - No logic that only fits sample inputs, no magic numbers (constants with a reason), no specific-value assertions (unless explicitly requested); paths/newlines via the language's built-in cross-platform APIs (\`path.sep\`/\`path.join\`), normalize EOL before comparing
-- If linter/typechecker missing → tell user and suggest installing
+- If linter/typechecker missing → tell user and suggest installing; until then, self-check against the language's style rules (e.g. PEP8 E402)
 - Mock data / fixtures → see Data Fabrication section below
 
 ## Tool Constraints
@@ -112,7 +112,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🟡 In long sessions near the context limit, compact context before complex tasks
 - 🟡 Search in layers: structural queries (definitions/calls/impact/flow) prefer CodeGraph; literal text → full-text search; filename patterns → filename matching. Skip dependency and cache directories (except when debugging deps); narrow scope in subdirectories
 - 🟡 Read every file you cite as evidence end-to-end before asserting; conclusions drawn from partial reads are marked low-confidence explicitly, never presented as verified
-- 🟡 Renaming must cover: calls, types, strings, imports, barrel files, test mocks — don't assume one pass covers everything
+- 🟡 Renaming/moving must cover: calls, types, strings, imports, barrel files, test mocks — don't assume one pass covers everything; when code moves to another file its imports migrate with it, static module-level imports always sit in the file's top import block — never added mid-file (dynamic imports and in-function imports reserved for justifiable cases: circular deps, optional deps, on-demand loading)
 - 🟡 Edit → re-read to confirm → lint+typecheck → rollback on any failure
 - 🟡 After changes, inform user of areas that may be missed, prompt manual review
 - 🔴 No sed/awk/node -e/python -c pipelines for rewriting existing project files — source, docs, tests, config all count (bypasses edit tool validation); for bulk rewrites, get user consent first
