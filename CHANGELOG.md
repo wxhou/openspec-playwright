@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.3.98] - 2026-10-09
 - **fix(audit): 锚的 capability 段误用 change 名时给精确诊断，不再误报「retired capability」（`anchor-change-name-diagnosis`）**. 起因：生成端把提案/change 名写进 spec 锚第一段（模板只定义了第二段 requirement title，第一段无定义无示例）——audit 对这类锚跑 `readMainSpec` 必报「Anchored to retired capability」，把活测试标成退役候选，误导删除。修复分两层：①audit 层（机器契约升级为代码强制）——`auditAnchorsCore` 注入 change 目录枚举（active + archive），capability 不存在时先查是否 change 名，是则报「Anchor uses a change name, not a capability + 修锚指引」并明示 test 本身无需 review，不再是退役信号；②模板层（降发生率）——e2e-command Step 6 spec-anchor 规则补第一段定义 + 正误示例（`user-auth#✓` / `add-dark-mode#✗`）。审计语义不变：capability 真退役仍走原「retired capability」分支。
   - `src/commands/audit.ts`、`tests/commands/audit.anchors.test.ts`（+2 用例：active/archive change 名各一）、`templates/e2e-command.md`、`CHANGELOG.md`
 - **docs(standards): §6 测试取向反转——点名叫写、证据验收、提议义务（`test-orientation-reversal`）**. 用户原始诉求「不自主写新测试」落地为三个组件：①**门**：「测试只随验收存在」——验收条款（spec requirement / change 完成条 / 任务验收标准）点名才写，替换旧行为（值得单测清单 + 模糊地带默认测 + 业务核心自动覆盖义务三处翻转/收窄）；②**提议义务**：未点名但高价值（修过 bug 的回归、边界/错误路径）→ 提议用户不静默略过——用户指出门的第一版缺陷（点名认知负担在用户侧，用户不知何时点名）后引入第三态，与 §1「提出并坚持」同族、与 e2e test-plan 人工 gate 同构；③**证据验收**：修复类任务完成前后各复现 bug 一次（修前证明存在/修后证明消失）+ 截图/测量——设计保险 = 解绑「写测试」与「做验证」（测试可缺席、验证不缺席）。同时恢复压缩版质量滤网「无断言价值的测试一律不写，点名不豁免」（裁并原长清单时误判两道滤网互替——点名质量方差实证存在，双层退单层已被推演证伪）。已知代价如实记录：散活回归无 CI 哨兵（提议义务缓解）；滤网降为单层兜底靠 §0 停下问用户。e2e-command 零改动（它本就是点名门的产品级形态）。五件套同步，锚 2 处标签修正 + 2 处新增。
