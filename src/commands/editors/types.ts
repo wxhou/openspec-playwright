@@ -36,7 +36,8 @@ export type EditorId =
   | "cline"
   | "cursor"
   | "pi"
-  | "omp";
+  | "omp"
+  | "codebuddy";
 
 export interface ExtraArtifact {
   relativePath: string;

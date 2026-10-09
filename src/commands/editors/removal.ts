@@ -16,11 +16,11 @@
  * shared/mcp.ts print their own status lines (unusable for dry enumeration).
  */
 import { existsSync, lstatSync, readFileSync, readdirSync, rmSync, rmdirSync } from "fs";
-import { dirname, join } from "path";
+import { dirname, join, basename } from "path";
 import chalk from "chalk";
 import { buildCommandMeta, type EditorAdapter } from "./types.js";
 import { listCommandArtifactPaths } from "./registry.js";
-import { removeMarkersFromFile } from "./project-rules.js";
+import { removeMarkersFromFile, wrapperRulesFile } from "./project-rules.js";
 import { LEGACY_OPENSPEC_START, OPENSPEC_START } from "../../shared/drift.js";
 import { enumerateVendoredAgents, installedAgentsSnapshotDir } from "./agents.js";
 
@@ -47,15 +47,20 @@ export interface AdapterArtifactInventory {
   legacySkillPath: string | null;
   /** openspec-pw MCP server entries present in this editor's config. */
   mcpServers: string[];
-  /** True when CLAUDE.md holds an openspec-pw wrapper block (claude only). */
-  hasClaudeWrapper: boolean;
+  /** True when the adapter's wrapper file (CLAUDE.md / CODEBUDDY.md) holds an openspec-pw wrapper block. */
+  hasWrapper: boolean;
 }
 
-/** Does CLAUDE.md carry an openspec-pw marker block we could remove? */
-function claudeWrapperHasMarkers(projectRoot: string): boolean {
-  const dest = join(projectRoot, "CLAUDE.md");
+/** Does the adapter's wrapper file carry an openspec-pw marker block we could remove? */
+function wrapperFileHasMarkersForRemoval(
+  adapter: EditorAdapter,
+  projectRoot: string,
+): boolean {
+  const wrapper = wrapperRulesFile(adapter, projectRoot);
+  if (!wrapper) return false;
+  const dest = join(projectRoot, basename(wrapper));
   if (!existsSync(dest)) return false;
-  // A symlinked CLAUDE.md (typically → AGENTS.md) is never cleaned through —
+  // A symlinked wrapper (typically → AGENTS.md) is never cleaned through —
   // enumeration follows the same guard the removal does.
   if (lstatSync(dest).isSymbolicLink()) return false;
   const content = readFileSync(dest, "utf-8");
@@ -87,9 +92,10 @@ export function enumerateAdapterArtifacts(
       : OPENSPEC_PW_MCP_SERVERS.filter((server) =>
           adapter.isMcpInstalled(projectRoot, server),
         );
-  const hasClaudeWrapper =
-    adapter.id === "claude" && claudeWrapperHasMarkers(projectRoot);
-  return { commandPaths, legacySkillPath, mcpServers, hasClaudeWrapper };
+  const hasWrapper =
+    wrapperRulesFile(adapter, projectRoot) !== null &&
+    wrapperFileHasMarkersForRemoval(adapter, projectRoot);
+  return { commandPaths, legacySkillPath, mcpServers, hasWrapper };
 }
 
 /** True when this editor has nothing for init to remove. */
@@ -98,7 +104,7 @@ export function isInventoryEmpty(inv: AdapterArtifactInventory): boolean {
     inv.commandPaths.length === 0 &&
     inv.legacySkillPath === null &&
     inv.mcpServers.length === 0 &&
-    !inv.hasClaudeWrapper
+    !inv.hasWrapper
   );
 }
 
@@ -189,23 +195,26 @@ export function removeClaudeLegacySkill(projectRoot: string): string | null {
 }
 
 /**
- * Remove the openspec-pw wrapper block from CLAUDE.md (claude-owned
- * territory). Skips symlinked CLAUDE.md entirely — writing through the
+ * Remove the openspec-pw wrapper block from the adapter's wrapper file
+ * (CLAUDE.md for claude, CODEBUDDY.md for codebuddy — adapter-owned
+ * territory). Skips symlinked wrappers entirely — writing through the
  * symlink would strip the shared block out of AGENTS.md.
  */
-export function removeClaudeWrapper(projectRoot: string): string | null {
-  const dest = join(projectRoot, "CLAUDE.md");
+export function removeWrapper(adapter: EditorAdapter, projectRoot: string): string | null {
+  const wrapper = wrapperRulesFile(adapter, projectRoot);
+  if (!wrapper) return null;
+  const dest = join(projectRoot, basename(wrapper));
   if (!existsSync(dest)) return null;
   if (lstatSync(dest).isSymbolicLink()) {
     console.log(
       chalk.gray(
-        "  - CLAUDE.md is a symlink — skipping wrapper cleanup (would write through to AGENTS.md)",
+        `  - ${basename(wrapper)} is a symlink — skipping wrapper cleanup (would write through to AGENTS.md)`,
       ),
     );
     return null;
   }
-  removeMarkersFromFile(dest, "CLAUDE.md");
-  return "CLAUDE.md";
+  removeMarkersFromFile(dest, basename(wrapper));
+  return basename(wrapper);
 }
 
 /**

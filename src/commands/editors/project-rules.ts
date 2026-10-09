@@ -23,7 +23,9 @@ import {
 } from "../../shared/drift.js";
 import type { EditorAdapter } from "./types.js";
 import { claudeAdapter } from "./adapters/claude.js";
+import { codebuddyAdapter } from "./adapters/codebuddy.js";
 import { opencodeAdapter, readOpenCodeInstructions } from "./adapters/opencode.js";
+import { getAllAdapters } from "./registry.js";
 
 // ─── Project rules file (CLAUDE.md / AGENTS.md) ──────────────────────────
 
@@ -182,23 +184,53 @@ export function claudeWrapperStandardsContent(): string {
 }
 
 /**
- * Install a thin CLAUDE.md that imports AGENTS.md.
+ * The adapter's thin wrapper file (CLAUDE.md for claude, CODEBUDDY.md for
+ * codebuddy), or null when the adapter reads AGENTS.md natively — the
+ * wrapper-aware generalization of the claude-only pattern.
+ */
+export function wrapperRulesFile(
+  adapter: EditorAdapter,
+  projectRoot: string,
+): string | null {
+  const dest = adapter.projectRulesPath(projectRoot);
+  return basename(dest) === "AGENTS.md" ? null : dest;
+}
+
+/**
+ * Wrapper territory: true when the adapter's wrapper file carries our
+ * OPENSPEC-PW marker block (the minimal-mode gate — command artifacts
+ * absent per init-minimal-mode; a bare @AGENTS.md import never counts).
+ */
+export function wrapperHasMarkers(
+  adapter: EditorAdapter,
+  projectRoot: string,
+): boolean {
+  const dest = wrapperRulesFile(adapter, projectRoot);
+  if (!dest) return false;
+  return existsSync(dest) && readFileSync(dest, "utf-8").includes(OPENSPEC_START);
+}
+
+/**
+ * Install a thin wrapper file that imports AGENTS.md. One implementation
+ * for every wrapper-carrying editor (claude, codebuddy) — the wrapper
+ * content and territory semantics are identical.
  *
  * Uses the same OPENSPEC-PW:START/END markers as the full standards block so
  * `cleanProjectRules` can remove it uniformly. The CodeGraph-first block is
- * written directly into CLAUDE.md (before the @AGENTS.md import) so Claude
- * Code picks it up without depending on the import.
+ * written directly into the wrapper (before the @AGENTS.md import) so the
+ * editor picks it up without depending on the import.
  *
- * Also handles migration: if CLAUDE.md has an existing legacy OPENSPEC:START block
- * (old format that wrote standards directly to CLAUDE.md), calling
+ * Also handles migration: if the wrapper file has an existing legacy
+ * OPENSPEC:START block (old format that wrote standards directly), calling
  * `installOpenSpecBlock` replaces the content with the CodeGraph block +
  * `@AGENTS.md` import.
  */
-export function installClaudeWrapper(projectRoot: string): void {
-  const dest = join(projectRoot, "CLAUDE.md");
+export function installThinWrapper(adapter: EditorAdapter, projectRoot: string): void {
+  const dest = adapter.projectRulesPath(projectRoot);
+  const fileLabel = basename(dest);
 
-  // CLAUDE.md symlinked (typically → AGENTS.md, the officially documented
-  // reuse pattern): AGENTS.md itself is what Claude Code reads, and
+  // Wrapper symlinked (typically → AGENTS.md, the officially documented
+  // reuse pattern): AGENTS.md itself is what the editor reads, and
   // installProjectRules already keeps the full standards in it. Writing a
   // wrapper here would overwrite them through the symlink (and the wrapper's
   // @AGENTS.md import would self-reference). Skip instead.
@@ -206,7 +238,7 @@ export function installClaudeWrapper(projectRoot: string): void {
     if (lstatSync(dest).isSymbolicLink()) {
       console.log(
         chalk.gray(
-          "  - CLAUDE.md is a symlink to AGENTS.md — standards live there, no wrapper needed",
+          `  - ${fileLabel} is a symlink to AGENTS.md — standards live there, no wrapper needed`,
         ),
       );
       return;
@@ -223,12 +255,12 @@ export function installClaudeWrapper(projectRoot: string): void {
     if (!hasMarkers && /^@AGENTS\.md\r?$/m.test(existing)) {
       console.log(
         chalk.yellow(
-          "  ⚠ CLAUDE.md 是裸 @AGENTS.md 导入（无 OPENSPEC 标记），CodeGraph 优先约束未写入。如需启用：删除该行后重跑 openspec-pw update。",
+          `  ⚠ ${fileLabel} 是裸 @AGENTS.md 导入（无 OPENSPEC 标记），CodeGraph 优先约束未写入。如需启用：删除该行后重跑 openspec-pw update。`,
         ),
       );
       return;
     }
-    if (hasMarkers && blockMatchesExpected(projectRoot, claudeAdapter, claudeWrapperStandardsContent())) {
+    if (hasMarkers && blockMatchesExpected(projectRoot, adapter, claudeWrapperStandardsContent())) {
       return;
     }
   }
@@ -238,8 +270,23 @@ export function installClaudeWrapper(projectRoot: string): void {
   installOpenSpecBlock(
     projectRoot,
     claudeWrapperStandardsContent(),
-    claudeAdapter,
+    adapter,
   );
+}
+
+/**
+ * Install a thin CLAUDE.md that imports AGENTS.md.
+ */
+export function installClaudeWrapper(projectRoot: string): void {
+  installThinWrapper(claudeAdapter, projectRoot);
+}
+
+/**
+ * Install a thin CODEBUDDY.md that imports AGENTS.md (CodeBuddy prefers
+ * CODEBUDDY.md over AGENTS.md when both exist — official memory rules).
+ */
+export function installCodebuddyWrapper(projectRoot: string): void {
+  installThinWrapper(codebuddyAdapter, projectRoot);
 }
 
 /**
@@ -266,6 +313,12 @@ export function installProjectRules(
     installClaudeWrapper(projectRoot);
   }
 
+  // Thin CODEBUDDY.md with @AGENTS.md import if CodeBuddy is in use
+  // (CodeBuddy prefers CODEBUDDY.md over AGENTS.md when both exist).
+  if (detected.some((a) => a.id === "codebuddy")) {
+    installThinWrapper(codebuddyAdapter, projectRoot);
+  }
+
   // Register AGENTS.md in opencode.json for OpenCode
   if (detected.some((a) => a.id === "opencode") && opencodeAdapter.registerInstructions) {
     const existing = readOpenCodeInstructions(projectRoot);
@@ -274,14 +327,15 @@ export function installProjectRules(
   }
 }
 
-/** Remove all OpenSpec marker blocks from AGENTS.md (always) and CLAUDE.md (for claude adapter). */
+/** Remove all OpenSpec marker blocks from AGENTS.md (always) and the adapter's wrapper file (claude/codebuddy). */
 export function cleanProjectRules(adapter: EditorAdapter, projectRoot: string): void {
   // AGENTS.md always has the employee standards (SSOT)
   removeMarkersFromFile(join(projectRoot, "AGENTS.md"), "AGENTS.md");
 
-  // CLAUDE.md may have the wrapper import if Claude is detected
-  if (adapter.id === "claude") {
-    removeMarkersFromFile(adapter.projectRulesPath(projectRoot), basename(adapter.projectRulesPath(projectRoot)));
+  // Wrapper files (CLAUDE.md / CODEBUDDY.md) may carry the wrapper import
+  const wrapper = wrapperRulesFile(adapter, projectRoot);
+  if (wrapper) {
+    removeMarkersFromFile(wrapper, basename(wrapper));
   }
 }
 
@@ -393,6 +447,7 @@ export function migrateLegacyMarkers(
   projectRoot: string,
   hasPwArtifacts: boolean,
   claudeAuthorized: boolean,
+  codebuddyAuthorized = false,
 ): boolean {
   if (!hasPwArtifacts) return false;
   let migrated = false;
@@ -412,18 +467,22 @@ export function migrateLegacyMarkers(
     }
   }
 
-  if (claudeAuthorized) {
-    const claudePath = join(projectRoot, "CLAUDE.md");
+  for (const [authorized, adapter] of [
+    [claudeAuthorized, claudeAdapter],
+    [codebuddyAuthorized, codebuddyAdapter],
+  ] as const) {
+    if (!authorized) continue;
+    const wrapperPath = adapter.projectRulesPath(projectRoot);
     // Symlinked wrapper (→ AGENTS.md): AGENTS.md carries the migration; see
     // syncEmployeeStandards for why rewriting through the symlink is unsafe.
-    if (existsSync(claudePath) && !lstatSync(claudePath).isSymbolicLink()) {
-      const content = readFileSync(claudePath, "utf-8");
+    if (existsSync(wrapperPath) && !lstatSync(wrapperPath).isSymbolicLink()) {
+      const content = readFileSync(wrapperPath, "utf-8");
       const next = migrateLegacyMarkersInContent(content, LEGACY_WRAPPER_SIGNATURES);
       if (next !== null) {
-        writeFileSync(claudePath, next);
+        writeFileSync(wrapperPath, next);
         console.log(
           chalk.green(
-            "  ✓ CLAUDE.md: migrated markers to OPENSPEC-PW (immune to openspec legacy cleanup)",
+            `  ✓ ${basename(wrapperPath)}: migrated markers to OPENSPEC-PW (immune to openspec legacy cleanup)`,
           ),
         );
         migrated = true;
@@ -441,24 +500,19 @@ export function migrateLegacyMarkers(
  * Extends the "standards block removed" authorization to minimal-mode
  * projects (standards only, no command artifacts): a surviving marker
  * block proves the project is ours (design D5 / init-minimal-mode).
+ * Enumerates AGENTS.md plus every registered editor's wrapper file.
  */
 export function hasRuleFileMarkers(projectRoot: string): boolean {
-  for (const rel of ["AGENTS.md", "CLAUDE.md"]) {
-    const path = join(projectRoot, rel);
+  const files = new Set<string>([join(projectRoot, "AGENTS.md")]);
+  for (const adapter of getAllAdapters()) {
+    const wrapper = wrapperRulesFile(adapter, projectRoot);
+    if (wrapper) files.add(wrapper);
+  }
+  for (const path of files) {
     if (!existsSync(path)) continue;
     const content = readFileSync(path, "utf-8");
     if (content.includes(OPENSPEC_START)) return true;
     if (hasLegacyTerritoryStart(content) && content.includes(LEGACY_MAIN_SIGNATURE)) return true;
   }
   return false;
-}
-
-/**
- * CLAUDE.md wrapper territory: true when the file carries our wrapper
- * marker block — the minimal-mode claude gate (command artifacts absent
- * per init-minimal-mode; a bare @AGENTS.md import never counts).
- */
-export function claudeWrapperHasMarkers(projectRoot: string): boolean {
-  const path = join(projectRoot, "CLAUDE.md");
-  return existsSync(path) && readFileSync(path, "utf-8").includes(OPENSPEC_START);
 }

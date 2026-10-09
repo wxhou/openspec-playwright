@@ -1,7 +1,7 @@
 import { existsSync, lstatSync, readdirSync, readFileSync } from "fs";
 import { homedir } from "os";
 import { createRequire } from "node:module";
-import { join } from "path";
+import { join, basename } from "path";
 import { execFileSync } from "child_process";
 import chalk from "chalk";
 import {
@@ -9,13 +9,17 @@ import {
   hasCommandArtifacts,
   slashCommandForAdapter,
   claudeAdapter,
+  codebuddyAdapter,
   claudeWrapperStandardsContent,
   enumerateVendoredAgents,
   installedAgentsSnapshotDir,
 } from "../commands/editors.js";
 import { detectAppServer, isTestRunnerMcpInstalled, needsShell, detectCodeGraphStatus } from "../shared/index.js";
 import { bundledStandardsPath, compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
-import { hasRuleFileMarkers, claudeWrapperHasMarkers } from "./editors/project-rules.js";
+import { hasRuleFileMarkers, wrapperRulesFile, wrapperHasMarkers } from "./editors/project-rules.js";
+
+/** Editors whose project rules file is a thin wrapper (not AGENTS.md). */
+const WRAPPER_EDITORS = [claudeAdapter, codebuddyAdapter];
 
 export interface DoctorOptions {
   json?: boolean;
@@ -528,34 +532,39 @@ export async function doctor(options: DoctorOptions = {}) {
       });
     }
 
-    // CLAUDE.md wrapper is checked when the claude editor is authorized
-    // (command artifacts) OR the wrapper marker block itself is present
-    // (minimal-mode claude projects have standards but no command files —
-    // init-minimal-mode) — not on detection: a global ~/.claude dir or a
-    // project .claude/ without openspec-pw artifacts never implies a
+    // Wrapper files (CLAUDE.md / CODEBUDDY.md) are checked when their editor
+    // is authorized (command artifacts) OR the wrapper marker block itself
+    // is present (minimal-mode projects have standards but no command files
+    // — init-minimal-mode) — not on detection: a global config dir or a
+    // project marker dir without openspec-pw artifacts never implies a
     // wrapper. A bare `@AGENTS.md` import without markers is left
     // untouched — not stale.
-    if (hasCommandArtifacts(projectRoot, claudeAdapter) || claudeWrapperHasMarkers(projectRoot)) {
-      const claudePath = join(projectRoot, "CLAUDE.md");
-      // A symlinked CLAUDE.md (→ AGENTS.md, the official reuse pattern) is
+    for (const wrapperAdapter of WRAPPER_EDITORS) {
+      const wrapperFile = wrapperRulesFile(wrapperAdapter, projectRoot);
+      if (!wrapperFile) continue;
+      const wrapperLabel = basename(wrapperFile);
+      const authorized =
+        hasCommandArtifacts(projectRoot, wrapperAdapter) || wrapperHasMarkers(wrapperAdapter, projectRoot);
+      if (!authorized) continue;
+      // A symlinked wrapper (→ AGENTS.md, the official reuse pattern) is
       // covered by the standards-agents check above — comparing it against
       // the wrapper expectation would false-positive.
-      if (existsSync(claudePath) && lstatSync(claudePath).isSymbolicLink()) {
+      if (existsSync(wrapperFile) && lstatSync(wrapperFile).isSymbolicLink()) {
         checks.push({
           category: "Sync",
-          name: "standards-claude",
+          name: `standards-${wrapperAdapter.id}`,
           ok: true,
-          message: "CLAUDE.md symlinks AGENTS.md — covered by standards-agents",
+          message: `${wrapperLabel} symlinks AGENTS.md — covered by standards-agents`,
         });
-      } else if (!existsSync(claudePath)) {
+      } else if (!existsSync(wrapperFile)) {
         checks.push({
           category: "Sync",
-          name: "standards-claude",
+          name: `standards-${wrapperAdapter.id}`,
           ok: false,
-          message: "CLAUDE.md missing — run openspec-pw update",
+          message: `${wrapperLabel} missing — run openspec-pw update`,
         });
       } else {
-        const fileContent = readFileSync(claudePath, "utf-8");
+        const fileContent = readFileSync(wrapperFile, "utf-8");
         let stale: boolean;
         if (!fileContent.includes(OPENSPEC_START)) {
           stale = !/^@AGENTS\.md\r?$/m.test(fileContent);
@@ -567,7 +576,7 @@ export async function doctor(options: DoctorOptions = {}) {
         }
         checks.push({
           category: "Sync",
-          name: "standards-claude",
+          name: `standards-${wrapperAdapter.id}`,
           ok: !stale,
           message: stale
             ? "OPENSPEC block differs from bundled version（手动修改或旧版模板）— run openspec-pw update"

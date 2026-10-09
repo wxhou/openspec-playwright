@@ -572,10 +572,11 @@ describe("update.ts: minimal-mode first-class sync", () => {
     expect(hasRuleFileMarkers(tmpRoot)).toBe(true);
   });
 
-  it("claudeWrapperHasMarkers: bare @AGENTS.md import never counts", async () => {
-    const { claudeWrapperHasMarkers } = await import("../../src/commands/editors/project-rules.js");
+  it("wrapperHasMarkers: bare @AGENTS.md import never counts", async () => {
+    const { wrapperHasMarkers } = await import("../../src/commands/editors/project-rules.js");
+    const { claudeAdapter } = await import("../../src/commands/editors.js");
     writeFileSync(join(tmpRoot, "CLAUDE.md"), "@AGENTS.md\n");
-    expect(claudeWrapperHasMarkers(tmpRoot)).toBe(false);
+    expect(wrapperHasMarkers(claudeAdapter, tmpRoot)).toBe(false);
   });
 
   it("hasRuleFileMarkers: a bare signature mention in user prose is not territory", async () => {
@@ -593,17 +594,18 @@ describe("update.ts: minimal-mode first-class sync", () => {
 
   it("syncEmployeeStandards: refreshes the wrapper of a standards-only project", async () => {
     const { syncEmployeeStandards } = await import("../../src/commands/update.js");
-    const { claudeWrapperHasMarkers } = await import("../../src/commands/editors/project-rules.js");
+    const { wrapperHasMarkers } = await import("../../src/commands/editors/project-rules.js");
+    const { claudeAdapter } = await import("../../src/commands/editors.js");
     const { installClaudeWrapper, claudeWrapperStandardsContent } = await import("../../src/commands/editors.js");
     writeFileSync(join(tmpRoot, "AGENTS.md"), "# project agents");
     installClaudeWrapper(tmpRoot);
-    expect(claudeWrapperHasMarkers(tmpRoot)).toBe(true);
+    expect(wrapperHasMarkers(claudeAdapter, tmpRoot)).toBe(true);
     // Simulate version drift: overwrite the marker block with outdated text.
     const claudePath = join(tmpRoot, "CLAUDE.md");
     writeFileSync(claudePath, "preamble\n<!-- OPENSPEC-PW:START -->\noutdated\n<!-- OPENSPEC-PW:END -->\n");
 
     // claudeAuthorized is computed by the caller as
-    // hasCommandArtifacts(claude) || claudeWrapperHasMarkers(root) — this
+    // hasCommandArtifacts(claude) || wrapperHasMarkers(claude, root) — this
     // fixture has no command artifacts, so the wrapper marker gates the sync.
     syncEmployeeStandards(bundleDir, tmpRoot, true, true);
     const refreshed = readFileSync(claudePath, "utf-8");
@@ -673,11 +675,12 @@ describe("update.ts: minimal-mode block-removed alarm", () => {
 
   it("prints the block-removed alarm for a minimal-mode project (no command artifacts)", async () => {
     const { syncEmployeeStandards } = await import("../../src/commands/update.js");
-    const { claudeWrapperHasMarkers, hasRuleFileMarkers } = await import(
+    const { wrapperHasMarkers, hasRuleFileMarkers } = await import(
       "../../src/commands/editors/project-rules.js"
     );
+    const { claudeAdapter } = await import("../../src/commands/editors.js");
     expect(hasRuleFileMarkers(tmpRoot)).toBe(true);
-    // Caller computes: claudeAuthorized = ... || claudeWrapperHasMarkers(root),
+    // Caller computes: claudeAuthorized = ... || wrapperHasMarkers(claude, root),
     // hasPwArtifacts = ... || hasRuleFileMarkers(root) — both true here with
     // zero command artifacts.
     const logs: string[] = [];
@@ -688,7 +691,7 @@ describe("update.ts: minimal-mode block-removed alarm", () => {
       syncEmployeeStandards(
         bundleDir,
         tmpRoot,
-        claudeWrapperHasMarkers(tmpRoot),
+        wrapperHasMarkers(claudeAdapter, tmpRoot),
         true,
       );
     } finally {

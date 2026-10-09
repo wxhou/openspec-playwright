@@ -21,7 +21,7 @@ program
     .option("-c, --change <name>", "default change name", "default")
     .option("--no-mcp", "skip Playwright MCP configuration")
     .option("--ci", "generate GitHub Actions CI workflow")
-    .option("--tools <tools>", 'Select editors to configure non-interactively: "all", "none", or a comma-separated list (claude,opencode,cline,cursor,pi,omp; oh-my-pi aliases omp)')
+    .option("--tools <tools>", 'Select editors to configure non-interactively: "all", "none", or a comma-separated list (claude,opencode,cline,cursor,pi,omp,codebuddy; oh-my-pi aliases omp)')
     .option("--agents", "install the official Playwright planner agent into .claude/agents/ (claude projects only)")
     .option("--frontend", "force frontend mode (full Playwright scaffold) even when no frontend signal is detected")
     .option("--no-frontend", "force minimal mode (tests dir + employee standards only) even when a frontend signal is detected")

@@ -298,6 +298,7 @@ describe("init tool selection", () => {
     cursor: ".cursor/commands/opsx-e2e.md",
     pi: ".pi/prompts/opsx-e2e.md",
     omp: ".omp/commands/opsx-e2e.md",
+    codebuddy: ".codebuddy/commands/opsx/e2e.md",
   };
 
   beforeAll(() => {
@@ -361,6 +362,58 @@ describe("init tool selection", () => {
     await init({ tools: "oh-my-pi", mcp: false });
     expect(existsSync(join(tmpRoot, COMMAND_FILES.omp))).toBe(true);
     expect(existsSync(join(tmpRoot, COMMAND_FILES.claude))).toBe(false);
+  });
+
+  it("--tools codebuddy installs the CodeBuddy command artifact", async () => {
+    const { init } = await import("../../src/commands/init.js");
+    await init({ tools: "codebuddy", mcp: false });
+    expect(existsSync(join(tmpRoot, COMMAND_FILES.codebuddy))).toBe(true);
+    // Official frontmatter field set: description + argument-hint, no `name`.
+    const cmd = readFileSync(join(tmpRoot, COMMAND_FILES.codebuddy), "utf-8");
+    expect(cmd).toContain('argument-hint: "<change-name|all>"');
+    expect(cmd).not.toMatch(/^name:/m);
+    // Colon naming — the body keeps /opsx: references (subdirectory naming).
+    expect(cmd).toContain("/opsx:");
+    // CODEBUDDY.md wrapper keeps the standards reachable (CodeBuddy prefers
+    // it over AGENTS.md when both exist).
+    expect(existsSync(join(tmpRoot, "CODEBUDDY.md"))).toBe(true);
+    expect(existsSync(join(tmpRoot, COMMAND_FILES.claude))).toBe(false);
+  });
+
+  it("non-TTY fallback configures codebuddy from the .codebuddy/ marker directory", async () => {
+    const { init } = await import("../../src/commands/init.js");
+    mkdirSync(join(tmpRoot, ".codebuddy"), { recursive: true });
+    await init({ mcp: false }, { isTTY: false, homeDir: blankHome });
+    expect(existsSync(join(tmpRoot, COMMAND_FILES.codebuddy))).toBe(true);
+    expect(existsSync(join(tmpRoot, COMMAND_FILES.claude))).toBe(false);
+  });
+
+  it("manifest tier: official-openspec-only .codebuddy directory does not influence pre-select", async () => {
+    const { init } = await import("../../src/commands/init.js");
+    // Establish openspec-pw state (claude configured).
+    await init({ tools: "claude", mcp: false });
+    // .codebuddy/ kept alive only by the official openspec CLI's own files —
+    // no openspec-pw products for codebuddy.
+    mkdirSync(join(tmpRoot, ".codebuddy", "skills", "openspec-explore"), { recursive: true });
+    writeFileSync(
+      join(tmpRoot, ".codebuddy", "skills", "openspec-explore", "SKILL.md"),
+      "---\nname: openspec-explore\ngeneratedBy: 1.14.1\n---\nforeign",
+    );
+    const seen: Array<ReadonlySet<string>> = [];
+    await init(
+      { mcp: false },
+      {
+        isTTY: true,
+        prompt: async (_allEditors, detected) => {
+          seen.push(detected);
+          return ["claude"];
+        },
+        confirm: async () => false,
+      },
+    );
+    // Manifest tier reads openspec-pw products: claude pre-checked, codebuddy not.
+    expect(seen[0].has("claude")).toBe(true);
+    expect(seen[0].has("codebuddy")).toBe(false);
   });
 
   it("throws on unknown ids without writing any files", async () => {
@@ -435,7 +488,7 @@ describe("init interactive prompt selection", () => {
       detected: ReadonlySet<string>,
     ) => {
       // All editors are offered — never fewer than the full registry.
-      expect(allEditors.length).toBe(6);
+      expect(allEditors.length).toBe(7);
       // Detected Cursor is pre-selected.
       // Detected Cursor is pre-selected.
       expect(detected.has("cursor")).toBe(true);
@@ -500,7 +553,7 @@ describe("init interactive prompt with no detected editors", () => {
       detected: ReadonlySet<string>,
     ) => {
       // All editors offered despite zero detections…
-      expect(allEditors.length).toBe(6);
+      expect(allEditors.length).toBe(7);
       // …with nothing pre-selected.
       expect(detected.size).toBe(0);
       detected.forEach((id) => seenDetected.add(id));

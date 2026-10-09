@@ -1,15 +1,20 @@
 import { execFile, execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
-import { join } from "path";
+import { join, basename } from "path";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync, statSync, lstatSync, } from "fs";
 import { tmpdir } from "os";
 import { promisify } from "util";
 import chalk from "chalk";
 import * as tar from "tar";
-import { buildCommandMeta, getAllAdapters, hasCommandArtifacts, installCommand, installOpenSpecBlock, installClaudeWrapper, migrateLegacyMarkers, claudeAdapter, claudeWrapperStandardsContent, opencodeAdapter, syncVendoredAgents, normalizeEol, } from "./editors.js";
+import { buildCommandMeta, getAllAdapters, hasCommandArtifacts, installCommand, installOpenSpecBlock, installClaudeWrapper, installCodebuddyWrapper, migrateLegacyMarkers, claudeAdapter, codebuddyAdapter, claudeWrapperStandardsContent, opencodeAdapter, syncVendoredAgents, normalizeEol, } from "./editors.js";
 import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, hasFrontendSignal, needsShell, detectCodeGraphStatus, codegraphHintLines, findUncoveredManagedPaths, managedBlockAdvisoryHint, ensureGitignoreEntries, } from "../shared/index.js";
 import { compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
-import { claudeWrapperHasMarkers, hasRuleFileMarkers } from "./editors/project-rules.js";
+import { wrapperHasMarkers, hasRuleFileMarkers } from "./editors/project-rules.js";
+/** Editors whose project rules file is a thin wrapper (not AGENTS.md), with their installers. */
+const WRAPPER_EDITORS = [
+    [claudeAdapter, installClaudeWrapper],
+    [codebuddyAdapter, installCodebuddyWrapper],
+];
 const execFileAsync = promisify(execFile);
 export async function update(options) {
     console.log(chalk.blue("\n🔄 Updating OpenSpec + Playwright E2E\n"));
@@ -171,10 +176,10 @@ export async function update(options) {
             syncVendoredAgents(join(tmpDir, "templates", "agents"), projectRoot, hasCommandArtifacts(projectRoot, claudeAdapter));
             // Standards sync (drift-aware). Under --no-skill this phase still runs
             // via the else branch below — the flag only scopes command/template
-            // installation, not standards. CLAUDE.md wrapper is gated on the
-            // claude editor's command-artifact authorization OR the wrapper
-            // marker block (minimal-mode projects — init-minimal-mode).
-            syncEmployeeStandards(tmpDir, projectRoot, hasCommandArtifacts(projectRoot, claudeAdapter) || claudeWrapperHasMarkers(projectRoot), authorized.length > 0 || hasRuleFileMarkers(projectRoot));
+            // installation, not standards. Wrapper files (CLAUDE.md / CODEBUDDY.md)
+            // are gated on the editor's command-artifact authorization OR the
+            // wrapper marker block (minimal-mode projects — init-minimal-mode).
+            syncEmployeeStandards(tmpDir, projectRoot, hasCommandArtifacts(projectRoot, claudeAdapter) || wrapperHasMarkers(claudeAdapter, projectRoot), authorized.length > 0 || hasRuleFileMarkers(projectRoot), hasCommandArtifacts(projectRoot, codebuddyAdapter) || wrapperHasMarkers(codebuddyAdapter, projectRoot));
             rmSync(tmpDir, { recursive: true, force: true });
             console.log(chalk.green("  ✓ Commands & templates updated to latest"));
         }
@@ -205,7 +210,7 @@ export async function update(options) {
         console.log(chalk.blue("\n─── Standards Sync ───"));
         try {
             const tmpDir = await fetchLatestBundle();
-            syncEmployeeStandards(tmpDir, projectRoot, hasCommandArtifacts(projectRoot, claudeAdapter) || claudeWrapperHasMarkers(projectRoot), getAllAdapters().some((a) => hasCommandArtifacts(projectRoot, a)) || hasRuleFileMarkers(projectRoot));
+            syncEmployeeStandards(tmpDir, projectRoot, hasCommandArtifacts(projectRoot, claudeAdapter) || wrapperHasMarkers(claudeAdapter, projectRoot), getAllAdapters().some((a) => hasCommandArtifacts(projectRoot, a)) || hasRuleFileMarkers(projectRoot), hasCommandArtifacts(projectRoot, codebuddyAdapter) || wrapperHasMarkers(codebuddyAdapter, projectRoot));
             rmSync(tmpDir, { recursive: true, force: true });
         }
         catch (err) {
@@ -356,15 +361,16 @@ async function fetchLatestBundle() {
  * under `--no-skill` — standards sync is not a skill install and must not be
  * silently skipped by that flag.
  */
-export function syncEmployeeStandards(tmpDir, projectRoot, claudeAuthorized, hasPwArtifacts) {
-    // Update employee-grade standards in project rules files (AGENTS.md + CLAUDE.md).
-    // Drift-aware: only rewrite a rules file when its OPENSPEC block differs
-    // from the bundled template; matching content is left untouched (no mtime
-    // change). 标记即领土, judged per artifact: AGENTS.md is only maintained
-    // when it already carries the tool-owned OPENSPEC block — a missing file
-    // or one without markers is NOT created/appended here (run
-    // `openspec-pw init` to install). The CLAUDE.md wrapper is gated on the
-    // claude editor's command-artifact authorization, not its own markers.
+export function syncEmployeeStandards(tmpDir, projectRoot, claudeAuthorized, hasPwArtifacts, codebuddyAuthorized = false) {
+    // Update employee-grade standards in project rules files (AGENTS.md +
+    // wrapper files CLAUDE.md / CODEBUDDY.md). Drift-aware: only rewrite a
+    // rules file when its OPENSPEC block differs from the bundled template;
+    // matching content is left untouched (no mtime change). 标记即领土,
+    // judged per artifact: AGENTS.md is only maintained when it already
+    // carries the tool-owned OPENSPEC block — a missing file or one without
+    // markers is NOT created/appended here (run `openspec-pw init` to
+    // install). Wrapper files are gated on their editor's command-artifact
+    // authorization, not their own markers.
     const standardsSrc = join(tmpDir, "employee-standards.md");
     if (!existsSync(standardsSrc))
         return;
@@ -373,7 +379,7 @@ export function syncEmployeeStandards(tmpDir, projectRoot, claudeAuthorized, has
     // below reads the migrated file. (Ordering is load-bearing: a legacy
     // wrapper's inner @AGENTS.md line would otherwise false-match the
     // bare-import check before migration fixes it.)
-    migrateLegacyMarkers(projectRoot, hasPwArtifacts, claudeAuthorized);
+    migrateLegacyMarkers(projectRoot, hasPwArtifacts, claudeAuthorized, codebuddyAuthorized);
     const agentsPath = join(projectRoot, "AGENTS.md");
     let agentsStale = false;
     let agentsInTerritory = false;
@@ -401,42 +407,47 @@ export function syncEmployeeStandards(tmpDir, projectRoot, claudeAuthorized, has
             agentsStale = compareBlock(fileContent, standards).stale;
         }
     }
-    // CLAUDE.md wrapper is only maintained when the claude editor is
-    // authorized. A bare `@AGENTS.md` import without markers is left
+    // Wrapper files (CLAUDE.md / CODEBUDDY.md) are only maintained when their
+    // editor is authorized. A bare `@AGENTS.md` import without markers is left
     // untouched (added by the openspec CLI or the user) — not stale.
-    let claudeStale = false;
-    if (claudeAuthorized) {
-        const claudePath = join(projectRoot, "CLAUDE.md");
-        // A symlinked CLAUDE.md (→ AGENTS.md, the official reuse pattern)
-        // is what Claude Code reads; the AGENTS.md check above already
+    const staleWrapperInstallers = [];
+    for (const [adapter, installer] of WRAPPER_EDITORS) {
+        const authorized = adapter.id === "claude" ? claudeAuthorized : codebuddyAuthorized;
+        if (!authorized)
+            continue;
+        const wrapperPath = adapter.projectRulesPath(projectRoot);
+        const wrapperLabel = basename(wrapperPath);
+        // A symlinked wrapper (→ AGENTS.md, the official reuse pattern)
+        // is what the editor reads; the AGENTS.md check above already
         // tracks its content drift, and rewriting a wrapper would overwrite
         // the standards through the symlink. Not stale.
-        if (existsSync(claudePath) && lstatSync(claudePath).isSymbolicLink()) {
-            console.log(chalk.gray("  - CLAUDE.md is a symlink to AGENTS.md — drift tracked via AGENTS.md"));
+        if (existsSync(wrapperPath) && lstatSync(wrapperPath).isSymbolicLink()) {
+            console.log(chalk.gray(`  - ${wrapperLabel} is a symlink to AGENTS.md — drift tracked via AGENTS.md`));
+            continue;
         }
-        else {
-            claudeStale = !existsSync(claudePath);
-            if (!claudeStale) {
-                const fileContent = readFileSync(claudePath, "utf-8");
-                if (!fileContent.includes(OPENSPEC_START)) {
-                    claudeStale = !/^@AGENTS\.md\r?$/m.test(fileContent);
-                    if (!claudeStale) {
-                        console.log(chalk.yellow("  ⚠ CLAUDE.md 是裸 @AGENTS.md 导入（无 OPENSPEC 标记），CodeGraph 优先约束未写入。如需启用：删除该行后重跑 openspec-pw update。"));
-                    }
-                }
-                else {
-                    claudeStale = compareBlock(fileContent, claudeWrapperStandardsContent()).stale;
+        let wrapperStale = !existsSync(wrapperPath);
+        if (!wrapperStale) {
+            const fileContent = readFileSync(wrapperPath, "utf-8");
+            if (!fileContent.includes(OPENSPEC_START)) {
+                wrapperStale = !/^@AGENTS\.md\r?$/m.test(fileContent);
+                if (!wrapperStale) {
+                    console.log(chalk.yellow(`  ⚠ ${wrapperLabel} 是裸 @AGENTS.md 导入（无 OPENSPEC 标记），CodeGraph 优先约束未写入。如需启用：删除该行后重跑 openspec-pw update。`));
                 }
             }
+            else {
+                wrapperStale = compareBlock(fileContent, claudeWrapperStandardsContent()).stale;
+            }
         }
+        if (wrapperStale)
+            staleWrapperInstallers.push(installer);
     }
-    if (agentsStale || claudeStale) {
+    if (agentsStale || staleWrapperInstallers.length > 0) {
         console.log(chalk.gray("  检测到非模板内容将被覆盖 — OPENSPEC block differs from bundled version"));
         if (agentsStale) {
             installOpenSpecBlock(projectRoot, standards, opencodeAdapter);
         }
-        if (claudeStale) {
-            installClaudeWrapper(projectRoot);
+        for (const installer of staleWrapperInstallers) {
+            installer(projectRoot);
         }
     }
     else if (agentsInTerritory) {

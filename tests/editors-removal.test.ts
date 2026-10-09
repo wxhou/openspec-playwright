@@ -22,7 +22,7 @@ import {
   removeAdapterCommandArtifacts,
   removeAdapterMcp,
   removeClaudeLegacySkill,
-  removeClaudeWrapper,
+  removeWrapper,
   OPENSPEC_PW_MCP_SERVERS,
 } from "../src/commands/editors/removal.js";
 
@@ -110,12 +110,12 @@ describe("enumerateAdapterArtifacts", () => {
       dest,
       "x\n<!-- OPENSPEC-PW:START -->\n@AGENTS.md\n<!-- OPENSPEC-PW:END -->\n",
     );
-    expect(enumerateAdapterArtifacts(claudeAdapter, projectRoot).hasClaudeWrapper).toBe(true);
+    expect(enumerateAdapterArtifacts(claudeAdapter, projectRoot).hasWrapper).toBe(true);
 
     rmSync(dest);
     writeFileSync(join(projectRoot, "AGENTS.md"), "shared standards");
     symlinkSync(join(projectRoot, "AGENTS.md"), dest);
-    expect(enumerateAdapterArtifacts(claudeAdapter, projectRoot).hasClaudeWrapper).toBe(false);
+    expect(enumerateAdapterArtifacts(claudeAdapter, projectRoot).hasWrapper).toBe(false);
   });
 
   it("flags the claude legacy skill dir only for claude", () => {
@@ -188,14 +188,14 @@ describe("removeClaudeLegacySkill", () => {
   });
 });
 
-describe("removeClaudeWrapper", () => {
+describe("removeWrapper", () => {
   it("strips the wrapper block, keeps the rest of the file", () => {
     const dest = join(projectRoot, "CLAUDE.md");
     writeFileSync(
       dest,
       "# Title\n\n<!-- OPENSPEC-PW:START -->\nwrapper content\n<!-- OPENSPEC-PW:END -->\n",
     );
-    expect(removeClaudeWrapper(projectRoot)).toBe("CLAUDE.md");
+    expect(removeWrapper(claudeAdapter, projectRoot)).toBe("CLAUDE.md");
     const after = readFileSync(dest, "utf-8");
     expect(after).toContain("# Title");
     expect(after).not.toContain("wrapper content");
@@ -212,7 +212,7 @@ describe("removeClaudeWrapper", () => {
       if (String(msg).includes("symlink")) mentionedSymlink = true;
     };
     try {
-      expect(removeClaudeWrapper(projectRoot)).toBeNull();
+      expect(removeWrapper(claudeAdapter, projectRoot)).toBeNull();
     } finally {
       console.log = logSpy;
     }
@@ -221,7 +221,7 @@ describe("removeClaudeWrapper", () => {
   });
 
   it("returns null when CLAUDE.md does not exist", () => {
-    expect(removeClaudeWrapper(projectRoot)).toBeNull();
+    expect(removeWrapper(claudeAdapter, projectRoot)).toBeNull();
   });
 });
 

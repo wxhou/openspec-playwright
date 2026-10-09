@@ -759,4 +759,29 @@ describe("doctor authorization tiers", () => {
     expect(wrapper?.ok).toBe(false);
     expect(wrapper?.message).toContain("run openspec-pw update");
   });
+
+  it("minimal-mode codebuddy project: wrapper drift is checked (standards-codebuddy)", async () => {
+    const drift = await import("../../src/shared/drift.js");
+    // compareBlock is consumed first by the standards-agents check, then by
+    // the wrapper check — only the wrapper call must read as stale. (claude's
+    // wrapper gate fails — no CLAUDE.md, no claude artifacts — so the first
+    // wrapper compareBlock call is codebuddy's.)
+    vi.mocked(drift.compareBlock)
+      .mockReturnValueOnce({ stale: false })
+      .mockReturnValueOnce({ stale: true });
+    existingPaths.add(join(fixtureRoot, "AGENTS.md").replace(/\\/g, "/"));
+    existingPaths.add(join(fixtureRoot, "CODEBUDDY.md").replace(/\\/g, "/"));
+    existingPaths.add(join(fixtureRoot, "openspec").replace(/\\/g, "/"));
+    readFileMock.mockImplementation((p: Parameters<typeof readFileSync>[0]) => {
+      const s = String(p);
+      if (s.endsWith("CODEBUDDY.md") || s.endsWith("AGENTS.md")) {
+        return "<!-- OPENSPEC-PW:START -->\ncontent\n<!-- OPENSPEC-PW:END -->";
+      }
+      return "{}";
+    });
+    const checks = await doctorJsonChecks();
+    const wrapper = checks.find((c) => c.name === "standards-codebuddy");
+    expect(wrapper?.ok).toBe(false);
+    expect(wrapper?.message).toContain("run openspec-pw update");
+  });
 });

@@ -8,7 +8,7 @@ export interface CommandMeta {
 }
 /** Build the command metadata for the /opsx:e2e command. */
 export declare function buildCommandMeta(body: string): CommandMeta;
-export type EditorId = "claude" | "opencode" | "cline" | "cursor" | "pi" | "omp";
+export type EditorId = "claude" | "opencode" | "cline" | "cursor" | "pi" | "omp" | "codebuddy";
 export interface ExtraArtifact {
     relativePath: string;
     contents: string;

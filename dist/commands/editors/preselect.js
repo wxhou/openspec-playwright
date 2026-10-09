@@ -21,6 +21,7 @@ const INTENT_FILES = {
     claude: ["CLAUDE.md"],
     cursor: [".cursorrules"],
     opencode: ["opencode.json", "opencode.jsonc"],
+    codebuddy: ["CODEBUDDY.md"],
 };
 /** Editors whose root project-intent files exist in the project. */
 export function intentFileEditors(projectRoot) {

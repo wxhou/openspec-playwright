@@ -7,7 +7,7 @@ import {
   rmSync,
   rmdirSync,
 } from "fs";
-import { join } from "path";
+import { join, basename } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { readFile } from "fs/promises";
@@ -33,7 +33,7 @@ import {
   removeAdapterCommandArtifacts,
   removeOwnedVendoredAgents,
   removeClaudeLegacySkill,
-  removeClaudeWrapper,
+  removeWrapper,
   removeMarkersFromFile,
   normalizeEol,
 } from "./editors.js";
@@ -306,7 +306,7 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   if (selectedIds === null && editors.length === 0) {
     console.log(
       chalk.yellow(
-        "\n  ⚠ No supported editor detected in the project (need .claude/, .opencode/, .cline/, .cursor/, .pi/, or .omp/).",
+        "\n  ⚠ No supported editor detected in the project (need .claude/, .opencode/, .cline/, .cursor/, .pi/, .omp/, or .codebuddy/).",
       ),
     );
     console.log(
@@ -379,8 +379,8 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
         for (const server of inv.mcpServers) {
           console.log(chalk.gray(`    - ${adapter.label}: ${server} MCP entry`));
         }
-        if (inv.hasClaudeWrapper) {
-          console.log(chalk.gray(`    - ${adapter.label}: CLAUDE.md wrapper block`));
+        if (inv.hasWrapper) {
+          console.log(chalk.gray(`    - ${adapter.label}: ${basename(adapter.projectRulesPath(projectRoot))} wrapper block`));
         }
         // Consent-gated optional artifacts (vendored agents): only the
         // tool-owned files join the list — user-modified files are kept.
@@ -408,8 +408,8 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
           if (inv.legacySkillPath) {
             removeClaudeLegacySkill(projectRoot);
           }
-          if (inv.hasClaudeWrapper) {
-            removeClaudeWrapper(projectRoot);
+          if (inv.hasWrapper) {
+            removeWrapper(adapter, projectRoot);
           }
         }
         if (agentsHasBlock) {
@@ -641,6 +641,7 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
         projectRoot,
         editors.length > 0,
         editors.some((a) => a.id === "claude"),
+        editors.some((a) => a.id === "codebuddy"),
       );
       installProjectRules(projectRoot, standards, editors);
     }
@@ -738,7 +739,7 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     console.log(chalk.bold("How it works:"));
     console.log(
       chalk.gray(
-        "  /opsx:e2e (Claude), /opsx-e2e (OpenCode/Cline/Cursor/Pi/Oh My Pi) read your OpenSpec specs",
+        "  /opsx:e2e (Claude, CodeBuddy), /opsx-e2e (OpenCode/Cline/Cursor/Pi/Oh My Pi) read your OpenSpec specs",
       ),
     );
     console.log(

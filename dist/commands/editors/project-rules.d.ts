@@ -40,19 +40,42 @@ export declare function installOpenSpecBlock(projectRoot: string, standardsConte
  */
 export declare function claudeWrapperStandardsContent(): string;
 /**
- * Install a thin CLAUDE.md that imports AGENTS.md.
+ * The adapter's thin wrapper file (CLAUDE.md for claude, CODEBUDDY.md for
+ * codebuddy), or null when the adapter reads AGENTS.md natively — the
+ * wrapper-aware generalization of the claude-only pattern.
+ */
+export declare function wrapperRulesFile(adapter: EditorAdapter, projectRoot: string): string | null;
+/**
+ * Wrapper territory: true when the adapter's wrapper file carries our
+ * OPENSPEC-PW marker block (the minimal-mode gate — command artifacts
+ * absent per init-minimal-mode; a bare @AGENTS.md import never counts).
+ */
+export declare function wrapperHasMarkers(adapter: EditorAdapter, projectRoot: string): boolean;
+/**
+ * Install a thin wrapper file that imports AGENTS.md. One implementation
+ * for every wrapper-carrying editor (claude, codebuddy) — the wrapper
+ * content and territory semantics are identical.
  *
  * Uses the same OPENSPEC-PW:START/END markers as the full standards block so
  * `cleanProjectRules` can remove it uniformly. The CodeGraph-first block is
- * written directly into CLAUDE.md (before the @AGENTS.md import) so Claude
- * Code picks it up without depending on the import.
+ * written directly into the wrapper (before the @AGENTS.md import) so the
+ * editor picks it up without depending on the import.
  *
- * Also handles migration: if CLAUDE.md has an existing legacy OPENSPEC:START block
- * (old format that wrote standards directly to CLAUDE.md), calling
+ * Also handles migration: if the wrapper file has an existing legacy
+ * OPENSPEC:START block (old format that wrote standards directly), calling
  * `installOpenSpecBlock` replaces the content with the CodeGraph block +
  * `@AGENTS.md` import.
  */
+export declare function installThinWrapper(adapter: EditorAdapter, projectRoot: string): void;
+/**
+ * Install a thin CLAUDE.md that imports AGENTS.md.
+ */
 export declare function installClaudeWrapper(projectRoot: string): void;
+/**
+ * Install a thin CODEBUDDY.md that imports AGENTS.md (CodeBuddy prefers
+ * CODEBUDDY.md over AGENTS.md when both exist — official memory rules).
+ */
+export declare function installCodebuddyWrapper(projectRoot: string): void;
 /**
  * Route employee-grade standards into project rules files.
  *
@@ -63,7 +86,7 @@ export declare function installClaudeWrapper(projectRoot: string): void;
  * wrapper needed.
  */
 export declare function installProjectRules(projectRoot: string, standardsContent: string, detected: EditorAdapter[]): void;
-/** Remove all OpenSpec marker blocks from AGENTS.md (always) and CLAUDE.md (for claude adapter). */
+/** Remove all OpenSpec marker blocks from AGENTS.md (always) and the adapter's wrapper file (claude/codebuddy). */
 export declare function cleanProjectRules(adapter: EditorAdapter, projectRoot: string): void;
 /**
  * Remove openspec-pw marker blocks (both namespaces) from a single file,
@@ -94,7 +117,7 @@ export declare const LEGACY_MAIN_SIGNATURE = "Employee-Grade Standards";
  *   - signature: block content must match ours (see signatures above).
  * Returns true when any file was migrated.
  */
-export declare function migrateLegacyMarkers(projectRoot: string, hasPwArtifacts: boolean, claudeAuthorized: boolean): boolean;
+export declare function migrateLegacyMarkers(projectRoot: string, hasPwArtifacts: boolean, claudeAuthorized: boolean, codebuddyAuthorized?: boolean): boolean;
 /**
  * Any rules file carrying an openspec-pw marker block — the new
  * `OPENSPEC-PW:` namespace, or our main signature inside a legacy block
@@ -103,11 +126,6 @@ export declare function migrateLegacyMarkers(projectRoot: string, hasPwArtifacts
  * Extends the "standards block removed" authorization to minimal-mode
  * projects (standards only, no command artifacts): a surviving marker
  * block proves the project is ours (design D5 / init-minimal-mode).
+ * Enumerates AGENTS.md plus every registered editor's wrapper file.
  */
 export declare function hasRuleFileMarkers(projectRoot: string): boolean;
-/**
- * CLAUDE.md wrapper territory: true when the file carries our wrapper
- * marker block — the minimal-mode claude gate (command artifacts absent
- * per init-minimal-mode; a bare @AGENTS.md import never counts).
- */
-export declare function claudeWrapperHasMarkers(projectRoot: string): boolean;

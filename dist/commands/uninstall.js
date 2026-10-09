@@ -2,7 +2,7 @@ import { existsSync, readFileSync, rmSync, rmdirSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
-import { buildCommandMeta, cleanProjectRules, claudeAdapter, detectAdapters, listCommandArtifactPaths, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, cleanupEmptyDirs, hasRuleFileMarkers, normalizeEol, } from "./editors.js";
+import { buildCommandMeta, cleanProjectRules, claudeAdapter, codebuddyAdapter, detectAdapters, listCommandArtifactPaths, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, cleanupEmptyDirs, hasRuleFileMarkers, normalizeEol, } from "./editors.js";
 import { removePlaywrightMcp, removeTestRunnerMcp, detectCodeGraphStatus, removeManagedBlock, } from "../shared/index.js";
 export async function uninstall() {
     console.log(chalk.blue("\n🗑️  Uninstalling OpenSpec + Playwright E2E\n"));
@@ -121,13 +121,17 @@ export async function uninstall() {
         cleanProjectRules(adapter, projectRoot);
     }
     // Minimal-mode projects carry standards without command artifacts (and
-    // without a .claude/ marker dir for claude) — detection may miss claude
-    // entirely (or the project may mix a detected editor with a claude-only
-    // wrapper). Clean the rules files whenever claude is not among the
-    // detected editors but our territory is present; removeMarkersFromFile
-    // stays quiet-ish (gray info lines) when the files carry no markers.
+    // without a marker dir for the wrapper editors) — detection may miss
+    // claude/codebuddy entirely (or the project may mix a detected editor
+    // with a wrapper-only editor). Clean the rules files whenever a wrapper
+    // editor is not among the detected editors but our territory is present;
+    // removeMarkersFromFile stays quiet-ish (gray info lines) when the files
+    // carry no markers.
     if (!detected.some((a) => a.id === "claude") && hasRuleFileMarkers(projectRoot)) {
         cleanProjectRules(claudeAdapter, projectRoot);
+    }
+    if (!detected.some((a) => a.id === "codebuddy") && hasRuleFileMarkers(projectRoot)) {
+        cleanProjectRules(codebuddyAdapter, projectRoot);
     }
     // 5b. Remove the managed .gitignore block. Idempotent — no block is a
     // silent no-op. Credentials stay on disk: deleting user credentials is
