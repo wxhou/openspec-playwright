@@ -5,7 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.98] - 2026-10-09
+## [Unreleased]
+
+- **docs(standards): §1 注释纪律按弱模型证据升级（`comment-discipline-weak-models`）**. 起因：用户报告 MiniMax M3.1-Flash 遵本规范产注释不精简，五路深度调研（arXiv 对照实验、厂商出厂形态、MiniMax 官方与 issue #102 金丝雀、弱模型遵循性专项）后升级条款：①「默认不写」头条 +「一行以内」亮线（2609.09242：全注释禁令把 12/14 模型注释 token 压至 10% 以下、含全部小模型——干净形状禁令对弱模型有效）；②正误示例对（Bohr 2511.13972 重算：规则+示例是唯一把 34/40 归零的配置 1.52→0.17，示例单独反使 docstring +46%）；③黑名单补三具名（分步叙述、复述代码字面含义、复述签名/参数的 docstring——Anthropic-5 出厂三具名封闭尾 + Bohr 病理集扩充）；④交付前自检门「非 why 内容或命中名单 → 删」（SaliTrap 2607.28478 识别≠执行 + issue #102「推理记得、输出丢弃」）；⑤迭代钩子「迭代时同理」（Bohr 迭代轮是膨胀时刻；SlopCodeBench 长程侵蚀如实不豁免提示词层——归 CI 棘轮 backlog）。自检判据与生成规则同一对偶，刻意不用更宽的「删了会误解才留」（弱模型合理化通道）。升级措辞路线（EXTREMELY_IMPORTANT 包裹）已被 issue #102 证伪不取。五件套同步。顺手修 CHANGELOG 重复的 [0.3.98] 头（PR #42/#43 合并残留）。
+  - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（双语嵌入各 1 行）、`CHANGELOG.md`
+
 ## [0.3.98] - 2026-10-09
 - **fix(audit): 锚的 capability 段误用 change 名时给精确诊断，不再误报「retired capability」（`anchor-change-name-diagnosis`）**. 起因：生成端把提案/change 名写进 spec 锚第一段（模板只定义了第二段 requirement title，第一段无定义无示例）——audit 对这类锚跑 `readMainSpec` 必报「Anchored to retired capability」，把活测试标成退役候选，误导删除。修复分两层：①audit 层（机器契约升级为代码强制）——`auditAnchorsCore` 注入 change 目录枚举（active + archive），capability 不存在时先查是否 change 名，是则报「Anchor uses a change name, not a capability + 修锚指引」并明示 test 本身无需 review，不再是退役信号；②模板层（降发生率）——e2e-command Step 6 spec-anchor 规则补第一段定义 + 正误示例（`user-auth#✓` / `add-dark-mode#✗`）。审计语义不变：capability 真退役仍走原「retired capability」分支。
   - `src/commands/audit.ts`、`tests/commands/audit.anchors.test.ts`（+2 用例：active/archive change 名各一）、`templates/e2e-command.md`、`CHANGELOG.md`
