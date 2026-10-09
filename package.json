@@ -18,7 +18,8 @@
     "prepublishOnly": "npm run build",
     "release": "npm version patch && node scripts/bump-docs.js && npm run build && git add docs/index.html CHANGELOG.md && (git diff --cached --quiet || git commit -m \"docs: bump version badge to v$(node -p \"require('./package.json').version\")\") && git push && git push --tags",
     "deploy:docs": "npx -y wrangler@4.119.0 pages deploy docs --project-name openspec-playwright",
-    "fonts:subset": "python3 scripts/subset-fonts.py"
+    "fonts:subset": "python3 scripts/subset-fonts.py",
+    "standards:sync": "node scripts/sync-standards.mjs"
   },
   "dependencies": {
     "@inquirer/prompts": "^8.5.2",

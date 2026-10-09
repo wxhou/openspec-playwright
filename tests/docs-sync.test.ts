@@ -50,7 +50,7 @@ const EN_ANCHORS: [string, string][] = [
   ["§1 1500 line cap", "Code file line limit 1500"],
   ["§1 dependency hallucination", "hallucinate package names"],
   ["§1 fix loop bound", "at most 2 rounds"],
-  ["§1 no-linter self-check", "PEP8 E402"],
+  ["§1 no-linter self-check", "self-check the changes after every edit"],
   ["§6 testing & verification", "Testing & Verification Strategy"],
   ["§6 screenshot ≠ behavior", "Screenshot alone does not pass"],
   ["§1 selection chain", "priority chain"],
