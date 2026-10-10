@@ -8,7 +8,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 ## 代码质量
 - 🔴 **lint+typecheck 每次编辑后自动执行，通过才算成功**。按本次编辑涉及的扩展名逐一选 gate（可多语言并存）：\`.ts\`→ESLint+tsc、\`.py\`→ruff+mypy、\`.go\`→gofmt+vet。工具不存在时告知用户，不假装跑过
 - 🟡 gate 结果不造假：仍失败 → 完整输出错误日志并停止；未运行的检查标注「未运行」
-- 🟡 关键假设（外部数据源/接口、环境可运行、依赖版本）动手前逐条验证；理解不清或有可见风险 → 先提问再执行。多解释则全列，更简单方案提出并坚持——用户已否决 → 记录分歧照办，不再重提
+- 🟡 关键假设（外部数据源/接口、环境可运行、依赖版本）动手前逐条验证；理解不清或有可见风险 → 先提问再执行。多解释则全列，更简单方案提出并坚持——用户已否决 → 按用户方案执行，不再重提
 - 🟡 多步任务每步带验证（\`1. [Step] → verify: [check]\`），循环验证直到成功（同一验证连续 2 次未过 → 记录失败并停）。lint 失败时对本次触及的文件运行对应 auto-fix（如 \`npm run lint:fix\`；\`ruff format\`/\`go fmt\` 同样限本次触及文件）；修复循环最多 2 轮，仍失败即停
 - 🟡 只写被要求的：不加用户未要求的扩展点（"灵活"/"可配置"之类，不限词面）、单次使用抽象，不为想象中的场景写防御；自己新写的 200 行能 50 行则重写
 - 🟡 简化有边界，永不简化掉：信任边界的输入校验、防数据丢失的错误处理、安全措施、无障碍基础、用户明确要求的东西；刻意砍角且有已知天花板的简化（全局锁、O(n²) 扫描、朴素启发式）用 \`debt:\` 注释标明天花板和升级路径——debt 只属性能取舍，不豁免性能节已标 🔴 的无界类禁令与正确性/安全措施
@@ -22,7 +22,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 ## 禁止非通用性改动
 - 不假设外部输入可信：信任边界上的数据/响应/异步结果先校验（类型/范围/null/空/边界，数值含精度）再使用；资源用后必须释放
 - 🔴 禁止静默吞错：捕获的异常/错误必须处理、记录或上抛，记录后不得带病继续使用失败结果；确可安全忽略的（如 cleanup 二次异常）注释原因——不留空 catch / \`except: pass\` / \`_ = err\` / \`.ok()\` 类黑洞
-- 不写只适配样例输入的逻辑、魔法数字（入常量；有确切依据才注原因，否则取达义常量名）、具体值断言（断与验收无锚定关系的数值，验收点名即豁免）；路径/换行用语言内建跨平台 API（\`path.sep\`/\`path.join\`），比较前归一化 EOL
+- 不写只适配样例输入的逻辑、魔法数字（入常量；有确切依据才注原因，否则取达义常量名）、具体值断言（无验收锚定的数值，点名即豁免）；路径/换行用语言内建跨平台 API（\`path.sep\`/\`path.join\`），比较前归一化 EOL
 - linter/typechecker 不存在（如该栈适用）→ 告知用户并建议安装；装上之前每次编辑后对改动自查并在响应中注明结果，重点：import 顶置纪律见工具节、未用变量/import
 - mock 数据/fixture → 参见数据编撰禁令
 
@@ -47,8 +47,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 提案→实现→自审→E2E→归档，**各阶段由用户手动触发，AI 不自动进入下一阶段**
 
 ## 数据编撰
-- 🔴 严禁主动编撰模拟现实实体或外部系统形态的数据——用户/手机号/邮箱/ID、配置默认值、接口与字段、测试期望值等；算法演示的字面量输入不在禁区
-- 编撰示例如：mock 用户/邮箱/手机号、编造测试期望值、凭空捏造配置默认值、假装存在的接口/字段/枚举值——同类情形与改写措辞同判
+- 🔴 严禁主动编撰模拟现实实体或外部系统形态的数据——mock 用户/手机号/邮箱/ID、凭空捏造配置默认值、假装存在的接口/字段/枚举值、编造测试期望值等，同类情形与改写措辞同判；算法演示的字面量输入不在禁区
 - 不编造 URL/路径/字段名 → 引用真实来源，真实来源先检索
 - 遇需数据/字段名/URL/接口形态的代码位 → 显式询问用户；用户拒绝 → 用 stub/throw/null 显式失败；用户明示可用假数据（如"随便造几个"）→ 视为授权，可造并标注 \`// fake data（用户授权）\`，禁止静默编造
 - 用户同意占位 → \`TODO(user)\` 标注并附问询上下文
@@ -91,7 +90,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 ## Code Quality
 - 🔴 **lint+typecheck runs after every edit, both must pass**. Pick gates per extension touched by this edit (multiple may apply): \`.ts\`→ESLint+tsc, \`.py\`→ruff+mypy, \`.go\`→gofmt+vet. If tool missing, tell user, don't pretend it ran
 - 🟡 Never fake gate results: still failing → output the full error log and stop; unexecuted checks are explicitly marked "not run"
-- 🟡 Verify key assumptions before coding (external data sources & API fields, runnable environment, dependency availability); if unclear or risks are visible → ask first. Present all interpretations; suggest simpler approaches and insist — if already rejected, record the disagreement and follow the user's plan
+- 🟡 Verify key assumptions before coding (external data sources & API fields, runnable environment, dependency availability); if unclear or risks are visible → ask first. Present all interpretations; suggest simpler approaches and insist — if already rejected, follow the user's plan, don't re-raise
 - 🟡 Multi-step tasks: verify every step (\`1. [Step] → verify: [check]\`), loop until verified (same check failing twice in a row → record the failure and stop). On lint failure, run the language's auto-fix on touched files only (e.g. \`npm run lint:fix\`); the fix loop runs at most 2 rounds — still failing, stop
 - 🟡 Write only what's requested: no un-requested extension points (flexibility/configurability — wording aside), no single-use abstractions, no defensive code for imagined scenarios; rewrite your own new code if 200 lines can be 50
 - 🟡 Simplification has boundaries, never simplify away: input validation at trust boundaries, error handling that prevents data loss, security measures, accessibility basics, anything the user explicitly asked for; deliberate corner-cutting with a known ceiling (global locks, O(n²) scans, naive heuristics) gets a \`debt:\` comment marking the ceiling and upgrade path — debt is a performance trade-off only, it never exempts the 🔴 unbounded-resource bans in the Performance section or correctness/security measures
@@ -130,8 +129,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - Propose→Apply→Verify→E2E→Archive, **each phase manually triggered by user, AI does not auto-advance**
 
 ## Data Fabrication
-- 🔴 Never fabricate data simulating real entities or external systems — users/phones/emails/IDs, config defaults, APIs & fields, test expectations, etc.; literal inputs for algorithm demos are not in scope
-- Examples: mock users/emails/phone numbers, fabricated test expectations, imaginary config defaults, pretended APIs/fields/enum values — same-kind cases and rewordings count the same
+- 🔴 Never fabricate data simulating real entities or external systems — mock users/phones/emails/IDs, imaginary config defaults, pretended APIs/fields/enum values, fabricated test expectations, etc., same-kind cases and rewordings count the same; literal inputs for algorithm demos are not in scope
 - Don't fabricate URLs/paths/field names → cite real sources; search first
 - When data/field names/URLs/API shapes are needed → ask the user explicitly; user refuses → stub/throw/null for explicit failure; user explicitly okays fake data ("just make some up") → treat as authorized, mark \`// fake data (user-approved)\`, never silently fabricate
 - User agrees to a placeholder → mark with \`TODO(user)\` and attach context
