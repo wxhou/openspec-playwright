@@ -12,7 +12,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🟡 多步任务每步带验证（\`1. [Step] → verify: [check]\`），循环验证直到成功（同一验证连续 2 次未过 → 记录失败并停）。lint 失败时对本次触及的文件运行对应 auto-fix（如 \`npm run lint:fix\`；\`ruff format\`/\`go fmt\` 同样限本次触及文件）；修复循环最多 2 轮，仍失败即停
 - 🟡 只写被要求的：不加用户未要求的扩展点（"灵活"/"可配置"之类，不限词面）、单次使用抽象，不为想象中的场景写防御；自己新写的 200 行能 50 行则重写
 - 🟡 简化有边界，永不简化掉：信任边界的输入校验、防数据丢失的错误处理、安全措施、无障碍基础、用户明确要求的东西；刻意砍角且有已知天花板的简化（全局锁、O(n²) 扫描、朴素启发式）用 \`debt:\` 注释标明天花板和升级路径——debt 只属性能取舍，不豁免性能节已标 🔴 的无界类禁令与正确性/安全措施
-- 🔴 过时的直接删（过时=因本次改动而不再被引用或不再为真）：删除/修改时不留兼容层/迁移/fallback（仅限本次触及的范围）；与「保持既有测试通过」冲突时按测试红的分类分流
+- 🔴 过时的直接删（过时=因本次改动而不再被引用或不再为真）：删除/修改时不留兼容层/迁移/fallback（仅限本次触及的范围）；与「保持现有测试通过」冲突时按测试红的分类分流
 - 🔴 方案选型按优先级链依次判断，停在第一个成立的：要不要存在（YAGNI）→ 代码库已有可复用 → 标准库 → 平台原生特性 → 已装依赖 → 成熟有人维护的库 → 自己实现——没有明确理由不从零发明；确需自实现，同类问题优先采用经成熟产品验证的既有模式
 - 🔴 引入新依赖前先实查 registry——AI 会幻觉包名（抢注攻击）；装前看 install scripts：下载并执行外部内容、包名与惯用名高度相似 → 可疑即弃
 - 🟡 精准改动：只改必要的，每一行都应能直接追溯到用户的请求；不"改进"相邻的代码/注释/格式，不重构没坏的东西；改完清理自己造成的垃圾（未使用的 import/export/prop/console.log 等；清理与重构分开提交）。匹配现有风格
@@ -40,7 +40,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🔴 密钥与 \`.env\`（含 .env.* 变体；\`.env.example\` 除外）不入版本控制。示例用占位符（如 \`YOUR_API_KEY\`）。调试日志不打印凭据
 
 ## 大规模任务
-- 🔴 200+ 行多文件修改或架构级变更（如新增服务/API 契约/数据模型重构，非穷举）必须走 OpenSpec（\`/opsx:propose\`），禁止直接修改；命中 → 停下建议用户运行
+- 🔴 200+ 行多文件修改（增/删/改并计，含新建文件）或架构级变更（如新增服务/API 契约/数据模型重构，非穷举）必须走 OpenSpec（\`/opsx:propose\`），禁止直接修改；命中 → 停下建议用户运行
 - 🟡 执行中一旦发现走偏（方案不成立、前提变化、验证反复失败——同一问题 2 轮不通过），立刻停下重新评估并回报，不硬推到结尾
 
 ## 工作流参考
@@ -55,7 +55,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 写接口对接代码前先检索 OpenAPI/接口文档 → 查到查阅真实定义并标注来源（如 \`// 来源: docs/api/openapi.yaml#/paths/...\`），查不到询问用户
 
 ## 临时文件管理
-- 🟡 非源码临时文件（截图、日志、heapdump 等）放仓库根 \`tmp/\` 下（临时=本次验证/调试产生、任务结束即无用；测试数据按项目 fixtures 惯例存放），文件名含时间戳（如 \`screenshot-20260721T143000.png\`）
+- 🟡 非源码临时文件（截图、日志、heapdump 等）放仓库根 \`tmp/\` 下（临时=本次验证/调试产生、任务结束即无用；测试数据按项目 fixtures 惯例存放；工作流模板规定了路径的产物从其路径），文件名含时间戳（如 \`screenshot-20260721T143000.png\`）
 - 🔴 禁止将临时文件提交到版本控制（确保 \`.gitignore\` 含 \`tmp/\`；已跟踪的历史文件先 \`git rm --cached\`）；超 24h 的临时文件在 commit 前删除——仅限 \`tmp/\` 下本次任务产生的临时产物，用户名下或来历不明的可疑文件报告请示、不自行删
 
 ## 测试与验证策略
@@ -63,7 +63,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🔴 保持现有测试通过；测试红时先分类——被测行为仍在 → 更新断言至新行为；行为本次已删 → 其专属测试随行为删除、删前列明并报告；范围外既有红测试 → 报告不动；不以本节 DO NOT 或 §1 简化类条款为由跳过/删除既有测试
 - 🔴 验收条款点名的行为必须被某层测试覆盖（单测或验收测试，一层即可）；点名项若落本节任一 DO NOT 条款（如纯透传、同义反复断言），停下向用户裁决——不静默写，也不静默不写
 - 🟡 后端/服务的验证对真实运行的服务发真实请求（真实数据/依赖，遵守数据编撰节；写操作限测试/预发环境，无隔离环境先问用户）；是否落成测试按本节第一条的点名标准判断
-- 🟡 按点名写测试时，点名行为在该层覆盖不到才抽 UI 可测客户端逻辑（自定义 hook / 组合式函数 / 纯函数）为独立单元测；改了用户可见可交互的东西 → 浏览器验证；纯逻辑 → 证据验证，不开浏览器
+- 🟡 按点名写测试时，点名的是某层测试而该层覆盖不到该行为时，才抽 UI 可测客户端逻辑（自定义 hook / 组合式函数 / 纯函数）为独立单元测；改了用户可见可交互的东西 → 浏览器验证；纯逻辑 → 证据验证，不开浏览器
 - 🟡 修复类任务先复现后修复：完成前后各重现 bug 一次（修前 = 证明它存在，修后 = 证明它消失），辅以截图或测量；同法 ≥2 次未复现 → 以已试次数与现有证据回报并停下，等用户提供复现条件，或经用户明示授权后按分析修复；不宣称已验证
 - 🟡 验收期望锚定验收标准写「预期 X，实测 Y」（期望编造禁令见数据编撰节）
 - 🟡 验证前核对加载的是本次产物（清缓存/停用 Service Worker/核 hash）；权限类必须真实登录态=以真实凭据过登录流程（UI 登录或 API 登录取回），构造/硬编码 token 一律算注入；多角色各角色单独登录
@@ -122,7 +122,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🔴 Secrets & \`.env\` (including .env.* variants; \`.env.example\` exempt) out of version control. Use placeholders (e.g. \`YOUR_API_KEY\`). No credentials in debug logs
 
 ## Large-Scale Tasks
-- 🔴 200+ line multi-file changes or architecture changes (e.g. new services/API contracts/data model refactors — not exhaustive) must use OpenSpec (\`/opsx:propose\`), no direct edits; on a hit, stop and suggest the user run it
+- 🔴 200+ line multi-file changes (counted as added+deleted+changed, incl. new files) or architecture changes (e.g. new services/API contracts/data model refactors — not exhaustive) must use OpenSpec (\`/opsx:propose\`), no direct edits; on a hit, stop and suggest the user run it
 - 🟡 The moment execution goes off track (plan untenable, premises changed, verification repeatedly failing — the same problem failing two rounds in a row), stop immediately, re-evaluate, and report — never push through to the end
 
 ## Workflow Reference
@@ -137,7 +137,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - Before writing API-integration code, search for OpenAPI/API docs → found: consult real definitions and cite source (e.g. \`// source: docs/api/openapi.yaml#/paths/...\`); not found: ask the user
 
 ## Temp File Management
-- 🟡 Non-source temp files (screenshots, logs, heapdumps, etc.) go in \`tmp/\` at the repo root (temp = produced for this round of verification/debugging; test data follows the project's fixtures convention), filenames include timestamp (e.g. \`screenshot-20260721T143000.png\`)
+- 🟡 Non-source temp files (screenshots, logs, heapdumps, etc.) go in \`tmp/\` at the repo root (temp = produced for this round of verification/debugging; test data follows the project's fixtures convention; artifacts whose paths are set by a workflow template go to those paths), filenames include timestamp (e.g. \`screenshot-20260721T143000.png\`)
 - 🔴 Never commit temp files to version control (ensure \`.gitignore\` has \`tmp/\`, already-tracked ones get \`git rm --cached\` first); delete temp files older than 24h before commit — only those under \`tmp/\` produced by this task; user-owned or unclear-origin suspicious files get reported, not deleted
 
 ## Testing & Verification Strategy
@@ -145,7 +145,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🔴 Keep existing tests passing; triage red tests first — behavior still exists → update assertions to the new behavior; behavior deleted this round → its dedicated tests go with it, itemized in the report; pre-existing red tests outside scope → report, don't touch; never use this section's DO NOT rules or the §1 simplification clauses to skip/delete existing tests
 - 🔴 Behaviors named by acceptance clauses must be covered by some test layer (unit OR acceptance — one is enough); when a named item falls into any DO NOT rule of this section (pure passthrough, tautological assertions), stop and let the user decide — never silently write it, never silently skip it
 - 🟡 Verify backend/service behavior with real requests against a real running service (real data/dependencies, per the Data Fabrication section; write operations only against test/staging environments — ask first when no isolated environment exists); whether it lands as a test follows the naming standard in this section's first rule
-- 🟡 When writing named tests, extract testable client-side logic (custom hooks / composables / pure functions) into independent unit tests only when the named behavior isn't coverable at that layer; user-visible/interactive changes → browser-verify; pure logic → evidence verification, no browser
+- 🟡 When writing named tests, extract testable client-side logic (custom hooks / composables / pure functions) into independent unit tests only when the layer that was named can't cover the behavior; user-visible/interactive changes → browser-verify; pure logic → evidence verification, no browser
 - 🟡 Fix tasks: reproduce before and after completion (before = prove it exists, after = prove it's gone), with screenshots or measurements as support; same-method ≥2 failed reproductions → report attempts and existing evidence and stop — wait for repro conditions from the user, or proceed with analysis-driven fixes only after explicit user authorization; never claim verified
 - 🟡 All acceptance expectations anchor to acceptance criteria ("expected X, got Y"); the no-fabricating-expectations rule lives in the Data Fabrication section
 - 🟡 Verify the tested build is the current one (clear cache/disable the Service Worker/check the hash); permission checks need a real login state = a session from the real login flow (UI login or API login exchange) — constructed/hardcoded tokens count as injection; each role logs in separately

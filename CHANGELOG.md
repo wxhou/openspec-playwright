@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **docs(standards): 终扫五收（`final-sweep-landing`）**. 独立终扫（第 6 遍自查 + Prompt 工程师三重核验：逐行语义/跨文件对照/n-gram 机械扫描）后落地：①§3 门恢复计量基准「（增/删/改并计，含新建文件）」——用户校准轮随「多文件」改写误删的项（f9f5935 零损轮曾以「心估偏小绕门」场景驳回该删除，属误伤非裁定），用户裁定恢复；②§1 L31 引号「保持既有测试通过」→「保持现有测试通过」，与 §6 原文对齐（1 字符——弱模型按引号字面寻的分流条款失配修复）；③§5 补跨文件优先级「工作流模板规定了路径的产物从其路径」——e2e 模板写范围（`tests/playwright/screenshots/`，"Never write to any other directory"，app-exploration.md 路径锚）与 §5「截图→tmp/」的权重战拆雷；④§6「该层」自锚定化（「点名的是某层测试而该层覆盖不到该行为时」）——跨条目指代失效修复；⑤防循环留档扩句：模板侧有界重复实例实证扩为 Healer ≤3 + flaky 重跑（Re-run auth.setup / Retry isolated）+ URL 采样（1s×5s，模板 273/276/143 行），简形维持用户裁定。驳回两项：§1 L11 删 🟡 括注（三档对称定义件、≤2 强化射程）、install scripts 括域 ⚪。终扫总评留档：语言侧饱和——残余风险面已从正文转移至 SSOT ↔ e2e 模板 ↔ 双语嵌入三方同步。五件套同步，锚全存活。
+  - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 4 处、EN 3 处）、`CHANGELOG.md`
+
 - **docs(standards): 用户校准 6 处 + 复审去重 1 处 + 嵌入同步（`user-calibration-round`）**. 用户直接微调：①经验沉淀简化——删路径锚/🟡标记/重大判据（统一「经用户确认后合入」，重大判据随之退役——全部修订都过确认，判据失业；🟡 删除由 §0「未标注按 🟡」接住）；②防循环还原简形——「仅参数微变」与「有界重试豁免」一并删除（**已知留档**：e2e 模板 Healer ≤3 轮重跑与防循环的字面冲突未消）；③§3 门加「多文件」对齐 PR 门 tiering（单文件 200+ 行不再触发 OpenSpec；**留档**：L76 WHY 行「200+ 行」未随动、「不代跑」被删改由 L82 手工触发条款兜）；④检索询问句扁平化（「按上条询问」→「询问用户」）；⑤§4 证据指向行删除 + §6「（接 §4）」尾注删除——两端一并撤、本体 §6 唯一留存，真去重；⑥复审剪「或用户要求时」（用户要求是「需要」的实例，a fortiori）。双语嵌入 4 处×2 同步，镜像 sync 再生，锚全存活（59/59）。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 4 处、EN 4 处）、`CHANGELOG.md`
 
