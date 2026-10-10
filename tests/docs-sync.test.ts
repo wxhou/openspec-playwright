@@ -18,6 +18,8 @@ const en = scriptJs.match(/CLAUDE_MD_EN = `([\s\S]*?)`;/)?.[1] ?? "";
 
 const ZH_ANCHORS: [string, string][] = [
   ["§0 openspec help", "npx openspec --help"],
+  ["§0 用户指令优先", "用户显式指令可偏离"],
+  ["§0 未标注档位", "未标注的条款按 🟡 处理"],
   ["§1 lint gate", "每次编辑后自动执行"],
   ["§1 过时的直接删", "过时的直接删"],
   ["§1 1500 行上限", "代码文件行数上限 1500"],
@@ -28,7 +30,7 @@ const ZH_ANCHORS: [string, string][] = [
   ["§1 机制标注豁免", "机制标注不受本条约束"],
   ["§2 挪动随迁", "其 import 随迁"],
   ["§2 豁免标注", "例外须行内注明缘由"],
-  ["§4 数据编撰禁令", "严禁主动编撰任何数据"],
+  ["§4 数据编撰禁令", "严禁主动编撰模拟现实实体"],
   ["§5 临时文件管理", "临时文件管理"],
   ["§6 测试与验证策略", "测试与验证策略"],
   ["§6 截图≠行为", "仅截图不算通过"],
@@ -47,6 +49,8 @@ const ZH_ANCHORS: [string, string][] = [
 
 const EN_ANCHORS: [string, string][] = [
   ["§0 openspec help", "npx openspec --help"],
+  ["§0 user-instruction primacy", "explicit user instructions may override"],
+  ["§0 unmarked tier", "unmarked rules are treated as"],
   ["§1 lint gate", "lint+typecheck runs after every edit"],
   ["§1 delete obsolete", "Delete obsolete code outright"],
   ["§1 1500 line cap", "Code file line limit 1500"],

@@ -38,6 +38,7 @@ export const MANAGED_GITIGNORE_PATHS = [
   "app-exploration.md",
   "opencode.json",
   ".mcp.json",
+  "tmp/",
   "playwright/.auth/",
   "tests/playwright/test-results/",
   "tests/playwright/credentials.yaml",
