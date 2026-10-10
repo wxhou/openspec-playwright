@@ -3,7 +3,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - OpenSpec 命令：需要时跑 \`npx openspec --help\` 查看可用命令
 - 优先级：🔴 CRITICAL（违反→静默 bug/安全漏洞，停下向用户确认，同意后按用户指示执行，不可达则报告并中止、不自行放行）｜🟡 IMPORTANT（偏离说明理由，谨慎执行）｜⚪ STANDARD（按标准执行）｜未标注的条款按 🟡 处理；条款冲突 🔴 > 🟡 裁决，同级停下问用户
 - 用户指令优先：用户显式指令可偏离 🟡/⚪ 即刻生效；与 🔴 冲突 → 先复述风险，用户终裁后执行
-- 🟡 被用户纠正后，将防再犯规则以修订形式沉淀回随 CLI 安装的 employee-standards.md（写入前先定位并通读）；改动 🔴/🟡 定级或增删整条属重大修订，用户确认后合入
+- 被用户纠正后，将防再犯规则以修订形式沉淀回工具规范文件，经用户确认后合入
 
 ## 代码质量
 - 🔴 **lint+typecheck 每次编辑后自动执行，通过才算成功**。按本次编辑涉及的扩展名逐一选 gate（可多语言并存）：\`.ts\`→ESLint+tsc、\`.py\`→ruff+mypy、\`.go\`→gofmt+vet。工具不存在时告知用户，不假装跑过
@@ -27,7 +27,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - mock 数据/fixture → 参见数据编撰禁令
 
 ## 工具限制
-- 🔴 发现自己正在重复生成相同或仅参数微变的调用 → 立即停止，重新评估（有界重试/轮询等有新信息的重复除外）
+- 🔴 发现自己正在重复生成相同调用 → 立即停止，重新评估
 - 🟡 长会话接近上下文上限时，复杂任务前先压缩上下文
 - 🟡 搜索分层：结构性问题（定义/调用/影响/流）优先用 CodeGraph（无索引或不可用 → 直接降级全文搜索）；字面文本用全文搜索；文件名模式用文件名匹配。跳过依赖目录和缓存目录（调试依赖时除外），搜子目录时按需缩小
 - 🟡 引用作依据的文件先通读再断言；未通读就下的结论显式标注低置信，不冒充已充分验证
@@ -40,7 +40,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🔴 密钥与 \`.env\`（含 .env.* 变体；\`.env.example\` 除外）不入版本控制。示例用占位符（如 \`YOUR_API_KEY\`）。调试日志不打印凭据
 
 ## 大规模任务
-- 🔴 200+ 行修改（git 视角增/删/改并计，含新建文件）或架构级变更（如新增服务/API 契约/数据模型重构，非穷举）必须走 OpenSpec（\`/opsx:propose\`），禁止直接修改；命中 → 停下建议用户运行，不代跑
+- 🔴 200+ 行多文件修改或架构级变更（如新增服务/API 契约/数据模型重构，非穷举）必须走 OpenSpec（\`/opsx:propose\`），禁止直接修改；命中 → 停下建议用户运行
 - 🟡 执行中一旦发现走偏（方案不成立、前提变化、验证反复失败——同一问题 2 轮不通过），立刻停下重新评估并回报，不硬推到结尾
 
 ## 工作流参考
@@ -52,7 +52,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 遇需数据/字段名/URL/接口形态的代码位 → 显式询问用户；用户拒绝 → 用 stub/throw/null 显式失败；用户明示可用假数据（如"随便造几个"）→ 视为授权，可造并标注 \`// fake data（用户授权）\`，禁止静默编造
 - 用户同意占位 → \`TODO(user)\` 标注并附问询上下文
 - 用户提供数据 → 使用真实数据
-- 写接口对接代码前先检索 OpenAPI/接口文档 → 查到查阅真实定义并标注来源（如 \`// 来源: docs/api/openapi.yaml#/paths/...\`），查不到按上条询问
+- 写接口对接代码前先检索 OpenAPI/接口文档 → 查到查阅真实定义并标注来源（如 \`// 来源: docs/api/openapi.yaml#/paths/...\`），查不到询问用户
 
 ## 临时文件管理
 - 🟡 非源码临时文件（截图、日志、heapdump 等）放仓库根 \`tmp/\` 下（临时=本次验证/调试产生、任务结束即无用；测试数据按项目 fixtures 惯例存放），文件名含时间戳（如 \`screenshot-20260721T143000.png\`）
@@ -85,7 +85,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - OpenSpec commands: when needed, run \`npx openspec --help\` to list them
 - Priority: 🔴 CRITICAL (violation → silent bug/security hole — stop, confirm with the user, act per their instruction; unreachable → report and abort, never self-clear)｜🟡 IMPORTANT (deviations need justification, proceed with caution)｜⚪ STANDARD (follow as standard practice)｜unmarked rules are treated as 🟡; clause conflicts resolve 🔴 > 🟡, same-tier conflicts stop and ask the user
 - User instruction primacy: explicit user instructions may override 🟡/⚪ rules and take effect immediately; if one conflicts with a 🔴 → restate the risk first, the user makes the final call
-- 🟡 When corrected by the user, distill the prevention rule back into the standards file installed with the CLI (employee-standards.md; locate and read it before writing); changing a 🔴/🟡 rating or adding/removing whole rules is a major revision, landing after user confirmation
+- When corrected by the user, distill the prevention rule back into the tool's standards file, landing after user confirmation
 
 ## Code Quality
 - 🔴 **lint+typecheck runs after every edit, both must pass**. Pick gates per extension touched by this edit (multiple may apply): \`.ts\`→ESLint+tsc, \`.py\`→ruff+mypy, \`.go\`→gofmt+vet. If tool missing, tell user, don't pretend it ran
@@ -109,7 +109,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - Mock data / fixtures → see Data Fabrication section below
 
 ## Tool Constraints
-- 🔴 If you catch yourself generating the same call — or one differing only in parameters — repeatedly → stop immediately, re-evaluate (bounded retries/polling with new information exempt)
+- 🔴 If you catch yourself generating the same call repeatedly → stop immediately, re-evaluate
 - 🟡 In long sessions near the context limit, compact context before complex tasks
 - 🟡 Search in layers: structural queries (definitions/calls/impact/flow) prefer CodeGraph (no index or unavailable → fall back to full-text search); literal text → full-text search; filename patterns → filename matching. Skip dependency and cache directories (except when debugging deps); narrow scope in subdirectories
 - 🟡 Read every file you cite as evidence end-to-end before asserting; conclusions drawn from partial reads are marked low-confidence explicitly, never presented as verified
@@ -122,7 +122,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🔴 Secrets & \`.env\` (including .env.* variants; \`.env.example\` exempt) out of version control. Use placeholders (e.g. \`YOUR_API_KEY\`). No credentials in debug logs
 
 ## Large-Scale Tasks
-- 🔴 200+ line changes (counted as added+deleted+changed, incl. new files) or architecture changes (e.g. new services/API contracts/data model refactors — not exhaustive) must use OpenSpec (\`/opsx:propose\`), no direct edits; on a hit, stop and suggest the user run it — don't run it for them
+- 🔴 200+ line multi-file changes or architecture changes (e.g. new services/API contracts/data model refactors — not exhaustive) must use OpenSpec (\`/opsx:propose\`), no direct edits; on a hit, stop and suggest the user run it
 - 🟡 The moment execution goes off track (plan untenable, premises changed, verification repeatedly failing — the same problem failing two rounds in a row), stop immediately, re-evaluate, and report — never push through to the end
 
 ## Workflow Reference
@@ -134,7 +134,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - When data/field names/URLs/API shapes are needed → ask the user explicitly; user refuses → stub/throw/null for explicit failure; user explicitly okays fake data ("just make some up") → treat as authorized, mark \`// fake data (user-approved)\`, never silently fabricate
 - User agrees to a placeholder → mark with \`TODO(user)\` and attach context
 - User provides data → use real data
-- Before writing API-integration code, search for OpenAPI/API docs → found: consult real definitions and cite source (e.g. \`// source: docs/api/openapi.yaml#/paths/...\`); not found: ask per the rule above
+- Before writing API-integration code, search for OpenAPI/API docs → found: consult real definitions and cite source (e.g. \`// source: docs/api/openapi.yaml#/paths/...\`); not found: ask the user
 
 ## Temp File Management
 - 🟡 Non-source temp files (screenshots, logs, heapdumps, etc.) go in \`tmp/\` at the repo root (temp = produced for this round of verification/debugging; test data follows the project's fixtures convention), filenames include timestamp (e.g. \`screenshot-20260721T143000.png\`)
