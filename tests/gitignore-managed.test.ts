@@ -99,6 +99,12 @@ describe("ensureGitignoreEntries", () => {
     }
   });
 
+  it("covers exploration screenshots (user-decided, 2026-10)", () => {
+    ensureGitignoreEntries(projectRoot);
+    const content = readFileSync(join(projectRoot, ".gitignore"), "utf-8");
+    expect(content).toContain("tests/playwright/screenshots/");
+  });
+
   it("zero action when user rules cover ALL managed paths (task 3.2)", () => {
     writeFileSync(
       join(projectRoot, ".gitignore"),

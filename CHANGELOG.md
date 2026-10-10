@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **feat(gitignore): 受管块新增探索截图目录（`managed-screenshots-local`）**. `tests/playwright/screenshots/` 入受管 .gitignore 清单（21→22 项）。依据：探索截图本性时效（随开发过时，与 §6「截图证明像素，不证明行为」同判），且其同层证据——消费文档 `app-exploration.md` 与 `openspec/reports/`——早已是本地文件（受管忽略），截图是探索证据层里唯一还在入 git 的错位项（活路由截图靠同 slug 覆盖自愈，死路由截图永久沉积）。转本地后三层一致：本地证据本地存、耐久资产（specs 等）才进库。存量已提交截图走既有「已追踪检测」advisory（`git rm --cached`）。双 README 段落同步，测试 +1 用例。
+  - `src/shared/gitignore-managed.ts`、`tests/gitignore-managed.test.ts`（+1 用例）、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
+
 - **docs(standards): 用户校准 6 处 + 复审去重 1 处 + 嵌入同步（`user-calibration-round`）**. 用户直接微调：①经验沉淀简化——删路径锚/🟡标记/重大判据（统一「经用户确认后合入」，重大判据随之退役——全部修订都过确认，判据失业；🟡 删除由 §0「未标注按 🟡」接住）；②防循环还原简形——「仅参数微变」与「有界重试豁免」一并删除（**已知留档**：e2e 模板 Healer ≤3 轮重跑与防循环的字面冲突未消）；③§3 门加「多文件」对齐 PR 门 tiering（单文件 200+ 行不再触发 OpenSpec；**留档**：L76 WHY 行「200+ 行」未随动、「不代跑」被删改由 L82 手工触发条款兜）；④检索询问句扁平化（「按上条询问」→「询问用户」）；⑤§4 证据指向行删除 + §6「（接 §4）」尾注删除——两端一并撤、本体 §6 唯一留存，真去重；⑥复审剪「或用户要求时」（用户要求是「需要」的实例，a fortiori）。双语嵌入 4 处×2 同步，镜像 sync 再生，锚全存活（59/59）。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 4 处、EN 4 处）、`CHANGELOG.md`
 

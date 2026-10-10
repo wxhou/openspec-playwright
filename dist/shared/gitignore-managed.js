@@ -40,6 +40,7 @@ export const MANAGED_GITIGNORE_PATHS = [
     "tmp/",
     "playwright/.auth/",
     "tests/playwright/test-results/",
+    "tests/playwright/screenshots/",
     "tests/playwright/credentials.yaml",
     "tests/playwright/credentials.yaml.bak",
 ];
