@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.99] - 2026-10-10
 
 - **feat(gitignore): 受管块新增探索截图目录（`managed-screenshots-local`）**. `tests/playwright/screenshots/` 入受管 .gitignore 清单（21→22 项）。依据：探索截图本性时效（随开发过时，与 §6「截图证明像素，不证明行为」同判），且其同层证据——消费文档 `app-exploration.md` 与 `openspec/reports/`——早已是本地文件（受管忽略），截图是探索证据层里唯一还在入 git 的错位项（活路由截图靠同 slug 覆盖自愈，死路由截图永久沉积）。转本地后三层一致：本地证据本地存、耐久资产（specs 等）才进库。存量已提交截图走既有「已追踪检测」advisory（`git rm --cached`）。双 README 段落同步，测试 +1 用例。
   - `src/shared/gitignore-managed.ts`、`tests/gitignore-managed.test.ts`（+1 用例）、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
