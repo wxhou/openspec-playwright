@@ -527,6 +527,170 @@ describe("doctor integration: test-runner + playwright-cli checks", () => {
   });
 });
 
+// ─── Tests: doctor storage-state integrity check (e2e-mcp-tool-routing) ─────
+
+describe("doctor storage-state check", () => {
+  const execMock = vi.mocked(execFileSync);
+  const existsMock = vi.mocked(existsSync);
+  const readdirMock = vi.mocked(readdirSync);
+  const readFileMock = vi.mocked(readFileSync);
+  const lstatMock = vi.mocked(lstatSync);
+  const detectCodeGraphMock = vi.mocked(detectCodeGraphStatus);
+  const detectAdaptersMock = vi.mocked(detectAdapters);
+  const TEMPLATE_CONFIG = [
+    "import { defineConfig } from '@playwright/test';",
+    "const authStatePath = join(projectRoot, 'playwright', '.auth', 'user.json');",
+    "const storageState = existsSync(authStatePath) ? authStatePath : undefined;",
+    "export default defineConfig({ use: { storageState } });",
+  ].join("\n");
+  const BARE_CONFIG = "export default defineConfig({ use: { storageState: someVar } });";
+  const NO_STORAGE_CONFIG = "export default defineConfig({ use: { baseURL: '/' } });";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Healthy hard prerequisites so only storage-state state drives the result.
+    detectCodeGraphMock.mockReturnValue({
+      cliInstalled: false,
+      indexed: false,
+      mcpInstalledAdapters: [],
+    });
+    execMock.mockImplementation((cmd: string) => {
+      if (cmd === "node" || cmd === "npm" || cmd === "npx") return "v22.0.0";
+      return "";
+    });
+    existsMock.mockImplementation((p: Parameters<typeof existsSync>[0]) => {
+      const s = String(p).replace(/\\/g, "/");
+      return (
+        s.endsWith("playwright.config.ts") ||
+        s.endsWith("openspec") ||
+        s.endsWith("tests/playwright") ||
+        s.endsWith("AGENTS.md") ||
+        s.endsWith("CLAUDE.md")
+      );
+    });
+    readFileMock.mockImplementation((p: Parameters<typeof readFileSync>[0]) => {
+      const s = String(p);
+      if (s.endsWith(".mcp.json")) {
+        return JSON.stringify({
+          mcpServers: {
+            "playwright-test": {
+              command: "npx",
+              args: ["playwright", "run-test-mcp-server"],
+            },
+          },
+        });
+      }
+      return "<!-- OPENSPEC-PW:START -->\ncontent\n<!-- OPENSPEC-PW:END -->";
+    });
+    readdirMock.mockReturnValue([] as never);
+    lstatMock.mockReturnValue({ isSymbolicLink: () => false } as never);
+    detectAdaptersMock.mockReturnValue([claudeAdapter]);
+  });
+
+  async function runDoctorJson() {
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((...args) => {
+      logs.push(args.join(" "));
+    });
+    try {
+      await doctor({ json: true });
+    } finally {
+      spy.mockRestore();
+    }
+    return JSON.parse(logs.join("\n"));
+  }
+
+  function storageStateCheck(parsed: { checks: Array<{ name: string; ok: boolean; message: string }> }) {
+    return parsed.checks.find((c) => c.name === "storage-state");
+  }
+
+  it("template layout with missing state file → optional warning with fix, ok stays true", async () => {
+    existsMock.mockImplementation((p: Parameters<typeof existsSync>[0]) => {
+      const s = String(p).replace(/\\/g, "/");
+      return (
+        s.endsWith("playwright.config.ts") ||
+        s.endsWith("openspec") ||
+        s.endsWith("tests/playwright") ||
+        s.endsWith("AGENTS.md") ||
+        s.endsWith("CLAUDE.md")
+      );
+    });
+    readFileMock.mockImplementation((p: Parameters<typeof readFileSync>[0]) => {
+      const s = String(p);
+      if (s.endsWith(".mcp.json")) return "{}";
+      if (s.endsWith("playwright.config.ts")) return TEMPLATE_CONFIG;
+      return "<!-- OPENSPEC-PW:START -->\ncontent\n<!-- OPENSPEC-PW:END -->";
+    });
+    const parsed = await runDoctorJson();
+    const check = storageStateCheck(parsed);
+    expect(check).toBeDefined();
+    expect(check.ok).toBe(false);
+    expect(check.message).toContain("missing");
+    expect(check.message).toContain("project=setup");
+    expect(parsed.ok).toBe(true);
+  });
+
+  it("state file present → ok check reported as found", async () => {
+    existsMock.mockImplementation((p: Parameters<typeof existsSync>[0]) => {
+      const s = String(p).replace(/\\/g, "/");
+      return (
+        s.endsWith("playwright.config.ts") ||
+        s.endsWith("openspec") ||
+        s.endsWith("tests/playwright") ||
+        s.endsWith("AGENTS.md") ||
+        s.endsWith("CLAUDE.md") ||
+        s.endsWith("playwright/.auth/user.json")
+      );
+    });
+    readFileMock.mockImplementation((p: Parameters<typeof readFileSync>[0]) => {
+      const s = String(p);
+      if (s.endsWith(".mcp.json")) return "{}";
+      if (s.endsWith("playwright.config.ts")) return TEMPLATE_CONFIG;
+      return "<!-- OPENSPEC-PW:START -->\ncontent\n<!-- OPENSPEC-PW:END -->";
+    });
+    const parsed = await runDoctorJson();
+    const check = storageStateCheck(parsed);
+    expect(check).toBeDefined();
+    expect(check.ok).toBe(true);
+    expect(check.message).toContain("found");
+  });
+
+  it("config without storageState → check not emitted", async () => {
+    readFileMock.mockImplementation((p: Parameters<typeof readFileSync>[0]) => {
+      const s = String(p);
+      if (s.endsWith(".mcp.json")) return "{}";
+      if (s.endsWith("playwright.config.ts")) return NO_STORAGE_CONFIG;
+      return "<!-- OPENSPEC-PW:START -->\ncontent\n<!-- OPENSPEC-PW:END -->";
+    });
+    const parsed = await runDoctorJson();
+    expect(storageStateCheck(parsed)).toBeUndefined();
+  });
+
+  it("no path literal and no auth.setup.ts → check not emitted (no guessing)", async () => {
+    readFileMock.mockImplementation((p: Parameters<typeof readFileSync>[0]) => {
+      const s = String(p);
+      if (s.endsWith(".mcp.json")) return "{}";
+      if (s.endsWith("playwright.config.ts")) return BARE_CONFIG;
+      return "<!-- OPENSPEC-PW:START -->\ncontent\n<!-- OPENSPEC-PW:END -->";
+    });
+    const parsed = await runDoctorJson();
+    expect(storageStateCheck(parsed)).toBeUndefined();
+  });
+
+  it("custom .auth filename → checks the declared literal path, not the default", async () => {
+    readFileMock.mockImplementation((p: Parameters<typeof readFileSync>[0]) => {
+      const s = String(p);
+      if (s.endsWith(".mcp.json")) return "{}";
+      if (s.endsWith("playwright.config.ts")) return "export default defineConfig({ use: { storageState: '.auth/admin.json' } });";
+      return "<!-- OPENSPEC-PW:START -->\ncontent\n<!-- OPENSPEC-PW:END -->";
+    });
+    const parsed = await runDoctorJson();
+    const check = storageStateCheck(parsed);
+    expect(check).toBeDefined();
+    expect(check.message).toContain(".auth/admin.json");
+  });
+});
+
 // ─── doctor authorization tiers (scope-editor-writes) ───────────────────────
 
 describe("doctor authorization tiers", () => {

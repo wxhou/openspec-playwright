@@ -393,7 +393,7 @@ Run through these steps in order when using the E2E workflow for the first time:
 | **Playwright MCP** | test-runner server configured for each **authorized** editor (command artifacts exist; unauthorized editors get an info line pointing at `init --tools <id>` — never a warning) | `playwright-cli` (@playwright/cli on PATH) — optional ⚠, never block |
 | **Vendored Agents** | — | official agent snapshots' presence + ownership (owned/modified); non-blocking ⚠ when their `playwright-test` MCP dependency is missing |
 | **Sync** | standards in sync when initialized (drift → `openspec-pw update`; AGENTS.md without markers counts as not-initialized, always ok) | not initialized (gated, non-blocking) |
-| **Tests** | `tests/playwright/` directory exists | `auth.setup.ts` presence |
+| **Tests** | `tests/playwright/` directory exists | `auth.setup.ts` presence · `storage-state` integrity — config declares `storageState` but the state file is missing → ⚠ + `npx playwright test --project=setup` (never blocks) |
 | **Seed Test** | — | `seed.spec.ts` presence |
 | **App Server** | — | dev script, base URL, reachability |
 | **CodeGraph** | — | CLI availability, index presence, MCP installation (warnings, non-blocking) |
