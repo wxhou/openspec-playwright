@@ -39,7 +39,16 @@
 | 9 execute | generated spec | seed smoke only (`npx playwright test tests/playwright/seed.spec.ts`) |
 | 10 report | full report | routes + Page Objects + seed result; omit Healer sections |
 
-Browser exploration is tool-agnostic: the `playwright-test` MCP server's browser tools or `openspec-pw explore --parallel N`.
+**Browser tool routing**:
+
+| Situation | Action |
+| --------- | ------ |
+| Generation / execution / repair | `playwright-test` MCP — sole home of its `test_*` / `planner_*` / `generator_*` tools |
+| Interactive exploration (Step 4) | prefer the `playwright-test` browser tools |
+| Exploration fallback | chrome-devtools or similar — only when the `playwright-test` browser tools are absent, failing or hanging (switch rather than retrying into the same failure), or for abilities `playwright-test` lacks (Performance trace, full network panel) |
+| ≥5 routes | `openspec-pw explore --parallel N` |
+
+Never switch tools to gain or reuse state — a persistent-profile login is not a valid E2E precondition. State semantics: Step 4 → Session state.
 
 ## Testing Principles
 
@@ -172,6 +181,8 @@ Record findings in `app-exploration.md`. Output path:
 
 **Idempotency**: If `app-exploration.md` exists → read, verify routes, update only changed/new routes. **Route Snapshot Hash**: Navigate to sitemap.xml → hash content → if unchanged since last exploration, skip re-exploration entirely. Store hash in `app-knowledge.md` → `Exploration State`.
 
+**Session state**: the `playwright-test` browser tools drive the **paused test's fixture context** — every `planner_setup_page` / test run launches a fresh context with empty storage. That is correct E2E isolation, not a configuration problem. To explore logged-in flows, wire the login once via the storageState chain: `auth.setup.ts` (Step 7) writes `playwright/.auth/user.json`, and `playwright.config.ts` feeds it into every test context (`use.storageState` + `dependencies: ['setup']`). Do not try to save/restore state through storage tools mid-session — `browser_storage_state`-class tools are listed by the test-runner MCP but rejected by its paused-test session (the storage capability is not enabled there) — and never treat another tool's persistent-profile login as a test precondition (see Browser tool routing).
+
 **4.3. Update shared knowledge**: Extract project-level findings to `tests/playwright/app-knowledge.md`. Auto-de-duplicate by key.
 
 ### 5. Generate test plan (change mode only)
@@ -288,7 +299,7 @@ When tests fail → **Healer** (3 phases):
 
 2-5. **Selector repair**: Pick per the selector priority (Testing Principles — single source of truth): verified selector from app-exploration.md > `[data-testid]` (getByTestId) > getByRole > getByLabel > getByText > CSS id/class > positional. If the `playwright-test` MCP exposes `browser_generate_locator`, use it to generate and validate the candidate against the live page before rewriting.
 
-2-6. **Fix + verify**: Apply fix → verify via the test-runner MCP tools when available (`test_list` → `test_debug` (pass the test id from `test_list`) → repair → `test_run` with `locations` scoped to the single test file for structured results; fall back to `npx playwright test --grep "<test-name>"` if the playwright-test MCP server is not configured) → if passes, log to app-knowledge.md (Selector Fixes / Assertion Fixes). Max 3 heal attempts per test. **One error per round**: fix a single error, re-run, then address the next.
+2-6. **Fix + verify**: Apply fix → verify via the test-runner MCP tools when available (`test_list` → `test_debug` (pass the test id from `test_list`) → repair → `test_run` with `locations` scoped to the single test file for structured results; fall back to `npx playwright test --grep "<test-name>"` if the playwright-test MCP server is not configured or its test tools fail) → if passes, log to app-knowledge.md (Selector Fixes / Assertion Fixes). Max 3 heal attempts per test. **One error per round**: fix a single error, re-run, then address the next.
 
 2-7. **Log**: Append healed selector/assertion to `app-knowledge.md`. Auto-de-duplicate by Route + Old Selector (selectors) or Test + Old Assertion (assertions).
 

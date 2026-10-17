@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+- **feat(e2e): 浏览器工具角色路由 + 会话状态语义 + doctor storageState 诊断（`e2e-mcp-tool-routing`）**. 起因：会话同时挂着 `playwright-test`（test-runner MCP）与用户自装的 `chrome-devtools-mcp` 两套浏览器工具时，e2e 模板原句 "Browser exploration is tool-agnostic" 对选择只字未提——模型按表面相似度随机选；且两套工具会话语义相反（chrome-devtools attach 真实 Chrome persistent profile、登录态跨会话记住；test-runner 的 browser_* 中继进 paused test 的 fixture context、每次 launch 全新），用户把后者的"失忆"误判为配置缺陷。模板侧：路由句改为角色路由——test_*/planner_*/generator_* 只在 playwright-test（生成/执行/修复不换轨）、交互探索优先可回退（编辑器未装或需 CDP 独有能力如 Performance trace 时用 chrome-devtools）、真并行走 `openspec-pw explore --parallel N`，就近声明「persistent profile 登录态不可当 E2E 前提」；Step 4 增补 Session state 小节：fresh context = E2E 隔离设计而非缺陷、登录态唯一恢复路径 = auth.setup → playwright.config storageState 依赖链、明确警示 `browser_storage_state` 类工具在工具清单里但 paused-test 会话不收（storage capability 未启用）防按清单误选。doctor 侧：新增可选检查 `storage-state`——config 声明 storageState 而 auth state 文件缺失 → 黄 ⚠ + `npx playwright test --project=setup` 修复命令（不阻断、不影响 ok 与退出码）；路径提取判则防误报：字面量（`.auth`/`user.json` 特征，含 `join(...)` 拼接片段）优先，未命中时仅当 auth.setup.ts 存在（模板布局）才按默认路径判断，config 未声明或判则都不达 → 不输出。工具事实经实测落地（playwright 1.63.0）：89 工具、storage 类 capability 为 "storage" 被内层 `capabilities: ["testing"]` 硬编码过滤器排除、双进程跨 launch localStorage 不留存——断言只写实测证实的行为。
+  - `templates/e2e-command.md`、`src/commands/doctor.ts`、`tests/commands/doctor.test.ts`（+4 用例）、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
+
 ## [0.3.99] - 2026-10-10
 
 - **feat(gitignore): 受管块新增探索截图目录（`managed-screenshots-local`）**. `tests/playwright/screenshots/` 入受管 .gitignore 清单（21→22 项）。依据：探索截图本性时效（随开发过时，与 §6「截图证明像素，不证明行为」同判），且其同层证据——消费文档 `app-exploration.md` 与 `openspec/reports/`——早已是本地文件（受管忽略），截图是探索证据层里唯一还在入 git 的错位项（活路由截图靠同 slug 覆盖自愈，死路由截图永久沉积）。转本地后三层一致：本地证据本地存、耐久资产（specs 等）才进库。存量已提交截图走既有「已追踪检测」advisory（`git rm --cached`）。双 README 段落同步，测试 +1 用例。

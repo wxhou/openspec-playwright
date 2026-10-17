@@ -272,7 +272,7 @@ audit **只报告、绝不删除**——测试退役永远是人工决策。存�
 | **Playwright MCP** | 每个已授权（有命令工件）编辑器的 test-runner server 配置；未授权编辑器降为信息行（提示 `init --tools` 添加，不阻断） | `playwright-cli`（PATH 上的 @playwright/cli）——可选 ⚠，不阻断 |
 | **Vendored Agents** | — | 官方 agents 快照的存在与归属（owned/modified）；依赖的 `playwright-test` MCP 缺失时 ⚠（不阻断） |
 | **Sync** | 已初始化时标准同步（漂移 → `openspec-pw update`；AGENTS.md 无标记视为未初始化，恒 ok:true） | 未初始化（闸门，不阻断） |
-| **测试目录** | `tests/playwright/` 目录存在 | `auth.setup.ts` 是否存在 |
+| **测试目录** | `tests/playwright/` 目录存在 | `auth.setup.ts` 是否存在 · `storage-state` 完整性——config 声明 `storageState` 而 state 文件缺失 → ⚠ + `npx playwright test --project=setup`（不阻断） |
 | **种子测试** | — | `seed.spec.ts` 是否存在 |
 | **应用服务器** | — | 开发脚本、基础 URL、可达性 |
 | **CodeGraph** | — | CLI 可用性、索引存在、MCP 安装（警告，不阻断） |

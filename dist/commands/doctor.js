@@ -14,6 +14,7 @@ const OPTIONAL_NAMES = new Set([
     "engines",
     "specs",
     "auth-setup",
+    "storage-state",
     "seed",
     "dev-script",
     "base-url",
@@ -571,6 +572,40 @@ export async function doctor(options = {}) {
         ok: hasAuthSetup,
         message: hasAuthSetup ? "found" : "not found (optional)",
     });
+    // storageState declared but state file missing → every non-setup context
+    // launches anonymous; the login flows under test then 401 silently.
+    if (configPath) {
+        let text = "";
+        try {
+            text = readFileSync(join(projectRoot, configPath), "utf-8");
+        }
+        catch {
+            // config exists but unreadable — the config check above already reports
+            // its presence; skip instead of crashing doctor
+        }
+        if (/\bstorageState\b/.test(text)) {
+            const literals = [...text.matchAll(/['"]([^'"]+)['"]/g)].map((m) => m[1]);
+            const explicit = literals.find((s) => /(^|\/)user\.json$/.test(s) && s.includes("/")) ??
+                literals.find((s) => s.includes(".auth") && s.includes("/")) ??
+                (/\bjoin\([^)]*['"]\.auth['"]/.test(text) ? "playwright/.auth/user.json" : undefined);
+            // No literal and no template layout (auth.setup.ts) → the path is
+            // user-owned; guessing the default would report their custom layout
+            // as broken, so leave it out entirely.
+            const stateFile = explicit ?? (hasAuthSetup ? "playwright/.auth/user.json" : undefined);
+            if (stateFile) {
+                const file = stateFile.startsWith("/") ? stateFile : join(projectRoot, stateFile);
+                const hasState = existsSync(file);
+                checks.push({
+                    category: "Tests",
+                    name: "storage-state",
+                    ok: hasState,
+                    message: hasState
+                        ? `found ${stateFile}`
+                        : `storage state file missing (${stateFile}) — test contexts launch anonymous (run: npx playwright test --project=setup)`,
+                });
+            }
+        }
+    }
     // Seed test
     const hasSeed = existsSync(join(testsDir, "seed.spec.ts"));
     checks.push({
