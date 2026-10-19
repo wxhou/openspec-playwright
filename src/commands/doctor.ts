@@ -52,6 +52,30 @@ export function isOptionalCheck(name: string): boolean {
   return OPTIONAL_NAMES.has(name) || name.startsWith("test-runner-mcp-");
 }
 
+/**
+ * PATH probe for an optional CLI. `which`/`where` exits non-zero when the tool
+ * is absent — that is the expected miss. Any other failure (spawn error,
+ * EACCES) is surfaced in `note` instead of being reported as "not installed".
+ */
+function probeOnPath(tool: string): { onPath: boolean; note: string | null } {
+  try {
+    execFileSync(process.platform === "win32" ? "where" : "which", [tool], {
+      stdio: "ignore",
+      shell: needsShell,
+    });
+    return { onPath: true, note: null };
+  } catch (err) {
+    const missed =
+      err instanceof Error &&
+      typeof (err as { status?: unknown }).status === "number";
+    if (missed) return { onPath: false, note: null };
+    return {
+      onPath: false,
+      note: `probe failed — ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+}
+
 export async function doctor(options: DoctorOptions = {}) {
   const checks: Array<{
     category: string;
@@ -717,41 +741,94 @@ export async function doctor(options: DoctorOptions = {}) {
     "eslint.config.mjs",
     "eslint.config.cjs",
     "eslint.config.ts",
+    "eslint.config.mts",
+    "eslint.config.cts",
     ".eslintrc.js",
     ".eslintrc.cjs",
     ".eslintrc.json",
     ".eslintrc.yaml",
     ".eslintrc.yml",
+    ".eslintrc",
   ];
   const eslintConfigFile = eslintConfigs.find((f) =>
     existsSync(join(projectRoot, f)),
   );
-  let ruffConfigText: string | null = null;
-  const ruffConfigFile = ["ruff.toml", ".ruff.toml", "pyproject.toml"].find(
-    (f) => existsSync(join(projectRoot, f)),
+  // pyproject.toml is read once: ruff and pylint both live in [tool.<tool>.*]
+  // tables, and either sub-table can be the only one present. Dotted sub-tables
+  // ([tool.ruff.lint], [tool.pylint.main]) are the documented forms — matching
+  // only the bare header misses them.
+  let pyprojectText: string | null = null;
+  let lintConfigUnreadable = false;
+  if (existsSync(join(projectRoot, "pyproject.toml"))) {
+    try {
+      pyprojectText = readFileSync(
+        join(projectRoot, "pyproject.toml"),
+        "utf-8",
+      );
+    } catch (err) {
+      lintConfigUnreadable = true;
+      checks.push({
+        category: "Lint",
+        name: "lint-config",
+        ok: true,
+        message: `pyproject.toml unreadable — its ruff/pylint sections were not probed (${err instanceof Error ? err.message : String(err)})`,
+      });
+    }
+  }
+  const ruffConfigFile = ["ruff.toml", ".ruff.toml"].find((f) =>
+    existsSync(join(projectRoot, f)),
   );
+  let ruffConfigText: string | null = null;
   if (ruffConfigFile) {
-    const text = readFileSync(join(projectRoot, ruffConfigFile), "utf-8");
-    // Only a [tool.ruff] section (or a dedicated ruff.toml) counts as a ruff
-    // config — a bare pyproject.toml is not ruff by itself.
-    ruffConfigText =
-      ruffConfigFile === "pyproject.toml" && !/\[tool\.ruff\]/.test(text)
-        ? null
-        : text;
+    try {
+      ruffConfigText = readFileSync(
+        join(projectRoot, ruffConfigFile),
+        "utf-8",
+      );
+    } catch (err) {
+      lintConfigUnreadable = true;
+      checks.push({
+        category: "Lint",
+        name: "lint-config",
+        ok: true,
+        message: `${ruffConfigFile} unreadable — ruff probes skipped (${err instanceof Error ? err.message : String(err)})`,
+      });
+    }
+  } else if (
+    pyprojectText &&
+    /\[tool\.ruff(?:\.[^\]]*)?\]/.test(pyprojectText)
+  ) {
+    ruffConfigText = pyprojectText;
   }
   let pyLintConfigFile: string | null = [".pylintrc", "pylintrc", "setup.cfg"].find((f) =>
     existsSync(join(projectRoot, f)),
   ) ?? null;
-  if (ruffConfigFile === "pyproject.toml" && ruffConfigText && /\[tool\.pylint\]/.test(ruffConfigText)) {
-    pyLintConfigFile ??= "pyproject.toml";
+  if (
+    pyLintConfigFile === null &&
+    pyprojectText &&
+    /\[tool\.pylint(?:\.[^\]]*)?\]/.test(pyprojectText)
+  ) {
+    pyLintConfigFile = "pyproject.toml";
   }
 
   if (eslintConfigFile) {
-    const eslintText = readFileSync(
-      join(projectRoot, eslintConfigFile),
-      "utf-8",
-    );
-    if (!/\bno-empty\b/.test(eslintText)) {
+    let eslintText: string | null = null;
+    try {
+      eslintText = readFileSync(
+        join(projectRoot, eslintConfigFile),
+        "utf-8",
+      );
+    } catch (err) {
+      checks.push({
+        category: "Lint",
+        name: "lint-eslint",
+        ok: true,
+        message: `${eslintConfigFile} unreadable — no-empty probe skipped (${err instanceof Error ? err.message : String(err)})`,
+      });
+    }
+    // `-` belongs to rule ids: no-empty-function / no-empty-pattern must not
+    // count as coverage for no-empty itself.
+    if (eslintText !== null && !/(?<![\w-])no-empty(?![\w-])/.test(eslintText)) {
       checks.push({
         category: "Lint",
         name: "lint-eslint",
@@ -776,50 +853,40 @@ export async function doctor(options: DoctorOptions = {}) {
           'B904 not found in ruff lint config — dropped causality (`raise ... from`) inside handlers is not default-covered; see lint-guidelines.md (fix: extend-select = ["B904"])',
       });
     }
-    let ruffOnPath = false;
-    try {
-      execFileSync(process.platform === "win32" ? "where" : "which", ["ruff"], {
-        stdio: "ignore",
-        shell: needsShell,
-      });
-      ruffOnPath = true;
-    } catch {
-      /* not installed — optional awareness only */
-    }
+    const ruff = probeOnPath("ruff");
     checks.push({
       category: "Lint",
       name: "lint-ruff-cli",
-      ok: ruffOnPath,
-      message: ruffOnPath
-        ? "available"
-        : "ruff not installed (optional — run it in CI once the checklist rules are enabled)",
-    });
-
-    const hasPylintConfig = Boolean(pyLintConfigFile);
-    if (hasPylintConfig) {
-      let pylintOnPath = false;
-      try {
-        execFileSync(
-          process.platform === "win32" ? "where" : "which",
-          ["pylint"],
-          { stdio: "ignore", shell: needsShell },
-        );
-        pylintOnPath = true;
-      } catch {
-        /* not installed — optional awareness only */
-      }
-      checks.push({
-        category: "Lint",
-        name: "lint-pylint-cli",
-        ok: pylintOnPath,
-        message: pylintOnPath
+      ok: ruff.onPath,
+      message: ruff.note
+        ? `ruff ${ruff.note}`
+        : ruff.onPath
           ? "available"
-          : "pylint not installed (optional — its swallow trio is on by default once pylint runs)",
-      });
-    }
+          : "ruff not installed (optional — run it in CI once the checklist rules are enabled)",
+    });
   }
 
-  if (!eslintConfigFile && !ruffConfigText) {
+  if (pyLintConfigFile) {
+    const pylint = probeOnPath("pylint");
+    checks.push({
+      category: "Lint",
+      name: "lint-pylint-cli",
+      ok: pylint.onPath,
+      message: pylint.note
+        ? `pylint ${pylint.note}`
+        : pylint.onPath
+          ? "available"
+          : "pylint not installed (optional — its swallow trio is on by default once pylint runs)",
+    });
+  }
+
+  if (
+    !eslintConfigFile &&
+    !ruffConfigFile &&
+    !lintConfigUnreadable &&
+    !ruffConfigText &&
+    !pyLintConfigFile
+  ) {
     checks.push({
       category: "Lint",
       name: "lint-config",

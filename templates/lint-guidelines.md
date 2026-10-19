@@ -1,6 +1,6 @@
 # Lint Guidelines — Swallowed Errors
 
-<!-- openspec-pw: lint-guidelines 916a76ab -->
+<!-- openspec-pw: lint-guidelines 6957d228 -->
 
 Machine reference for the swallow-error clause of the employee standards (§1: "a caught exception must never vanish silently — the failure must be visible, any one exit"). Maintained by openspec-pw; refresh with `npx openspec-pw update`.
 
@@ -22,10 +22,19 @@ Measures verified against: ruff 0.17.1 rule metadata (2026-10), pylint upstream 
 
 ## Enabling what is missing
 
-The only off-by-default rule above is **`B904`** (dropped-causality on `raise ... from` inside a handler). In `pyproject.toml` or `ruff.toml`:
+The only off-by-default rule above is **`B904`** (dropped-causality on `raise ... from` inside a handler).
+
+In `pyproject.toml`:
 
 ```toml
 [tool.ruff.lint]
+extend-select = ["B904"]
+```
+
+In a dedicated `ruff.toml` / `.ruff.toml` (the `tool.ruff` prefix is dropped):
+
+```toml
+[lint]
 extend-select = ["B904"]
 ```
 

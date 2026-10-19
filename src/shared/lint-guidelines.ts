@@ -6,7 +6,6 @@
  */
 import { createHash } from "node:crypto";
 import {
-  copyFileSync,
   existsSync,
   readFileSync,
   rmSync,
@@ -162,17 +161,21 @@ export function removeChecklist(
  * ownership (vendored-agents semantics): missing → copy; identical → no-op;
  * never user-modified (checksum intact) → overwrite with latest; user-modified
  * → leave untouched (caller reports it).
+ *
+ * `templateContent` lets `update` pass the fetched tarball's copy so the
+ * checklist follows the same source as every other synced asset; callers
+ * without a fetched bundle fall back to the running package's template.
  */
 export function installOrRefreshChecklist(
   projectRoot: string,
+  templateContent?: string,
 ): ChecklistDisposition {
-  const templatePath = bundledTemplatePath(
-    join("templates", "lint-guidelines.md"),
-  );
-  const latest = readFileSync(templatePath, "utf-8");
+  const latest =
+    templateContent ??
+    readFileSync(bundledTemplatePath(join("templates", "lint-guidelines.md")), "utf-8");
   const dest = join(projectRoot, LINT_GUIDELINES_RELPATH);
   if (!existsSync(dest)) {
-    copyFileSync(templatePath, dest);
+    writeFileSync(dest, latest);
     return "created";
   }
   const current = readFileSync(dest, "utf-8");

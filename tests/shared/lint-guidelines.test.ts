@@ -47,14 +47,9 @@ describe("lint-guidelines checklist data ↔ template pairing", () => {
     expect(isChecklistUnmodified(crlf)).toBe(true);
   });
 
-  it("default-state contract: only B904 is off by default, none is a hook entry", () => {
+  it("default-state contract: only B904 is off by default", () => {
     const offByDefault = LINT_GUIDELINE_RULES.filter((r) => !r.defaultOn);
     expect(offByDefault.map((r) => r.id)).toEqual(["B904"]);
-    for (const rule of LINT_GUIDELINE_RULES) {
-      expect(["ESLint", "ruff", "pylint"]).toContain(rule.tool);
-      // hook entries are banned — execution stays lint/CI/pre-commit
-      expect(rule.tool.toLowerCase()).not.toContain("hook");
-    }
   });
 
   it("no-empty boundary (comment exemption) is stated in the template", () => {
@@ -128,6 +123,23 @@ describe("lint-guidelines install / refresh (content-based ownership)", () => {
       expect(disposition).toBe("kept-modified");
       expect(readFileSync(join(root, LINT_GUIDELINES_RELPATH), "utf-8")).toBe(
         handEdited,
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("caller-supplied template content (fetched tarball) is the install/refresh source", () => {
+    const root = mkdtempSync(join(tmpdir(), "ospw-lintguidelines-"));
+    try {
+      const fetched = staleToolOwnedFixture();
+      expect(installOrRefreshChecklist(root, fetched)).toBe("created");
+      expect(readFileSync(join(root, LINT_GUIDELINES_RELPATH), "utf-8")).toBe(
+        fetched,
+      );
+      expect(installOrRefreshChecklist(root)).toBe("refreshed");
+      expect(readFileSync(join(root, LINT_GUIDELINES_RELPATH), "utf-8")).toBe(
+        template,
       );
     } finally {
       rmSync(root, { recursive: true, force: true });

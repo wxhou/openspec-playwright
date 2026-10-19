@@ -339,6 +339,25 @@ describe("update.ts: npm spawn calls (execFile, no shell)", () => {
     expect(errCatches).toBeGreaterThanOrEqual(3);
   });
 });
+describe("update.ts: checklist refresh source", () => {
+  it("forwards the fetched tarball's checklist to installOrRefreshChecklist", () => {
+    const src = readFileSync(
+      fileURLToPath(new URL("../src/commands/update.ts", import.meta.url)),
+      "utf-8",
+    );
+    // Captured from the extracted bundle in both sync branches...
+    const captures = (
+      src.match(/join\(\s*tmpDir,\s*"templates",\s*"lint-guidelines\.md"\s*\)/g) || []
+    ).length;
+    expect(captures).toBeGreaterThanOrEqual(2);
+    // ...and handed to the checklist writer instead of letting it fall back to
+    // the running (possibly older) package's bundled template.
+    expect(src).toMatch(
+      /installOrRefreshChecklist\(\s*projectRoot,\s*checklistTemplate/,
+    );
+  });
+});
+
 // ─── Drift-aware no-op behavior ───────────────────────────────────────────
 
 describe("update.ts: drift-aware no-op", () => {

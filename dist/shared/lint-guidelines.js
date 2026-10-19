@@ -5,7 +5,7 @@
  * CI failure, both sides update in the same commit).
  */
 import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, readFileSync, rmSync, writeFileSync, } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync, } from "node:fs";
 import { join } from "node:path";
 import { bundledTemplatePath } from "./drift.js";
 import { normalizeEol } from "../commands/editors/agents.js";
@@ -125,13 +125,17 @@ export function removeChecklist(projectRoot) {
  * ownership (vendored-agents semantics): missing → copy; identical → no-op;
  * never user-modified (checksum intact) → overwrite with latest; user-modified
  * → leave untouched (caller reports it).
+ *
+ * `templateContent` lets `update` pass the fetched tarball's copy so the
+ * checklist follows the same source as every other synced asset; callers
+ * without a fetched bundle fall back to the running package's template.
  */
-export function installOrRefreshChecklist(projectRoot) {
-    const templatePath = bundledTemplatePath(join("templates", "lint-guidelines.md"));
-    const latest = readFileSync(templatePath, "utf-8");
+export function installOrRefreshChecklist(projectRoot, templateContent) {
+    const latest = templateContent ??
+        readFileSync(bundledTemplatePath(join("templates", "lint-guidelines.md")), "utf-8");
     const dest = join(projectRoot, LINT_GUIDELINES_RELPATH);
     if (!existsSync(dest)) {
-        copyFileSync(templatePath, dest);
+        writeFileSync(dest, latest);
         return "created";
     }
     const current = readFileSync(dest, "utf-8");

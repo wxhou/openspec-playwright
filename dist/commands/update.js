@@ -114,10 +114,18 @@ export async function update(options) {
         }
     }
     // 2. Update commands/templates (skipped by --no-skill) + standards (always)
+    // Latest checklist template from the fetched bundle, when this run has one.
+    // Captured before the temporary extract dir is removed; the running
+    // package's copy is the fallback for runs whose fetch failed.
+    let checklistTemplate = null;
     if (options.skill !== false) {
         console.log(chalk.blue("\n─── Updating Commands ───"));
         try {
             const tmpDir = await fetchLatestBundle();
+            const fetchedChecklist = join(tmpDir, "templates", "lint-guidelines.md");
+            if (existsSync(fetchedChecklist)) {
+                checklistTemplate = readFileSync(fetchedChecklist, "utf-8");
+            }
             // Read e2e command content from template
             const commandSrc = join(tmpDir, "templates", "e2e-command.md");
             let body = "";
@@ -210,6 +218,10 @@ export async function update(options) {
         console.log(chalk.blue("\n─── Standards Sync ───"));
         try {
             const tmpDir = await fetchLatestBundle();
+            const fetchedChecklist = join(tmpDir, "templates", "lint-guidelines.md");
+            if (existsSync(fetchedChecklist)) {
+                checklistTemplate = readFileSync(fetchedChecklist, "utf-8");
+            }
             syncEmployeeStandards(tmpDir, projectRoot, hasCommandArtifacts(projectRoot, claudeAdapter) || wrapperHasMarkers(claudeAdapter, projectRoot), getAllAdapters().some((a) => hasCommandArtifacts(projectRoot, a)) || hasRuleFileMarkers(projectRoot), hasCommandArtifacts(projectRoot, codebuddyAdapter) || wrapperHasMarkers(codebuddyAdapter, projectRoot));
             rmSync(tmpDir, { recursive: true, force: true });
         }
@@ -264,7 +276,7 @@ export async function update(options) {
     // capability): identical → silent; tool-owned → refresh; user-modified →
     // notice and keep. Inside the initialized gate, so update never expands
     // territory.
-    const checklist = installOrRefreshChecklist(projectRoot);
+    const checklist = installOrRefreshChecklist(projectRoot, checklistTemplate ?? undefined);
     if (checklist === "created") {
         console.log(chalk.green(`  ✓ Generated: ${LINT_GUIDELINES_RELPATH}`));
     }

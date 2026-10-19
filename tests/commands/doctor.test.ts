@@ -1067,7 +1067,9 @@ describe("doctor lint probes", () => {
     mockProjectFiles({ "ruff.toml": "[lint]\nselect = [\"E4\"]\n" });
     execLintMock.mockImplementation((cmd: string) => {
       if (cmd === "node" || cmd === "npm" || cmd === "npx") return "v22.0.0";
-      if (cmd === "which" || cmd === "where") throw new Error("not found");
+      if (cmd === "which" || cmd === "where") {
+        throw Object.assign(new Error("not found"), { status: 1 });
+      }
       return "";
     });
     const parsed = await runLintDoctorJson();
@@ -1095,12 +1097,18 @@ describe("doctor lint probes", () => {
         indexed: false,
         mcpInstalledAdapters: [],
       });
-      mockProjectFiles({ "pyproject.toml": `[tool.ruff]\n${select}\n` });
+      mockProjectFiles({ "pyproject.toml": `[tool.ruff.lint]\n${select}\n` });
       const parsed = await runLintDoctorJson();
+      const rows = lintRows(parsed);
       expect(
-        lintRows(parsed).find((c) => c.name === "lint-ruff"),
+        rows.find((c) => c.name === "lint-ruff"),
         `select variant: ${select}`,
       ).toBeUndefined();
+      // Sub-table recognized (probe ran) and ruff reported present.
+      expect(
+        rows.find((c) => c.name === "lint-ruff-cli")?.ok,
+        `cli variant: ${select}`,
+      ).toBe(true);
     }
   });
 
@@ -1119,5 +1127,134 @@ describe("doctor lint probes", () => {
     const rows = lintRows(parsed);
     expect(rows).toHaveLength(1);
     expect(rows[0].name).toBe("lint-config");
+  });
+
+  it("longer rule ids do not count as no-empty coverage", async () => {
+    mockProjectFiles({
+      "eslint.config.mjs":
+        'export default [{ rules: { "@typescript-eslint/no-empty-function": "error", "no-empty-pattern": "off" } }];',
+    });
+    const parsed = await runLintDoctorJson();
+    const row = lintRows(parsed).find((c) => c.name === "lint-eslint");
+    expect(row?.ok).toBe(false);
+  });
+
+  it("eslint.config.mts is detected (flat-config default filename)", async () => {
+    mockProjectFiles({ "eslint.config.mts": "export default [];" });
+    const parsed = await runLintDoctorJson();
+    const row = lintRows(parsed).find((c) => c.name === "lint-eslint");
+    expect(row?.ok).toBe(false);
+  });
+
+  it("unreadable eslint config degrades to an info row instead of throwing", async () => {
+    existsLintMock.mockImplementation((p: Parameters<typeof existsSync>[0]) => {
+      const s = String(p).replace(/\\/g, "/");
+      if (s.endsWith("eslint.config.js")) return true;
+      return (
+        s.endsWith("playwright.config.ts") ||
+        s.endsWith("openspec") ||
+        s.endsWith("tests/playwright") ||
+        s.endsWith("AGENTS.md") ||
+        s.endsWith("CLAUDE.md")
+      );
+    });
+    readFileLintMock.mockImplementation((p: Parameters<typeof readFileSync>[0]) => {
+      const s = String(p).replace(/\\/g, "/");
+      if (s.endsWith("eslint.config.js")) {
+        throw Object.assign(new Error("EACCES: permission denied"), {
+          code: "EACCES",
+        });
+      }
+      return "<!-- OPENSPEC-PW:START -->\ncontent\n<!-- OPENSPEC-PW:END -->";
+    });
+    const parsed = await runLintDoctorJson();
+    const row = lintRows(parsed).find((c) => c.name === "lint-eslint");
+    expect(row?.ok).toBe(true);
+    expect(row?.message).toContain("unreadable");
+    expect(parsed.ok).toBe(true);
+  });
+
+  it("unreadable ruff config degrades to an info row, not a false 'no config found'", async () => {
+    existsLintMock.mockImplementation((p: Parameters<typeof existsSync>[0]) => {
+      const s = String(p).replace(/\\/g, "/");
+      if (s.endsWith("ruff.toml")) return true;
+      return (
+        s.endsWith("playwright.config.ts") ||
+        s.endsWith("openspec") ||
+        s.endsWith("tests/playwright") ||
+        s.endsWith("AGENTS.md") ||
+        s.endsWith("CLAUDE.md")
+      );
+    });
+    readFileLintMock.mockImplementation((p: Parameters<typeof readFileSync>[0]) => {
+      const s = String(p).replace(/\\/g, "/");
+      if (s.endsWith("ruff.toml")) {
+        throw Object.assign(new Error("EISDIR: illegal operation"), {
+          code: "EISDIR",
+        });
+      }
+      return "<!-- OPENSPEC-PW:START -->\ncontent\n<!-- OPENSPEC-PW:END -->";
+    });
+    const parsed = await runLintDoctorJson();
+    const rows = lintRows(parsed);
+    expect(rows.find((c) => c.name === "lint-ruff")).toBeUndefined();
+    const row = rows.find((c) => c.name === "lint-config");
+    expect(row?.message).toContain("unreadable");
+    expect(parsed.ok).toBe(true);
+  });
+
+  it("pyproject [tool.ruff.lint] sub-table is recognized → B904 gap probed", async () => {
+    mockProjectFiles({
+      "pyproject.toml": '[tool.ruff.lint]\nextend-select = ["E4"]\n',
+    });
+    const parsed = await runLintDoctorJson();
+    const rows = lintRows(parsed);
+    expect(rows.find((c) => c.name === "lint-config")).toBeUndefined();
+    expect(rows.find((c) => c.name === "lint-ruff")?.ok).toBe(false);
+    expect(rows.find((c) => c.name === "lint-ruff-cli")?.ok).toBe(true);
+  });
+
+  it("pyproject [tool.pylint.main] is detected; pylint on PATH → available", async () => {
+    mockProjectFiles({
+      "pyproject.toml": "[tool.pylint.main]\ndisable = []\n",
+    });
+    const parsed = await runLintDoctorJson();
+    const rows = lintRows(parsed);
+    expect(rows.find((c) => c.name === "lint-config")).toBeUndefined();
+    const row = rows.find((c) => c.name === "lint-pylint-cli");
+    expect(row?.ok).toBe(true);
+    expect(row?.message).toContain("available");
+  });
+
+  it("pylint PATH absent → not installed row", async () => {
+    mockProjectFiles({ "pyproject.toml": "[tool.pylint.main]\n" });
+    execLintMock.mockImplementation((cmd: string) => {
+      if (cmd === "node" || cmd === "npm" || cmd === "npx") return "v22.0.0";
+      if (cmd === "which" || cmd === "where") {
+        throw Object.assign(new Error("not found"), { status: 1 });
+      }
+      return "";
+    });
+    const parsed = await runLintDoctorJson();
+    const row = lintRows(parsed).find((c) => c.name === "lint-pylint-cli");
+    expect(row?.ok).toBe(false);
+    expect(row?.message).toContain("not installed");
+  });
+
+  it("unexpected PATH probe failure is surfaced, not reported as not installed", async () => {
+    mockProjectFiles({ "ruff.toml": '[lint]\nselect = ["B904"]\n' });
+    execLintMock.mockImplementation((cmd: string) => {
+      if (cmd === "node" || cmd === "npm" || cmd === "npx") return "v22.0.0";
+      if (cmd === "which" || cmd === "where") {
+        throw Object.assign(new Error("EACCES: spawn failed"), {
+          code: "EACCES",
+        });
+      }
+      return "";
+    });
+    const parsed = await runLintDoctorJson();
+    const row = lintRows(parsed).find((c) => c.name === "lint-ruff-cli");
+    expect(row?.ok).toBe(false);
+    expect(row?.message).toContain("probe failed");
   });
 });

@@ -38,5 +38,9 @@ export declare function removeChecklist(projectRoot: string): ChecklistRemovalDi
  * ownership (vendored-agents semantics): missing → copy; identical → no-op;
  * never user-modified (checksum intact) → overwrite with latest; user-modified
  * → leave untouched (caller reports it).
+ *
+ * `templateContent` lets `update` pass the fetched tarball's copy so the
+ * checklist follows the same source as every other synced asset; callers
+ * without a fetched bundle fall back to the running package's template.
  */
-export declare function installOrRefreshChecklist(projectRoot: string): ChecklistDisposition;
+export declare function installOrRefreshChecklist(projectRoot: string, templateContent?: string): ChecklistDisposition;
