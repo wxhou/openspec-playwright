@@ -20,8 +20,8 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🟡 代码文件行数上限 1500：本次编辑推过 1500 即违例，按职责拆分；存量已超限的报告不动，不得继续堆叠（生成/vendored 产物除外）
 
 ## 禁止非通用性改动
-- 不假设外部输入可信：信任边界上的数据/响应/异步结果先校验（类型/范围/null/空/边界，数值含精度）再使用；资源用后必须释放
-- 🔴 禁止静默吞错：捕获的异常/错误必须处理、记录或上抛，记录后不得带病继续使用失败结果；确可安全忽略的（如 cleanup 二次异常）注释原因——不留空 catch / \`except: pass\` / \`_ = err\` / \`.ok()\` 类黑洞
+- 不假设外部输入可信：信任边界上的数据/响应/异步结果先校验（类型/范围/null/空/边界，数值含精度）再使用；资源用后必须释放；可预判的失败不裹 try 当控制流——预判守卫或取默认 API（如 \`dict.get\`、\`next(it, None)\`）先行
+- 🔴 捕获的异常不许无声消失——失败必须可见，出口任选：① 上抛，原样上行（裸 \`raise\` / \`return err\` 传原对象）或新建错误带因（\`raise … from e\` / \`{cause: e}\` / \`%w\`；catch 内新建错误不带因=丢因果，同判缺失）｜② 窄类型 catch 后按影响记 debug/warning + 行内原因再继续——继续=跳过该步骤及其依赖、或以替代值前行，失败结果本身不可再用；仅限可承受步骤（如清理、幂等二次释放），影响更重直接上抛；无类型 catch 按错误类别（instanceof/错误码）分流｜③ catch-all 只放能把错误就地隔离、不影响其余输入与状态的边界（批量循环顶/事件分发/进程顶等），照样记录 + 行内原因；边界外没有第四种出口——\`except Exception: return default\`、\`.catch(()=>null)\` 这类兜底静默同判吞错，空 catch、\`except: pass\`、\`_ = err\`、\`.catch(()=>{})\` 类黑洞照禁。注释不算处理，行为才算；②③行内原因不受注释纪律黑名单约束
 - 不写只适配样例输入的逻辑、魔法数字（入常量；有确切依据才注原因，否则取达义常量名）、具体值断言（无验收锚定的数值，点名即豁免）；路径/换行用语言内建跨平台 API（\`path.sep\`/\`path.join\`），比较前归一化 EOL
 - linter/typechecker 不存在（如该栈适用）→ 告知用户并建议安装；装上之前每次编辑后对改动自查并在响应中注明结果，重点：import 顶置纪律见工具节、未用变量/import
 - mock 数据/fixture → 参见数据编撰禁令
@@ -61,6 +61,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 ## 测试与验证策略
 - 🟡 测试只随验收存在：验收条款（规范 requirement / change 完成条 / 任务验收标准）或用户在会话中明确要求，点名才写；未点名的有价值场景（业务核心计算/状态转换、边界与错误路径、被多处复用的工具、修过 bug 的回归）→ 提议用户（收尾汇总一次提出），不静默略过；一个行为一组断言
 - 🔴 保持现有测试通过；测试红时先分类——被测行为仍在 → 更新断言至新行为；行为本次已删 → 其专属测试随行为删除、删前列明并报告；范围外既有红测试 → 报告不动；不以本节 DO NOT 或 §1 简化类条款为由跳过/删除既有测试
+- 🟡 测试断言与实现的分歧先裁定谁错（spec 还是实现——矛盾本身是发现）；拿不准停下问用户，不单方面弱化断言把两边凑绿
 - 🔴 验收条款点名的行为必须被某层测试覆盖（单测或验收测试，一层即可）；点名项若落本节任一 DO NOT 条款（如纯透传、同义反复断言），停下向用户裁决——不静默写，也不静默不写
 - 🟡 后端/服务的验证对真实运行的服务发真实请求（真实数据/依赖，遵守数据编撰节；写操作限测试/预发环境，无隔离环境先问用户）；是否落成测试按本节第一条的点名标准判断
 - 🟡 按点名写测试时，点名行为在该层覆盖不到才抽 UI 可测客户端逻辑（自定义 hook / 组合式函数 / 纯函数）为独立单元测；改了用户可见可交互的东西 → 浏览器验证；纯逻辑 → 证据验证，不开浏览器
@@ -102,8 +103,8 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🟡 Code file line limit 1500: this edit pushing a file past 1500 is a violation — split by responsibility, never extend; existing over-limit files are reported, not touched (generated/vendored artifacts exempt)
 
 ## No Non-Generic Changes
-- Don't assume external input is trusted: validate data/responses/async results at trust boundaries (type/range/null/empty/boundary, numeric precision included) before use; release resources after use
-- 🔴 No silent error swallowing: caught exceptions/errors must be handled, logged, or rethrown — never keep running on a failed result after logging it; safe-to-ignore cases (e.g. cleanup secondary errors) get a reason comment — never bare catch / \`except: pass\` / \`_ = err\` / \`.ok()\` black holes
+- Don't assume external input is trusted: validate data/responses/async results at trust boundaries (type/range/null/empty/boundary, numeric precision included) before use; release resources after use; foreseeable failures don't get wrapped in try as control flow — precondition guards or default-fetching APIs (like \`dict.get\`, \`next(it, None)\`) go first
+- 🔴 A caught exception must never vanish silently — the failure must be visible, any one exit: 1 rethrow — propagate the original object as-is (bare \`raise\` / \`return err\`) or create with cause (\`raise … from e\` / \`{cause: e}\` / \`%w\` — building a new error without cause inside a catch = dropped causality, same verdict); 2 narrow catch, log at debug/warning by impact + inline reason, then continue — continuing = skipping the step and its dependents or moving on with a substitute, the failed result itself is never reused; only tolerable steps (e.g. cleanup, idempotent double-release), heavier impact goes straight to rethrow; untyped catch branches on error class (instanceof/error code); 3 catch-alls only at boundaries that isolate the error locally (batch loop top / event dispatch / process top), still logged + inline reason; outside those boundaries there is no fourth exit — \`except Exception: return default\` / \`.catch(()=>null)\` fallback silence counts as swallowing, bare catch / \`except: pass\` / \`_ = err\` / \`.catch(()=>{})\` black holes stay banned. A comment is not handling, the behavior is; inline reasons under 2/3 are exempt from the comment-discipline blacklist
 - No logic that only fits sample inputs, no magic numbers (constants; a reason comment only when grounded in fact, otherwise a meaningful name), no specific-value assertions (ones unanchored to acceptance — acceptance-named ones exempt); paths/newlines via the language's built-in cross-platform APIs (\`path.sep\`/\`path.join\`), normalize EOL before comparing
 - If linter/typechecker missing (if applicable to the stack) → tell user and suggest installing; until then, self-check the changes after every edit and note the result in the reply, focus: import discipline (see Tool Constraints), unused variables/imports
 - Mock data / fixtures → see Data Fabrication section below
@@ -143,6 +144,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 ## Testing & Verification Strategy
 - 🟡 Tests exist only where acceptance demands them: write tests only for cases named by acceptance clauses (spec requirements / change acceptance criteria / task acceptance standards) or explicitly requested by the user in the session; for valuable un-named scenarios (core business computation/state transitions, boundary & error paths, widely reused utilities, bug-fix regressions) → propose to the user (bundled, raised once at wrap-up), never skip silently; one behavior one assertion set
 - 🔴 Keep existing tests passing; triage red tests first — behavior still exists → update assertions to the new behavior; behavior deleted this round → its dedicated tests go with it, itemized in the report; pre-existing red tests outside scope → report, don't touch; never use this section's DO NOT rules or the §1 simplification clauses to skip/delete existing tests
+- 🟡 When a test assertion disagrees with the implementation, first rule on who is wrong (the spec or the code — the contradiction itself is a finding); unsure → stop and ask the user; never unilaterally weaken assertions to make both green
 - 🔴 Behaviors named by acceptance clauses must be covered by some test layer (unit OR acceptance — one is enough); when a named item falls into any DO NOT rule of this section (pure passthrough, tautological assertions), stop and let the user decide — never silently write it, never silently skip it
 - 🟡 Verify backend/service behavior with real requests against a real running service (real data/dependencies, per the Data Fabrication section; write operations only against test/staging environments — ask first when no isolated environment exists); whether it lands as a test follows the naming standard in this section's first rule
 - 🟡 When writing named tests, extract testable client-side logic (custom hooks / composables / pure functions) into independent unit tests only when the named behavior isn't coverable at that layer; user-visible/interactive changes → browser-verify; pure logic → evidence verification, no browser

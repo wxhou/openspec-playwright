@@ -689,6 +689,20 @@ describe("doctor storage-state check", () => {
     expect(check).toBeDefined();
     expect(check.message).toContain(".auth/admin.json");
   });
+
+  it("config unreadable → skip recorded as an info check, not swallowed", async () => {
+    readFileMock.mockImplementation((p: Parameters<typeof readFileSync>[0]) => {
+      const s = String(p);
+      if (s.endsWith(".mcp.json")) return "{}";
+      if (s.endsWith("playwright.config.ts")) throw new Error("EACCES: permission denied");
+      return "<!-- OPENSPEC-PW:START -->\ncontent\n<!-- OPENSPEC-PW:END -->";
+    });
+    const parsed = await runDoctorJson();
+    const check = storageStateCheck(parsed);
+    expect(check).toBeDefined();
+    expect(check.ok).toBe(true);
+    expect(check.message).toContain("unreadable");
+  });
 });
 
 // ─── doctor authorization tiers (scope-editor-writes) ───────────────────────

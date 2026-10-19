@@ -630,8 +630,13 @@ export async function doctor(options: DoctorOptions = {}) {
     try {
       text = readFileSync(join(projectRoot, configPath), "utf-8");
     } catch {
-      // config exists but unreadable — the config check above already reports
-      // its presence; skip instead of crashing doctor
+      // report the skip instead of swallowing it silently
+      checks.push({
+        category: "Tests",
+        name: "storage-state",
+        ok: true,
+        message: "config unreadable — storage-state check skipped",
+      });
     }
     if (/\bstorageState\b/.test(text)) {
       const literals = [...text.matchAll(/['"]([^'"]+)['"]/g)].map((m) => m[1]);
