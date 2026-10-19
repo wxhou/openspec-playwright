@@ -51,7 +51,7 @@ import { detectCodeGraphStatus } from "../../src/shared/index.js";
 import { doctor } from "../../src/commands/doctor.js";
 
 // Semantic lint probes (eslint --print-config / ruff --show-settings).
-// Split from doctor.test.ts to keep that file under the 1500-line limit.
+// doctor.test.ts stays under the CI 1500-line gate by hosting them here.
 
 describe("doctor lint semantic probes", () => {
   const execLintMock = vi.mocked(execFileSync);
@@ -352,5 +352,55 @@ describe("doctor lint semantic probes", () => {
     } finally {
       errorSpy.mockRestore();
     }
+  });
+
+  it("print-config prints literal undefined (no config matches) → definitive gap, not a probe failure", async () => {
+    const config = join(semanticRoot, "eslint.config.mjs");
+    mockExists(config);
+    // Literal text DOES enable no-empty: only the semantic path can produce
+    // the gap row, so a fallback would wrongly silence it.
+    mockConfigText(config, 'export default [{ rules: { "no-empty": "error" } }];\n');
+    readdirLintMock.mockReturnValue([fileDirent("app.ts")] as never);
+    mockExec((cmd, args) =>
+      cmd === "eslint" && args[0] === "--print-config" ? "undefined" : undefined,
+    );
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const parsed = await runLintDoctorJson();
+      expect(errorSpy.mock.calls.join(" ")).not.toContain(
+        "semantic probe unavailable",
+      );
+      const row = lintRows(parsed).find((c) => c.name === "lint-eslint");
+      expect(row?.ok).toBe(false);
+      expect(parsed.ok).toBe(true);
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it("unreadable pyproject next to a dedicated ruff config → pylint probe reported as skipped", async () => {
+    const pyproject = join(semanticRoot, "pyproject.toml").replace(/\\/g, "/");
+    const ruffConfig = join(semanticRoot, "ruff.toml");
+    mockExists(pyproject, ruffConfig);
+    const target = pyproject.replace(/\\/g, "/");
+    readFileLintMock.mockImplementation(
+      (p: Parameters<typeof readFileSync>[0]) => {
+        const s = String(p).replace(/\\/g, "/");
+        if (s === target) throw new Error("EACCES: permission denied");
+        if (s === ruffConfig.replace(/\\/g, "/")) return '[lint]\nselect = ["E4"]\n';
+        return "<!-- OPENSPEC-PW:START -->\ncontent\n<!-- OPENSPEC-PW:END -->";
+      },
+    );
+    readdirLintMock.mockReturnValue([fileDirent("app.py")] as never);
+    mockExec((cmd, args) =>
+      cmd === "ruff" && args[0] === "check"
+        ? "linter.rules.enabled = [\n    raise-without-from-inside-except (B904),\n]\nlinter.rules.preview = []\n"
+        : undefined,
+    );
+    const parsed = await runLintDoctorJson();
+    const row = lintRows(parsed).find((c) => c.name === "lint-config");
+    expect(row?.ok).toBe(true);
+    expect(row?.message).toContain("pylint");
+    expect(row?.message).toContain("EACCES");
   });
 });

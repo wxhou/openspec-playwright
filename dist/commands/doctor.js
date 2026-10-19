@@ -112,6 +112,10 @@ function probeEslintNoEmpty(projectRoot) {
             shell: needsShell,
             stdio: ["ignore", "pipe", "pipe"],
         });
+        // ESLint exits 0 and prints the literal "undefined" when no config
+        // matches the file — a definitive "not enabled", not a probe failure.
+        if (output.trim() === "undefined")
+            return { ok: true, enabled: false };
         const parsed = JSON.parse(output);
         if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
             return { ok: false, reason: "print-config output is not a config object" };
@@ -801,15 +805,21 @@ export async function doctor(options = {}) {
     const ruffConfig = findRuffConfig(projectRoot);
     const ruffOnPath = probeOnPath("ruff");
     // pyproject.toml is read for pylint discovery (local only — ancestor-aware
-    // probing covers ESLint/ruff). An unreadable pyproject is already reported
-    // by the ruff face, which treats it as a potential ruff config.
+    // probing covers ESLint/ruff). An unreadable file is recorded as an info
+    // row: the ruff face reports it only when it also qualifies as a ruff
+    // config, which is not the case next to a dedicated ruff.toml.
     let pyprojectText = null;
     if (existsSync(join(projectRoot, "pyproject.toml"))) {
         try {
             pyprojectText = readFileSync(join(projectRoot, "pyproject.toml"), "utf-8");
         }
-        catch {
-            // Ruff face reports the unreadable file; pylint discovery treats it as absent.
+        catch (err) {
+            checks.push({
+                category: "Lint",
+                name: "lint-config",
+                ok: true,
+                message: `pyproject.toml unreadable — its pylint section was not probed (${err instanceof Error ? err.message : String(err)})`,
+            });
         }
     }
     let pyLintConfigFile = [".pylintrc", "pylintrc", "setup.cfg"].find((f) => existsSync(join(projectRoot, f))) ?? null;

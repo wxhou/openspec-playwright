@@ -166,13 +166,39 @@ function displayPath(projectRoot: string, file: string): string {
 }
 
 /** Paste-ready snippet matching the config file the user already owns. */
-function lintConfigSnippet(result: LintConfigResult): string[] {
-  if (result.tool === "ESLint") return [LINT_ESLINT_SNIPPET];
+export function lintConfigSnippet(result: LintConfigResult): {
+  hint: string;
+  lines: string[];
+} {
+  if (result.tool === "ESLint") {
+    const name = basename(result.file ?? "");
+    if (name.startsWith("eslint.config.")) {
+      return {
+        hint: "add the following to enable the swallow-error rules:",
+        lines: [LINT_ESLINT_SNIPPET],
+      };
+    }
+    if (name.endsWith(".js") || name.endsWith(".cjs")) {
+      return {
+        hint: "merge the following into the exported rules:",
+        lines: ['rules: { "no-empty": "error" }'],
+      };
+    }
+    // .eslintrc.json / .yaml / .yml / bare .eslintrc — the quoted form is
+    // valid JSON and YAML.
+    return {
+      hint: "merge the following into the existing config:",
+      lines: ['"rules": { "no-empty": "error" }'],
+    };
+  }
   const header: RuffTableHeader =
-    result.file && basename(result.file) === "pyproject.toml"
+    basename(result.file ?? "") === "pyproject.toml"
       ? "[tool.ruff.lint]"
       : "[lint]";
-  return [header, 'extend-select = ["B904"]'];
+  return {
+    hint: "add the following to enable the swallow-error rules:",
+    lines: [header, 'extend-select = ["B904"]'],
+  };
 }
 
 function printLintConfigResult(
@@ -205,19 +231,21 @@ function printLintConfigResult(
     case "generated-existing":
       console.log(chalk.green(`  ✓ ${file} already generated — left as-is`));
       break;
-    case "snippet":
+    case "snippet": {
+      const snippet = lintConfigSnippet(result);
       console.log(
         chalk.cyan(
-          `  ℹ ${file}: existing config left untouched — add the following to enable the swallow-error rules:`,
+          `  ℹ ${file}: existing config left untouched — ${snippet.hint}`,
         ),
       );
-      for (const line of lintConfigSnippet(result)) {
+      for (const line of snippet.lines) {
         console.log(chalk.dim(`    ${line}`));
       }
       console.log(
         chalk.dim(`    (see ${LINT_GUIDELINES_RELPATH} for the full rule list)`),
       );
       break;
+    }
     case "skipped":
       console.log(
         chalk.yellow(

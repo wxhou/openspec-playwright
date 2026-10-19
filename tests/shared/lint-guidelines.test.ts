@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   mkdirSync,
   readFileSync,
@@ -251,6 +251,26 @@ describe("findSourceFile (bounded scan)", () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it("an unreadable directory is recorded on stderr, not silently dropped", () => {
+    const root = mkdtempSync(join(tmpdir(), "ospw-findsource-"));
+    try {
+      // A regular file as the scan root fails readdirSync cross-platform.
+      const notADir = join(root, "not-a-dir");
+      writeFileSync(notADir, "");
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        expect(findSourceFile(notADir, [".ts"])).toBeNull();
+        expect(errorSpy.mock.calls.join(" ")).toContain(
+          "skipped unreadable directory",
+        );
+      } finally {
+        errorSpy.mockRestore();
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("ruff managed block helpers", () => {
@@ -288,12 +308,25 @@ describe("ruff managed block helpers", () => {
     expect(hasRuffLintTable("[tool.ruff]\nline-length = 88")).toBe(false);
   });
 
-  it("hasDedicatedRuffLintTable matches [lint], subtables and dotted keys", () => {
+  it("hasRuffLintTable catches dotted/inline lint definitions under [tool.ruff]", () => {
+    expect(hasRuffLintTable("[tool.ruff]\nlint.select = [\"E\"]")).toBe(true);
+    expect(hasRuffLintTable("[tool.ruff]\nlint = { select = [\"E\"] }")).toBe(
+      true,
+    );
+    expect(hasRuffLintTable("[tool.ruff]\n\"lint\".select = [\"E\"]")).toBe(
+      true,
+    );
+    // A `lint` key in another table is not ruff's.
+    expect(hasRuffLintTable("[tool.other]\nlint.select = [\"E\"]")).toBe(false);
+  });
+
+  it("hasDedicatedRuffLintTable matches [lint], subtables and dotted/inline keys", () => {
     expect(hasDedicatedRuffLintTable("[lint]\nselect = []")).toBe(true);
     expect(
       hasDedicatedRuffLintTable("[lint.per-file-ignores]\n\"a.py\" = []"),
     ).toBe(true);
     expect(hasDedicatedRuffLintTable("lint.select = [\"E\"]")).toBe(true);
+    expect(hasDedicatedRuffLintTable("lint = { select = [\"E\"] }")).toBe(true);
     expect(hasDedicatedRuffLintTable("[tool.ruff.lint]\nselect = []")).toBe(
       false,
     );
@@ -434,7 +467,7 @@ describe("installLintConfig: ESLint 面", () => {
     }
   });
 
-  it("TypeScript project with typescript-eslint → generated", () => {
+  it("TypeScript project with typescript-eslint → generated with a TS parser", () => {
     const root = mkdtempSync(join(tmpdir(), "ospw-lintconfig-eslint-ts-"));
     try {
       writePackageJson(root, {
@@ -444,6 +477,49 @@ describe("installLintConfig: ESLint 面", () => {
       });
       writeFileSync(join(root, "tsconfig.json"), "{}\n");
       expect(installLintConfig(root)[0].action).toBe("created");
+      const config = readFileSync(
+        join(root, LINT_ESLINT_CONFIG_FILE),
+        "utf-8",
+      );
+      expect(config).toContain('import tseslint from "typescript-eslint";');
+      expect(config).toContain("languageOptions: { parser: tseslint.parser }");
+      expect(config).toContain('"**/*.ts"');
+      expect(config).toContain('"no-empty": "error"');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("TypeScript project with only @typescript-eslint/parser → generated with that import", () => {
+    const root = mkdtempSync(join(tmpdir(), "ospw-lintconfig-eslint-ts-"));
+    try {
+      writePackageJson(root, {
+        eslint: "^9.0.0",
+        typescript: "^5.6.0",
+        "@typescript-eslint/parser": "^8.0.0",
+      });
+      writeFileSync(join(root, "tsconfig.json"), "{}\n");
+      expect(installLintConfig(root)[0].action).toBe("created");
+      expect(
+        readFileSync(join(root, LINT_ESLINT_CONFIG_FILE), "utf-8"),
+      ).toContain('import tsParser from "@typescript-eslint/parser";');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("TypeScript project with only the eslint plugin → skipped (no parser package)", () => {
+    const root = mkdtempSync(join(tmpdir(), "ospw-lintconfig-eslint-ts-"));
+    try {
+      writePackageJson(root, {
+        eslint: "^9.0.0",
+        typescript: "^5.6.0",
+        "@typescript-eslint/eslint-plugin": "^8.0.0",
+      });
+      writeFileSync(join(root, "tsconfig.json"), "{}\n");
+      const [eslint] = installLintConfig(root);
+      expect(eslint.action).toBe("skipped");
+      expect(eslint.reason).toContain("typescript-eslint");
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -545,6 +621,46 @@ describe("installLintConfig: ruff 面", () => {
     }
   });
 
+  it("pyproject with a dotted lint table under [tool.ruff] → snippet-only, untouched", () => {
+    const root = mkdtempSync(join(tmpdir(), "ospw-lintconfig-ruff-snippet-"));
+    try {
+      const original =
+        '[tool.ruff]\nline-length = 88\nlint.select = ["E", "F"]\n';
+      writeFileSync(join(root, "pyproject.toml"), original);
+      const result = lastResult(root);
+      expect(result.action).toBe("snippet");
+      expect(readFileSync(join(root, "pyproject.toml"), "utf-8")).toBe(original);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("pyproject with an inline lint table → snippet-only, untouched", () => {
+    const root = mkdtempSync(join(tmpdir(), "ospw-lintconfig-ruff-snippet-"));
+    try {
+      const original = '[tool.ruff]\nlint = { select = ["E"] }\n';
+      writeFileSync(join(root, "pyproject.toml"), original);
+      const result = lastResult(root);
+      expect(result.action).toBe("snippet");
+      expect(readFileSync(join(root, "pyproject.toml"), "utf-8")).toBe(original);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("dedicated ruff.toml with an inline lint table → snippet-only, untouched", () => {
+    const root = mkdtempSync(join(tmpdir(), "ospw-lintconfig-ruff-snippet-"));
+    try {
+      const original = 'lint = { select = ["E"] }\n';
+      writeFileSync(join(root, ".ruff.toml"), original);
+      const result = lastResult(root);
+      expect(result.action).toBe("snippet");
+      expect(readFileSync(join(root, ".ruff.toml"), "utf-8")).toBe(original);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("pyproject with [tool.ruff] but no lint table → append (project config already active)", () => {
     const root = mkdtempSync(join(tmpdir(), "ospw-lintconfig-ruff-pyproject-"));
     try {
@@ -602,6 +718,22 @@ describe("installLintConfig: ruff 面", () => {
       expect(readFileSync(join(root, "pyproject.toml"), "utf-8")).toBe(
         '[project]\nname = "x"\n',
       );
+      expect(readFileSync(join(root, ".ruff.toml"), "utf-8")).toContain(
+        "[lint]",
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it(".ruff.toml wins over ruff.toml (ruff's own precedence) → append targets .ruff.toml", () => {
+    const root = mkdtempSync(join(tmpdir(), "ospw-lintconfig-ruff-both-"));
+    try {
+      const plain = "line-length = 100\n";
+      writeFileSync(join(root, "ruff.toml"), plain);
+      writeFileSync(join(root, ".ruff.toml"), "line-length = 90\n");
+      expect(lastResult(root).action).toBe("appended");
+      expect(readFileSync(join(root, "ruff.toml"), "utf-8")).toBe(plain);
       expect(readFileSync(join(root, ".ruff.toml"), "utf-8")).toContain(
         "[lint]",
       );

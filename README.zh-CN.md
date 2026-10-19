@@ -240,7 +240,7 @@ audit **只报告、绝不删除**——测试退役永远是人工决策。存�
 2. 为每个检测到的编辑器安装 E2E 命令（Claude Code / CodeBuddy CLI 用 `/opsx:e2e`，OpenCode / Cline / Cursor / Pi / Oh My Pi 用 `/opsx-e2e`；Cursor 另装 Agent Skill）
 3. 生成 `tests/playwright/seed.spec.ts`、`auth.setup.ts`、`credentials.yaml`、`app-knowledge.md`、`pages/BasePage.ts`，以及项目根的 `lint-guidelines.md` 吞错 lint 清单（未手改时由 `update` 刷新，`uninstall` 清理）
 
-> **`--lint-config`（opt-in）**：项目声明 eslint 9+ 且项目及祖先目录（至 git 根）均无 ESLint 配置时生成最小 `eslint.config.mjs`；ruff 侧在 `ruff.toml` / `.ruff.toml` / `pyproject.toml` 中创建或追加受管 `extend-select = ["B904"]` 块。已有配置绝不编辑——只打印可粘贴片段。重复运行幂等；受管块被手改时保留原样。
+> **`--lint-config`（opt-in）**：项目声明 eslint 9+ 且项目及祖先目录（至 git 根）均无 ESLint 配置时生成最小 `eslint.config.mjs`（TypeScript 项目接入已声明的 parser——`typescript-eslint` 或 `@typescript-eslint/parser`——并写入 `files`/`languageOptions`）；ruff 侧按 `.ruff.toml` > `ruff.toml` > `pyproject.toml` 的优先级（ruff 自身规则）创建或追加受管 `extend-select = ["B904"]` 块。已有配置绝不编辑——只打印可粘贴片段。重复运行幂等；受管块被手改时保留原样。
 4. 检测前端信号（分层检测：框架配置文件 → 前端框架依赖 → dev 命令关键词，含 monorepo workspace 成员检测——前端在 `apps/*` 的 pnpm/npm workspace 也能识别）；未检测到时在 Summary 打印引导提示——monorepo 去应用目录运行 `openspec-pw init`，纯 API 项目用 Playwright `request` fixture
 
 ## 首次配置清单

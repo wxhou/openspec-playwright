@@ -26,8 +26,64 @@ vi.mock("child_process", async (importOriginal) => {
   };
 });
 
-import { init } from "../../src/commands/init.js";
+import { init, lintConfigSnippet } from "../../src/commands/init.js";
 import { LINT_ESLINT_GENERATED_MARKER } from "../../src/shared/index.js";
+
+describe("lintConfigSnippet (existing-config guidance)", () => {
+  it("flat config → flat-config snippet object", () => {
+    const snippet = lintConfigSnippet({
+      tool: "ESLint",
+      action: "snippet",
+      file: "/repo/eslint.config.mjs",
+    });
+    expect(snippet.lines).toEqual(['{ rules: { "no-empty": "error" } }']);
+  });
+
+  it.each([".eslintrc.json", ".eslintrc.yaml", ".eslintrc.yml", ".eslintrc"])(
+    "%s → JSON/YAML-compatible quoted form",
+    (name) => {
+      const snippet = lintConfigSnippet({
+        tool: "ESLint",
+        action: "snippet",
+        file: `/repo/${name}`,
+      });
+      expect(snippet.lines).toEqual(['"rules": { "no-empty": "error" }']);
+    },
+  );
+
+  it.each([".eslintrc.js", ".eslintrc.cjs"])(
+    "%s → JS object-literal form",
+    (name) => {
+      const snippet = lintConfigSnippet({
+        tool: "ESLint",
+        action: "snippet",
+        file: `/repo/${name}`,
+      });
+      expect(snippet.lines).toEqual(['rules: { "no-empty": "error" }']);
+    },
+  );
+
+  it("ruff pyproject → [tool.ruff.lint] header", () => {
+    const snippet = lintConfigSnippet({
+      tool: "ruff",
+      action: "snippet",
+      file: "/repo/pyproject.toml",
+    });
+    expect(snippet.lines).toEqual([
+      "[tool.ruff.lint]",
+      'extend-select = ["B904"]',
+    ]);
+  });
+
+  it("ruff dedicated config → [lint] header", () => {
+    const snippet = lintConfigSnippet({
+      tool: "ruff",
+      action: "snippet",
+      file: "/repo/.ruff.toml",
+    });
+    expect(snippet.lines[0]).toBe("[lint]");
+  });
+});
 
 describe("init --lint-config (real fs, minimal mode)", () => {
   let tmpRoot: string;

@@ -1,4 +1,5 @@
 import type { EditorAdapter, EditorId } from "./editors.js";
+import { type LintConfigResult } from "../shared/index.js";
 export interface InitOptions {
     change?: string;
     mcp?: boolean;
@@ -51,6 +52,11 @@ export declare function promptSelectEditors(allEditors: EditorAdapter[], presele
  * minimal mode — init-minimal-mode spec.
  */
 export declare function resolveInitMode(options: InitOptions, frontendSignal: boolean | null): "frontend" | "minimal";
+/** Paste-ready snippet matching the config file the user already owns. */
+export declare function lintConfigSnippet(result: LintConfigResult): {
+    hint: string;
+    lines: string[];
+};
 export declare function init(options: InitOptions, deps?: InitDeps): Promise<void>;
 /**
  * Minimal-mode scaffold: tests/README.md describing the acceptance-test
