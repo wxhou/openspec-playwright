@@ -18,7 +18,9 @@ export declare const LINT_GUIDELINES_CHECKSUM_PREFIX = "<!-- openspec-pw: lint-g
 /**
  * Ownership checksum: sha256 of the checklist body with the checksum line
  * removed, truncated to 8 hex chars. The checksum line must be stripped from
- * the input it hashes (self-reference would deadlock the comparison).
+ * the input it hashes (self-reference would deadlock the comparison). EOL is
+ * normalized first: a CRLF checkout (Windows) must hash the same as LF, or
+ * tool-owned files would be misread as user-modified.
  */
 export declare function computeChecklistChecksum(body: string): string;
 /** True when the file's checksum line matches the file body (tool-owned). */

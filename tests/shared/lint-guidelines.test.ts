@@ -11,11 +11,15 @@ import {
   isChecklistUnmodified,
   removeChecklist,
 } from "../../src/shared/lint-guidelines.js";
+import { normalizeEol } from "../../src/commands/editors/agents.js";
 
 const template = readFileSync(
   join(import.meta.dirname, "..", "..", "templates", "lint-guidelines.md"),
   "utf-8",
 );
+// Fixture baseline in LF — on a Windows checkout the template reads as CRLF,
+// and literal replaces anchored on "\n" would silently miss.
+const templateLf = normalizeEol(template);
 
 describe("lint-guidelines checklist data ↔ template pairing", () => {
   it("template contains every rule id from the data source", () => {
@@ -35,6 +39,14 @@ describe("lint-guidelines checklist data ↔ template pairing", () => {
     expect(line).toContain(computeChecklistChecksum(template));
   });
 
+  it("CRLF content (Windows checkout) hashes to the same checksum", () => {
+    const crlf = templateLf.replace(/\n/g, "\r\n");
+    expect(computeChecklistChecksum(crlf)).toBe(
+      computeChecklistChecksum(templateLf),
+    );
+    expect(isChecklistUnmodified(crlf)).toBe(true);
+  });
+
   it("default-state contract: only B904 is off by default, none is a hook entry", () => {
     const offByDefault = LINT_GUIDELINE_RULES.filter((r) => !r.defaultOn);
     expect(offByDefault.map((r) => r.id)).toEqual(["B904"]);
@@ -52,7 +64,7 @@ describe("lint-guidelines checklist data ↔ template pairing", () => {
 });
 
 describe("lint-guidelines install / refresh (content-based ownership)", () => {
-  const staleBody = template.replace("## Rules\n", "## Rules (old)\n");
+  const staleBody = templateLf.replace("## Rules\n", "## Rules (old)\n");
 
   /** A checklist file whose checksum is valid for its (older) body = tool-owned. */
   function staleToolOwnedFixture(): string {
@@ -109,7 +121,7 @@ describe("lint-guidelines install / refresh (content-based ownership)", () => {
   it("user-modified file (checksum no longer matches body) → kept-modified, untouched", () => {
     const root = mkdtempSync(join(tmpdir(), "ospw-lintguidelines-"));
     try {
-      const handEdited = template.replace("## Rules\n", "## My Rules\n");
+      const handEdited = templateLf.replace("## Rules\n", "## My Rules\n");
       writeFileSync(join(root, LINT_GUIDELINES_RELPATH), handEdited);
       expect(isChecklistUnmodified(handEdited)).toBe(false);
       const disposition = installOrRefreshChecklist(root);
@@ -125,7 +137,7 @@ describe("lint-guidelines install / refresh (content-based ownership)", () => {
   it("stripped checksum line counts as user-modified → kept-modified", () => {
     const root = mkdtempSync(join(tmpdir(), "ospw-lintguidelines-"));
     try {
-      const noChecksum = template.replace(
+      const noChecksum = templateLf.replace(
         /^<!-- openspec-pw: lint-guidelines [0-9a-f]{8} -->\n/m,
         "",
       );
@@ -157,7 +169,7 @@ describe("lint-guidelines uninstall (content-based ownership)", () => {
   it("user-modified checklist → kept as-is (content preserved)", () => {
     const root = mkdtempSync(join(tmpdir(), "ospw-lintguidelines-rm-"));
     try {
-      const handEdited = template.replace("## Rules\n", "## My Rules\n");
+      const handEdited = templateLf.replace("## Rules\n", "## My Rules\n");
       writeFileSync(join(root, LINT_GUIDELINES_RELPATH), handEdited);
       expect(removeChecklist(root)).toBe("kept-modified");
       expect(readFileSync(join(root, LINT_GUIDELINES_RELPATH), "utf-8")).toBe(

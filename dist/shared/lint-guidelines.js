@@ -81,10 +81,12 @@ export const LINT_GUIDELINES_CHECKSUM_PREFIX = "<!-- openspec-pw: lint-guideline
 /**
  * Ownership checksum: sha256 of the checklist body with the checksum line
  * removed, truncated to 8 hex chars. The checksum line must be stripped from
- * the input it hashes (self-reference would deadlock the comparison).
+ * the input it hashes (self-reference would deadlock the comparison). EOL is
+ * normalized first: a CRLF checkout (Windows) must hash the same as LF, or
+ * tool-owned files would be misread as user-modified.
  */
 export function computeChecklistChecksum(body) {
-    const withoutChecksum = body
+    const withoutChecksum = normalizeEol(body)
         .split("\n")
         .filter((line) => !line.startsWith(LINT_GUIDELINES_CHECKSUM_PREFIX))
         .join("\n");
@@ -98,7 +100,7 @@ export function isChecklistUnmodified(content) {
         return false;
     const expected = checksumLine
         .slice(LINT_GUIDELINES_CHECKSUM_PREFIX.length)
-        .replace(/ -->$/, "")
+        .replace(/\s*-->\s*$/, "")
         .trim();
     if (!/^[0-9a-f]{8}$/.test(expected))
         return false;
