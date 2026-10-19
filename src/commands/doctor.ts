@@ -14,7 +14,15 @@ import {
   enumerateVendoredAgents,
   installedAgentsSnapshotDir,
 } from "../commands/editors.js";
-import { detectAppServer, isTestRunnerMcpInstalled, needsShell, detectCodeGraphStatus } from "../shared/index.js";
+import {
+  detectAppServer,
+  isTestRunnerMcpInstalled,
+  needsShell,
+  detectCodeGraphStatus,
+  findEslintConfig,
+  findRuffConfig,
+  findSourceFile,
+} from "../shared/index.js";
 import { bundledStandardsPath, compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
 import { hasRuleFileMarkers, wrapperRulesFile, wrapperHasMarkers } from "./editors/project-rules.js";
 
@@ -73,6 +81,127 @@ function probeOnPath(tool: string): { onPath: boolean; note: string | null } {
       onPath: false,
       note: `probe failed — ${err instanceof Error ? err.message : String(err)}`,
     };
+  }
+}
+
+/** Result of a semantic lint probe; `ok: false` triggers the literal fallback. */
+type SemanticProbe =
+  | { ok: true; enabled: boolean }
+  | { ok: false; reason: string };
+
+const SEMANTIC_PROBE_TIMEOUT_MS = 20_000;
+
+/** First line of an exec failure — keeps stderr noise out of the doctor log. */
+function describeExecError(err: unknown): string {
+  if (err instanceof Error) {
+    const stderr = (err as { stderr?: unknown }).stderr;
+    if (typeof stderr === "string" && stderr.trim()) {
+      return stderr.trim().split(/\r?\n/)[0];
+    }
+    return err.message.split(/\r?\n/)[0];
+  }
+  return String(err);
+}
+
+/**
+ * Project-local ESLint binary first, then PATH. Yarn PnP has no
+ * `node_modules/.bin`; if neither resolves, the semantic probe fails and the
+ * literal fallback runs (conservative direction).
+ */
+function findEslintBinary(projectRoot: string): string | null {
+  const names =
+    process.platform === "win32" ? ["eslint.cmd", "eslint"] : ["eslint"];
+  for (const name of names) {
+    const local = join(projectRoot, "node_modules", ".bin", name);
+    if (existsSync(local)) return local;
+  }
+  return probeOnPath("eslint").onPath ? "eslint" : null;
+}
+
+/**
+ * Ask ESLint whether `no-empty` is in effect for a representative source
+ * file. Inherited recommended presets resolve to a severity, so this
+ * distinguishes "inherited" from "explicitly off" — the literal probe cannot.
+ */
+function probeEslintNoEmpty(projectRoot: string): SemanticProbe {
+  const binary = findEslintBinary(projectRoot);
+  if (!binary) return { ok: false, reason: "eslint executable not found" };
+  const file = findSourceFile(projectRoot, [
+    ".ts",
+    ".tsx",
+    ".js",
+    ".jsx",
+    ".mjs",
+    ".cjs",
+  ]);
+  if (!file) return { ok: false, reason: "no representative source file" };
+  try {
+    const output = execFileSync(binary, ["--print-config", file], {
+      cwd: projectRoot,
+      encoding: "utf-8",
+      timeout: SEMANTIC_PROBE_TIMEOUT_MS,
+      shell: needsShell,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    const parsed: unknown = JSON.parse(output);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return { ok: false, reason: "print-config output is not a config object" };
+    }
+    const rules = (parsed as { rules?: unknown }).rules;
+    const severity =
+      rules && typeof rules === "object"
+        ? (rules as Record<string, unknown>)["no-empty"]
+        : undefined;
+    // Missing key = rule not configured — not enabled.
+    if (severity === undefined) return { ok: true, enabled: false };
+    const level = Array.isArray(severity) ? severity[0] : severity;
+    if (typeof level !== "number") {
+      return { ok: false, reason: "unexpected no-empty severity shape" };
+    }
+    return { ok: true, enabled: level > 0 };
+  } catch (err) {
+    return { ok: false, reason: describeExecError(err) };
+  }
+}
+
+/** Enabled-rules block from `ruff check --show-settings` (null when absent). */
+function ruffEnabledRulesSection(output: string): string | null {
+  const lines = output.split(/\r?\n/);
+  const start = lines.findIndex((line) =>
+    /^linter\.rules\.enabled\s*=/.test(line),
+  );
+  if (start === -1) return null;
+  const body: string[] = [];
+  for (let i = start; i < lines.length; i++) {
+    // Next top-level `linter.*` key ends the array.
+    if (i > start && /^[A-Za-z_][\w.-]*\s*=/.test(lines[i])) break;
+    body.push(lines[i]);
+  }
+  return body.join("\n");
+}
+
+/** Ask ruff's resolver whether B904 is enabled (categories expand to ids). */
+function probeRuffB904(projectRoot: string): SemanticProbe {
+  const file = findSourceFile(projectRoot, [".py"]);
+  if (!file) return { ok: false, reason: "no representative .py file" };
+  try {
+    const output = execFileSync("ruff", ["check", "--show-settings", file], {
+      cwd: projectRoot,
+      encoding: "utf-8",
+      timeout: SEMANTIC_PROBE_TIMEOUT_MS,
+      shell: needsShell,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    const section = ruffEnabledRulesSection(output);
+    if (section === null) {
+      return {
+        ok: false,
+        reason: "show-settings output has no enabled-rules section",
+      };
+    }
+    return { ok: true, enabled: /\(B904\)/.test(section) };
+  } catch (err) {
+    return { ok: false, reason: describeExecError(err) };
   }
 }
 
@@ -730,75 +859,31 @@ export async function doctor(options: DoctorOptions = {}) {
   });
 
   // Lint — swallow-error checklist coverage (lint-guidelines capability).
-  // Literal probes on the project's lint configs, optional-check tier
+  // Semantic-first: ESLint's own resolver (`--print-config`) and ruff's
+  // (`check --show-settings`) decide coverage; literal probes are the fallback
+  // when the tool cannot resolve the config. Optional-check tier
   // (isOptionalCheck — never affects the ok verdict or exit code). A missing
   // config silences that probe face; both faces absent → one info line.
   // Wording is always "not found — see lint-guidelines.md", never "missing":
-  // literal probing cannot distinguish inherited defaults or explicit
-  // disables, so it must not conclude.
-  const eslintConfigs = [
-    "eslint.config.js",
-    "eslint.config.mjs",
-    "eslint.config.cjs",
-    "eslint.config.ts",
-    "eslint.config.mts",
-    "eslint.config.cts",
-    ".eslintrc.js",
-    ".eslintrc.cjs",
-    ".eslintrc.json",
-    ".eslintrc.yaml",
-    ".eslintrc.yml",
-    ".eslintrc",
-  ];
-  const eslintConfigFile = eslintConfigs.find((f) =>
-    existsSync(join(projectRoot, f)),
-  );
-  // pyproject.toml is read once: ruff and pylint both live in [tool.<tool>.*]
-  // tables, and either sub-table can be the only one present. Dotted sub-tables
-  // ([tool.ruff.lint], [tool.pylint.main]) are the documented forms — matching
-  // only the bare header misses them.
+  // even semantic results are per representative file, so they must not
+  // conclude globally.
+  const eslintConfig = findEslintConfig(projectRoot);
+  const ruffConfig = findRuffConfig(projectRoot);
+  const ruffOnPath = probeOnPath("ruff");
+
+  // pyproject.toml is read for pylint discovery (local only — ancestor-aware
+  // probing covers ESLint/ruff). An unreadable pyproject is already reported
+  // by the ruff face, which treats it as a potential ruff config.
   let pyprojectText: string | null = null;
-  let lintConfigUnreadable = false;
   if (existsSync(join(projectRoot, "pyproject.toml"))) {
     try {
       pyprojectText = readFileSync(
         join(projectRoot, "pyproject.toml"),
         "utf-8",
       );
-    } catch (err) {
-      lintConfigUnreadable = true;
-      checks.push({
-        category: "Lint",
-        name: "lint-config",
-        ok: true,
-        message: `pyproject.toml unreadable — its ruff/pylint sections were not probed (${err instanceof Error ? err.message : String(err)})`,
-      });
+    } catch {
+      // Ruff face reports the unreadable file; pylint discovery treats it as absent.
     }
-  }
-  const ruffConfigFile = ["ruff.toml", ".ruff.toml"].find((f) =>
-    existsSync(join(projectRoot, f)),
-  );
-  let ruffConfigText: string | null = null;
-  if (ruffConfigFile) {
-    try {
-      ruffConfigText = readFileSync(
-        join(projectRoot, ruffConfigFile),
-        "utf-8",
-      );
-    } catch (err) {
-      lintConfigUnreadable = true;
-      checks.push({
-        category: "Lint",
-        name: "lint-config",
-        ok: true,
-        message: `${ruffConfigFile} unreadable — ruff probes skipped (${err instanceof Error ? err.message : String(err)})`,
-      });
-    }
-  } else if (
-    pyprojectText &&
-    /\[tool\.ruff(?:\.[^\]]*)?\]/.test(pyprojectText)
-  ) {
-    ruffConfigText = pyprojectText;
   }
   let pyLintConfigFile: string | null = [".pylintrc", "pylintrc", "setup.cfg"].find((f) =>
     existsSync(join(projectRoot, f)),
@@ -811,59 +896,86 @@ export async function doctor(options: DoctorOptions = {}) {
     pyLintConfigFile = "pyproject.toml";
   }
 
-  if (eslintConfigFile) {
-    let eslintText: string | null = null;
-    try {
-      eslintText = readFileSync(
-        join(projectRoot, eslintConfigFile),
-        "utf-8",
-      );
-    } catch (err) {
+  if (eslintConfig) {
+    if (eslintConfig.text === null) {
+      const label = eslintConfig.inProject
+        ? eslintConfig.file
+        : join(eslintConfig.dir, eslintConfig.file);
       checks.push({
         category: "Lint",
         name: "lint-eslint",
         ok: true,
-        message: `${eslintConfigFile} unreadable — no-empty probe skipped (${err instanceof Error ? err.message : String(err)})`,
+        message: `${label} unreadable — no-empty probe skipped (${eslintConfig.error ?? "read failed"})`,
       });
-    }
-    // `-` belongs to rule ids: no-empty-function / no-empty-pattern must not
-    // count as coverage for no-empty itself.
-    if (eslintText !== null && !/(?<![\w-])no-empty(?![\w-])/.test(eslintText)) {
-      checks.push({
-        category: "Lint",
-        name: "lint-eslint",
-        ok: false,
-        message:
-          'no-empty not found in eslint config — the recommended config already enables it; if you build your rule list by hand, see lint-guidelines.md (rule: ["no-empty": "error"])',
-      });
+    } else {
+      const semantic = probeEslintNoEmpty(projectRoot);
+      const covered = semantic.ok
+        ? semantic.enabled
+        : // `-` belongs to rule ids: no-empty-function / no-empty-pattern must
+          // not count as coverage for no-empty itself.
+          /(?<![\w-])no-empty(?![\w-])/.test(eslintConfig.text);
+      if (!semantic.ok) {
+        console.error(
+          `doctor: ESLint semantic probe unavailable — literal fallback (${semantic.reason})`,
+        );
+      }
+      if (!covered) {
+        checks.push({
+          category: "Lint",
+          name: "lint-eslint",
+          ok: false,
+          message:
+            'no-empty not found in eslint config — the recommended config already enables it; if you build your rule list by hand, see lint-guidelines.md (rule: ["no-empty": "error"])',
+        });
+      }
     }
   }
 
-  if (ruffConfigText) {
-    const covered =
-      /\bB904\b/.test(ruffConfigText) ||
-      /["']B["']/.test(ruffConfigText) ||
-      /["']ALL["']/.test(ruffConfigText);
-    if (!covered) {
+  if (ruffConfig) {
+    if (ruffConfig.text === null) {
+      const label = ruffConfig.inProject
+        ? ruffConfig.file
+        : join(ruffConfig.dir, ruffConfig.file);
       checks.push({
         category: "Lint",
-        name: "lint-ruff",
-        ok: false,
-        message:
-          'B904 not found in ruff lint config — dropped causality (`raise ... from`) inside handlers is not default-covered; see lint-guidelines.md (fix: extend-select = ["B904"])',
+        name: "lint-config",
+        ok: true,
+        message: `${label} unreadable — ruff probes skipped (${ruffConfig.error ?? "read failed"})`,
+      });
+    } else {
+      const semantic: SemanticProbe = ruffOnPath.onPath
+        ? probeRuffB904(projectRoot)
+        : { ok: false, reason: "ruff not on PATH" };
+      const covered = semantic.ok
+        ? semantic.enabled
+        : /\bB904\b/.test(ruffConfig.text) ||
+          /["']B["']/.test(ruffConfig.text) ||
+          /["']ALL["']/.test(ruffConfig.text);
+      if (!semantic.ok) {
+        console.error(
+          `doctor: ruff semantic probe unavailable — literal fallback (${semantic.reason})`,
+        );
+      }
+      if (!covered) {
+        checks.push({
+          category: "Lint",
+          name: "lint-ruff",
+          ok: false,
+          message:
+            'B904 not found in ruff lint config — dropped causality (`raise ... from`) inside handlers is not default-covered; see lint-guidelines.md (fix: extend-select = ["B904"])',
+        });
+      }
+      checks.push({
+        category: "Lint",
+        name: "lint-ruff-cli",
+        ok: ruffOnPath.onPath,
+        message: ruffOnPath.note
+          ? `ruff ${ruffOnPath.note}`
+          : ruffOnPath.onPath
+            ? "available"
+            : "ruff not installed (optional — run it in CI once the checklist rules are enabled)",
       });
     }
-    const ruff = probeOnPath("ruff");
-    checks.push({
-      category: "Lint",
-      name: "lint-ruff-cli",
-      ok: ruff.onPath,
-      message: ruff.note
-        ? `ruff ${ruff.note}`
-        : ruff.onPath
-          ? "available"
-          : "ruff not installed (optional — run it in CI once the checklist rules are enabled)",
-    });
   }
 
   if (pyLintConfigFile) {
@@ -880,13 +992,7 @@ export async function doctor(options: DoctorOptions = {}) {
     });
   }
 
-  if (
-    !eslintConfigFile &&
-    !ruffConfigFile &&
-    !lintConfigUnreadable &&
-    !ruffConfigText &&
-    !pyLintConfigFile
-  ) {
+  if (!eslintConfig && !ruffConfig && !pyLintConfigFile) {
     checks.push({
       category: "Lint",
       name: "lint-config",

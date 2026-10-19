@@ -7,7 +7,7 @@ import {
   rmSync,
   rmdirSync,
 } from "fs";
-import { join, basename } from "path";
+import { join, basename, relative } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { readFile } from "fs/promises";
@@ -56,8 +56,12 @@ import {
   detectTrackedFiles,
   managedBlockAdvisoryHint,
   installOrRefreshChecklist,
+  installLintConfig,
+  LINT_ESLINT_SNIPPET,
   LINT_GUIDELINES_RELPATH,
   type ChecklistDisposition,
+  type LintConfigResult,
+  type RuffTableHeader,
 } from "../shared/index.js";
 
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
@@ -83,6 +87,11 @@ export interface InitOptions {
    * mode, undefined lets the frontend signal decide (init-minimal-mode).
    */
   frontend?: boolean;
+  /**
+   * Opt-in lint-config bootstrap (`--lint-config`): create missing ESLint/ruff
+   * configs or append the managed ruff block; existing configs are never edited.
+   */
+  lintConfig?: boolean;
 }
 
 export interface InitDeps {
@@ -148,6 +157,75 @@ export function resolveInitMode(
   if (options.frontend === true) return "frontend";
   if (options.frontend === false) return "minimal";
   return frontendSignal === true ? "frontend" : "minimal";
+}
+
+/** Project-relative display path; ancestor configs stay absolute. */
+function displayPath(projectRoot: string, file: string): string {
+  const rel = relative(projectRoot, file);
+  return rel.startsWith("..") ? file : rel;
+}
+
+/** Paste-ready snippet matching the config file the user already owns. */
+function lintConfigSnippet(result: LintConfigResult): string[] {
+  if (result.tool === "ESLint") return [LINT_ESLINT_SNIPPET];
+  const header: RuffTableHeader =
+    result.file && basename(result.file) === "pyproject.toml"
+      ? "[tool.ruff.lint]"
+      : "[lint]";
+  return [header, 'extend-select = ["B904"]'];
+}
+
+function printLintConfigResult(
+  projectRoot: string,
+  result: LintConfigResult,
+): void {
+  const file = result.file ? displayPath(projectRoot, result.file) : result.tool;
+  switch (result.action) {
+    case "created":
+      console.log(chalk.green(`  ✓ Generated: ${file}`));
+      break;
+    case "appended": {
+      const header: RuffTableHeader =
+        basename(result.file ?? "") === "pyproject.toml"
+          ? "[tool.ruff.lint]"
+          : "[lint]";
+      console.log(
+        chalk.green(`  ✓ Appended: ${file} (${header} managed block)`),
+      );
+      break;
+    }
+    case "unchanged":
+      console.log(chalk.green(`  ✓ ${file} managed block already current`));
+      break;
+    case "kept-modified":
+      console.log(
+        chalk.yellow(`  ℹ ${file} managed block locally modified — kept as-is`),
+      );
+      break;
+    case "generated-existing":
+      console.log(chalk.green(`  ✓ ${file} already generated — left as-is`));
+      break;
+    case "snippet":
+      console.log(
+        chalk.cyan(
+          `  ℹ ${file}: existing config left untouched — add the following to enable the swallow-error rules:`,
+        ),
+      );
+      for (const line of lintConfigSnippet(result)) {
+        console.log(chalk.dim(`    ${line}`));
+      }
+      console.log(
+        chalk.dim(`    (see ${LINT_GUIDELINES_RELPATH} for the full rule list)`),
+      );
+      break;
+    case "skipped":
+      console.log(
+        chalk.yellow(
+          `  - ${result.tool} skipped: ${result.reason ?? "not applicable"}`,
+        ),
+      );
+      break;
+  }
 }
 
 export async function init(options: InitOptions, deps: InitDeps = {}) {
@@ -604,6 +682,16 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   };
   console.log(chalk.blue("\n─── Lint Guidelines ───"));
   console.log(chalk[checklist === "kept-modified" ? "yellow" : "green"](checklistMessages[checklist]));
+
+  // 7z2. Opt-in lint-config bootstrap (--lint-config): create missing configs
+  // or append the ruff managed block. Mode-independent like the checklist —
+  // the write targets lint configs, not the Playwright scaffold.
+  if (options.lintConfig) {
+    console.log(chalk.blue("\n─── Lint Config ───"));
+    for (const result of installLintConfig(projectRoot)) {
+      printLintConfigResult(projectRoot, result);
+    }
+  }
 
   // 7a. Managed .gitignore block: auto-ignore runtime output and test
   // credentials (revised from v0.3.86's advisory-only stance — the block

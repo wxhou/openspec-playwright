@@ -11,6 +11,11 @@ export interface InitOptions {
      * mode, undefined lets the frontend signal decide (init-minimal-mode).
      */
     frontend?: boolean;
+    /**
+     * Opt-in lint-config bootstrap (`--lint-config`): create missing ESLint/ruff
+     * configs or append the managed ruff block; existing configs are never edited.
+     */
+    lintConfig?: boolean;
 }
 export interface InitDeps {
     /** Interactive selection prompt; defaults to @inquirer/prompts checkbox.

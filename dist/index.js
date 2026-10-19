@@ -25,6 +25,7 @@ program
     .option("--agents", "install the official Playwright planner agent into .claude/agents/ (claude projects only)")
     .option("--frontend", "force frontend mode (full Playwright scaffold) even when no frontend signal is detected")
     .option("--no-frontend", "force minimal mode (tests dir + employee standards only) even when a frontend signal is detected")
+    .option("--lint-config", "generate/adjust ESLint and ruff config for the swallow-error checklist (opt-in)")
     .action(async (opts) => {
     const { init } = await import("./commands/init.js");
     const { checkForUpdate } = await import("./shared/version-check.js");

@@ -358,6 +358,17 @@ describe("update.ts: checklist refresh source", () => {
   });
 });
 
+describe("update.ts: lint config ownership", () => {
+  it("never references or rewrites ESLint/ruff config files (config belongs to the user)", () => {
+    const src = readFileSync(
+      fileURLToPath(new URL("../src/commands/update.ts", import.meta.url)),
+      "utf-8",
+    );
+    expect(src).not.toMatch(/installLintConfig|LINT_ESLINT_CONFIG_FILE|LINT_RUFF_BLOCK/);
+    expect(src).not.toMatch(/eslint\.config\.|ruff\.toml/);
+  });
+});
+
 // ─── Drift-aware no-op behavior ───────────────────────────────────────────
 
 describe("update.ts: drift-aware no-op", () => {
