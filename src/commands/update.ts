@@ -42,6 +42,8 @@ import {
   findUncoveredManagedPaths,
   managedBlockAdvisoryHint,
   ensureGitignoreEntries,
+  installOrRefreshChecklist,
+  LINT_GUIDELINES_RELPATH,
 } from "../shared/index.js";
 import { compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
 import { wrapperHasMarkers, hasRuleFileMarkers } from "./editors/project-rules.js";
@@ -420,6 +422,23 @@ export async function update(options: UpdateOptions) {
         }
       }
     }
+  }
+
+  // Swallow-error lint checklist — content-based ownership (lint-guidelines
+  // capability): identical → silent; tool-owned → refresh; user-modified →
+  // notice and keep. Inside the initialized gate, so update never expands
+  // territory.
+  const checklist = installOrRefreshChecklist(projectRoot);
+  if (checklist === "created") {
+    console.log(chalk.green(`  ✓ Generated: ${LINT_GUIDELINES_RELPATH}`));
+  } else if (checklist === "refreshed") {
+    console.log(chalk.green(`  ✓ Refreshed: ${LINT_GUIDELINES_RELPATH}`));
+  } else if (checklist === "kept-modified") {
+    console.log(
+      chalk.yellow(
+        `  ⚠ ${LINT_GUIDELINES_RELPATH} is locally modified — kept as-is (compare with the shipped checklist if unsure)`,
+      ),
+    );
   }
 
   // Summary

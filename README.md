@@ -356,7 +356,7 @@ Browser exploration is provided out of the box by Playwright MCP and `openspec-p
 
 1. Detects supported editors in the project (Claude Code and/or OpenCode and/or Cline and/or Cursor and/or Pi and/or Oh My Pi and/or CodeBuddy CLI; Pi and Oh My Pi are also detected via their global config dirs `~/.pi/agent/` / `~/.omp/agent/`)
 2. Installs the E2E command for each detected editor (`/opsx:e2e` for Claude Code and CodeBuddy CLI, `/opsx-e2e` for OpenCode, Cline, Cursor, Pi, and Oh My Pi; Cursor also gets an Agent Skill)
-3. Generates `tests/playwright/seed.spec.ts`, `auth.setup.ts`, `credentials.yaml`, `app-knowledge.md`, `pages/BasePage.ts`
+3. Generates `tests/playwright/seed.spec.ts`, `auth.setup.ts`, `credentials.yaml`, `app-knowledge.md`, `pages/BasePage.ts`, plus the project-root `lint-guidelines.md` swallow-error lint checklist (refreshed by `update` while unmodified, removed by `uninstall`)
 4. Generates `playwright.config.ts` with automatic dev script and port detection (Vite/Next/Nuxt/Astro, `.env`, and `--port`)
 5. Detects a frontend signal (layered detection: framework config files → framework dependencies → frontend dev commands, plus monorepo workspace member detection so a pnpm/npm workspace with the frontend in `apps/*` is recognized); with none found, prints guidance in the Summary — run `openspec-pw init` in the app directory (monorepo), or use Playwright's `request` fixture for API-only projects
 
@@ -380,7 +380,7 @@ Run through these steps in order when using the E2E workflow for the first time:
 
 ### What `openspec-pw doctor` checks
 
-`openspec-pw doctor` verifies prerequisites across 10 categories and exits non-zero if any **required** check fails.
+`openspec-pw doctor` verifies prerequisites across 11 categories and exits non-zero if any **required** check fails.
 
 | Category | Required checks | Optional checks |
 |---|---|---|
@@ -395,6 +395,7 @@ Run through these steps in order when using the E2E workflow for the first time:
 | **Sync** | standards in sync when initialized (drift → `openspec-pw update`; AGENTS.md without markers counts as not-initialized, always ok) | not initialized (gated, non-blocking) |
 | **Tests** | `tests/playwright/` directory exists | `auth.setup.ts` presence · `storage-state` integrity — config declares `storageState` but the state file is missing → ⚠ + `npx playwright test --project=setup` (never blocks) |
 | **Seed Test** | — | `seed.spec.ts` presence |
+| **Lint** | — | swallow-error checklist coverage, literal-probed on the project's lint configs (never blocks): ESLint config without `no-empty` → info pointing at `lint-guidelines.md`; ruff config without `B904` / category `B` / `ALL` → gap info; `ruff`/`pylint` PATH awareness; a missing config face stays silent, both faces absent → one info line |
 | **App Server** | — | dev script, base URL, reachability |
 | **CodeGraph** | — | CLI availability, index presence, MCP installation (warnings, non-blocking) |
 

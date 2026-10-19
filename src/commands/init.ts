@@ -55,6 +55,9 @@ import {
   findUncoveredManagedPaths,
   detectTrackedFiles,
   managedBlockAdvisoryHint,
+  installOrRefreshChecklist,
+  LINT_GUIDELINES_RELPATH,
+  type ChecklistDisposition,
 } from "../shared/index.js";
 
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
@@ -588,6 +591,19 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     console.log(chalk.blue("\n─── Generating App Knowledge ───"));
     await generateAppKnowledge(projectRoot);
   }
+
+  // 7z. Swallow-error lint checklist (lint-guidelines capability) — falls in
+  // every mode (editor-agnostic reference; not behind the Playwright
+  // scaffold gates the Playwright-specific assets above run under).
+  const checklist = installOrRefreshChecklist(projectRoot);
+  const checklistMessages: Record<ChecklistDisposition, string> = {
+    created: `  ✓ Generated: ${LINT_GUIDELINES_RELPATH}`,
+    unchanged: `  ✓ ${LINT_GUIDELINES_RELPATH} already current`,
+    refreshed: `  ✓ Refreshed: ${LINT_GUIDELINES_RELPATH}`,
+    "kept-modified": `  ℹ ${LINT_GUIDELINES_RELPATH} is locally modified — left untouched (refresh manually after reviewing)`,
+  };
+  console.log(chalk.blue("\n─── Lint Guidelines ───"));
+  console.log(chalk[checklist === "kept-modified" ? "yellow" : "green"](checklistMessages[checklist]));
 
   // 7a. Managed .gitignore block: auto-ignore runtime output and test
   // credentials (revised from v0.3.86's advisory-only stance — the block

@@ -963,3 +963,161 @@ describe("doctor authorization tiers", () => {
     expect(wrapper?.message).toContain("run openspec-pw update");
   });
 });
+
+// ─── doctor lint probes (lint-guidelines capability) ────────────────────────
+
+describe("doctor lint probes", () => {
+  const execLintMock = vi.mocked(execFileSync);
+  const existsLintMock = vi.mocked(existsSync);
+  const readFileLintMock = vi.mocked(readFileSync);
+  const readdirLintMock = vi.mocked(readdirSync);
+  const lstatLintMock = vi.mocked(lstatSync);
+  const detectCgLintMock = vi.mocked(detectCodeGraphStatus);
+  const detectAdaptersLintMock = vi.mocked(detectAdapters);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    detectCgLintMock.mockReturnValue({
+      cliInstalled: false,
+      indexed: false,
+      mcpInstalledAdapters: [],
+    });
+    execLintMock.mockImplementation((cmd: string) =>
+      cmd === "node" || cmd === "npm" || cmd === "npx" ? "v22.0.0" : "",
+    );
+    existsLintMock.mockImplementation((p: Parameters<typeof existsSync>[0]) => {
+      const s = String(p).replace(/\\/g, "/");
+      return (
+        s.endsWith("playwright.config.ts") ||
+        s.endsWith("openspec") ||
+        s.endsWith("tests/playwright") ||
+        s.endsWith("AGENTS.md") ||
+        s.endsWith("CLAUDE.md")
+      );
+    });
+    readFileLintMock.mockImplementation(() =>
+      "<!-- OPENSPEC-PW:START -->\ncontent\n<!-- OPENSPEC-PW:END -->",
+    );
+    readdirLintMock.mockReturnValue([] as never);
+    lstatLintMock.mockReturnValue({ isSymbolicLink: () => false } as never);
+    detectAdaptersLintMock.mockReturnValue([claudeAdapter]);
+  });
+
+  async function runLintDoctorJson() {
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((...args) => {
+      logs.push(args.join(" "));
+    });
+    try {
+      await doctor({ json: true });
+    } finally {
+      spy.mockRestore();
+    }
+    return JSON.parse(logs.join("\n")) as {
+      ok: boolean;
+      checks: Array<{ category: string; name: string; ok: boolean; message: string }>;
+    };
+  }
+
+  const lintRows = (parsed: Awaited<ReturnType<typeof runLintDoctorJson>>) =>
+    parsed.checks.filter((c) => c.category === "Lint");
+
+  function mockProjectFiles(files: Record<string, string>) {
+    existsLintMock.mockImplementation((p: Parameters<typeof existsSync>[0]) => {
+      const s = String(p).replace(/\\/g, "/");
+      if (
+        s.endsWith("playwright.config.ts") ||
+        s.endsWith("openspec") ||
+        s.endsWith("tests/playwright") ||
+        s.endsWith("AGENTS.md") ||
+        s.endsWith("CLAUDE.md")
+      ) {
+        return true;
+      }
+      return Object.keys(files).some((f) => s.endsWith(f));
+    });
+    readFileLintMock.mockImplementation((p: Parameters<typeof readFileSync>[0]) => {
+      const s = String(p).replace(/\\/g, "/");
+      const hit = Object.keys(files).find((f) => s.endsWith(f));
+      if (hit) return files[hit];
+      return "<!-- OPENSPEC-PW:START -->\ncontent\n<!-- OPENSPEC-PW:END -->";
+    });
+  }
+
+  it("eslint config without no-empty → gap row; ok verdict unaffected (optional tier)", async () => {
+    mockProjectFiles({ "eslint.config.mjs": "export default [];" });
+    const parsed = await runLintDoctorJson();
+    const row = lintRows(parsed).find((c) => c.name === "lint-eslint");
+    expect(row).toBeDefined();
+    expect(row?.ok).toBe(false);
+    expect(row?.message).toContain("not found");
+    expect(row?.message).toContain("recommended");
+    expect(parsed.ok).toBe(true);
+  });
+
+  it("eslint config with no-empty → silent", async () => {
+    mockProjectFiles({
+      "eslint.config.mjs": 'export default [{ rules: { "no-empty": "error" } }];',
+    });
+    const parsed = await runLintDoctorJson();
+    expect(lintRows(parsed).find((c) => c.name === "lint-eslint")).toBeUndefined();
+  });
+
+  it("ruff config without B904 / category B / ALL → gap row + ruff cli row", async () => {
+    mockProjectFiles({ "ruff.toml": "[lint]\nselect = [\"E4\"]\n" });
+    execLintMock.mockImplementation((cmd: string) => {
+      if (cmd === "node" || cmd === "npm" || cmd === "npx") return "v22.0.0";
+      if (cmd === "which" || cmd === "where") throw new Error("not found");
+      return "";
+    });
+    const parsed = await runLintDoctorJson();
+    const rows = lintRows(parsed);
+    const gap = rows.find((c) => c.name === "lint-ruff");
+    expect(gap?.ok).toBe(false);
+    expect(gap?.message).toContain("B904");
+    const cli = rows.find((c) => c.name === "lint-ruff-cli");
+    expect(cli).toBeDefined();
+    expect(cli?.ok).toBe(false); // which/where mocked to throw for ruff
+    expect(parsed.ok).toBe(true);
+  });
+
+  it("ruff covered via rule id, category B, or ALL → silent (three variants)", async () => {
+    for (const select of ['select = ["B904"]', "extend-select = ['B']", 'select = ["ALL"]']) {
+      vi.clearAllMocks();
+      execLintMock.mockImplementation((cmd: string) =>
+        cmd === "node" || cmd === "npm" || cmd === "npx" ? "v22.0.0" : "",
+      );
+      readdirLintMock.mockReturnValue([] as never);
+      lstatLintMock.mockReturnValue({ isSymbolicLink: () => false } as never);
+      detectAdaptersLintMock.mockReturnValue([claudeAdapter]);
+      detectCgLintMock.mockReturnValue({
+        cliInstalled: false,
+        indexed: false,
+        mcpInstalledAdapters: [],
+      });
+      mockProjectFiles({ "pyproject.toml": `[tool.ruff]\n${select}\n` });
+      const parsed = await runLintDoctorJson();
+      expect(
+        lintRows(parsed).find((c) => c.name === "lint-ruff"),
+        `select variant: ${select}`,
+      ).toBeUndefined();
+    }
+  });
+
+  it("no lint config at all → single lint-config info row, ok true", async () => {
+    const parsed = await runLintDoctorJson();
+    const rows = lintRows(parsed);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].name).toBe("lint-config");
+    expect(rows[0].ok).toBe(true);
+    expect(parsed.ok).toBe(true);
+  });
+
+  it("bare pyproject.toml without [tool.ruff] does not count as a ruff config", async () => {
+    mockProjectFiles({ "pyproject.toml": "[project]\nname = 'x'\n" });
+    const parsed = await runLintDoctorJson();
+    const rows = lintRows(parsed);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].name).toBe("lint-config");
+  });
+});

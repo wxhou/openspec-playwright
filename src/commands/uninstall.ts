@@ -20,6 +20,8 @@ import {
   removeTestRunnerMcp,
   detectCodeGraphStatus,
   removeManagedBlock,
+  removeChecklist,
+  LINT_GUIDELINES_RELPATH,
 } from "../shared/index.js";
 
 export async function uninstall() {
@@ -71,6 +73,25 @@ export async function uninstall() {
     }
   } else {
     console.log(chalk.gray("  - Claude not detected, skipping"));
+  }
+
+  // 2c. Remove the swallow-error lint checklist (lint-guidelines capability).
+  // Editor-agnostic asset — no adapter owns it, so this runs outside the
+  // per-adapter loops above. app-knowledge/app-exploration stay (user-generated
+  // domain content); this file is a static tool reference, so tool-owned copies
+  // go and user-modified copies are kept and named (same split as 2b).
+  console.log(chalk.blue("\n─── Removing Lint Guidelines ───"));
+  const checklistResult = removeChecklist(projectRoot);
+  if (checklistResult === "removed") {
+    console.log(chalk.green(`  ✓ Removed ${LINT_GUIDELINES_RELPATH}`));
+  } else if (checklistResult === "kept-modified") {
+    console.log(
+      chalk.yellow(
+        `  ⚠ ${LINT_GUIDELINES_RELPATH} is locally modified — kept`,
+      ),
+    );
+  } else {
+    console.log(chalk.gray("  - Lint guidelines not found, skipping"));
   }
 
   // 3. Remove legacy skill directory (if present from older versions)

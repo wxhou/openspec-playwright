@@ -349,7 +349,12 @@ export async function getSitemapRoutes(projectRoot) {
             try {
                 urls.push(new URL(match[1]).pathname);
             }
-            catch { }
+            catch (err) {
+                if (!(err instanceof TypeError))
+                    throw err;
+                // 非法 <loc> 只影响该条 URL，其余条目照常收集
+                console.debug(`audit: skipped malformed sitemap URL (${err.message})`);
+            }
         }
         return { routes: [...new Set(urls)], note: null };
     }

@@ -238,7 +238,7 @@ audit **只报告、绝不删除**——测试退役永远是人工决策。存�
 
 1. 检测项目中的受支持编辑器（Claude Code 和/或 OpenCode 和/或 Cline 和/或 Cursor 和/或 Pi 和/或 Oh My Pi 和/或 CodeBuddy CLI；Pi 与 Oh My Pi 也会通过全局配置目录 `~/.pi/agent/` / `~/.omp/agent/` 检测）
 2. 为每个检测到的编辑器安装 E2E 命令（Claude Code / CodeBuddy CLI 用 `/opsx:e2e`，OpenCode / Cline / Cursor / Pi / Oh My Pi 用 `/opsx-e2e`；Cursor 另装 Agent Skill）
-3. 生成 `tests/playwright/seed.spec.ts`、`auth.setup.ts`、`credentials.yaml`、`app-knowledge.md`、`pages/BasePage.ts`
+3. 生成 `tests/playwright/seed.spec.ts`、`auth.setup.ts`、`credentials.yaml`、`app-knowledge.md`、`pages/BasePage.ts`，以及项目根的 `lint-guidelines.md` 吞错 lint 清单（未手改时由 `update` 刷新，`uninstall` 清理）
 4. 检测前端信号（分层检测：框架配置文件 → 前端框架依赖 → dev 命令关键词，含 monorepo workspace 成员检测——前端在 `apps/*` 的 pnpm/npm workspace 也能识别）；未检测到时在 Summary 打印引导提示——monorepo 去应用目录运行 `openspec-pw init`，纯 API 项目用 Playwright `request` fixture
 
 ## 首次配置清单
@@ -259,7 +259,7 @@ audit **只报告、绝不删除**——测试退役永远是人工决策。存�
 
 ### `openspec-pw doctor` 检查清单
 
-`openspec-pw doctor` 在 10 个类别中验证前置条件，**必需**项失败时退出码非零。
+`openspec-pw doctor` 在 11 个类别中验证前置条件，**必需**项失败时退出码非零。
 
 | 类别 | 必需检查项 | 可选检查项 |
 |---|---|---|
@@ -274,6 +274,7 @@ audit **只报告、绝不删除**——测试退役永远是人工决策。存�
 | **Sync** | 已初始化时标准同步（漂移 → `openspec-pw update`；AGENTS.md 无标记视为未初始化，恒 ok:true） | 未初始化（闸门，不阻断） |
 | **测试目录** | `tests/playwright/` 目录存在 | `auth.setup.ts` 是否存在 · `storage-state` 完整性——config 声明 `storageState` 而 state 文件缺失 → ⚠ + `npx playwright test --project=setup`（不阻断） |
 | **种子测试** | — | `seed.spec.ts` 是否存在 |
+| **Lint** | — | 吞错清单覆盖检查，对项目 lint 配置做字面量探测（不阻断）：ESLint 配置未见 `no-empty` → 提示对照 `lint-guidelines.md`；ruff 配置未见 `B904` / 类目 `B` / `ALL` → 缺口提示；`ruff`/`pylint` PATH 感知；单面缺配置 → 该面静默，两面全无 → 单行信息 |
 | **应用服务器** | — | 开发脚本、基础 URL、可达性 |
 | **CodeGraph** | — | CLI 可用性、索引存在、MCP 安装（警告，不阻断） |
 

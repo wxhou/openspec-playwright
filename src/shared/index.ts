@@ -7,6 +7,17 @@ export {
   removeTestRunnerMcp,
 } from "./mcp.js";
 export { needsShell } from "./platform.js";
+export {
+  LINT_GUIDELINE_RULES,
+  LINT_GUIDELINES_RELPATH,
+  computeChecklistChecksum,
+  isChecklistUnmodified,
+  installOrRefreshChecklist,
+  removeChecklist,
+  type ChecklistDisposition,
+  type ChecklistRemovalDisposition,
+  type LintRuleEntry,
+} from "./lint-guidelines.js";
 export { detectCodeGraphStatus, codegraphHintLines } from "./codegraph.js";
 export type { CodeGraphStatus } from "./codegraph.js";
 export {

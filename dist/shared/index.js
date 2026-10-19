@@ -1,6 +1,7 @@
 export { SHARED_FILE_NAMES, TIMEOUT } from "./constants.js";
 export { removePlaywrightMcp, TEST_RUNNER_MCP_SERVER, isTestRunnerMcpInstalled, ensureTestRunnerMcp, removeTestRunnerMcp, } from "./mcp.js";
 export { needsShell } from "./platform.js";
+export { LINT_GUIDELINE_RULES, LINT_GUIDELINES_RELPATH, computeChecklistChecksum, isChecklistUnmodified, installOrRefreshChecklist, removeChecklist, } from "./lint-guidelines.js";
 export { detectCodeGraphStatus, codegraphHintLines } from "./codegraph.js";
 export { detectAppServer, findNpmRoot, chooseDevScript, parsePort, hasFrontendSignal, explainFrontendSignal, } from "./app-detect.js";
 export { CREDENTIALS_RELPATHS, credentialsIgnoreHint, findUnignoredFiles, } from "./ignore-check.js";

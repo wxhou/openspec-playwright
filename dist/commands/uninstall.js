@@ -3,7 +3,7 @@ import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { buildCommandMeta, cleanProjectRules, claudeAdapter, codebuddyAdapter, detectAdapters, listCommandArtifactPaths, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, cleanupEmptyDirs, hasRuleFileMarkers, normalizeEol, } from "./editors.js";
-import { removePlaywrightMcp, removeTestRunnerMcp, detectCodeGraphStatus, removeManagedBlock, } from "../shared/index.js";
+import { removePlaywrightMcp, removeTestRunnerMcp, detectCodeGraphStatus, removeManagedBlock, removeChecklist, LINT_GUIDELINES_RELPATH, } from "../shared/index.js";
 export async function uninstall() {
     console.log(chalk.blue("\n🗑️  Uninstalling OpenSpec + Playwright E2E\n"));
     const projectRoot = process.cwd();
@@ -47,6 +47,22 @@ export async function uninstall() {
     }
     else {
         console.log(chalk.gray("  - Claude not detected, skipping"));
+    }
+    // 2c. Remove the swallow-error lint checklist (lint-guidelines capability).
+    // Editor-agnostic asset — no adapter owns it, so this runs outside the
+    // per-adapter loops above. app-knowledge/app-exploration stay (user-generated
+    // domain content); this file is a static tool reference, so tool-owned copies
+    // go and user-modified copies are kept and named (same split as 2b).
+    console.log(chalk.blue("\n─── Removing Lint Guidelines ───"));
+    const checklistResult = removeChecklist(projectRoot);
+    if (checklistResult === "removed") {
+        console.log(chalk.green(`  ✓ Removed ${LINT_GUIDELINES_RELPATH}`));
+    }
+    else if (checklistResult === "kept-modified") {
+        console.log(chalk.yellow(`  ⚠ ${LINT_GUIDELINES_RELPATH} is locally modified — kept`));
+    }
+    else {
+        console.log(chalk.gray("  - Lint guidelines not found, skipping"));
     }
     // 3. Remove legacy skill directory (if present from older versions)
     console.log(chalk.blue("\n─── Removing Legacy Skill ───"));

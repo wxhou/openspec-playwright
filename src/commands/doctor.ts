@@ -38,6 +38,11 @@ const OPTIONAL_NAMES = new Set([
   "codegraph-index",
   "codegraph-mcp",
   "playwright-cli",
+  "lint-config",
+  "lint-eslint",
+  "lint-ruff",
+  "lint-ruff-cli",
+  "lint-pylint-cli",
   "vendored-agents-mcp",
 ]);
 
@@ -699,6 +704,130 @@ export async function doctor(options: DoctorOptions = {}) {
       ? `responded ${reachable.status ?? "ok"}`
       : `${reachable.message} (diagnostic only; Playwright webServer may start it)`,
   });
+
+  // Lint — swallow-error checklist coverage (lint-guidelines capability).
+  // Literal probes on the project's lint configs, optional-check tier
+  // (isOptionalCheck — never affects the ok verdict or exit code). A missing
+  // config silences that probe face; both faces absent → one info line.
+  // Wording is always "not found — see lint-guidelines.md", never "missing":
+  // literal probing cannot distinguish inherited defaults or explicit
+  // disables, so it must not conclude.
+  const eslintConfigs = [
+    "eslint.config.js",
+    "eslint.config.mjs",
+    "eslint.config.cjs",
+    "eslint.config.ts",
+    ".eslintrc.js",
+    ".eslintrc.cjs",
+    ".eslintrc.json",
+    ".eslintrc.yaml",
+    ".eslintrc.yml",
+  ];
+  const eslintConfigFile = eslintConfigs.find((f) =>
+    existsSync(join(projectRoot, f)),
+  );
+  let ruffConfigText: string | null = null;
+  const ruffConfigFile = ["ruff.toml", ".ruff.toml", "pyproject.toml"].find(
+    (f) => existsSync(join(projectRoot, f)),
+  );
+  if (ruffConfigFile) {
+    const text = readFileSync(join(projectRoot, ruffConfigFile), "utf-8");
+    // Only a [tool.ruff] section (or a dedicated ruff.toml) counts as a ruff
+    // config — a bare pyproject.toml is not ruff by itself.
+    ruffConfigText =
+      ruffConfigFile === "pyproject.toml" && !/\[tool\.ruff\]/.test(text)
+        ? null
+        : text;
+  }
+  let pyLintConfigFile: string | null = [".pylintrc", "pylintrc", "setup.cfg"].find((f) =>
+    existsSync(join(projectRoot, f)),
+  ) ?? null;
+  if (ruffConfigFile === "pyproject.toml" && ruffConfigText && /\[tool\.pylint\]/.test(ruffConfigText)) {
+    pyLintConfigFile ??= "pyproject.toml";
+  }
+
+  if (eslintConfigFile) {
+    const eslintText = readFileSync(
+      join(projectRoot, eslintConfigFile),
+      "utf-8",
+    );
+    if (!/\bno-empty\b/.test(eslintText)) {
+      checks.push({
+        category: "Lint",
+        name: "lint-eslint",
+        ok: false,
+        message:
+          'no-empty not found in eslint config — the recommended config already enables it; if you build your rule list by hand, see lint-guidelines.md (rule: ["no-empty": "error"])',
+      });
+    }
+  }
+
+  if (ruffConfigText) {
+    const covered =
+      /\bB904\b/.test(ruffConfigText) ||
+      /["']B["']/.test(ruffConfigText) ||
+      /["']ALL["']/.test(ruffConfigText);
+    if (!covered) {
+      checks.push({
+        category: "Lint",
+        name: "lint-ruff",
+        ok: false,
+        message:
+          'B904 not found in ruff lint config — dropped causality (`raise ... from`) inside handlers is not default-covered; see lint-guidelines.md (fix: extend-select = ["B904"])',
+      });
+    }
+    let ruffOnPath = false;
+    try {
+      execFileSync(process.platform === "win32" ? "where" : "which", ["ruff"], {
+        stdio: "ignore",
+        shell: needsShell,
+      });
+      ruffOnPath = true;
+    } catch {
+      /* not installed — optional awareness only */
+    }
+    checks.push({
+      category: "Lint",
+      name: "lint-ruff-cli",
+      ok: ruffOnPath,
+      message: ruffOnPath
+        ? "available"
+        : "ruff not installed (optional — run it in CI once the checklist rules are enabled)",
+    });
+
+    const hasPylintConfig = Boolean(pyLintConfigFile);
+    if (hasPylintConfig) {
+      let pylintOnPath = false;
+      try {
+        execFileSync(
+          process.platform === "win32" ? "where" : "which",
+          ["pylint"],
+          { stdio: "ignore", shell: needsShell },
+        );
+        pylintOnPath = true;
+      } catch {
+        /* not installed — optional awareness only */
+      }
+      checks.push({
+        category: "Lint",
+        name: "lint-pylint-cli",
+        ok: pylintOnPath,
+        message: pylintOnPath
+          ? "available"
+          : "pylint not installed (optional — its swallow trio is on by default once pylint runs)",
+      });
+    }
+  }
+
+  if (!eslintConfigFile && !ruffConfigText) {
+    checks.push({
+      category: "Lint",
+      name: "lint-config",
+      ok: true,
+      message:
+        "no ESLint or ruff config found — see lint-guidelines.md if you add one",
+    });
+  }
 
   // CodeGraph — optional third-party tooling; failures are warnings, never fatal
   const cg = detectCodeGraphStatus(projectRoot);

@@ -7,7 +7,7 @@ import { promisify } from "util";
 import chalk from "chalk";
 import * as tar from "tar";
 import { buildCommandMeta, getAllAdapters, hasCommandArtifacts, installCommand, installOpenSpecBlock, installClaudeWrapper, installCodebuddyWrapper, migrateLegacyMarkers, claudeAdapter, codebuddyAdapter, claudeWrapperStandardsContent, opencodeAdapter, syncVendoredAgents, normalizeEol, } from "./editors.js";
-import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, hasFrontendSignal, needsShell, detectCodeGraphStatus, codegraphHintLines, findUncoveredManagedPaths, managedBlockAdvisoryHint, ensureGitignoreEntries, } from "../shared/index.js";
+import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, hasFrontendSignal, needsShell, detectCodeGraphStatus, codegraphHintLines, findUncoveredManagedPaths, managedBlockAdvisoryHint, ensureGitignoreEntries, installOrRefreshChecklist, LINT_GUIDELINES_RELPATH, } from "../shared/index.js";
 import { compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
 import { wrapperHasMarkers, hasRuleFileMarkers } from "./editors/project-rules.js";
 /** Editors whose project rules file is a thin wrapper (not AGENTS.md), with their installers. */
@@ -259,6 +259,20 @@ export async function update(options) {
                 }
             }
         }
+    }
+    // Swallow-error lint checklist — content-based ownership (lint-guidelines
+    // capability): identical → silent; tool-owned → refresh; user-modified →
+    // notice and keep. Inside the initialized gate, so update never expands
+    // territory.
+    const checklist = installOrRefreshChecklist(projectRoot);
+    if (checklist === "created") {
+        console.log(chalk.green(`  ✓ Generated: ${LINT_GUIDELINES_RELPATH}`));
+    }
+    else if (checklist === "refreshed") {
+        console.log(chalk.green(`  ✓ Refreshed: ${LINT_GUIDELINES_RELPATH}`));
+    }
+    else if (checklist === "kept-modified") {
+        console.log(chalk.yellow(`  ⚠ ${LINT_GUIDELINES_RELPATH} is locally modified — kept as-is (compare with the shipped checklist if unsure)`));
     }
     // Summary
     console.log(chalk.blue("\n─── Summary ───"));

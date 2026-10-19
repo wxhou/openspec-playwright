@@ -6,7 +6,7 @@ import chalk from "chalk";
 import { readFile } from "fs/promises";
 import { buildCommandMeta, detectAdapters, detectProjectAdapters, getAdapter, getAllAdapters, installCommand, installOptionalArtifacts, installProjectRules, migrateLegacyMarkers, readEmployeeStandards, resolveToolsArg, slashCommandForAdapter, intentFileEditors, enumerateAdapterArtifacts, enumerateVendoredAgents, installedAgentsSnapshotDir, isInventoryEmpty, removeAdapterMcp, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, removeClaudeLegacySkill, removeWrapper, removeMarkersFromFile, normalizeEol, } from "./editors.js";
 import { isEditorConfigured, agentsFileHasMarkers, } from "./editors/configured.js";
-import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, TEST_RUNNER_MCP_SERVER, needsShell, hasFrontendSignal, explainFrontendSignal, detectCodeGraphStatus, codegraphHintLines, ensureGitignoreEntries, findUncoveredManagedPaths, detectTrackedFiles, managedBlockAdvisoryHint, } from "../shared/index.js";
+import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, TEST_RUNNER_MCP_SERVER, needsShell, hasFrontendSignal, explainFrontendSignal, detectCodeGraphStatus, codegraphHintLines, ensureGitignoreEntries, findUncoveredManagedPaths, detectTrackedFiles, managedBlockAdvisoryHint, installOrRefreshChecklist, LINT_GUIDELINES_RELPATH, } from "../shared/index.js";
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
 const E2E_COMMAND_SRC = fileURLToPath(new URL("../../templates/e2e-command.md", import.meta.url));
 const EMPLOYEE_STANDARDS_SRC = fileURLToPath(new URL("../../employee-standards.md", import.meta.url));
@@ -377,6 +377,18 @@ export async function init(options, deps = {}) {
         console.log(chalk.blue("\n─── Generating App Knowledge ───"));
         await generateAppKnowledge(projectRoot);
     }
+    // 7z. Swallow-error lint checklist (lint-guidelines capability) — falls in
+    // every mode (editor-agnostic reference; not behind the Playwright
+    // scaffold gates the Playwright-specific assets above run under).
+    const checklist = installOrRefreshChecklist(projectRoot);
+    const checklistMessages = {
+        created: `  ✓ Generated: ${LINT_GUIDELINES_RELPATH}`,
+        unchanged: `  ✓ ${LINT_GUIDELINES_RELPATH} already current`,
+        refreshed: `  ✓ Refreshed: ${LINT_GUIDELINES_RELPATH}`,
+        "kept-modified": `  ℹ ${LINT_GUIDELINES_RELPATH} is locally modified — left untouched (refresh manually after reviewing)`,
+    };
+    console.log(chalk.blue("\n─── Lint Guidelines ───"));
+    console.log(chalk[checklist === "kept-modified" ? "yellow" : "green"](checklistMessages[checklist]));
     // 7a. Managed .gitignore block: auto-ignore runtime output and test
     // credentials (revised from v0.3.86's advisory-only stance — the block
     // is tool-owned territory inside .gitignore; lines outside are never
