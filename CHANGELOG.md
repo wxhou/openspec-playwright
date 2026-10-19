@@ -5,8 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
+## [0.3.100] - 2026-10-19
 - **docs(standards): 吞错条款重写为出口白名单 + guard-first 折叠（`error-exit-whitelist`）**. 起因：用户实测模型仍频繁产出吞错代码（捕获后不记日志、跳过、宽 catch 返回默认值）。九源调研：Seeker（2147 脆弱段中 41.2% 是无效/有害处理——空吞、记录后带病跑、危险 fallback）、KPC（incomplete/incorrect/**abuse of try-catch** 三分类）、SBES 2026（LLM 生成 handler 的 pylint 违规比人写多 104.2%，大头 W0718 宽 catch + W0707 丢链，裸 bare-except 仅 27 例——模型词面合规语义照吞）、pylint #9010 判例（`except Exception: return default` 吞掉实现内部 ZeroDivisionError）、Protean ADR-0045（三出口实战清洗）、遵从衰减因子研究（1,650 会话：文件结构与遵从无关、会话内每函数 -5.6%——文本规则需 lint 分工兜底）+ flash 档版图（V4.1-Flash-1017 高速档/GLM-5.3-Flash 10 倍速产出放大衰减）。条款重写：出口白名单（①上抛带因转换 ②窄类型+记录后继续——继续=跳过或替代值、不得使用失败结果本身、仅可承受步骤+影响分级、无类型语言按 instanceof/错误码分流 ③ catch-all 仅限就地隔离边界+记录+行内原因、边界外一律改①②）内嵌 #9010 误例、「注释不是出口，出口是行为」、②③行内原因入注释纪律黑名单豁免族；WHY 锚定「失败可见性」不变量（每个出口=同一不变量的投影）。配套折叠：信任边界条尾加禁令式 guard-first「可预判的失败不裹 try 当控制流——预判守卫或取默认 API 先行」。Prompt 工程师对抗审计 9 发现全收（F1🔴 重写曾丢「不得带病继续」最利句→并入出口②继续定义、F2🔴 出口③行尾近因重开第四出口谓词化关闭、F3 可承受补锚 cleanup/幂等二次释放、F4 JS 无类型 catch 分流、F5 EAFP 替代值继续补语、F6 noqa 类比错位换锚、F7 地名 list-priming 双向降为例证、F8 挂靠点实为 DO NOT 改禁令式、F9/F10 WHY 与 #9010 判例保留）；复审终审轮再收 5 处：①重抛通道按「上行对象是否原样」切（原样上行——裸 raise/`throw e`/Go `return err` 合法；catch 内新建错误不带因=丢因果同判缺失——对象级可判定封死 W0707 丢链通道，跨语言零冲突；转换通道并入上抛后出口枚举从初稿四出口收缩为终态三出口）、②行内原因显式化（豁免悬空三义关闭）、②跳过作用域闭合（依赖的后续步骤一并跳过——本仓 doctor.ts 旧 catch 即实证）、黑洞族补 `.catch(()=>null)` 静默替代值、debug/warning 枚举加固「影响更重直接上抛」。条款形按用户裁定从「必须走其一」软化为「失败必须可见·出口任选」原则前置（判据谓词全保留，三语言例证收纳进对象同性切）。§6 新增反断言弱化条（ScenarioBench 6/6 测试生成工具在 buggy 代码面前单方面改判 spec 错、把断言降到 buggy/correct 两边都绿——生成期「出生即绿」不受测试红分类覆盖，「验收期望锚定」只管证据格式，独立触发面）。lint 棘轮等下一批顺带立 change；已知局限留档：lint 封不住带注释黑洞，记录义务唯有人审。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 3 处、EN 3 处）、`CHANGELOG.md`
 
