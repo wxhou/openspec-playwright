@@ -7,6 +7,36 @@ export {
   removeTestRunnerMcp,
 } from "./mcp.js";
 export { needsShell } from "./platform.js";
+export {
+  LINT_GUIDELINE_RULES,
+  LINT_GUIDELINES_RELPATH,
+  computeChecklistChecksum,
+  isChecklistUnmodified,
+  installOrRefreshChecklist,
+  removeChecklist,
+  LINT_ESLINT_CONFIG_FILE,
+  LINT_ESLINT_GENERATED_MARKER,
+  LINT_ESLINT_SNIPPET,
+  LINT_RUFF_BLOCK_BEGIN,
+  LINT_RUFF_BLOCK_END,
+  ESLINT_CONFIG_FILENAMES,
+  buildRuffManagedBlock,
+  findRuffManagedBlock,
+  hasRuffLintTable,
+  hasDedicatedRuffLintTable,
+  findEslintConfig,
+  findRuffConfig,
+  findSourceFile,
+  eslintMajorFromSpec,
+  installLintConfig,
+  type ChecklistDisposition,
+  type ChecklistRemovalDisposition,
+  type LintRuleEntry,
+  type RuffTableHeader,
+  type FoundLintConfig,
+  type LintConfigAction,
+  type LintConfigResult,
+} from "./lint-guidelines.js";
 export { detectCodeGraphStatus, codegraphHintLines } from "./codegraph.js";
 export type { CodeGraphStatus } from "./codegraph.js";
 export {

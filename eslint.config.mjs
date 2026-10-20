@@ -17,6 +17,7 @@ export default [
     },
     rules: {
       ...tseslint.configs.recommended.rules,
+      "no-empty": "error",
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unused-vars": [
         "error",

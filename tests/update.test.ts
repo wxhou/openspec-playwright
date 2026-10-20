@@ -339,6 +339,36 @@ describe("update.ts: npm spawn calls (execFile, no shell)", () => {
     expect(errCatches).toBeGreaterThanOrEqual(3);
   });
 });
+describe("update.ts: checklist refresh source", () => {
+  it("forwards the fetched tarball's checklist to installOrRefreshChecklist", () => {
+    const src = readFileSync(
+      fileURLToPath(new URL("../src/commands/update.ts", import.meta.url)),
+      "utf-8",
+    );
+    // Captured from the extracted bundle in both sync branches...
+    const captures = (
+      src.match(/join\(\s*tmpDir,\s*"templates",\s*"lint-guidelines\.md"\s*\)/g) || []
+    ).length;
+    expect(captures).toBeGreaterThanOrEqual(2);
+    // ...and handed to the checklist writer instead of letting it fall back to
+    // the running (possibly older) package's bundled template.
+    expect(src).toMatch(
+      /installOrRefreshChecklist\(\s*projectRoot,\s*checklistTemplate/,
+    );
+  });
+});
+
+describe("update.ts: lint config ownership", () => {
+  it("never references or rewrites ESLint/ruff config files (config belongs to the user)", () => {
+    const src = readFileSync(
+      fileURLToPath(new URL("../src/commands/update.ts", import.meta.url)),
+      "utf-8",
+    );
+    expect(src).not.toMatch(/installLintConfig|LINT_ESLINT_CONFIG_FILE|LINT_RUFF_BLOCK/);
+    expect(src).not.toMatch(/eslint\.config\.|ruff\.toml/);
+  });
+});
+
 // ─── Drift-aware no-op behavior ───────────────────────────────────────────
 
 describe("update.ts: drift-aware no-op", () => {

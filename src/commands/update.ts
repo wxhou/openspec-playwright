@@ -42,6 +42,8 @@ import {
   findUncoveredManagedPaths,
   managedBlockAdvisoryHint,
   ensureGitignoreEntries,
+  installOrRefreshChecklist,
+  LINT_GUIDELINES_RELPATH,
 } from "../shared/index.js";
 import { compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
 import { wrapperHasMarkers, hasRuleFileMarkers } from "./editors/project-rules.js";
@@ -209,10 +211,19 @@ export async function update(options: UpdateOptions) {
   }
 
   // 2. Update commands/templates (skipped by --no-skill) + standards (always)
+  // Latest checklist template from the fetched bundle, when this run has one.
+  // Captured before the temporary extract dir is removed; the running
+  // package's copy is the fallback for runs whose fetch failed.
+  let checklistTemplate: string | null = null;
   if (options.skill !== false) {
     console.log(chalk.blue("\n─── Updating Commands ───"));
     try {
       const tmpDir = await fetchLatestBundle();
+
+      const fetchedChecklist = join(tmpDir, "templates", "lint-guidelines.md");
+      if (existsSync(fetchedChecklist)) {
+        checklistTemplate = readFileSync(fetchedChecklist, "utf-8");
+      }
 
       // Read e2e command content from template
       const commandSrc = join(tmpDir, "templates", "e2e-command.md");
@@ -342,6 +353,10 @@ export async function update(options: UpdateOptions) {
     console.log(chalk.blue("\n─── Standards Sync ───"));
     try {
       const tmpDir = await fetchLatestBundle();
+      const fetchedChecklist = join(tmpDir, "templates", "lint-guidelines.md");
+      if (existsSync(fetchedChecklist)) {
+        checklistTemplate = readFileSync(fetchedChecklist, "utf-8");
+      }
       syncEmployeeStandards(
         tmpDir,
         projectRoot,
@@ -420,6 +435,26 @@ export async function update(options: UpdateOptions) {
         }
       }
     }
+  }
+
+  // Swallow-error lint checklist — content-based ownership (lint-guidelines
+  // capability): identical → silent; tool-owned → refresh; user-modified →
+  // notice and keep. Inside the initialized gate, so update never expands
+  // territory.
+  const checklist = installOrRefreshChecklist(
+    projectRoot,
+    checklistTemplate ?? undefined,
+  );
+  if (checklist === "created") {
+    console.log(chalk.green(`  ✓ Generated: ${LINT_GUIDELINES_RELPATH}`));
+  } else if (checklist === "refreshed") {
+    console.log(chalk.green(`  ✓ Refreshed: ${LINT_GUIDELINES_RELPATH}`));
+  } else if (checklist === "kept-modified") {
+    console.log(
+      chalk.yellow(
+        `  ⚠ ${LINT_GUIDELINES_RELPATH} is locally modified — kept as-is (compare with the shipped checklist if unsure)`,
+      ),
+    );
   }
 
   // Summary

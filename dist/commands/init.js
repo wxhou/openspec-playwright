@@ -1,12 +1,12 @@
 import { execFileSync } from "child_process";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync, rmdirSync, } from "fs";
-import { join, basename } from "path";
+import { join, basename, relative } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { readFile } from "fs/promises";
 import { buildCommandMeta, detectAdapters, detectProjectAdapters, getAdapter, getAllAdapters, installCommand, installOptionalArtifacts, installProjectRules, migrateLegacyMarkers, readEmployeeStandards, resolveToolsArg, slashCommandForAdapter, intentFileEditors, enumerateAdapterArtifacts, enumerateVendoredAgents, installedAgentsSnapshotDir, isInventoryEmpty, removeAdapterMcp, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, removeClaudeLegacySkill, removeWrapper, removeMarkersFromFile, normalizeEol, } from "./editors.js";
 import { isEditorConfigured, agentsFileHasMarkers, } from "./editors/configured.js";
-import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, TEST_RUNNER_MCP_SERVER, needsShell, hasFrontendSignal, explainFrontendSignal, detectCodeGraphStatus, codegraphHintLines, ensureGitignoreEntries, findUncoveredManagedPaths, detectTrackedFiles, managedBlockAdvisoryHint, } from "../shared/index.js";
+import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, TEST_RUNNER_MCP_SERVER, needsShell, hasFrontendSignal, explainFrontendSignal, detectCodeGraphStatus, codegraphHintLines, ensureGitignoreEntries, findUncoveredManagedPaths, detectTrackedFiles, managedBlockAdvisoryHint, installOrRefreshChecklist, installLintConfig, LINT_ESLINT_SNIPPET, LINT_GUIDELINES_RELPATH, } from "../shared/index.js";
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
 const E2E_COMMAND_SRC = fileURLToPath(new URL("../../templates/e2e-command.md", import.meta.url));
 const EMPLOYEE_STANDARDS_SRC = fileURLToPath(new URL("../../employee-standards.md", import.meta.url));
@@ -46,6 +46,78 @@ export function resolveInitMode(options, frontendSignal) {
     if (options.frontend === false)
         return "minimal";
     return frontendSignal === true ? "frontend" : "minimal";
+}
+/** Project-relative display path; ancestor configs stay absolute. */
+function displayPath(projectRoot, file) {
+    const rel = relative(projectRoot, file);
+    return rel.startsWith("..") ? file : rel;
+}
+/** Paste-ready snippet matching the config file the user already owns. */
+export function lintConfigSnippet(result) {
+    if (result.tool === "ESLint") {
+        const name = basename(result.file ?? "");
+        if (name.startsWith("eslint.config.")) {
+            return {
+                hint: "add the following to enable the swallow-error rules:",
+                lines: [LINT_ESLINT_SNIPPET],
+            };
+        }
+        if (name.endsWith(".js") || name.endsWith(".cjs")) {
+            return {
+                hint: "merge the following into the exported rules:",
+                lines: ['rules: { "no-empty": "error" }'],
+            };
+        }
+        // .eslintrc.json / .yaml / .yml / bare .eslintrc — the quoted form is
+        // valid JSON and YAML.
+        return {
+            hint: "merge the following into the existing config:",
+            lines: ['"rules": { "no-empty": "error" }'],
+        };
+    }
+    const header = basename(result.file ?? "") === "pyproject.toml"
+        ? "[tool.ruff.lint]"
+        : "[lint]";
+    return {
+        hint: "add the following to enable the swallow-error rules:",
+        lines: [header, 'extend-select = ["B904"]'],
+    };
+}
+function printLintConfigResult(projectRoot, result) {
+    const file = result.file ? displayPath(projectRoot, result.file) : result.tool;
+    switch (result.action) {
+        case "created":
+            console.log(chalk.green(`  ✓ Generated: ${file}`));
+            break;
+        case "appended": {
+            const header = basename(result.file ?? "") === "pyproject.toml"
+                ? "[tool.ruff.lint]"
+                : "[lint]";
+            console.log(chalk.green(`  ✓ Appended: ${file} (${header} managed block)`));
+            break;
+        }
+        case "unchanged":
+            console.log(chalk.green(`  ✓ ${file} managed block already current`));
+            break;
+        case "kept-modified":
+            console.log(chalk.yellow(`  ℹ ${file} managed block locally modified — kept as-is`));
+            break;
+        case "generated-existing":
+            console.log(chalk.green(`  ✓ ${file} already generated — left as-is`));
+            break;
+        case "snippet": {
+            const snippet = lintConfigSnippet(result);
+            console.log(chalk.cyan(`  ℹ ${file}: existing config left untouched — ${snippet.hint}`));
+            for (const line of snippet.lines) {
+                console.log(chalk.dim(`    ${line}`));
+            }
+            console.log(chalk.dim(`    (see ${LINT_GUIDELINES_RELPATH} for the full rule list)`));
+            break;
+        }
+        case "skipped":
+            console.log(chalk.yellow(`  - ${result.tool} skipped: ${result.reason ?? "not applicable"}`));
+            break;
+    }
 }
 export async function init(options, deps = {}) {
     console.log(chalk.blue("\n🔧 OpenSpec + Playwright E2E Setup\n"));
@@ -376,6 +448,27 @@ export async function init(options, deps = {}) {
         // 7. Generate app-knowledge.md
         console.log(chalk.blue("\n─── Generating App Knowledge ───"));
         await generateAppKnowledge(projectRoot);
+    }
+    // 7z. Swallow-error lint checklist (lint-guidelines capability) — falls in
+    // every mode (editor-agnostic reference; not behind the Playwright
+    // scaffold gates the Playwright-specific assets above run under).
+    const checklist = installOrRefreshChecklist(projectRoot);
+    const checklistMessages = {
+        created: `  ✓ Generated: ${LINT_GUIDELINES_RELPATH}`,
+        unchanged: `  ✓ ${LINT_GUIDELINES_RELPATH} already current`,
+        refreshed: `  ✓ Refreshed: ${LINT_GUIDELINES_RELPATH}`,
+        "kept-modified": `  ℹ ${LINT_GUIDELINES_RELPATH} is locally modified — left untouched (refresh manually after reviewing)`,
+    };
+    console.log(chalk.blue("\n─── Lint Guidelines ───"));
+    console.log(chalk[checklist === "kept-modified" ? "yellow" : "green"](checklistMessages[checklist]));
+    // 7z2. Opt-in lint-config bootstrap (--lint-config): create missing configs
+    // or append the ruff managed block. Mode-independent like the checklist —
+    // the write targets lint configs, not the Playwright scaffold.
+    if (options.lintConfig) {
+        console.log(chalk.blue("\n─── Lint Config ───"));
+        for (const result of installLintConfig(projectRoot)) {
+            printLintConfigResult(projectRoot, result);
+        }
     }
     // 7a. Managed .gitignore block: auto-ignore runtime output and test
     // credentials (revised from v0.3.86's advisory-only stance — the block
