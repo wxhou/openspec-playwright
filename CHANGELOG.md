@@ -5,8 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
+## [0.3.101] - 2026-10-20
 - **fix(lint): 配置代写与语义探测 review 轮修复——ruff 优先级/TOML 表形态、片段形态、TS parser 与静默失败**. 八项 review 发现全修：① ruff 目标文件优先级反了——`.ruff.toml` 优先于 `ruff.toml`（ruff 0.17.1 实测行为），追加目标与检测顺序随之修正，两份同时存在时不再写错文件；② pyproject / ruff.toml 里的点号键（`[tool.ruff]` 下 `lint.select =`、`"lint".select =`）与内联表（`lint = { … }`）此前漏判，追加同名表会触发 `duplicate key` 解析错误——存在性检测覆盖全部等价形态，命中即只打印片段、文件保持字节不变；③ legacy ESLint 片段按配置形态分派（flat config / `.eslintrc.js|.cjs` 对象字面量 / `.eslintrc.json|.yaml|.yml` 与裸 `.eslintrc` 的引号形式），此前一律给 flat 片段，贴进 JSON 直接解析失败；④ TS 生成配置补 parser import 与 `files` 作用域（flat config 默认只匹配 js/mjs/cjs，`.ts` 此前根本不被 lint），仅有 `@typescript-eslint/eslint-plugin`（无 parser）改判为跳过；`eslint --print-config` 输出的字面量 `undefined`（无匹配配置）按「未生效」确定结论处理，不再误走字面量回退把真实缺口吞掉；⑤ `findSourceFile` 不可读目录与 ⑥ doctor 读取 pyproject.toml 失败改为可见记录（stderr / info 行），不再用注释兜底；⑦ 拆分测试文件的注释去掉改动叙述；⑧ 补记 `d35289a` 的 CRLF 修复（另列）。文档同步：design/spec/proposal 按上述行为回写。
   - `src/shared/lint-guidelines.ts`、`src/commands/init.ts`、`src/commands/doctor.ts`、`tests/shared/lint-guidelines.test.ts`、`tests/commands/init-lint-config.test.ts`、`tests/commands/doctor-lint-semantic.test.ts`、`openspec/changes/lint-config-bootstrap/{design,proposal,specs/lint-guidelines/spec}.md`、`CHANGELOG.md`
 
