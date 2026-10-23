@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **docs(standards): §1 新增条款按 Prompt 工程师审阅加固（`ui-copy-restraint` / `modularity-and-capability-check` 修订）**. 五处高危全修：① UI 条用户豁免覆盖全部类别（原先只覆盖 slogan），「冗余」改为可执行删除测试（删后信息/操作仍完整即冗余），无障碍措辞对齐既有「无障碍基础」，并禁止为省文案新增/重排布局；② 库能力条触发从「断言」扩到「准备自行实现」（堵住不声明、直接手写的绕过），补「已装源码」证据与「无法确认 → 先提问」兜底，并并入「关键假设」条（净减 1 行）；③ 模块化条主语从「组件」改为「模块化与关注点分离」，把「职责所属/邻近」换成「先复用既有同职责模块，没有才按目录约定新建」的查找程序，并显式让位于「不重构没坏的东西」。锚换 2 处。
+  - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 3 处、EN 3 处）、`tests/docs-sync.test.ts`（锚换 2）、`CHANGELOG.md`
+
 - **docs(standards): §1 补模块化与库能力假设条款（`modularity-and-capability-check`）**. 对照外部 AGENTS.md 清单做覆盖审计，两处缺口补齐：① 组件模块化/关注点分离此前只有 1500 行触发的「按职责拆分」，无一般性条款——新增 🟡 DO：新增逻辑落在职责所属的模块，不塞进邻近文件或万能工具，不把无关职责耦合到同一处；② 选型链隐含「先用已装依赖」，但「不查文档/types 就断言库缺能力并手写」这一典型 AI 失败模式未明写——新增 🟡 DO：断言现成依赖缺少某能力前先查其文档与类型定义（按已装版本），查不到证据不据此手写替代实现。五件套同步，锚 +4。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 2 处、EN 2 处）、`tests/docs-sync.test.ts`（锚 +4）、`CHANGELOG.md`
 
