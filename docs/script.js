@@ -32,7 +32,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 ## 工具限制
 - 🔴 发现自己正在重复生成相同调用 → 立即停止，重新评估
 - 🟡 长会话接近上下文上限时，复杂任务前先压缩上下文
-- 🟡 搜索分层：结构性问题（定义/调用/影响/流）优先用 CodeGraph（无索引或不可用 → 直接降级全文搜索）；字面文本用全文搜索；文件名模式用文件名匹配。跳过依赖目录和缓存目录（调试依赖时除外），搜子目录时按需缩小
+- 🔴 搜索分层：结构性问题（定义/调用/影响/流）优先用 CodeGraph（无索引或不可用 → 直接降级全文搜索）；字面文本用全文搜索；文件名模式用文件名匹配。跳过依赖目录和缓存目录（调试依赖时除外），搜子目录时按需缩小
 - 🟡 引用作依据的文件先通读再断言；未通读就下的结论显式标注低置信，不冒充已充分验证
 - 🟡 重命名/挪动覆盖：调用、类型、字符串、import（含 CJS require）、barrel file、测试 mock、文档与配置中的同名引用，不得假设一次覆盖；抽出/搬移到其他文件时其 import 随迁；静态模块级 import 一律置文件顶部，不在代码中部补挂——豁免仅限：循环依赖、可选依赖、按需加载、运行顺序依赖（如 django.setup()），例外须行内注明缘由
 - 🟡 编辑 → 重新读取确认 → lint+typecheck（含 auto-fix 循环）→ 两轮后仍失败则回退到编辑前内容，输出失败日志并明示已回退
@@ -118,7 +118,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 ## Tool Constraints
 - 🔴 If you catch yourself generating the same call repeatedly → stop immediately, re-evaluate
 - 🟡 In long sessions near the context limit, compact context before complex tasks
-- 🟡 Search in layers: structural queries (definitions/calls/impact/flow) prefer CodeGraph (no index or unavailable → fall back to full-text search); literal text → full-text search; filename patterns → filename matching. Skip dependency and cache directories (except when debugging deps); narrow scope in subdirectories
+- 🔴 Search in layers: structural queries (definitions/calls/impact/flow) prefer CodeGraph (no index or unavailable → fall back to full-text search); literal text → full-text search; filename patterns → filename matching. Skip dependency and cache directories (except when debugging deps); narrow scope in subdirectories
 - 🟡 Read every file you cite as evidence end-to-end before asserting; conclusions drawn from partial reads are marked low-confidence explicitly, never presented as verified
 - 🟡 Renaming/moving must cover: calls, types, strings, imports (incl. CJS require), barrel files, test mocks, plus same-name references in docs/config — don't assume one pass covers everything; when code moves to another file its imports migrate with it; static module-level imports always sit at the file top, never added mid-file — exemptions only for: circular deps, optional deps, on-demand loading, runtime-order deps (e.g. django.setup()), annotated inline with its reason
 - 🟡 Edit → re-read to confirm → lint+typecheck (incl. its auto-fix loop) → after two failed rounds roll back to pre-edit content, output the failure log, and state the rollback explicitly
