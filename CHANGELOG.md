@@ -7,9 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- **docs(standards): 搜索分层条款升为 🔴**. CodeGraph 作为结构性检索的首选路径从 IMPORTANT 提升为 CRITICAL；SSOT、`AGENTS.md` 镜像与 docs 中英嵌入同步，锚不变。
-  - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 1 处、EN 1 处）、`CHANGELOG.md`
-
 - **refactor(standards): CLAUDE.md / CODEBUDDY.md wrapper 只保留 `@AGENTS.md` 导入**. init/update 写入的 thin wrapper 移除 CodeGraph 块与 OpenSpec 工作流提示，现在只含 `@AGENTS.md`（外加 OPENSPEC-PW 标记）；完整规范继续由 AGENTS.md 承载，裸 `@AGENTS.md` 不再提示。已初始化项目下次 `update` 自动重写 wrapper；本仓库 `CLAUDE.md` / `CODEBUDDY.md` 同步。
   - `src/commands/editors/project-rules.ts`、`src/commands/update.ts`、`tests/editors.test.ts`、`tests/editors-codebuddy.test.ts`、`tests/update.standards.test.ts`、`README.md`、`README.zh-CN.md`、`CLAUDE.md`、`CHANGELOG.md`
 
