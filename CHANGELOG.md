@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+- **fix(standards): UI 文案删除测试补用户要求豁免（`ui-copy-restraint` 修订）**. code review 发现：同句首段「只保留用户明确要求或信息/操作必需的部分」与删除测试「改动范围内任何文案……删」冲突——用户明确要求的副标题/slogan 会同时命中保留与删除，并与 §1「永不简化掉……用户明确要求的东西」矛盾。删除测试改为「删（用户明确要求的除外）」，中英嵌入同步；锚不变。
+  - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 1 处、EN 1 处）、`CHANGELOG.md`
+
+- **docs(standards): 通篇审阅修三处范围边界（`speculative-robustness-buy-in` / `modularity-and-capability-check` / `ui-copy-restraint` 修订）**. ① 模块化「不塞进当前文件」与同句「落在职责所属的模块」自相矛盾——改为「不因正在编辑就塞进当前文件」，当前文件即正确模块时不再被误禁；② UI 删除测试缺范围限定，可能借「改写」删掉未触及的既有文案——限定「改动范围内」；③ 买断条款「概率量级与依据」补「无数据时标明为估计」，堵住编造具体百分比。锚不变。
+  - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 3 处、EN 3 处）、`CHANGELOG.md`
+
+- **docs(standards): 推测性边界条款按二审加固（`speculative-robustness-buy-in` 修订）**. 修四处高危 + 三处中危：① 与「只写被要求的」绝对禁令冲突——该条改为「不主动为想象中的场景写防御」，新条成为经同意的升级路径；② 「推测性/极低概率」换成证据缺口（尚无复现、事故记录或项目内威胁模型），失败模式要求触发条件+后果+现有防护不足，概率只要求量级与依据（防编造具体数值），代价列实现/运行时/运维/新依赖；③ 「安全边界」统一为「信任边界」，豁免限基础校验，并给「必需」证据定义（威胁模型/合规/复现证据/基线实践），既有防护去留路由回「简化有边界」；④ 补「未取得同意或用户不可达 → 不添加并报告」默认；⑤ 删掉与「只写被要求的」「精准改动」重复的「不扩大范围」句（第三次出现）；⑥ 末尾「架构方向按 §3」划清与「架构决策往长了做」的边界。锚换 2。
+  - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 2 处、EN 2 处）、`tests/docs-sync.test.ts`（锚换 2）、`CHANGELOG.md`
+
+- **docs(standards): §1 新增推测性边界扩展买断条款（`speculative-robustness-buy-in`）**. 覆盖审计发现：既有「不为想象中的场景写防御」只覆盖禁止面，缺少「怀疑边界真实存在时怎么办」的流程——为推测性或极低概率的竞态/安全边界增加复杂度前，须说明具体失败模式、发生概率与复杂度代价并取得用户同意，不得为理论健壮性静默扩大范围；括注与「简化有边界」划界（必需的安全措施与信任边界校验照旧不可简化）。五件套同步，锚 +2。
+  - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 1 处、EN 1 处）、`tests/docs-sync.test.ts`（锚 +2）、`CHANGELOG.md`
+
+- **docs(standards): §1 新增条款按 Prompt 工程师审阅加固（`ui-copy-restraint` / `modularity-and-capability-check` 修订）**. 五处高危全修：① UI 条用户豁免覆盖全部类别（原先只覆盖 slogan），「冗余」改为可执行删除测试（删后信息/操作仍完整即冗余），无障碍措辞对齐既有「无障碍基础」，并禁止为省文案新增/重排布局；② 库能力条触发从「断言」扩到「准备自行实现」（堵住不声明、直接手写的绕过），补「已装源码」证据与「无法确认 → 先提问」兜底，并并入「关键假设」条（净减 1 行）；③ 模块化条主语从「组件」改为「模块化与关注点分离」，把「职责所属/邻近」换成「先复用既有同职责模块，没有才按目录约定新建」的查找程序，并显式让位于「不重构没坏的东西」。锚换 2 处。
+  - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 3 处、EN 3 处）、`tests/docs-sync.test.ts`（锚换 2）、`CHANGELOG.md`
+
+- **docs(standards): §1 补模块化与库能力假设条款（`modularity-and-capability-check`）**. 对照外部 AGENTS.md 清单做覆盖审计，两处缺口补齐：① 组件模块化/关注点分离此前只有 1500 行触发的「按职责拆分」，无一般性条款——新增 🟡 DO：新增逻辑落在职责所属的模块，不塞进邻近文件或万能工具，不把无关职责耦合到同一处；② 选型链隐含「先用已装依赖」，但「不查文档/types 就断言库缺能力并手写」这一典型 AI 失败模式未明写——新增 🟡 DO：断言现成依赖缺少某能力前先查其文档与类型定义（按已装版本），查不到证据不据此手写替代实现。五件套同步，锚 +4。
+  - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 2 处、EN 2 处）、`tests/docs-sync.test.ts`（锚 +4）、`CHANGELOG.md`
+
+- **docs(standards): §1 新增界面文案克制条款（`ui-copy-restraint`）**. 起因：UI 生成中模型倾向用文案解释界面歧义，产出冗余次级标签、副标题与 slogan，界面容易变成说明书——这类说明多数本可由布局/层级消解。条款（§1 DO NOT，未标注按 🟡）：生成的用户界面不写冗余次级标签、副标题与逐项说明，无用户要求的 slogan 同禁——让布局与层级承担解释；能用设计消解的不用文案补（承载信息/操作必需的文本与无障碍标签除外）。五件套同步：SSOT → `npm run standards:sync` 再生 AGENTS.md → docs/script.js 中英嵌入 → docs-sync 锚 +2 → CHANGELOG。
+  - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 1 处、EN 1 处）、`tests/docs-sync.test.ts`（锚 +2）、`CHANGELOG.md`
+
 ## [0.3.101] - 2026-10-20
 - **fix(lint): 配置代写与语义探测 review 轮修复——ruff 优先级/TOML 表形态、片段形态、TS parser 与静默失败**. 八项 review 发现全修：① ruff 目标文件优先级反了——`.ruff.toml` 优先于 `ruff.toml`（ruff 0.17.1 实测行为），追加目标与检测顺序随之修正，两份同时存在时不再写错文件；② pyproject / ruff.toml 里的点号键（`[tool.ruff]` 下 `lint.select =`、`"lint".select =`）与内联表（`lint = { … }`）此前漏判，追加同名表会触发 `duplicate key` 解析错误——存在性检测覆盖全部等价形态，命中即只打印片段、文件保持字节不变；③ legacy ESLint 片段按配置形态分派（flat config / `.eslintrc.js|.cjs` 对象字面量 / `.eslintrc.json|.yaml|.yml` 与裸 `.eslintrc` 的引号形式），此前一律给 flat 片段，贴进 JSON 直接解析失败；④ TS 生成配置补 parser import 与 `files` 作用域（flat config 默认只匹配 js/mjs/cjs，`.ts` 此前根本不被 lint），仅有 `@typescript-eslint/eslint-plugin`（无 parser）改判为跳过；`eslint --print-config` 输出的字面量 `undefined`（无匹配配置）按「未生效」确定结论处理，不再误走字面量回退把真实缺口吞掉；⑤ `findSourceFile` 不可读目录与 ⑥ doctor 读取 pyproject.toml 失败改为可见记录（stderr / info 行），不再用注释兜底；⑦ 拆分测试文件的注释去掉改动叙述；⑧ 补记 `d35289a` 的 CRLF 修复（另列）。文档同步：design/spec/proposal 按上述行为回写。
   - `src/shared/lint-guidelines.ts`、`src/commands/init.ts`、`src/commands/doctor.ts`、`tests/shared/lint-guidelines.test.ts`、`tests/commands/init-lint-config.test.ts`、`tests/commands/doctor-lint-semantic.test.ts`、`openspec/changes/lint-config-bootstrap/{design,proposal,specs/lint-guidelines/spec}.md`、`CHANGELOG.md`
