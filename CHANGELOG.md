@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **docs(standards): §1 新增推测性边界扩展买断条款（`speculative-robustness-buy-in`）**. 覆盖审计发现：既有「不为想象中的场景写防御」只覆盖禁止面，缺少「怀疑边界真实存在时怎么办」的流程——为推测性或极低概率的竞态/安全边界增加复杂度前，须说明具体失败模式、发生概率与复杂度代价并取得用户同意，不得为理论健壮性静默扩大范围；括注与「简化有边界」划界（必需的安全措施与信任边界校验照旧不可简化）。五件套同步，锚 +2。
+  - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 1 处、EN 1 处）、`tests/docs-sync.test.ts`（锚 +2）、`CHANGELOG.md`
+
 - **docs(standards): §1 新增条款按 Prompt 工程师审阅加固（`ui-copy-restraint` / `modularity-and-capability-check` 修订）**. 五处高危全修：① UI 条用户豁免覆盖全部类别（原先只覆盖 slogan），「冗余」改为可执行删除测试（删后信息/操作仍完整即冗余），无障碍措辞对齐既有「无障碍基础」，并禁止为省文案新增/重排布局；② 库能力条触发从「断言」扩到「准备自行实现」（堵住不声明、直接手写的绕过），补「已装源码」证据与「无法确认 → 先提问」兜底，并并入「关键假设」条（净减 1 行）；③ 模块化条主语从「组件」改为「模块化与关注点分离」，把「职责所属/邻近」换成「先复用既有同职责模块，没有才按目录约定新建」的查找程序，并显式让位于「不重构没坏的东西」。锚换 2 处。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 3 处、EN 3 处）、`tests/docs-sync.test.ts`（锚换 2）、`CHANGELOG.md`
 
