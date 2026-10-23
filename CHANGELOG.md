@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **docs(standards): 推测性边界条款按二审加固（`speculative-robustness-buy-in` 修订）**. 修四处高危 + 三处中危：① 与「只写被要求的」绝对禁令冲突——该条改为「不主动为想象中的场景写防御」，新条成为经同意的升级路径；② 「推测性/极低概率」换成证据缺口（尚无复现、事故记录或项目内威胁模型），失败模式要求触发条件+后果+现有防护不足，概率只要求量级与依据（防编造具体数值），代价列实现/运行时/运维/新依赖；③ 「安全边界」统一为「信任边界」，豁免限基础校验，并给「必需」证据定义（威胁模型/合规/复现证据/基线实践），既有防护去留路由回「简化有边界」；④ 补「未取得同意或用户不可达 → 不添加并报告」默认；⑤ 删掉与「只写被要求的」「精准改动」重复的「不扩大范围」句（第三次出现）；⑥ 末尾「架构方向按 §3」划清与「架构决策往长了做」的边界。锚换 2。
+  - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 2 处、EN 2 处）、`tests/docs-sync.test.ts`（锚换 2）、`CHANGELOG.md`
+
 - **docs(standards): §1 新增推测性边界扩展买断条款（`speculative-robustness-buy-in`）**. 覆盖审计发现：既有「不为想象中的场景写防御」只覆盖禁止面，缺少「怀疑边界真实存在时怎么办」的流程——为推测性或极低概率的竞态/安全边界增加复杂度前，须说明具体失败模式、发生概率与复杂度代价并取得用户同意，不得为理论健壮性静默扩大范围；括注与「简化有边界」划界（必需的安全措施与信任边界校验照旧不可简化）。五件套同步，锚 +2。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 1 处、EN 1 处）、`tests/docs-sync.test.ts`（锚 +2）、`CHANGELOG.md`
 
