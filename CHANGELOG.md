@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **refactor(standards): CLAUDE.md / CODEBUDDY.md wrapper 只保留 `@AGENTS.md` 导入**. init/update 写入的 thin wrapper 移除 CodeGraph 块与 OpenSpec 工作流提示，现在只含 `@AGENTS.md`（外加 OPENSPEC-PW 标记）；完整规范继续由 AGENTS.md 承载，裸 `@AGENTS.md` 不再提示。已初始化项目下次 `update` 自动重写 wrapper；本仓库 `CLAUDE.md` / `CODEBUDDY.md` 同步。
+  - `src/commands/editors/project-rules.ts`、`src/commands/update.ts`、`tests/editors.test.ts`、`tests/editors-codebuddy.test.ts`、`tests/update.standards.test.ts`、`README.md`、`README.zh-CN.md`、`CLAUDE.md`、`CHANGELOG.md`
+
 - **fix(standards): UI 文案删除测试补用户要求豁免（`ui-copy-restraint` 修订）**. code review 发现：同句首段「只保留用户明确要求或信息/操作必需的部分」与删除测试「改动范围内任何文案……删」冲突——用户明确要求的副标题/slogan 会同时命中保留与删除，并与 §1「永不简化掉……用户明确要求的东西」矛盾。删除测试改为「删（用户明确要求的除外）」，中英嵌入同步；锚不变。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 1 处、EN 1 处）、`CHANGELOG.md`
 

@@ -20,8 +20,8 @@ export declare function blockMatchesExpected(projectRoot: string, adapter: Edito
 export declare function installOpenSpecBlock(projectRoot: string, standardsContent: string, adapter?: EditorAdapter): void;
 /**
  * The expected OPENSPEC block content for a thin CLAUDE.md wrapper
- * (CodeGraph-first guidance + workflow hint + `@AGENTS.md` import). Exported
- * so drift detection / update can compare against it.
+ * (`@AGENTS.md` import only). Exported so drift detection / update can
+ * compare against it.
  *
  * The `@AGENTS.md` line is Claude Code's documented way to reuse AGENTS.md
  * inside CLAUDE.md — AGENTS.md is NOT read by default ("Claude Code reads
@@ -57,14 +57,12 @@ export declare function wrapperHasMarkers(adapter: EditorAdapter, projectRoot: s
  * content and territory semantics are identical.
  *
  * Uses the same OPENSPEC-PW:START/END markers as the full standards block so
- * `cleanProjectRules` can remove it uniformly. The CodeGraph-first block is
- * written directly into the wrapper (before the @AGENTS.md import) so the
- * editor picks it up without depending on the import.
+ * `cleanProjectRules` can remove it uniformly. The block contains only the
+ * `@AGENTS.md` import; the standards themselves live in AGENTS.md.
  *
  * Also handles migration: if the wrapper file has an existing legacy
  * OPENSPEC:START block (old format that wrote standards directly), calling
- * `installOpenSpecBlock` replaces the content with the CodeGraph block +
- * `@AGENTS.md` import.
+ * `installOpenSpecBlock` replaces the content with the `@AGENTS.md` import.
  */
 export declare function installThinWrapper(adapter: EditorAdapter, projectRoot: string): void;
 /**

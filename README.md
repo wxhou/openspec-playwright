@@ -498,7 +498,7 @@ Editors (auto-detected by openspec-pw init)
   │   ├── .claude/commands/opsx/e2e.md   → Command file
   │   ├── playwright-test server         → Healer Agent tools (via `claude mcp add --scope project playwright-test …`, writes project-root `.mcp.json`)
   │   ├── .claude/agents/playwright-test-*.md → Official agent snapshots (opt-in `--agents`)
-  │   └── CLAUDE.md                      → CodeGraph 优先 block + workflow hint + imports AGENTS.md via `@AGENTS.md`
+  │   └── CLAUDE.md                      → imports AGENTS.md via `@AGENTS.md`
   ├── OpenCode (/opsx-e2e)
   │   ├── .opencode/commands/opsx-e2e.md → Command file (body rewritten from /opsx: → /opsx-)
   │   ├── opencode.jsonc                 → Playwright MCP (mcp["playwright-test"]) + instructions routing
@@ -523,19 +523,19 @@ Editors (auto-detected by openspec-pw init)
   └── CodeBuddy CLI (/opsx:e2e)
       ├── .codebuddy/commands/opsx/e2e.md → Command file (subdirectory colon naming, no `name` frontmatter)
       ├── .mcp.json                       → Playwright MCP (mcpServers["playwright-test"], project root)
-      └── CODEBUDDY.md                    → CodeGraph-first + workflow hint + imports AGENTS.md via `@AGENTS.md`
+      └── CODEBUDDY.md                    → imports AGENTS.md via `@AGENTS.md`
 
 Employee-grade standards live in **AGENTS.md** as the single source of truth. Claude Code
-loads them via a CLAUDE.md that carries a CodeGraph-first block and an OpenSpec-workflow
-hint up front, followed by an `@AGENTS.md` import — Claude Code's documented mechanism for
-reusing AGENTS.md, which it does not read by default. Import position is unconstrained
+loads them via a CLAUDE.md that imports AGENTS.md through `@AGENTS.md` — Claude Code's
+documented mechanism for reusing AGENTS.md, which it does not read by default. Import
+position is unconstrained
 ("anywhere in your CLAUDE.md"); the only rule is the `@` line must not sit inside backticks
 or a code block. The import line sits outside the OPENSPEC-PW:START/END comments (stripped
 before context injection), so the markers act as the tool-owned boundary while the import is
 honored. OpenCode registers AGENTS.md in `opencode.jsonc` under `instructions`. Cline and
 Cursor auto-detect `AGENTS.md` natively — no wrapper file needed. CodeBuddy CLI loads them
-the same way Claude Code does, via a thin CODEBUDDY.md wrapper with the same CodeGraph
-block and `@AGENTS.md` import (CodeBuddy prefers CODEBUDDY.md over AGENTS.md when both exist).
+the same way Claude Code does, via a thin CODEBUDDY.md wrapper with the same `@AGENTS.md`
+import (CodeBuddy prefers CODEBUDDY.md over AGENTS.md when both exist).
 
 > **Coexisting with the official `@fission-ai/openspec` CLI**: its `openspec update` runs a
 > "legacy cleanup" that deletes any root AGENTS.md/CLAUDE.md block wrapped in plain

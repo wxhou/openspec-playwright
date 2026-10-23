@@ -702,13 +702,6 @@ export function syncEmployeeStandards(
       const fileContent = readFileSync(wrapperPath, "utf-8");
       if (!fileContent.includes(OPENSPEC_START)) {
         wrapperStale = !/^@AGENTS\.md\r?$/m.test(fileContent);
-        if (!wrapperStale) {
-          console.log(
-            chalk.yellow(
-              `  ⚠ ${wrapperLabel} 是裸 @AGENTS.md 导入（无 OPENSPEC 标记），CodeGraph 优先约束未写入。如需启用：删除该行后重跑 openspec-pw update。`,
-            ),
-          );
-        }
       } else {
         wrapperStale = compareBlock(
           fileContent,

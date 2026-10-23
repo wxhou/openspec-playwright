@@ -339,8 +339,6 @@ describe("installProjectRules routing", () => {
     expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(true);
     const claudeContent = readFileSync(join(tmpRoot, "CLAUDE.md"), "utf-8");
     expect(claudeContent).toContain("@AGENTS.md");
-    expect(claudeContent).toContain("CodeGraph 优先");
-    expect(claudeContent).toContain("工作流");
     expect(claudeContent).not.toContain(standards);
 
     // No opencode config (OpenCode not detected).
@@ -388,7 +386,6 @@ describe("installProjectRules routing", () => {
     expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(true);
     const claudeContent = readFileSync(join(tmpRoot, "CLAUDE.md"), "utf-8");
     expect(claudeContent).toContain("@AGENTS.md");
-    expect(claudeContent).toContain("CodeGraph 优先");
     // Standards live in AGENTS.md, not duplicated into CLAUDE.md.
     expect(claudeContent).not.toContain(standards);
 
@@ -992,8 +989,6 @@ describe("installProjectRules", () => {
     const block = readOpenSpecBlock(tmpRoot, claudeAdapter);
     expect(block).not.toBeNull();
     expect(block).toContain("@AGENTS.md");
-    expect(block).toContain("CodeGraph 优先");
-    expect(block).toContain("工作流");
   });
 
   it("readOpenSpecBlock returns null when the file has no markers", () => {
@@ -1275,7 +1270,7 @@ describe("installCommand (Oh My Pi)", () => {
 // CLAUDE.md → AGENTS.md is the officially documented reuse pattern. Writing a
 // wrapper through the symlink would overwrite the standards that live in
 // AGENTS.md (regression: init/update used to replace the full standards block
-// with just the CodeGraph-first wrapper content).
+// with just the wrapper content).
 
 describe.skipIf(
   process.platform === "win32",
@@ -1292,7 +1287,7 @@ describe.skipIf(
     // Same file through the symlink: the full standards survive, no wrapper.
     const content = readFileSync(join(tmpRoot, "CLAUDE.md"), "utf-8");
     expect(content).toContain("FULL STANDARDS");
-    expect(content).not.toContain("CodeGraph 优先");
+    expect(content).not.toContain("@AGENTS.md");
     expect(lstatSync(join(tmpRoot, "CLAUDE.md")).isSymbolicLink()).toBe(true);
   });
 
@@ -1304,7 +1299,7 @@ describe.skipIf(
 
     const agents = readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8");
     expect(agents).toContain("FULL STANDARDS");
-    expect(agents).not.toContain("CodeGraph 优先");
+    expect(agents).not.toContain("@AGENTS.md");
     expect(lstatSync(join(tmpRoot, "CLAUDE.md")).isSymbolicLink()).toBe(true);
   });
 });

@@ -1,7 +1,7 @@
 /**
  * Project rules file management: OPENSPEC marker blocks inside
  * AGENTS.md (single source of truth) and the thin CLAUDE.md wrapper for
- * Claude Code (@AGENTS.md import + CodeGraph-first guidance).
+ * Claude Code (@AGENTS.md import).
  */
 import { existsSync, lstatSync, rmSync, readFileSync, writeFileSync, } from "fs";
 import { join, basename } from "path";
@@ -112,17 +112,9 @@ export function installOpenSpecBlock(projectRoot, standardsContent, adapter = cl
     }
 }
 /**
- * CodeGraph-first guidance prepended to the Claude wrapper so the model sees
- * it in the main rules file instead of relying on the AGENTS.md import
- * (imported content ranks lower and is treated as optional by the model).
- */
-const CODE_GRAPH_FIRST_BLOCK = `## CodeGraph 优先 🔴
-
-结构性任务（定义/调用链/影响面/流程）第一步用 \`codegraph_explore\`，直接用结果回答。无 \`.codegraph/\` 跳过。`;
-/**
  * The expected OPENSPEC block content for a thin CLAUDE.md wrapper
- * (CodeGraph-first guidance + workflow hint + `@AGENTS.md` import). Exported
- * so drift detection / update can compare against it.
+ * (`@AGENTS.md` import only). Exported so drift detection / update can
+ * compare against it.
  *
  * The `@AGENTS.md` line is Claude Code's documented way to reuse AGENTS.md
  * inside CLAUDE.md — AGENTS.md is NOT read by default ("Claude Code reads
@@ -140,7 +132,7 @@ const CODE_GRAPH_FIRST_BLOCK = `## CodeGraph 优先 🔴
  *   line inside them is still honored.
  */
 export function claudeWrapperStandardsContent() {
-    return `${CODE_GRAPH_FIRST_BLOCK}\n\n**工作流**：优先使用 OpenSpec 工作流（/opsx 命令），而非 plan mode。\n\n@AGENTS.md\n`;
+    return `@AGENTS.md\n`;
 }
 /**
  * The adapter's thin wrapper file (CLAUDE.md for claude, CODEBUDDY.md for
@@ -168,14 +160,12 @@ export function wrapperHasMarkers(adapter, projectRoot) {
  * content and territory semantics are identical.
  *
  * Uses the same OPENSPEC-PW:START/END markers as the full standards block so
- * `cleanProjectRules` can remove it uniformly. The CodeGraph-first block is
- * written directly into the wrapper (before the @AGENTS.md import) so the
- * editor picks it up without depending on the import.
+ * `cleanProjectRules` can remove it uniformly. The block contains only the
+ * `@AGENTS.md` import; the standards themselves live in AGENTS.md.
  *
  * Also handles migration: if the wrapper file has an existing legacy
  * OPENSPEC:START block (old format that wrote standards directly), calling
- * `installOpenSpecBlock` replaces the content with the CodeGraph block +
- * `@AGENTS.md` import.
+ * `installOpenSpecBlock` replaces the content with the `@AGENTS.md` import.
  */
 export function installThinWrapper(adapter, projectRoot) {
     const dest = adapter.projectRulesPath(projectRoot);
@@ -191,15 +181,14 @@ export function installThinWrapper(adapter, projectRoot) {
             return;
         }
     }
-    // No-op if our full wrapper (CodeGraph block + @AGENTS.md import) is already
-    // in place — content-equal, so a user edit inside the markers is detected.
-    // A bare @AGENTS.md without our markers (added by openspec CLI or the user)
-    // is left untouched — but tell the user CodeGraph-first won't be written.
+    // No-op if our wrapper (@AGENTS.md import) is already in place —
+    // content-equal, so a user edit inside the markers is detected. A bare
+    // @AGENTS.md without our markers (added by openspec CLI or the user) is
+    // left untouched — its content already matches the wrapper.
     if (existsSync(dest)) {
         const existing = readFileSync(dest, "utf-8");
         const hasMarkers = existing.includes(OPENSPEC_START);
         if (!hasMarkers && /^@AGENTS\.md\r?$/m.test(existing)) {
-            console.log(chalk.yellow(`  ⚠ ${fileLabel} 是裸 @AGENTS.md 导入（无 OPENSPEC 标记），CodeGraph 优先约束未写入。如需启用：删除该行后重跑 openspec-pw update。`));
             return;
         }
         if (hasMarkers && blockMatchesExpected(projectRoot, adapter, claudeWrapperStandardsContent())) {

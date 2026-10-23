@@ -346,7 +346,7 @@ CLI (openspec-pw)
   │   ├── .claude/commands/opsx/e2e.md    → 命令文件（从 templates/e2e-command.md 安装）
   │   ├── playwright-test server         → Healer Agent 工具（通过 `claude mcp add --scope project playwright-test …`，写入项目根 `.mcp.json`）
   │   ├── .claude/agents/playwright-test-*.md → 官方 agents 快照（opt-in `--agents`）
-  │   └── CLAUDE.md                       → CodeGraph 优先节 + 工作流提示 + 通过 `@AGENTS.md` 引入 AGENTS.md
+  │   └── CLAUDE.md                       → 通过 `@AGENTS.md` 引入 AGENTS.md
   ├── OpenCode (/opsx-e2e)
   │   ├── .opencode/commands/opsx-e2e.md  → 命令文件（正文由 /opsx: 改写为 /opsx-）
   │   ├── opencode.jsonc                  → Playwright MCP (mcp["playwright-test"]) + 指令路由
@@ -371,15 +371,15 @@ CLI (openspec-pw)
   └── CodeBuddy CLI (/opsx:e2e)
       ├── .codebuddy/commands/opsx/e2e.md → 命令文件（子目录冒号命名，无 `name` frontmatter）
       ├── .mcp.json                       → Playwright MCP (mcpServers["playwright-test"，项目根])
-      └── CODEBUDDY.md                    → CodeGraph 优先节 + 工作流提示 + 通过 `@AGENTS.md` 引入 AGENTS.md
+      └── CODEBUDDY.md                    → 通过 `@AGENTS.md` 引入 AGENTS.md
 
-员工级规范统一存放在 **AGENTS.md** 中。Claude Code 通过 CLAUDE.md 加载——前置 CodeGraph 优先节与
-OpenSpec 工作流提示，后接 `@AGENTS.md` 导入（Claude Code 官方记载的复用 AGENTS.md 机制，默认并不读取 AGENTS.md）。
+员工级规范统一存放在 **AGENTS.md** 中。Claude Code 通过 CLAUDE.md 的 `@AGENTS.md` 导入加载
+（Claude Code 官方记载的复用 AGENTS.md 机制，默认并不读取 AGENTS.md）。
 导入位置无约束（官方原文 "anywhere in your CLAUDE.md"），唯一要求是 `@` 行不能放在反引号或代码块内。
 导入行位于 OPENSPEC-PW:START/END 注释之外（注释在注入上下文前被剥离），marker 作为工具领地边界、
 导入仍生效；OpenCode 在 `opencode.jsonc` 的 `instructions` 中注册 AGENTS.md；
 Cline 与 Cursor 原生自动识别 `AGENTS.md`，无需包装文件。CodeBuddy CLI 加载方式与 Claude Code 相同——
-thin CODEBUDDY.md wrapper，同样的 CodeGraph 块与 `@AGENTS.md` 导入（CodeBuddy 双文件并存时优先读 CODEBUDDY.md）。
+thin CODEBUDDY.md wrapper，同样的 `@AGENTS.md` 导入（CodeBuddy 双文件并存时优先读 CODEBUDDY.md）。
 
 > **与官方 `@fission-ai/openspec` CLI 共存**：官方 `openspec update` 内置「legacy 清理」，会删除根
 > AGENTS.md/CLAUDE.md 中以普通 `OPENSPEC:START/END` 包裹的块（2026-08-28 曾因此误删本工具的规范块）。

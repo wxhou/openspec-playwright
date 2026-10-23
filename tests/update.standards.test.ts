@@ -256,11 +256,9 @@ describe("syncEmployeeStandards", () => {
     syncEmployeeStandards(tmpDir, root, true, true);
 
     expect(logText()).toContain("CLAUDE.md: migrated markers to OPENSPEC-PW");
-    // The bare-import warning must NOT fire — migration fixed the wrapper first.
-    // (The migrated legacy wrapper content then goes through the regular drift
-    // check and is refreshed to the current template — installClaudeWrapper
-    // firing once is the expected convergence, not a misjudgment.)
-    expect(logText()).not.toContain("裸 @AGENTS.md 导入");
+    // The bare-import branch must not short-circuit before migration — it
+    // would leave the legacy wrapper unrefreshed. Migration runs first, then
+    // the regular drift path refreshes the wrapper to the current template.
     expect(installClaudeWrapperMock).toHaveBeenCalledTimes(1);
   });
 
@@ -282,7 +280,6 @@ describe("syncEmployeeStandards", () => {
     // path REPLACES the block with the wrapper — no append, no bare-import
     // misjudgment, no permanent duplicate.
     expect(logText()).toContain("CLAUDE.md: migrated markers to OPENSPEC-PW");
-    expect(logText()).not.toContain("裸 @AGENTS.md 导入");
     expect(installClaudeWrapperMock).toHaveBeenCalledTimes(1);
   });
 
@@ -333,14 +330,13 @@ describe("syncEmployeeStandards", () => {
     expect(installClaudeWrapperMock).not.toHaveBeenCalled();
   });
 
-  it("warns on a bare @AGENTS.md import in CLAUDE.md without rewriting", () => {
+  it("leaves a bare @AGENTS.md import in CLAUDE.md untouched without rewriting", () => {
     agentsInSync();
     existingPaths.add(claudePath);
     contentsByPath.set(claudePath, "my project notes\n@AGENTS.md\nmore notes\n");
 
     syncEmployeeStandards(tmpDir, root, true, true);
 
-    expect(logText()).toContain("裸 @AGENTS.md 导入");
     expect(installClaudeWrapperMock).not.toHaveBeenCalled();
   });
 

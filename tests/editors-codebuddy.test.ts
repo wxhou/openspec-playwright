@@ -139,7 +139,6 @@ describe("codebuddy wrapper install", () => {
     const content = readFileSync(dest, "utf-8");
     expect(content).toContain("<!-- OPENSPEC-PW:START -->");
     expect(content).toContain("@AGENTS.md");
-    expect(content).toContain("CodeGraph");
     // AGENTS.md is still the single source of truth.
     expect(readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8")).toContain("# standards body");
   });
@@ -171,16 +170,9 @@ describe("codebuddy wrapper install", () => {
     expect(readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8")).toBe("shared standards\n");
   });
 
-  it("leaves a bare @AGENTS.md import (no markers) untouched with a hint", () => {
+  it("leaves a bare @AGENTS.md import (no markers) untouched", () => {
     writeFileSync(join(tmpRoot, "CODEBUDDY.md"), "@AGENTS.md\n");
-    const logs: string[] = [];
-    const spy = vi.spyOn(console, "log").mockImplementation((m) => logs.push(String(m)));
-    try {
-      installThinWrapper(codebuddyAdapter, tmpRoot);
-    } finally {
-      spy.mockRestore();
-    }
-    expect(logs.some((l) => l.includes("裸 @AGENTS.md 导入"))).toBe(true);
+    installThinWrapper(codebuddyAdapter, tmpRoot);
     expect(readFileSync(join(tmpRoot, "CODEBUDDY.md"), "utf-8")).toBe("@AGENTS.md\n");
   });
 
