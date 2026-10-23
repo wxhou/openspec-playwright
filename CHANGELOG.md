@@ -5,8 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
+## [0.3.102] - 2026-10-23
 - **refactor(standards): CLAUDE.md / CODEBUDDY.md wrapper 只保留 `@AGENTS.md` 导入**. init/update 写入的 thin wrapper 移除 CodeGraph 块与 OpenSpec 工作流提示，现在只含 `@AGENTS.md`（外加 OPENSPEC-PW 标记）；完整规范继续由 AGENTS.md 承载，裸 `@AGENTS.md` 不再提示。已初始化项目下次 `update` 自动重写 wrapper；本仓库 `CLAUDE.md` / `CODEBUDDY.md` 同步。
   - `src/commands/editors/project-rules.ts`、`src/commands/update.ts`、`tests/editors.test.ts`、`tests/editors-codebuddy.test.ts`、`tests/update.standards.test.ts`、`README.md`、`README.zh-CN.md`、`CLAUDE.md`、`CHANGELOG.md`
 
