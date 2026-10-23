@@ -38,16 +38,18 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23e85d04'/><circle cx='35' cy='40' r='8' fill='white'/><circle cx='65' cy='40' r='8' fill='white'/><path d='M30 60 Q50 80 70 60' stroke='white' stroke-width='5' fill='none' stroke-linecap='round'/></svg>">
 <link rel="preload" href="fonts/bricolage-grotesque-latin-standard-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/outfit-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="fonts/noto-serif-sc-subset-600.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/noto-serif-sc-subset-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/noto-sans-sc-subset-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/noto-sans-sc-subset-600.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preconnect" href="https://api.npmjs.org" crossorigin>
 <link rel="stylesheet" href="fonts.css">
 <link rel="stylesheet" href="style.css">
+<noscript><style>.reveal{opacity:1;transform:none}.t-hidden{opacity:1;transform:none}[data-live-fact],.hero-fact-sep--live{display:none}</style></noscript>
 <!-- Cloudflare Web Analytics -->
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "aac35fa51290412eadfd2e9623b3aec6"}'></script>
 <!-- End Cloudflare Web Analytics -->
 </head>
 <body>
-<div class="reading-progress" role="progressbar" aria-label="Reading progress"></div>
 
 <!-- ── Nav ── -->
 <nav>
@@ -57,8 +59,8 @@
       <span class="nav-logo-text">openspec-playwright</span>
     </a>
     <ul class="nav-links">
-      <li><a href="#claude-config"><span class="nav-link-text">CLAUDE.md</span></a></li>
-      <li><a href="#quickstart"><span class="nav-link-text quickstart-zh">快速开始</span><span class="nav-link-text quickstart-en" style="display:none;">Quick Start</span></a></li>
+      <li class="nav-link-item"><a href="#how"><span class="nav-link-text how-nav-zh">工作方式</span><span class="nav-link-text how-nav-en" style="display:none;">How it works</span></a></li>
+      <li class="nav-link-item"><a href="#quickstart"><span class="nav-link-text quickstart-zh">快速开始</span><span class="nav-link-text quickstart-en" style="display:none;">Quick Start</span></a></li>
       <li class="lang-switch">
         <button class="lang-btn active" data-lang="zh">中</button>
         <button class="lang-btn" data-lang="en">EN</button>
@@ -97,15 +99,60 @@
     <div class="hero-fact"><span class="hero-fact-k">Healer</span><span class="hero-fact-v">3-phase repair loop</span></div>
     <div class="hero-fact-sep"></div>
     <div class="hero-fact"><span class="hero-fact-k">Report</span><span class="hero-fact-v">markdown, per change</span></div>
-    <div class="hero-fact-sep hero-fact-sep--live" data-live-sep></div>
-    <div class="hero-fact hero-fact--live" data-live-fact title="npm 官方统计 · 滚动 30 天窗口">
+    <div class="hero-fact-sep hero-fact-sep--live"></div>
+    <div class="hero-fact hero-fact--live" data-live-fact title="npm 官方统计 · 滚动 30 天窗口" role="group" aria-label="npm downloads per month" aria-busy="true">
       <span class="hero-fact-k" aria-hidden="true">DOWNLOADS</span>
-      <span class="hero-fact-v hero-fact-v--live" aria-hidden="true"><span id="dl-month" data-countup>0</span><span class="dl-suffix"> / mo</span></span>
+      <span class="hero-fact-v hero-fact-v--live" aria-hidden="true"><span id="dl-month">—</span><span class="dl-suffix"> / mo</span></span>
     </div>
   </div>
 </section>
 
-<!-- ── 2. Quickstart ── -->
+<!-- ── 2. How it works ── -->
+<section class="section how-section" id="how">
+  <div class="section-header how-header anim">
+    <div class="section-label"><span class="how-label-zh">工作方式</span><span class="how-label-en" style="display:none;">How It Works</span></div>
+    <h2 class="section-title"><span class="how-title-zh">一条 scenario，一条可执行测试</span><span class="how-title-en" style="display:none;">One scenario, one runnable test</span></h2>
+    <p class="section-desc">
+      <span class="how-desc-zh">生成器读取 OpenSpec change 里的 scenario，写出带 spec 锚的 Playwright 用例；失败时 Healer 在同一个 test-runner MCP 会话里修复选择器，报告落在 openspec/reports/。</span>
+      <span class="how-desc-en" style="display:none;">The generator reads scenarios from the OpenSpec change and writes Playwright cases with spec anchors; on failure, the Healer repairs selectors in the same test-runner MCP session, and the run report lands under openspec/reports/.</span>
+    </p>
+  </div>
+
+  <div class="transformation reveal">
+    <div class="transform-pane transform-pane--spec">
+      <div class="pane-bar"><span class="pane-file" title="openspec/changes/search/specs/search/spec.md">openspec/changes/search/specs/search/spec.md</span></div>
+      <pre class="pane-code"><code><span class="code-heading">### Requirement: Search</span>
+The search box SHALL filter the list
+by the entered keyword.
+
+<span class="code-heading">#### Scenario: Search finds matches</span>
+<span class="code-punct">-</span> <span class="code-key">WHEN</span> the user types a keyword
+<span class="code-punct">-</span> <span class="code-key">THEN</span> the list shows matching items</code></pre>
+    </div>
+
+    <div class="transform-connector" aria-hidden="true"></div>
+
+    <div class="transform-pane transform-pane--test">
+      <div class="pane-bar"><span class="pane-file" title="tests/playwright/changes/search/search.spec.ts">tests/playwright/changes/search/search.spec.ts</span></div>
+      <pre class="pane-code"><code><span class="code-comment">// spec: search#Search</span>
+<span class="code-kw">test</span>(<span class="code-str">'Search finds matches'</span>, <span class="code-kw">async</span> ({ page }) =&gt; {
+  <span class="code-kw">const</span> app = <span class="code-kw">new</span> SearchPage(page);
+  <span class="code-kw">await</span> app.goto(<span class="code-str">'/'</span>);
+  <span class="code-kw">await</span> app.search(<span class="code-str">'playwright'</span>);
+  <span class="code-kw">await</span> expect(app.results.first())
+    .toContainText(<span class="code-str">'playwright'</span>);
+});</code></pre>
+    </div>
+
+    <div class="transform-report">
+      <span class="report-dot" aria-hidden="true"></span>
+      <span class="report-label">report</span>
+      <span class="report-path">openspec/reports/playwright-e2e-search-&lt;timestamp&gt;.md</span>
+    </div>
+  </div>
+</section>
+
+<!-- ── 3. Quickstart ── -->
 <section class="section" id="quickstart">
   <div class="section-header section-header-center anim">
     <div class="section-label section-label-center"><span class="qs-label-zh">快速开始</span><span class="qs-label-en" style="display:none;">Quick Start</span></div>
@@ -132,6 +179,17 @@
     </div>
   </div>
 
+  <p class="works-with reveal">
+    <span class="works-with-label-zh">适用于：</span><span class="works-with-label-en" style="display:none;">Works with:</span>
+    <a href="https://claude.com/product/claude-code" target="_blank" rel="noopener">Claude Code</a>
+    <a href="https://opencode.ai" target="_blank" rel="noopener">OpenCode</a>
+    <a href="https://cline.bot" target="_blank" rel="noopener">Cline</a>
+    <a href="https://cursor.com" target="_blank" rel="noopener">Cursor</a>
+    <a href="https://pi.dev" target="_blank" rel="noopener">Pi</a>
+    <a href="https://omp.sh" target="_blank" rel="noopener">Oh My Pi</a>
+    <a href="https://www.codebuddy.ai" target="_blank" rel="noopener">CodeBuddy CLI</a>
+  </p>
+
   <div class="claude-config-wrapper reveal" id="claude-config">
     <div class="claude-config-header">
       <span class="claude-config-filename">CLAUDE.md</span>
@@ -147,22 +205,13 @@
   </div>
 </section>
 
-<!-- ── 3. 支持的工具 ── -->
-<section class="section editors-row-section" id="editors">
-  <div class="section-header section-header-center anim">
-    <div class="section-label section-label-center"><span class="ed-label-zh">支持的工具</span><span class="ed-label-en" style="display:none;">Supported Tools</span></div>
-    <p class="editors-sub"><span class="ed-desc-zh">init 自动检测已装编辑器，按各自命名规范安装命令工件</span><span class="ed-desc-en" style="display:none;">init auto-detects installed editors and installs command artifacts in each one's convention</span></p>
-  </div>
-  <ul class="editors-row reveal">
-    <li><a href="https://claude.com/product/claude-code" target="_blank" title="Claude Code 官网">Claude Code</a></li>
-    <li><a href="https://opencode.ai" target="_blank" title="OpenCode 官网">OpenCode</a></li>
-    <li><a href="https://cline.bot" target="_blank" title="Cline 官网">Cline</a></li>
-    <li><a href="https://cursor.com" target="_blank" title="Cursor 官网">Cursor</a></li>
-    <li><a href="https://pi.dev" target="_blank" title="Pi 官网">Pi</a></li>
-    <li><a href="https://omp.sh" target="_blank" title="Oh My Pi 官网">Oh My Pi</a></li>
-    <li><a href="https://www.codebuddy.ai" target="_blank" title="CodeBuddy CLI 官网">CodeBuddy CLI</a></li>
-  </ul>
-</section>
+<div class="closing reveal">
+  <a href="#quickstart" class="btn btn-primary"><span class="quickstart-zh">快速开始</span><span class="quickstart-en" style="display:none;">Quick Start</span></a>
+  <a href="https://github.com/wxhou/openspec-playwright" target="_blank" class="btn btn-secondary">
+    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2.02c-3.2.69-3.87-1.54-3.87-1.54-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.68 1.24 3.34.95.1-.74.4-1.24.72-1.53-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 1.18-3.08-.12-.29-.51-1.47.11-3.06 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.79 0c2.21-1.49 3.18-1.18 3.18-1.18.62 1.59.23 2.77.11 3.06.74.8 1.18 1.82 1.18 3.08 0 4.42-2.7 5.4-5.27 5.68.41.36.78 1.05.78 2.13v3.16c0 .31.21.67.8.56C20.21 21.38 23.5 17.07 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+    GitHub
+  </a>
+</div>
 
 </main>
 
@@ -188,7 +237,7 @@
   </div>
 </footer>
 
-<script src="script.js"></script>
+<script src="script.js" defer></script>
 
 </body>
 </html>

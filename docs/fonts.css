@@ -1,4 +1,4 @@
-/* Self-hosted fonts (Fontsource 5.3.0, OFL). Latin: variable files. CJK: merged-slice subset (fontTools). */
+/* Self-hosted fonts (Fontsource 5.3.1, OFL). Latin: variable files. CJK: merged-slice subset (fontTools). */
 
 /* ── Latin variable/static ── */
 @font-face {
@@ -31,11 +31,27 @@
   src: url(fonts/instrument-serif-latin-400-italic.woff2) format('woff2');
 }
 
-/* ── Noto Serif SC 600 (subset to the page's charset, 588 CJK chars + ASCII) ── */
+/* ── CJK subsets (page charset, 720 CJK chars + ASCII) ── */
 @font-face {
   font-family: 'Noto Serif SC';
   font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(fonts/noto-serif-sc-subset-400.woff2) format('woff2');
+}
+
+@font-face {
+  font-family: 'Noto Sans SC';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(fonts/noto-sans-sc-subset-400.woff2) format('woff2');
+}
+
+@font-face {
+  font-family: 'Noto Sans SC';
+  font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url(fonts/noto-serif-sc-subset-600.woff2) format('woff2');
+  src: url(fonts/noto-sans-sc-subset-600.woff2) format('woff2');
 }

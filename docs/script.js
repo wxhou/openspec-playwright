@@ -249,6 +249,20 @@ function setLanguage(lang) {
 
   const isZh = lang === 'zh';
 
+  document.documentElement.lang = isZh ? 'zh-CN' : 'en';
+
+  const description = isZh
+    ? '自动化 E2E 测试框架，专为 OpenSpec 规范驱动开发设计。AI 生成测试、Healer 自愈、Claude Code、OpenCode、Cline、Cursor、Pi、Oh My Pi 和 CodeBuddy CLI 一键执行。'
+    : 'Automated E2E testing framework designed for OpenSpec spec-driven development. AI generates tests, Healer heals selectors, one-command execution across Claude Code, OpenCode, Cline, Cursor, Pi, Oh My Pi, and CodeBuddy CLI.';
+  document.querySelector('meta[name="description"]')?.setAttribute('content', description);
+  document.querySelector('meta[property="og:locale"]')?.setAttribute('content', isZh ? 'zh_CN' : 'en_US');
+  const copyTitle = isZh ? '复制 CLAUDE.md 配置到剪贴板' : 'Copy CLAUDE.md configuration to clipboard';
+  document.querySelectorAll('.nav-copy-btn, .claude-copy-btn').forEach((btn) => {
+    btn.title = copyTitle;
+  });
+  const liveTitle = isZh ? 'npm 官方统计 · 滚动 30 天窗口' : 'Official npm stats · rolling 30-day window';
+  document.querySelector('[data-live-fact]')?.setAttribute('title', liveTitle);
+
   // Hide all zh/en elements first
   document.querySelectorAll('[class*="-zh"], [class*="-en"]').forEach(el => {
     if (el.classList.contains('lang-btn')) return;
@@ -303,24 +317,6 @@ function copyClaudeMd() {
   }
 }
 
-/* ── Whimsy: Reading Progress Bar ─────────── */
-function initProgressBar() {
-  const bar = document.querySelector('.reading-progress');
-  if (!bar) return;
-  let ticking = false;
-  window.addEventListener('scroll', () => {
-    if (!ticking) {
-      window.requestAnimationFrame(() => {
-        const scrollTop = window.scrollY;
-        const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-        bar.style.width = (docHeight > 0 ? (scrollTop / docHeight) * 100 : 0) + '%';
-        ticking = false;
-      });
-      ticking = true;
-    }
-  }, { passive: true });
-}
-
 /* ── Whimsy: Terminal Cursor ─────────────── */
 function initTerminalCursor() {
   const terminalBody = document.querySelector('.terminal-body');
@@ -372,33 +368,6 @@ function showEasterEgg() {
   }, 2500);
 }
 
-/* ── Whimsy: Copy Celebration Sparkles ────── */
-function initCopyCelebration() {
-  document.querySelectorAll('.nav-copy-btn, .claude-copy-btn').forEach(btn => {
-    btn.addEventListener('click', createSparkles);
-  });
-}
-
-function createSparkles(e) {
-  const sparkles = ['✦', '✧'];
-  const rect = e.currentTarget.getBoundingClientRect();
-  const cx = rect.left + rect.width / 2;
-  const cy = rect.top + rect.height / 2;
-  sparkles.forEach((s, i) => {
-    setTimeout(() => {
-      const el = document.createElement('span');
-      el.className = 'copy-sparkle';
-      el.textContent = s;
-      el.setAttribute('aria-hidden', 'true');
-      el.style.left = (cx + (Math.random() - 0.5) * 60) + 'px';
-      el.style.top = (cy + (Math.random() - 0.5) * 30) + 'px';
-      el.style.fontSize = (0.7 + Math.random() * 0.8) + 'rem';
-      document.body.appendChild(el);
-      setTimeout(() => el.remove(), 1000);
-    }, i * 60);
-  });
-}
-
 // Initialize language switch buttons + reveal-on-scroll
 document.addEventListener('DOMContentLoaded', () => {
   // Populate initial CLAUDE.md content
@@ -427,10 +396,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Whimsy: init playful features
-  initProgressBar();
   initTerminalCursor();
   initEasterEgg();
-  initCopyCelebration();
   initNavScrolled();
   initTypewriter();
 });
@@ -515,15 +482,26 @@ function formatDownloads(n) {
 
 function setLiveAria(month) {
   const fact = document.querySelector('[data-live-fact]');
-  if (fact) fact.setAttribute('aria-label', `Downloads ${formatDownloads(month)} per month`);
+  if (fact) {
+    fact.classList.remove('is-unavailable');
+    fact.removeAttribute('aria-busy');
+    fact.setAttribute('aria-label', `Downloads ${formatDownloads(month)} per month`);
+  }
 }
 
-function revealLiveStats(month, animate) {
-  document.querySelectorAll('[data-live-fact]').forEach(el => el.classList.add('is-live'));
-  document.querySelectorAll('[data-live-sep]').forEach(el => { el.style.display = ''; });
+function updateLiveStats(month, animate) {
   const monthEl = document.getElementById('dl-month');
   if (monthEl) animate ? countUp(monthEl, month) : (monthEl.textContent = formatDownloads(month));
   setLiveAria(month);
+}
+
+function markLiveStatsUnavailable() {
+  const fact = document.querySelector('[data-live-fact]');
+  if (fact) {
+    fact.classList.add('is-unavailable');
+    fact.removeAttribute('aria-busy');
+    fact.setAttribute('aria-label', 'npm downloads per month unavailable');
+  }
 }
 
 function countUp(el, target) {
@@ -552,21 +530,27 @@ async function fetchDownloads() {
 }
 
 async function initDownloads() {
+  let shown = false;
   // Warm cache: show instantly, then refresh in the background.
   try {
     const cached = JSON.parse(localStorage.getItem(DL_CACHE_KEY) || 'null');
     if (cached && Date.now() - cached.at < DL_CACHE_TTL) {
-      revealLiveStats(cached.month, false);
+      updateLiveStats(cached.month, false);
+      shown = true;
     }
   } catch { /* corrupt cache — ignore, fresh fetch decides */ }
 
   try {
     const fresh = await fetchDownloads();
-    if (!fresh) return;
+    if (!fresh) {
+      if (!shown) markLiveStatsUnavailable();
+      return;
+    }
     try { localStorage.setItem(DL_CACHE_KEY, JSON.stringify({ ...fresh, at: Date.now() })); } catch { /* storage unavailable */ }
-    revealLiveStats(fresh.month, true);
+    updateLiveStats(fresh.month, true);
   } catch {
-    /* fetch failed or timed out — live facts stay hidden (or show cached) */
+    /* fetch failed or timed out — keep the cached value, otherwise mark the placeholder unavailable */
+    if (!shown) markLiveStatsUnavailable();
   }
 }
 initDownloads();
