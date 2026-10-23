@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **fix(standards): UI 文案删除测试补用户要求豁免（`ui-copy-restraint` 修订）**. code review 发现：同句首段「只保留用户明确要求或信息/操作必需的部分」与删除测试「改动范围内任何文案……删」冲突——用户明确要求的副标题/slogan 会同时命中保留与删除，并与 §1「永不简化掉……用户明确要求的东西」矛盾。删除测试改为「删（用户明确要求的除外）」，中英嵌入同步；锚不变。
+  - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 1 处、EN 1 处）、`CHANGELOG.md`
+
 - **docs(standards): 通篇审阅修三处范围边界（`speculative-robustness-buy-in` / `modularity-and-capability-check` / `ui-copy-restraint` 修订）**. ① 模块化「不塞进当前文件」与同句「落在职责所属的模块」自相矛盾——改为「不因正在编辑就塞进当前文件」，当前文件即正确模块时不再被误禁；② UI 删除测试缺范围限定，可能借「改写」删掉未触及的既有文案——限定「改动范围内」；③ 买断条款「概率量级与依据」补「无数据时标明为估计」，堵住编造具体百分比。锚不变。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 3 处、EN 3 处）、`CHANGELOG.md`
 
