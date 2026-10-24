@@ -8,7 +8,7 @@ export interface CommandMeta {
 }
 /** Build the command metadata for the /opsx:e2e command. */
 export declare function buildCommandMeta(body: string): CommandMeta;
-export type EditorId = "claude" | "opencode" | "cline" | "cursor" | "pi" | "omp" | "codebuddy";
+export type EditorId = "claude" | "opencode" | "cline" | "cursor" | "pi" | "omp" | "codebuddy" | "minimax";
 export interface ExtraArtifact {
     relativePath: string;
     contents: string;
@@ -53,6 +53,17 @@ export interface EditorAdapter {
     installMcp(projectRoot: string, serverName: string, command: string[]): void;
     /** Remove MCP server config from this editor. */
     removeMcp(projectRoot: string, serverName: string): void;
+    /**
+     * Optional: absolute path of the MCP config file this adapter reads and
+     * writes. Declared by every adapter that owns an MCP config file, so the
+     * init deselect-removal phase can tell whether an MCP entry is shared with
+     * a still-selected editor (see `retainedMcpConfigFiles` in removal.ts).
+     *
+     * Two adapters declare none: pi (no MCP client at all) and opencode, whose
+     * `opencode.json(c)` is exclusive to OpenCode — nothing can share its
+     * entries, so the shared-file guard never applies to it.
+     */
+    mcpConfigPath?(projectRoot: string): string;
     /** Optional: register project rules file path in editor config. */
     registerInstructions?(projectRoot: string, instructions: string[]): void;
     /** Optional: secondary files written alongside commandFilePath (Cursor skill). */
@@ -96,6 +107,8 @@ export interface EditorAdapterInit {
     installMcp?: EditorAdapter["installMcp"];
     /** Required when supportsMcp !== false. Defaults to a no-op. */
     removeMcp?: EditorAdapter["removeMcp"];
+    /** Optional: path of the MCP config file this adapter owns. */
+    mcpConfigPath?: EditorAdapter["mcpConfigPath"];
     registerInstructions?: EditorAdapter["registerInstructions"];
     extraArtifacts?: EditorAdapter["extraArtifacts"];
     optionalArtifacts?: EditorAdapter["optionalArtifacts"];

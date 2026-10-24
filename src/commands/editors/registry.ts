@@ -5,7 +5,7 @@
  * the dependency graph stays acyclic (adapters -> registry).
  *
  * Registration order is load order and MUST stay:
- *   claude, opencode, cline, cursor, pi, omp, codebuddy
+ *   claude, opencode, cline, cursor, pi, omp, codebuddy, minimax
  * (editors.ts re-exports the adapter modules in exactly that order;
  * tests/editors-tools.test.ts asserts it.)
  */

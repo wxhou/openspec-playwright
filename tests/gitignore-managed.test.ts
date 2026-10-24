@@ -30,6 +30,21 @@ afterEach(() => {
   rmSync(projectRoot, { recursive: true, force: true });
 });
 
+describe("managed gitignore coverage for the MiniMax Code skill root", () => {
+  it("covers .agents/ so the generated skill stays local", () => {
+    expect(MANAGED_GITIGNORE_PATHS).toContain(".agents/");
+    expect(findUncoveredManagedPaths(projectRoot)).toContain(".agents/");
+  });
+
+  it("writes .agents/ into the managed block and reports it covered afterwards", () => {
+    const result = ensureGitignoreEntries(projectRoot);
+    expect(result.changed).toBe(true);
+    const block = readFileSync(join(projectRoot, ".gitignore"), "utf-8");
+    expect(block).toContain(".agents/");
+    expect(findUncoveredManagedPaths(projectRoot)).not.toContain(".agents/");
+  });
+});
+
 describe("findUncoveredManagedPaths", () => {
   it("is existence-independent: non-existent paths count as uncovered (review B1)", () => {
     const uncovered = findUncoveredManagedPaths(projectRoot);

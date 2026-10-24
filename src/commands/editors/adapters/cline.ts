@@ -7,8 +7,7 @@ import { existsSync } from "fs";
 import { join } from "path";
 import { defineAdapter, type EditorAdapter, type CommandMeta } from "../types.js";
 import {
-  escapeYamlValue,
-  transformToHyphenCommands,
+  formatSkillCommand,
   isMcpServerInFile,
   installMcpServerInFile,
   removeMcpServerFromFile,
@@ -18,6 +17,9 @@ import { registerAdapter } from "../registry.js";
 // ─── Cline adapter ───────────────────────────────────────────────────────
 
 /**
+ * Cline's skill artifact. Delegates to the shared skill formatter so Cline
+ * and MiniMax Code emit byte-identical skill files.
+ *
  * Cline stores project-level config in `.cline/` (skills/, rules/, mcp.json).
  * `.clinerules/` is the legacy rules-only directory, still auto-detected.
  *
@@ -28,15 +30,7 @@ import { registerAdapter } from "../registry.js";
  *   - Rules:    Cline auto-detects `AGENTS.md` — no wrapper file needed.
  */
 export function formatClineCommand(meta: CommandMeta): string {
-  const body = transformToHyphenCommands(meta.body);
-  const skillName = `opsx-${meta.id}`;
-  return `---
-name: ${escapeYamlValue(skillName)}
-description: ${escapeYamlValue(meta.description)}
----
-
-${body}
-`;
+  return formatSkillCommand(meta);
 }
 
 export function getClineCommandPath(id: string): string {
@@ -67,6 +61,7 @@ export const clineAdapter: EditorAdapter = defineAdapter({
   removeMcp(projectRoot, serverName) {
     removeMcpServerFromFile(clineMcpPath(projectRoot), serverName);
   },
+  mcpConfigPath: clineMcpPath,
 });
 
 /** Path to the project-level MCP config file for Cline. */

@@ -351,3 +351,113 @@ describe("init deselect-removal: re-init pre-select behavior", () => {
     }
   });
 });
+// ─── Shared MCP config file (claude + codebuddy both use project .mcp.json) ──
+
+describe("init deselect-removal: shared .mcp.json entry is kept for a selected editor", () => {
+  let tmpRoot: string;
+  let cwdSpy: ReturnType<typeof vi.spyOn>;
+  let logs: string[];
+
+  beforeEach(() => {
+    tmpRoot = mkdtempSync(join(tmpdir(), "ospw-pw-shared-mcp-"));
+    mkdirSync(join(tmpRoot, "openspec"), { recursive: true });
+    // claude and codebuddy both carry openspec-pw artifacts and share the
+    // project-root .mcp.json (all root-scope adapters read that one file).
+    mkdirSync(join(tmpRoot, ".claude", "commands", "opsx"), { recursive: true });
+    writeFileSync(join(tmpRoot, ".claude", "commands", "opsx", "e2e.md"), "cmd");
+    mkdirSync(join(tmpRoot, ".codebuddy", "commands", "opsx"), { recursive: true });
+    writeFileSync(join(tmpRoot, ".codebuddy", "commands", "opsx", "e2e.md"), "cmd");
+    writeFileSync(
+      join(tmpRoot, ".mcp.json"),
+      JSON.stringify({
+        mcpServers: {
+          "playwright-test": { command: "npx", args: ["p"] },
+          "user-server": { command: "uvx", args: ["foo"] },
+        },
+      }),
+    );
+    cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(tmpRoot);
+    logs = [];
+    vi.spyOn(console, "log").mockImplementation((m) => {
+      logs.push(String(m));
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    cwdSpy.mockRestore();
+    rmSync(tmpRoot, { recursive: true, force: true });
+  });
+
+  it("keeps the shared MCP entry while codebuddy stays selected", async () => {
+    await init(
+      { mcp: false },
+      {
+        isTTY: true,
+        prompt: async () => ["codebuddy"], // deselect claude
+        confirm: async () => true,
+      },
+    );
+
+    // The deselected editor's own command file is removed…
+    expect(existsSync(join(tmpRoot, ".claude", "commands", "opsx", "e2e.md"))).toBe(false);
+    expect(existsSync(join(tmpRoot, ".codebuddy", "commands", "opsx", "e2e.md"))).toBe(true);
+    // …but the shared MCP entry survives — codebuddy still depends on it.
+    const mcp = JSON.parse(readFileSync(join(tmpRoot, ".mcp.json"), "utf-8"));
+    expect(mcp.mcpServers["playwright-test"]).toBeDefined();
+    expect(mcp.mcpServers["user-server"]).toBeDefined();
+  });
+
+  it("reports the retained shared entry in the confirmation list", async () => {
+    await init(
+      { mcp: false },
+      {
+        isTTY: true,
+        prompt: async () => ["codebuddy"],
+        confirm: async () => true,
+      },
+    );
+
+    const kept = logs.filter((l) => l.includes("playwright-test") && l.includes("kept"));
+    expect(kept.length).toBeGreaterThan(0);
+  });
+
+  it("removes the shared entry once no selected editor depends on the file", async () => {
+    await init(
+      { mcp: false },
+      {
+        isTTY: true,
+        prompt: async () => [], // deselect everything
+        confirm: async () => true,
+      },
+    );
+
+    const mcp = JSON.parse(readFileSync(join(tmpRoot, ".mcp.json"), "utf-8"));
+    expect(mcp.mcpServers["playwright-test"]).toBeUndefined();
+    expect(mcp.mcpServers["user-server"]).toBeDefined();
+  });
+
+  it("keeps the shared entry in minimal mode, where the MCP install phase never runs", async () => {
+    // Minimal mode (no readable package.json) skips the MCP install phase, so
+    // nothing in this run re-creates the entry. It still belongs to the
+    // still-selected editor: claude reads the very same project-root
+    // .mcp.json at runtime, so removing it would strip claude's Playwright
+    // MCP. The shared-file rule is file-scoped, not install-scoped.
+    await init(
+      { mcp: true },
+      {
+        isTTY: true,
+        prompt: async () => ["claude"], // deselect codebuddy
+        confirm: async () => true,
+      },
+    );
+
+    // codebuddy's own command file is gone…
+    expect(existsSync(join(tmpRoot, ".codebuddy", "commands", "opsx", "e2e.md"))).toBe(false);
+    expect(existsSync(join(tmpRoot, ".claude", "commands", "opsx", "e2e.md"))).toBe(true);
+    // …but the shared entry stays, because claude still reads that file.
+    const mcp = JSON.parse(readFileSync(join(tmpRoot, ".mcp.json"), "utf-8"));
+    expect(mcp.mcpServers["playwright-test"]).toBeDefined();
+    expect(mcp.mcpServers["user-server"]).toBeDefined();
+  });
+});

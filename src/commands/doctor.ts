@@ -6,6 +6,7 @@ import { execFileSync } from "child_process";
 import chalk from "chalk";
 import {
   detectAdapters,
+  getAllAdapters,
   hasCommandArtifacts,
   slashCommandForAdapter,
   claudeAdapter,
@@ -206,6 +207,35 @@ function probeRuffB904(projectRoot: string): SemanticProbe {
   } catch (err) {
     return { ok: false, reason: describeExecError(err) };
   }
+}
+
+/**
+ * Command hint for a project where no editor is authorized yet: every
+ * supported editor, grouped by the command form it actually accepts.
+ *
+ * Only Claude Code and CodeBuddy CLI use the colon form (`/opsx:e2e`);
+ * OpenCode, Cline, Cursor, Pi, Oh My Pi and MiniMax Code invoke the skill
+ * command with a hyphen (`/opsx-e2e`). The list is built from the registry
+ * so a new adapter can never drift out of the hint.
+ */
+export function allEditorCommandHints(): string {
+  const byCommand = new Map<string, string[]>();
+  for (const adapter of getAllAdapters()) {
+    const command = slashCommandForAdapter(adapter);
+    const names = byCommand.get(command) ?? [];
+    names.push(adapter.displayName);
+    byCommand.set(command, names);
+  }
+  return [...byCommand.entries()]
+    .map(([command, names]) => {
+      const last = names[names.length - 1];
+      const head = names.slice(0, -1);
+      const label = head.length
+        ? `${head.join(", ")}${head.length > 1 ? "," : ""} or ${last}`
+        : last;
+      return `${command} (in ${label})`;
+    })
+    .join("  or  ");
 }
 
 export async function doctor(options: DoctorOptions = {}) {
@@ -450,7 +480,7 @@ export async function doctor(options: DoctorOptions = {}) {
       category: "Playwright MCP",
       name: "playwright-mcp",
       ok: false,
-      message: "no editors detected (configure .claude/, .opencode/, .cline/, .cursor/, .pi/, or .omp/)",
+      message: "no editors detected (configure .claude/, .opencode/, .cline/, .cursor/, .pi/, .omp/, .codebuddy/, or .minimax/)",
     });
   } else {
     for (const adapter of adapters) {
@@ -1114,7 +1144,7 @@ export async function doctor(options: DoctorOptions = {}) {
       ? detected.map((a) => {
           return `${slashCommandForAdapter(a)} (in ${a.displayName})`;
         })
-      : ["/opsx:e2e (in Claude Code, OpenCode, Cline, Cursor, Pi, or Oh My Pi)"];
+      : [allEditorCommandHints()];
     console.log(chalk.gray(`  Run: ${hints.join("  or  ")} <change-name>\n`));
   } else {
     console.log(chalk.red("  ❌ Some prerequisites are missing\n"));

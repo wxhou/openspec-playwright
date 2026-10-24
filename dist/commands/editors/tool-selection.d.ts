@@ -10,7 +10,8 @@ import type { EditorId } from "./types.js";
  * Mirrors the upstream OpenSpec `openspec init --tools` semantics:
  *   - "all" → every registered editor
  *   - "none" → no editors
- *   - comma-separated ids, case-insensitive; "oh-my-pi" aliases "omp"
+ *   - comma-separated ids, case-insensitive; "oh-my-pi" aliases "omp",
+ *     "minimax-code" aliases "minimax"
  *   - mixing "all"/"none" with specific ids, or unknown ids, throw
  *   - duplicate ids are deduplicated preserving first-occurrence order
  */

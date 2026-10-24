@@ -1,5 +1,8 @@
 import { type EditorAdapter, type CommandMeta } from "../types.js";
 /**
+ * Cline's skill artifact. Delegates to the shared skill formatter so Cline
+ * and MiniMax Code emit byte-identical skill files.
+ *
  * Cline stores project-level config in `.cline/` (skills/, rules/, mcp.json).
  * `.clinerules/` is the legacy rules-only directory, still auto-detected.
  *

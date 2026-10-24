@@ -53,7 +53,7 @@ vi.mock("../../src/shared/drift.js", async (importOriginal) => {
 
 import { execFileSync } from "child_process";
 import { readFileSync, existsSync, readdirSync, lstatSync } from "fs";
-import { claudeAdapter, detectAdapters } from "../../src/commands/editors.js";
+import { claudeAdapter, detectAdapters, minimaxAdapter } from "../../src/commands/editors.js";
 import { detectCodeGraphStatus } from "../../src/shared/index.js";
 import { doctor, isOptionalCheck } from "../../src/commands/doctor.js";
 
@@ -1259,3 +1259,125 @@ describe("doctor lint probes", () => {
   });
 });
 
+// ─── MiniMax Code: generic editor reporting only ──────────────────────────
+
+describe("doctor MiniMax Code reporting", () => {
+  const execMock = vi.mocked(execFileSync);
+  const existsMock = vi.mocked(existsSync);
+  const readdirMock = vi.mocked(readdirSync);
+  const readFileMock = vi.mocked(readFileSync);
+  const lstatMock = vi.mocked(lstatSync);
+  const detectAdaptersMock = vi.mocked(detectAdapters);
+
+  let fixtureRoot: string;
+  let existingPaths: Set<string>;
+  let cwdSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    fixtureRoot = mkdtempSync(join(tmpdir(), "ospw-pw-doctor-minimax-"));
+    existingPaths = new Set();
+    cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(fixtureRoot);
+    detectAdaptersMock.mockReturnValue([minimaxAdapter]);
+    execMock.mockImplementation((cmd: string) => {
+      if (cmd === "node" || cmd === "npm" || cmd === "npx") return "v22.0.0";
+      return "";
+    });
+    existsMock.mockImplementation((p: Parameters<typeof existsSync>[0]) =>
+      existingPaths.has(String(p).replace(/\\/g, "/")),
+    );
+    readFileMock.mockImplementation((p: Parameters<typeof readFileSync>[0]) => {
+      const s = String(p);
+      if (s.endsWith(".mcp.json")) {
+        return JSON.stringify({
+          mcpServers: {
+            "playwright-test": {
+              command: "npx",
+              args: ["playwright", "run-test-mcp-server"],
+            },
+          },
+        });
+      }
+      if (s.endsWith("AGENTS.md") || s.endsWith("CLAUDE.md")) {
+        return "<!-- OPENSPEC-PW:START -->\ncontent\n<!-- OPENSPEC-PW:END -->";
+      }
+      return "";
+    });
+    readdirMock.mockReturnValue([] as never);
+    lstatMock.mockReturnValue({ isSymbolicLink: () => false } as never);
+  });
+
+  afterEach(() => {
+    cwdSpy?.mockRestore();
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  });
+
+  async function runDoctor(): Promise<string[]> {
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((...args) => {
+      logs.push(args.join(" "));
+    });
+    try {
+      await doctor({ json: true });
+    } catch {
+      // optional — assertions below are the real checks
+    } finally {
+      spy.mockRestore();
+    }
+    return logs;
+  }
+
+  it("adds no MiniMax-specific check category", async () => {
+    const logs = await runDoctor();
+    const checks = JSON.parse(logs.join("\n")).checks as Array<{
+      category: string;
+      name: string;
+    }>;
+    // No dedicated MiniMax Code check category (Cursor is the only editor
+    // with one). The generic per-adapter MCP check — "test-runner-mcp-minimax",
+    // the same shape as "test-runner-mcp-claude" — is expected and allowed.
+    expect(checks.some((c) => /minimax/i.test(c.category))).toBe(false);
+    expect(checks.some((c) => /^minimax/i.test(c.name))).toBe(false);
+  });
+
+  it("lists MiniMax Code in the all-ok summary hint", async () => {
+    // The hint only renders on the all-ok path — make the one hard check
+    // ("openspec: initialized") pass; everything else there is optional.
+    existingPaths.add(join(fixtureRoot, "openspec").replace(/\\/g, "/"));
+    existingPaths.add(
+      join(fixtureRoot, ".agents", "skills", "opsx-e2e", "SKILL.md").replace(
+        /\\/g,
+        "/",
+      ),
+    );
+
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((...args) => {
+      logs.push(args.join(" "));
+    });
+    try {
+      await doctor({});
+    } catch {
+      // optional — the assertion below is the real check
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(logs.join("\n")).toContain("/opsx-e2e (in MiniMax Code)");
+  });
+
+  it("reports the MiniMax Code MCP check through the generic adapter path", async () => {
+    existingPaths.add(
+      join(fixtureRoot, ".agents", "skills", "opsx-e2e", "SKILL.md").replace(
+        /\\/g,
+        "/",
+      ),
+    );
+    const logs = await runDoctor();
+    const checks = JSON.parse(logs.join("\n")).checks as Array<{
+      name: string;
+      ok: boolean;
+    }>;
+    expect(checks.some((c) => c.name === "test-runner-mcp-minimax")).toBe(true);
+  });
+});

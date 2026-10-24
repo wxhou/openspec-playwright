@@ -194,3 +194,57 @@ describe("doctor.ts: Sync category wiring", () => {
     expect(src).toMatch(/initialized\s*=\s*hasCommand\s*\|\|\s*hasOpenSpec/);
   });
 });
+
+// ─── Fallback command hint ──────────────────────────────────────────────────
+// The no-editor-detected fallback is the one place a user is told the exact
+// command to type, so each editor must be listed with the command form it
+// actually accepts: only Claude Code and CodeBuddy CLI use the colon form.
+
+describe("doctor.ts: fallback command hint", () => {
+  it("groups every adapter by the command form it accepts", async () => {
+    const { allEditorCommandHints } = await import("../src/commands/doctor.js");
+    const { getAllAdapters, slashCommandForAdapter } = await import(
+      "../src/commands/editors.js"
+    );
+
+    const hint = allEditorCommandHints();
+    const groups = new Map<string, string[]>();
+    for (const group of hint.split("  or  ")) {
+      const match = /^(\/opsx[:-]e2e) \(in (.+)\)$/.exec(group);
+      expect(match, `unparsable hint group: ${group}`).not.toBeNull();
+      groups.set(match![1], match![2].split(/, or |, | or /));
+    }
+
+    const colon = groups.get("/opsx:e2e") ?? [];
+    const hyphen = groups.get("/opsx-e2e") ?? [];
+    expect(colon.sort()).toEqual(["Claude Code", "CodeBuddy CLI"]);
+    expect(hyphen.sort()).toEqual([
+      "Cline",
+      "Cursor",
+      "MiniMax Code",
+      "Oh My Pi",
+      "OpenCode",
+      "Pi",
+    ]);
+
+    // Every registered adapter is listed exactly once, under its own form.
+    const mentioned = [...colon, ...hyphen];
+    expect(mentioned.length).toBe(getAllAdapters().length);
+    for (const adapter of getAllAdapters()) {
+      const group =
+        slashCommandForAdapter(adapter) === "/opsx:e2e" ? colon : hyphen;
+      expect(group).toContain(adapter.displayName);
+    }
+  });
+
+  it("no longer hardcodes the colon form for every editor", async () => {
+    const { readFileSync } = await import("fs");
+    const { fileURLToPath } = await import("url");
+    const { join } = await import("path");
+    const src = readFileSync(
+      join(fileURLToPath(import.meta.url), "../../src/commands/doctor.ts"),
+      "utf-8",
+    );
+    expect(src).not.toContain("/opsx:e2e (in Claude Code, OpenCode");
+  });
+});

@@ -18,6 +18,16 @@ export interface CommandMeta {
 }
 /** Build the command metadata for the /opsx:e2e command. */
 export declare function buildCommandMeta(body: string): CommandMeta;
+/**
+ * Format a skill-based command artifact: `name` + `description` frontmatter
+ * over a hyphen-rewritten body.
+ *
+ * Shared by Cline (`.cline/skills/opsx-<id>/SKILL.md`) and MiniMax Code
+ * (`.agents/skills/opsx-<id>/SKILL.md`) so the two skill formats cannot
+ * drift. Editors that load skills as slash commands invoke them as
+ * `/<name>` — hence the hyphenated `/opsx-` body references.
+ */
+export declare function formatSkillCommand(meta: CommandMeta): string;
 export interface McpStdioServer {
     command: string;
     args: string[];
