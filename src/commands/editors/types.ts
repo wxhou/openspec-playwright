@@ -37,7 +37,8 @@ export type EditorId =
   | "cursor"
   | "pi"
   | "omp"
-  | "codebuddy";
+  | "codebuddy"
+  | "minimax";
 
 export interface ExtraArtifact {
   relativePath: string;
@@ -84,6 +85,14 @@ export interface EditorAdapter {
   installMcp(projectRoot: string, serverName: string, command: string[]): void;
   /** Remove MCP server config from this editor. */
   removeMcp(projectRoot: string, serverName: string): void;
+  /**
+   * Optional: absolute path of the MCP config file this adapter reads and
+   * writes. Declared by every adapter that owns an MCP file so the init
+   * deselect-removal phase can tell whether an MCP entry is shared with a
+   * still-selected editor (see `mcpConfigPath` in removal.ts). Adapters
+   * without an MCP client (pi) declare none.
+   */
+  mcpConfigPath?(projectRoot: string): string;
   /** Optional: register project rules file path in editor config. */
   registerInstructions?(projectRoot: string, instructions: string[]): void;
   /** Optional: secondary files written alongside commandFilePath (Cursor skill). */
@@ -128,6 +137,8 @@ export interface EditorAdapterInit {
   installMcp?: EditorAdapter["installMcp"];
   /** Required when supportsMcp !== false. Defaults to a no-op. */
   removeMcp?: EditorAdapter["removeMcp"];
+  /** Optional: path of the MCP config file this adapter owns. */
+  mcpConfigPath?: EditorAdapter["mcpConfigPath"];
   registerInstructions?: EditorAdapter["registerInstructions"];
   extraArtifacts?: EditorAdapter["extraArtifacts"];
   optionalArtifacts?: EditorAdapter["optionalArtifacts"];
@@ -161,6 +172,7 @@ export function defineAdapter(init: EditorAdapterInit): EditorAdapter {
     isMcpInstalled: init.isMcpInstalled ?? alwaysFalse,
     installMcp: init.installMcp ?? noop,
     removeMcp: init.removeMcp ?? noop,
+    mcpConfigPath: init.mcpConfigPath,
     registerInstructions: init.registerInstructions,
     extraArtifacts: init.extraArtifacts,
     optionalArtifacts: init.optionalArtifacts,

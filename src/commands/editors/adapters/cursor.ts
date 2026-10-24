@@ -75,6 +75,7 @@ export const cursorAdapter: EditorAdapter = defineAdapter({
   removeMcp(projectRoot, serverName) {
     removeMcpServerFromFile(cursorMcpPath(projectRoot), serverName);
   },
+  mcpConfigPath: cursorMcpPath,
   extraArtifacts(meta) {
     return [
       {

@@ -29,6 +29,7 @@ export const MANAGED_GITIGNORE_PATHS = [
   ".pi/",
   ".omp/",
   ".codebuddy/",
+  ".agents/",
   ".codegraph/",
   ".playwright-mcp/",
   "openspec/",

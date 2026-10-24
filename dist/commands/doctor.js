@@ -407,7 +407,7 @@ export async function doctor(options = {}) {
             category: "Playwright MCP",
             name: "playwright-mcp",
             ok: false,
-            message: "no editors detected (configure .claude/, .opencode/, .cline/, .cursor/, .pi/, or .omp/)",
+            message: "no editors detected (configure .claude/, .opencode/, .cline/, .cursor/, .pi/, .omp/, .codebuddy/, or .minimax/)",
         });
     }
     else {
@@ -1022,7 +1022,7 @@ export async function doctor(options = {}) {
             ? detected.map((a) => {
                 return `${slashCommandForAdapter(a)} (in ${a.displayName})`;
             })
-            : ["/opsx:e2e (in Claude Code, OpenCode, Cline, Cursor, Pi, or Oh My Pi)"];
+            : ["/opsx:e2e (in Claude Code, OpenCode, Cline, Cursor, Pi, Oh My Pi, CodeBuddy CLI, or MiniMax Code)"];
         console.log(chalk.gray(`  Run: ${hints.join("  or  ")} <change-name>\n`));
     }
     else {

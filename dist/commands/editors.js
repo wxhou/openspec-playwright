@@ -16,8 +16,9 @@
  * Re-export order matters for adapter self-registration: importing the
  * adapter modules loads them, and each calls `registerAdapter()` — the
  * order below fixes ADAPTERS registration order (claude → opencode →
- * cline → cursor → pi → omp → codebuddy), which `resolveToolsArg("all")`,
- * the interactive prompt order, and tests/editors-tools.test.ts depend on.
+ * cline → cursor → pi → omp → codebuddy → minimax), which
+ * `resolveToolsArg("all")`, the interactive prompt order, and
+ * tests/editors-tools.test.ts depend on.
  */
 // Types & factory (zero internal deps)
 export { buildCommandMeta, defineAdapter, } from "./editors/types.js";
@@ -33,10 +34,11 @@ export { formatCursorCommand, getCursorCommandPath, getCursorSkillPath, formatCu
 export { formatPiCommand, getPiCommandPath, hasPi, piAdapter, } from "./editors/adapters/pi.js";
 export { formatOmpCommand, getOmpCommandPath, hasOmp, ompAdapter, } from "./editors/adapters/omp.js";
 export { formatCodebuddyCommand, getCodebuddyCommandPath, hasCodebuddy, codebuddyAdapter, } from "./editors/adapters/codebuddy.js";
+export { formatMinimaxSkill, getMinimaxSkillPath, hasMinimax, hasMinimaxProjectSignal, minimaxAdapter, minimaxMcpPath, } from "./editors/adapters/minimax.js";
 // Tool selection (--tools flag parsing)
 export { resolveToolsArg } from "./editors/tool-selection.js";
 // Per-editor artifact removal (init deselect + uninstall cleanup)
-export { OPENSPEC_PW_MCP_SERVERS, CLAUDE_LEGACY_SKILL_REL, enumerateAdapterArtifacts, isInventoryEmpty, removeAdapterMcp, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, removeClaudeLegacySkill, removeWrapper, cleanupEmptyDirs, } from "./editors/removal.js";
+export { OPENSPEC_PW_MCP_SERVERS, CLAUDE_LEGACY_SKILL_REL, enumerateAdapterArtifacts, isInventoryEmpty, retainedMcpConfigFiles, removeAdapterMcp, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, removeClaudeLegacySkill, removeWrapper, cleanupEmptyDirs, } from "./editors/removal.js";
 // Vendored Playwright agent snapshots (claude, init --agents)
 export { VENDORED_AGENT_ROLES, vendoredAgentRelPath, vendoredAgentRelPaths, installedAgentsSnapshotDir, readAgentsManifest, loadAgentSnapshots, sha256Contents, roleForRelPath, classifyAgentFile, enumerateVendoredAgents, syncVendoredAgents, } from "./editors/agents.js";
 // Config-state predicates (init pre-select manifest)

@@ -10,6 +10,7 @@ import { getAllAdapters } from "./registry.js";
 /** Aliases accepted by `--tools` in addition to canonical EditorIds. */
 const TOOL_ID_ALIASES: Record<string, EditorId> = {
   "oh-my-pi": "omp",
+  "minimax-code": "minimax",
 };
 
 const RESERVED_TOOLS = new Set(["all", "none"]);
@@ -21,7 +22,8 @@ const RESERVED_TOOLS = new Set(["all", "none"]);
  * Mirrors the upstream OpenSpec `openspec init --tools` semantics:
  *   - "all" → every registered editor
  *   - "none" → no editors
- *   - comma-separated ids, case-insensitive; "oh-my-pi" aliases "omp"
+ *   - comma-separated ids, case-insensitive; "oh-my-pi" aliases "omp",
+ *     "minimax-code" aliases "minimax"
  *   - mixing "all"/"none" with specific ids, or unknown ids, throw
  *   - duplicate ids are deduplicated preserving first-occurrence order
  */
