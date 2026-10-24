@@ -13,6 +13,7 @@ import { mkdirSync, writeFileSync, existsSync, readFileSync } from "fs";
 import { dirname, resolve as pathResolve } from "path";
 import chalk from "chalk";
 import { buildCommandMeta } from "./types.js";
+import { preselectSignalFor } from "./declaration.js";
 import { classifyAgentFile, installedAgentsSnapshotDir, normalizeEol, readAgentsManifest, } from "./agents.js";
 // ─── Registry ────────────────────────────────────────────────────────────
 const ADAPTERS = [
@@ -36,6 +37,14 @@ export function detectAdapters(projectRoot, homeDir) {
  */
 export function detectProjectAdapters(projectRoot) {
     return ADAPTERS.filter((a) => a.projectSignal(projectRoot));
+}
+/**
+ * Interactive first-run pre-select set: project signals plus the adapter's
+ * declared intent files. Never authorizes writes (see hasCommandArtifacts).
+ */
+export function preselectAdapters(projectRoot) {
+    return ADAPTERS.filter((a) => a.declaration !== undefined &&
+        preselectSignalFor(projectRoot, a.declaration.detection));
 }
 /**
  * True when any of the adapter's tool-owned command artifacts exist in the

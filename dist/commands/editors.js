@@ -21,11 +21,13 @@
  * tests/editors-tools.test.ts depend on.
  */
 // Types & factory (zero internal deps)
-export { buildCommandMeta, defineAdapter, } from "./editors/types.js";
+export { buildCommandMeta, } from "./editors/types.js";
+// Declarative adapter compiler (derives the runtime EditorAdapter surface)
+export { defineAdapter, artifactRootHit, projectSignalFor, preselectSignalFor, } from "./editors/declaration.js";
 // Cross-editor shared helpers
-export { escapeYamlValue, formatTagsArray, transformToHyphenCommands, readMcpServersFile, writeMcpServersFile, isMcpServerInFile, installMcpServerInFile, removeMcpServerFromFile, } from "./editors/shared.js";
+export { escapeYamlValue, formatTagsArray, transformToHyphenCommands, formatArtifact, readMcpServersFile, writeMcpServersFile, isMcpServerInFile, installMcpServerInFile, removeMcpServerFromFile, } from "./editors/shared.js";
 // Registry (lookup / detection / install helpers) — no adapter imports here
-export { registerAdapter, getAdapter, getAllAdapters, detectAdapters, detectProjectAdapters, hasCommandArtifacts, slashCommandForAdapter, listCommandArtifactPaths, listOptionalArtifactPaths, installCommand, installOptionalArtifacts, } from "./editors/registry.js";
+export { registerAdapter, getAdapter, getAllAdapters, detectAdapters, detectProjectAdapters, preselectAdapters, hasCommandArtifacts, slashCommandForAdapter, listCommandArtifactPaths, listOptionalArtifactPaths, installCommand, installOptionalArtifacts, } from "./editors/registry.js";
 // Adapters — import order = registration order (do not reorder)
 export { formatClaudeCommand, getClaudeCommandPath, hasClaudeCode, claudeAdapter, } from "./editors/adapters/claude.js";
 export { formatOpenCodeCommand, getOpenCodeCommandPath, hasOpenCode, opencodeAdapter, readOpenCodeInstructions, } from "./editors/adapters/opencode.js";
@@ -38,7 +40,7 @@ export { formatMinimaxSkill, getMinimaxSkillPath, hasMinimax, hasMinimaxProjectS
 // Tool selection (--tools flag parsing)
 export { resolveToolsArg } from "./editors/tool-selection.js";
 // Per-editor artifact removal (init deselect + uninstall cleanup)
-export { OPENSPEC_PW_MCP_SERVERS, CLAUDE_LEGACY_SKILL_REL, enumerateAdapterArtifacts, isInventoryEmpty, retainedMcpConfigFiles, removeAdapterMcp, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, removeClaudeLegacySkill, removeWrapper, cleanupEmptyDirs, } from "./editors/removal.js";
+export { OPENSPEC_PW_MCP_SERVERS, CLAUDE_LEGACY_SKILL_REL, enumerateAdapterArtifacts, isInventoryEmpty, retainedMcpConfigFiles, removeAdapterMcp, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, removeClaudeLegacySkill, removeLegacyArtifact, removeWrapper, cleanupEmptyDirs, } from "./editors/removal.js";
 // Vendored Playwright agent snapshots (claude, init --agents)
 export { VENDORED_AGENT_ROLES, vendoredAgentRelPath, vendoredAgentRelPaths, installedAgentsSnapshotDir, readAgentsManifest, loadAgentSnapshots, sha256Contents, roleForRelPath, classifyAgentFile, enumerateVendoredAgents, syncVendoredAgents, } from "./editors/agents.js";
 // Config-state predicates (init pre-select manifest)

@@ -14,6 +14,7 @@ import { dirname, resolve as pathResolve } from "path";
 import chalk from "chalk";
 import type { CommandMeta, EditorAdapter, EditorId } from "./types.js";
 import { buildCommandMeta } from "./types.js";
+import { preselectSignalFor } from "./declaration.js";
 import {
   classifyAgentFile,
   installedAgentsSnapshotDir,
@@ -51,6 +52,18 @@ export function detectAdapters(
  */
 export function detectProjectAdapters(projectRoot: string): EditorAdapter[] {
   return ADAPTERS.filter((a) => a.projectSignal!(projectRoot));
+}
+
+/**
+ * Interactive first-run pre-select set: project signals plus the adapter's
+ * declared intent files. Never authorizes writes (see hasCommandArtifacts).
+ */
+export function preselectAdapters(projectRoot: string): EditorAdapter[] {
+  return ADAPTERS.filter(
+    (a) =>
+      a.declaration !== undefined &&
+      preselectSignalFor(projectRoot, a.declaration.detection),
+  );
 }
 
 /**

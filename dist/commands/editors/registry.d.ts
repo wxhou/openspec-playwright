@@ -11,6 +11,11 @@ export declare function detectAdapters(projectRoot: string, homeDir?: string): E
  */
 export declare function detectProjectAdapters(projectRoot: string): EditorAdapter[];
 /**
+ * Interactive first-run pre-select set: project signals plus the adapter's
+ * declared intent files. Never authorizes writes (see hasCommandArtifacts).
+ */
+export declare function preselectAdapters(projectRoot: string): EditorAdapter[];
+/**
  * True when any of the adapter's tool-owned command artifacts exist in the
  * project — the write-authorization signal ("existing artifacts are the
  * manifest"). Deliberately does NOT use detect(): a marker directory alone

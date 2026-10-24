@@ -23,6 +23,7 @@ import { listCommandArtifactPaths } from "./registry.js";
 import { removeMarkersFromFile, wrapperRulesFile } from "./project-rules.js";
 import { LEGACY_OPENSPEC_START, OPENSPEC_START } from "../../shared/drift.js";
 import { enumerateVendoredAgents, installedAgentsSnapshotDir } from "./agents.js";
+import { CLAUDE_LEGACY_SKILL_REL } from "./shared.js";
 // ─── MCP server names owned by openspec-pw ───────────────────────────────
 /**
  * The Playwright MCP servers openspec-pw manages. `playwright-test` is the
@@ -32,8 +33,8 @@ import { enumerateVendoredAgents, installedAgentsSnapshotDir } from "./agents.js
  * editors facade that re-exports this module (import cycle).
  */
 export const OPENSPEC_PW_MCP_SERVERS = ["playwright-test", "playwright"];
-/** The claude-only skill directory retired installs left behind. */
-export const CLAUDE_LEGACY_SKILL_REL = join(".claude", "skills", "openspec-e2e");
+/** Re-exported for uninstall's fixed historical cleanup and the facade. */
+export { CLAUDE_LEGACY_SKILL_REL };
 // ─── Shared MCP config files (multi-editor consumers) ─────────────────────
 /**
  * The MCP config files still depended on by the editors that remain selected.
@@ -87,9 +88,7 @@ function wrapperFileHasMarkersForRemoval(adapter, projectRoot) {
 export function enumerateAdapterArtifacts(adapter, projectRoot, retainedFiles) {
     const meta = buildCommandMeta("");
     const commandPaths = listCommandArtifactPaths(adapter, meta).filter((rel) => existsSync(join(projectRoot, rel)));
-    const legacySkillPath = adapter.id === "claude" && existsSync(join(projectRoot, CLAUDE_LEGACY_SKILL_REL))
-        ? CLAUDE_LEGACY_SKILL_REL
-        : null;
+    const legacyArtifacts = (adapter.declaration?.legacyArtifacts ?? []).filter((rel) => existsSync(join(projectRoot, rel)));
     const installedMcpServers = adapter.supportsMcp === false
         ? []
         : OPENSPEC_PW_MCP_SERVERS.filter((server) => adapter.isMcpInstalled(projectRoot, server));
@@ -101,12 +100,12 @@ export function enumerateAdapterArtifacts(adapter, projectRoot, retainedFiles) {
     const retainedMcpServers = sharedFile ? installedMcpServers : [];
     const hasWrapper = wrapperRulesFile(adapter, projectRoot) !== null &&
         wrapperFileHasMarkersForRemoval(adapter, projectRoot);
-    return { commandPaths, legacySkillPath, mcpServers, retainedMcpServers, hasWrapper };
+    return { commandPaths, legacyArtifacts, mcpServers, retainedMcpServers, hasWrapper };
 }
 /** True when this editor has nothing for init to remove. */
 export function isInventoryEmpty(inv) {
     return (inv.commandPaths.length === 0 &&
-        inv.legacySkillPath === null &&
+        inv.legacyArtifacts.length === 0 &&
         inv.mcpServers.length === 0 &&
         inv.retainedMcpServers.length === 0 &&
         !inv.hasWrapper);
@@ -178,6 +177,19 @@ export function removeOwnedVendoredAgents(projectRoot, adapter) {
         console.log(chalk.gray(`  - ${adapter.label}: ${relPath} kept (differs from the bundled snapshot — not openspec-pw-owned)`));
     }
     return removed;
+}
+/**
+ * Delete one legacy artifact directory declared by the adapter. Returns the
+ * removed project-relative path, or null when it does not exist.
+ */
+export function removeLegacyArtifact(adapter, projectRoot, relPath) {
+    const absPath = join(projectRoot, relPath);
+    if (!existsSync(absPath))
+        return null;
+    rmSync(absPath, { recursive: true, force: true });
+    cleanupEmptyDirs(dirname(absPath), projectRoot);
+    console.log(chalk.green(`  ✓ ${adapter.label}: ${relPath}/`));
+    return relPath;
 }
 /** Delete claude's retired-install skill directory. Returns the path or null. */
 export function removeClaudeLegacySkill(projectRoot) {

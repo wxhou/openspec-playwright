@@ -28,15 +28,30 @@ export {
   type EditorId,
   type ExtraArtifact,
   type EditorAdapter,
-  type EditorAdapterInit,
-  defineAdapter,
+  type AdapterDeclaration,
+  type ArtifactSpec,
+  type ArtifactFrontmatter,
+  type ArtifactNaming,
+  type ArtifactRoot,
+  type DetectionSpec,
+  type McpSpec,
+  type RulesSpec,
 } from "./editors/types.js";
+
+// Declarative adapter compiler (derives the runtime EditorAdapter surface)
+export {
+  defineAdapter,
+  artifactRootHit,
+  projectSignalFor,
+  preselectSignalFor,
+} from "./editors/declaration.js";
 
 // Cross-editor shared helpers
 export {
   escapeYamlValue,
   formatTagsArray,
   transformToHyphenCommands,
+  formatArtifact,
   type McpStdioServer,
   type McpServersFile,
   readMcpServersFile,
@@ -53,6 +68,7 @@ export {
   getAllAdapters,
   detectAdapters,
   detectProjectAdapters,
+  preselectAdapters,
   hasCommandArtifacts,
   slashCommandForAdapter,
   listCommandArtifactPaths,
@@ -131,6 +147,7 @@ export {
   removeAdapterCommandArtifacts,
   removeOwnedVendoredAgents,
   removeClaudeLegacySkill,
+  removeLegacyArtifact,
   removeWrapper,
   cleanupEmptyDirs,
 } from "./editors/removal.js";

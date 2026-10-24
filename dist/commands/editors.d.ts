@@ -20,9 +20,10 @@
  * `resolveToolsArg("all")`, the interactive prompt order, and
  * tests/editors-tools.test.ts depend on.
  */
-export { type CommandMeta, buildCommandMeta, type EditorId, type ExtraArtifact, type EditorAdapter, type EditorAdapterInit, defineAdapter, } from "./editors/types.js";
-export { escapeYamlValue, formatTagsArray, transformToHyphenCommands, type McpStdioServer, type McpServersFile, readMcpServersFile, writeMcpServersFile, isMcpServerInFile, installMcpServerInFile, removeMcpServerFromFile, } from "./editors/shared.js";
-export { registerAdapter, getAdapter, getAllAdapters, detectAdapters, detectProjectAdapters, hasCommandArtifacts, slashCommandForAdapter, listCommandArtifactPaths, listOptionalArtifactPaths, installCommand, installOptionalArtifacts, } from "./editors/registry.js";
+export { type CommandMeta, buildCommandMeta, type EditorId, type ExtraArtifact, type EditorAdapter, type AdapterDeclaration, type ArtifactSpec, type ArtifactFrontmatter, type ArtifactNaming, type ArtifactRoot, type DetectionSpec, type McpSpec, type RulesSpec, } from "./editors/types.js";
+export { defineAdapter, artifactRootHit, projectSignalFor, preselectSignalFor, } from "./editors/declaration.js";
+export { escapeYamlValue, formatTagsArray, transformToHyphenCommands, formatArtifact, type McpStdioServer, type McpServersFile, readMcpServersFile, writeMcpServersFile, isMcpServerInFile, installMcpServerInFile, removeMcpServerFromFile, } from "./editors/shared.js";
+export { registerAdapter, getAdapter, getAllAdapters, detectAdapters, detectProjectAdapters, preselectAdapters, hasCommandArtifacts, slashCommandForAdapter, listCommandArtifactPaths, listOptionalArtifactPaths, installCommand, installOptionalArtifacts, } from "./editors/registry.js";
 export { formatClaudeCommand, getClaudeCommandPath, hasClaudeCode, claudeAdapter, } from "./editors/adapters/claude.js";
 export { formatOpenCodeCommand, getOpenCodeCommandPath, hasOpenCode, opencodeAdapter, readOpenCodeInstructions, } from "./editors/adapters/opencode.js";
 export { formatClineCommand, getClineCommandPath, hasCline, clineAdapter, } from "./editors/adapters/cline.js";
@@ -32,7 +33,7 @@ export { formatOmpCommand, getOmpCommandPath, hasOmp, ompAdapter, } from "./edit
 export { formatCodebuddyCommand, getCodebuddyCommandPath, hasCodebuddy, codebuddyAdapter, } from "./editors/adapters/codebuddy.js";
 export { formatMinimaxSkill, getMinimaxSkillPath, hasMinimax, hasMinimaxProjectSignal, minimaxAdapter, minimaxMcpPath, } from "./editors/adapters/minimax.js";
 export { resolveToolsArg } from "./editors/tool-selection.js";
-export { OPENSPEC_PW_MCP_SERVERS, CLAUDE_LEGACY_SKILL_REL, type AdapterArtifactInventory, enumerateAdapterArtifacts, isInventoryEmpty, retainedMcpConfigFiles, removeAdapterMcp, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, removeClaudeLegacySkill, removeWrapper, cleanupEmptyDirs, } from "./editors/removal.js";
+export { OPENSPEC_PW_MCP_SERVERS, CLAUDE_LEGACY_SKILL_REL, type AdapterArtifactInventory, enumerateAdapterArtifacts, isInventoryEmpty, retainedMcpConfigFiles, removeAdapterMcp, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, removeClaudeLegacySkill, removeLegacyArtifact, removeWrapper, cleanupEmptyDirs, } from "./editors/removal.js";
 export { VENDORED_AGENT_ROLES, vendoredAgentRelPath, vendoredAgentRelPaths, type AgentsManifest, installedAgentsSnapshotDir, readAgentsManifest, loadAgentSnapshots, sha256Contents, roleForRelPath, classifyAgentFile, enumerateVendoredAgents, syncVendoredAgents, } from "./editors/agents.js";
 export { isEditorConfigured, anyEditorConfigured, agentsFileHasMarkers, } from "./editors/configured.js";
 export { intentFileEditors } from "./editors/preselect.js";

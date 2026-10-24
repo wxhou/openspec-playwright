@@ -226,20 +226,23 @@ export function installProjectRules(projectRoot, standardsContent, detected) {
         return;
     // AGENTS.md is always the single source of truth
     installOpenSpecBlock(projectRoot, standardsContent, opencodeAdapter);
-    // Thin CLAUDE.md with @AGENTS.md import if Claude is in use
-    if (detected.some((a) => a.id === "claude")) {
-        installClaudeWrapper(projectRoot);
+    // Thin wrapper for every editor whose rules file is not AGENTS.md
+    // (CLAUDE.md, CODEBUDDY.md). Derived from the adapter's rules path — no
+    // per-editor branch.
+    for (const adapter of detected) {
+        if (wrapperRulesFile(adapter, projectRoot) !== null) {
+            installThinWrapper(adapter, projectRoot);
+        }
     }
-    // Thin CODEBUDDY.md with @AGENTS.md import if CodeBuddy is in use
-    // (CodeBuddy prefers CODEBUDDY.md over AGENTS.md when both exist).
-    if (detected.some((a) => a.id === "codebuddy")) {
-        installThinWrapper(codebuddyAdapter, projectRoot);
-    }
-    // Register AGENTS.md in opencode.json for OpenCode
-    if (detected.some((a) => a.id === "opencode") && opencodeAdapter.registerInstructions) {
-        const existing = readOpenCodeInstructions(projectRoot);
-        const next = Array.from(new Set([...(existing ?? []), "AGENTS.md"]));
-        opencodeAdapter.registerInstructions(projectRoot, next);
+    // Register AGENTS.md in editors whose config lists project instructions
+    // (OpenCode's opencode.json(c)). Declared, not hardcoded per id.
+    for (const adapter of detected) {
+        if (adapter.declaration?.rules?.registerInConfig === "opencode-json" &&
+            adapter.registerInstructions) {
+            const existing = readOpenCodeInstructions(projectRoot);
+            const next = Array.from(new Set([...(existing ?? []), "AGENTS.md"]));
+            adapter.registerInstructions(projectRoot, next);
+        }
     }
 }
 /** Remove all OpenSpec marker blocks from AGENTS.md (always) and the adapter's wrapper file (claude/codebuddy). */

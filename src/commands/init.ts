@@ -15,6 +15,7 @@ import {
   buildCommandMeta,
   detectAdapters,
   detectProjectAdapters,
+  preselectAdapters,
   getAdapter,
   getAllAdapters,
   installCommand,
@@ -24,7 +25,6 @@ import {
   readEmployeeStandards,
   resolveToolsArg,
   slashCommandForAdapter,
-  intentFileEditors,
   enumerateAdapterArtifacts,
   enumerateVendoredAgents,
   installedAgentsSnapshotDir,
@@ -33,7 +33,7 @@ import {
   retainedMcpConfigFiles,
   removeAdapterCommandArtifacts,
   removeOwnedVendoredAgents,
-  removeClaudeLegacySkill,
+  removeLegacyArtifact,
   removeWrapper,
   removeMarkersFromFile,
   normalizeEol,
@@ -317,14 +317,10 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     configuredIds.size > 0 || agentsFileHasMarkers(projectRoot);
   // Two-tier pre-select: artifact-manifest tier pre-checks only configured
   // editors; the first-run bypass (zero openspec-pw state) pre-checks the
-  // pre-select signal set — project marker dirs plus root intent files.
-  // Machine state (global home dirs) never pre-checks an editor.
-  const preselectHintIds = [
-    ...new Set<EditorId>([
-      ...projectDetected.map((a) => a.id),
-      ...intentFileEditors(projectRoot),
-    ]),
-  ];
+  // pre-select signal set — project marker dirs plus root intent files,
+  // both declared on each adapter. Machine state (global home dirs) never
+  // pre-checks an editor.
+  const preselectHintIds = preselectAdapters(projectRoot).map((a) => a.id);
   const preselectedIds = hasAnyState
     ? configuredIds
     : new Set(preselectHintIds);
@@ -495,8 +491,8 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
         for (const relPath of inv.commandPaths) {
           console.log(chalk.gray(`    - ${adapter.label}: ${relPath}`));
         }
-        if (inv.legacySkillPath) {
-          console.log(chalk.gray(`    - ${adapter.label}: ${inv.legacySkillPath}/`));
+        for (const relPath of inv.legacyArtifacts) {
+          console.log(chalk.gray(`    - ${adapter.label}: ${relPath}/`));
         }
         for (const server of inv.mcpServers) {
           console.log(chalk.gray(`    - ${adapter.label}: ${server} MCP entry`));
@@ -540,8 +536,8 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
           removeAdapterMcp(adapter, projectRoot, inv.mcpServers, retainedMcpFiles);
           removeAdapterCommandArtifacts(adapter, projectRoot);
           removeOwnedVendoredAgents(projectRoot, adapter);
-          if (inv.legacySkillPath) {
-            removeClaudeLegacySkill(projectRoot);
+          for (const relPath of inv.legacyArtifacts) {
+            removeLegacyArtifact(adapter, projectRoot, relPath);
           }
           if (inv.hasWrapper) {
             removeWrapper(adapter, projectRoot);

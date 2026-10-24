@@ -4,7 +4,19 @@
  * (Cline / Cursor / Oh My Pi).
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
-import { dirname } from "path";
+import { dirname, join } from "path";
+import type { ArtifactSpec, CommandMeta } from "./types.js";
+
+/**
+ * The claude-only skill directory retired installs (pre-0.3.74) left
+ * behind. Declared by the claude adapter and reused by uninstall's fixed
+ * historical cleanup.
+ */
+export const CLAUDE_LEGACY_SKILL_REL = join(
+  ".claude",
+  "skills",
+  "openspec-e2e",
+);
 
 // ─── YAML helpers (shared by Claude frontmatter and elsewhere) ───────────
 
@@ -37,50 +49,50 @@ export function transformToHyphenCommands(text: string): string {
   return text.replace(/\/opsx:/g, "/opsx-");
 }
 
-// ─── Command metadata ────────────────────────────────────────────────────
-
-export interface CommandMeta {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  tags: string[];
-  body: string;
-}
-
-/** Build the command metadata for the /opsx:e2e command. */
-export function buildCommandMeta(body: string): CommandMeta {
-  return {
-    id: "e2e",
-    name: "OPSX: E2E",
-    description: "Run Playwright E2E verification for an OpenSpec change",
-    category: "OpenSpec",
-    tags: ["openspec", "playwright", "e2e", "testing"],
-    body,
-  };
-}
-
-// ─── Skill artifact format ───────────────────────────────────────────────
+// ─── Command artifact formatting ─────────────────────────────────────────
 
 /**
- * Format a skill-based command artifact: `name` + `description` frontmatter
- * over a hyphen-rewritten body.
+ * Render one artifact from its declaration. The naming convention is the
+ * single source of truth for both the invocation form and the body rewrite:
+ * `hyphen-prefix` artifacts invoke as `/opsx-<id>` and get their `/opsx:`
+ * references rewritten; `namespace-dir` artifacts invoke as `/opsx:<id>`
+ * and keep the body unchanged.
  *
- * Shared by Cline (`.cline/skills/opsx-<id>/SKILL.md`) and MiniMax Code
- * (`.agents/skills/opsx-<id>/SKILL.md`) so the two skill formats cannot
- * drift. Editors that load skills as slash commands invoke them as
- * `/<name>` — hence the hyphenated `/opsx-` body references.
+ * Frontmatter fields always emit in the order name → description →
+ * argument-hint → disable-model-invocation so artifacts stay byte-stable.
  */
-export function formatSkillCommand(meta: CommandMeta): string {
-  const body = transformToHyphenCommands(meta.body);
-  const skillName = `opsx-${meta.id}`;
-  return `---
-name: ${escapeYamlValue(skillName)}
-description: ${escapeYamlValue(meta.description)}
----
+export function formatArtifact(spec: ArtifactSpec, meta: CommandMeta): string {
+  const body =
+    spec.naming === "hyphen-prefix"
+      ? transformToHyphenCommands(meta.body)
+      : meta.body;
 
-${body}
-`;
+  let out = "";
+
+  if (spec.header !== undefined) {
+    const header =
+      typeof spec.header === "function" ? spec.header(meta) : spec.header;
+    out += `${header}\n\n`;
+  }
+
+  if (spec.frontmatter) {
+    const lines: string[] = [];
+    if (spec.frontmatter.name) {
+      lines.push(`name: ${escapeYamlValue(`opsx-${meta.id}`)}`);
+    }
+    if (spec.frontmatter.description) {
+      lines.push(`description: ${escapeYamlValue(meta.description)}`);
+    }
+    if (spec.frontmatter.argumentHint !== undefined) {
+      lines.push(`argument-hint: "${spec.frontmatter.argumentHint}"`);
+    }
+    if (spec.frontmatter.disableModelInvocation) {
+      lines.push("disable-model-invocation: true");
+    }
+    out += `---\n${lines.join("\n")}\n---\n\n`;
+  }
+
+  return `${out}${body}\n`;
 }
 
 // ─── Shared mcpServers JSON helpers (Cline + Cursor) ─────────────────────

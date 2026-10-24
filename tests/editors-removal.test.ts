@@ -120,10 +120,12 @@ describe("enumerateAdapterArtifacts", () => {
 
   it("flags the claude legacy skill dir only for claude", () => {
     mkdirSync(join(projectRoot, ".claude", "skills", "openspec-e2e"), { recursive: true });
-    expect(enumerateAdapterArtifacts(claudeAdapter, projectRoot).legacySkillPath).toBe(
-      join(".claude", "skills", "openspec-e2e"),
-    );
-    expect(enumerateAdapterArtifacts(cursorAdapter, projectRoot).legacySkillPath).toBeNull();
+    expect(
+      enumerateAdapterArtifacts(claudeAdapter, projectRoot).legacyArtifacts,
+    ).toEqual([join(".claude", "skills", "openspec-e2e")]);
+    expect(
+      enumerateAdapterArtifacts(cursorAdapter, projectRoot).legacyArtifacts,
+    ).toEqual([]);
   });
 });
 
