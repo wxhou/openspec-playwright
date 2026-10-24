@@ -3,31 +3,17 @@
  * markdown) plus an Agent Skill at `.cursor/skills/opsx-<id>/SKILL.md`;
  * MCP lives in `.cursor/mcp.json`. Cursor auto-detects AGENTS.md.
  */
-import { existsSync } from "fs";
 import { join } from "path";
-import { defineAdapter, type EditorAdapter, type CommandMeta } from "../types.js";
-import {
-  escapeYamlValue,
-  transformToHyphenCommands,
-  isMcpServerInFile,
-  installMcpServerInFile,
-  removeMcpServerFromFile,
-} from "../shared.js";
+import type {
+  AdapterDeclaration,
+  ArtifactSpec,
+  CommandMeta,
+} from "../types.js";
+import { defineAdapter } from "../declaration.js";
+import { formatArtifact } from "../shared.js";
 import { registerAdapter } from "../registry.js";
 
 // ─── Cursor adapter (format / paths) ─────────────────────────────────────
-
-/**
- * Cursor slash commands are plain markdown (no frontmatter); the filename
- * is the command name. `$1` is the change-name argument.
- */
-export function formatCursorCommand(meta: CommandMeta): string {
-  const body = transformToHyphenCommands(meta.body);
-  return `<!-- Change name: $1 (e.g. /opsx-${meta.id} my-change) -->
-
-${body}
-`;
-}
 
 export function getCursorCommandPath(id: string): string {
   return join(".cursor", "commands", `opsx-${id}.md`);
@@ -38,57 +24,60 @@ export function getCursorSkillPath(id: string): string {
 }
 
 /**
+ * Cursor slash commands are plain markdown (no frontmatter); the filename
+ * is the command name. `$1` is the change-name argument.
+ */
+const CURSOR_COMMAND: ArtifactSpec = {
+  path: getCursorCommandPath,
+  naming: "hyphen-prefix",
+  header: (meta) =>
+    `<!-- Change name: $1 (e.g. /opsx-${meta.id} my-change) -->`,
+};
+
+/**
  * Cursor Agent Skill — explicit invocation only (`disable-model-invocation`).
  * No `$1` placeholders (those belong to the slash command file).
  */
-export function formatCursorSkill(meta: CommandMeta): string {
-  const body = transformToHyphenCommands(meta.body);
-  const skillName = `opsx-${meta.id}`;
-  return `---
-name: ${escapeYamlValue(skillName)}
-description: ${escapeYamlValue(meta.description)}
-disable-model-invocation: true
----
+const CURSOR_SKILL: ArtifactSpec = {
+  path: getCursorSkillPath,
+  naming: "hyphen-prefix",
+  frontmatter: {
+    name: true,
+    description: true,
+    disableModelInvocation: true,
+  },
+};
 
-${body}
-`;
-}
-
-export function hasCursor(projectRoot: string): boolean {
-  return existsSync(join(projectRoot, ".cursor"));
-}
-
-export const cursorAdapter: EditorAdapter = defineAdapter({
+const cursorDeclaration: AdapterDeclaration = {
   id: "cursor",
   label: "cursor",
   displayName: "Cursor",
-  detect: hasCursor,
-  commandFilePath: getCursorCommandPath,
-  formatCommand: formatCursorCommand,
-  // Cursor auto-detects AGENTS.md — that's the default.
-  isMcpInstalled(projectRoot, serverName) {
-    return isMcpServerInFile(cursorMcpPath(projectRoot), serverName);
+  artifacts: [CURSOR_COMMAND, CURSOR_SKILL],
+  detection: {
+    projectPaths: [".cursor"],
+    intentPaths: [".cursorrules"],
   },
-  installMcp(projectRoot, serverName, command) {
-    installMcpServerInFile(cursorMcpPath(projectRoot), serverName, command);
+  mcp: {
+    kind: "mcp-servers-file",
+    path: (root) => join(root, ".cursor", "mcp.json"),
   },
-  removeMcp(projectRoot, serverName) {
-    removeMcpServerFromFile(cursorMcpPath(projectRoot), serverName);
-  },
-  mcpConfigPath: cursorMcpPath,
-  extraArtifacts(meta) {
-    return [
-      {
-        relativePath: getCursorSkillPath(meta.id),
-        contents: formatCursorSkill(meta),
-      },
-    ];
-  },
-});
+  // Cursor auto-detects AGENTS.md — that's the default rules path.
+};
 
-/** Path to the project-level MCP config file for Cursor. */
-function cursorMcpPath(projectRoot: string): string {
-  return join(projectRoot, ".cursor", "mcp.json");
+export const cursorAdapter = defineAdapter(cursorDeclaration);
+
+// ─── Named exports (derived from the declaration) ────────────────────────
+
+export function formatCursorCommand(meta: CommandMeta): string {
+  return formatArtifact(CURSOR_COMMAND, meta);
+}
+
+export function formatCursorSkill(meta: CommandMeta): string {
+  return formatArtifact(CURSOR_SKILL, meta);
+}
+
+export function hasCursor(projectRoot: string, homeDir?: string): boolean {
+  return cursorAdapter.detect(projectRoot, homeDir);
 }
 
 registerAdapter(cursorAdapter);

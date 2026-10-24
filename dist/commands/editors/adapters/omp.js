@@ -3,13 +3,14 @@
  * (FATAL frontmatter parsing — keep YAML valid); MCP in `.omp/mcp.json`.
  * Detected via `.omp/` or global `~/.omp/agent/`.
  */
-import { existsSync } from "fs";
-import { homedir } from "os";
 import { join } from "path";
-import { defineAdapter } from "../types.js";
-import { escapeYamlValue, transformToHyphenCommands, isMcpServerInFile, installMcpServerInFile, removeMcpServerFromFile, } from "../shared.js";
+import { defineAdapter } from "../declaration.js";
+import { formatArtifact } from "../shared.js";
 import { registerAdapter } from "../registry.js";
 // ─── Oh My Pi adapter ────────────────────────────────────────────────────
+export function getOmpCommandPath(id) {
+    return join(".omp", "commands", `opsx-${id}.md`);
+}
 /**
  * Oh My Pi (omp) stores project slash commands in `.omp/commands/*.md`
  * (non-recursive scan, project before user). Native commands are parsed
@@ -25,53 +26,34 @@ import { registerAdapter } from "../registry.js";
  *                `.cursor/` / opencode MCP configs when present.
  *   - Rules:     omp reads `AGENTS.md` natively — no wrapper file needed.
  */
-export function formatOmpCommand(meta) {
-    const body = transformToHyphenCommands(meta.body);
-    const cmdName = `opsx-${meta.id}`;
-    return `---
-name: ${escapeYamlValue(cmdName)}
-description: ${escapeYamlValue(meta.description)}
----
-
-${body}
-`;
-}
-export function getOmpCommandPath(id) {
-    return join(".omp", "commands", `opsx-${id}.md`);
-}
-/**
- * True when Oh My Pi is in use: a project `.omp/` dir, or a global omp
- * config dir (`~/.omp/agent/`, created by omp on first run).
- */
-export function hasOmp(projectRoot, homeDir = homedir()) {
-    return (existsSync(join(projectRoot, ".omp")) ||
-        existsSync(join(homeDir, ".omp", "agent")));
-}
-export const ompAdapter = defineAdapter({
+const OMP_ARTIFACT = {
+    path: getOmpCommandPath,
+    naming: "hyphen-prefix",
+    frontmatter: { name: true, description: true },
+};
+const ompDeclaration = {
     id: "omp",
     label: "omp",
     displayName: "Oh My Pi",
-    detect: hasOmp,
-    // Project-level signal only — global ~/.omp/agent is a pre-select
-    // suggestion, never a write authorization.
-    projectSignal: (projectRoot) => existsSync(join(projectRoot, ".omp")),
-    commandFilePath: getOmpCommandPath,
-    formatCommand: formatOmpCommand,
-    // omp reads AGENTS.md natively — that's the default.
-    isMcpInstalled(projectRoot, serverName) {
-        return isMcpServerInFile(ompMcpPath(projectRoot), serverName);
+    artifacts: [OMP_ARTIFACT],
+    detection: {
+        projectPaths: [".omp"],
+        // Global install root is a pre-select suggestion, never a write
+        // authorization.
+        globalPaths: [join(".omp", "agent")],
     },
-    installMcp(projectRoot, serverName, command) {
-        installMcpServerInFile(ompMcpPath(projectRoot), serverName, command);
+    mcp: {
+        kind: "mcp-servers-file",
+        path: (root) => join(root, ".omp", "mcp.json"),
     },
-    removeMcp(projectRoot, serverName) {
-        removeMcpServerFromFile(ompMcpPath(projectRoot), serverName);
-    },
-    mcpConfigPath: ompMcpPath,
-});
-/** Path to the project-level MCP config file for Oh My Pi. */
-function ompMcpPath(projectRoot) {
-    return join(projectRoot, ".omp", "mcp.json");
+};
+export const ompAdapter = defineAdapter(ompDeclaration);
+// ─── Named exports (derived from the declaration) ────────────────────────
+export function formatOmpCommand(meta) {
+    return formatArtifact(OMP_ARTIFACT, meta);
+}
+export function hasOmp(projectRoot, homeDir) {
+    return ompAdapter.detect(projectRoot, homeDir);
 }
 registerAdapter(ompAdapter);
 //# sourceMappingURL=omp.js.map

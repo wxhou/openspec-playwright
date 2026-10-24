@@ -14,6 +14,7 @@ import { dirname, resolve as pathResolve } from "path";
 import chalk from "chalk";
 import type { CommandMeta, EditorAdapter, EditorId } from "./types.js";
 import { buildCommandMeta } from "./types.js";
+import { preselectSignalFor } from "./declaration.js";
 import {
   classifyAgentFile,
   installedAgentsSnapshotDir,
@@ -50,7 +51,19 @@ export function detectAdapters(
  * hasCommandArtifacts).
  */
 export function detectProjectAdapters(projectRoot: string): EditorAdapter[] {
-  return ADAPTERS.filter((a) => a.projectSignal!(projectRoot));
+  return ADAPTERS.filter((a) => a.projectSignal(projectRoot));
+}
+
+/**
+ * Interactive first-run pre-select set: project signals plus the adapter's
+ * declared intent files. Never authorizes writes (see hasCommandArtifacts).
+ */
+export function preselectAdapters(projectRoot: string): EditorAdapter[] {
+  return ADAPTERS.filter(
+    (a) =>
+      a.declaration !== undefined &&
+      preselectSignalFor(projectRoot, a.declaration.detection),
+  );
 }
 
 /**
@@ -72,11 +85,13 @@ export function registerAdapter(adapter: EditorAdapter): void {
   ADAPTERS.push(adapter);
 }
 
-/** Slash-command hint for user-facing messages. */
+/**
+ * Slash-command hint for user-facing messages. The form comes from the
+ * adapter — colon for editors that load command files, hyphen for the
+ * skill-based ones — so a new adapter cannot drift out of the hint.
+ */
 export function slashCommandForAdapter(adapter: EditorAdapter): string {
-  return adapter.id === "claude" || adapter.id === "codebuddy"
-    ? "/opsx:e2e"
-    : "/opsx-e2e";
+  return adapter.commandForm === "colon" ? "/opsx:e2e" : "/opsx-e2e";
 }
 
 /** Relative paths installCommand writes for this adapter + meta. */

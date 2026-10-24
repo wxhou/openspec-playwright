@@ -1,102 +1,71 @@
 /**
- * Claude Code adapter: `.claude/commands/opsx/<id>.md` with full
- * frontmatter; reads CLAUDE.md directly (thin wrapper installed by
- * project-rules). Playwright MCP installs at project scope — written to
- * the project-root `.mcp.json` via `claude mcp add --scope project`.
+ * Claude Code adapter: `.claude/commands/opsx/<id>.md` with description +
+ * argument-hint frontmatter (subdirectory colon naming → `/opsx:e2e`);
+ * reads CLAUDE.md directly (thin wrapper installed by project-rules).
+ * Playwright MCP installs at project scope — written to the project-root
+ * `.mcp.json` via `claude mcp add --scope project`.
  */
-import { existsSync, readFileSync } from "fs";
-import { execFileSync } from "node:child_process";
 import { join } from "path";
-import { TIMEOUT } from "../../../shared/constants.js";
-import { needsShell } from "../../../shared/platform.js";
-import { defineAdapter, type EditorAdapter, type CommandMeta } from "../types.js";
-import { escapeYamlValue } from "../shared.js";
+import type {
+  AdapterDeclaration,
+  ArtifactSpec,
+  CommandMeta,
+} from "../types.js";
+import { defineAdapter } from "../declaration.js";
+import { CLAUDE_LEGACY_SKILL_REL, formatArtifact } from "../shared.js";
 import { registerAdapter } from "../registry.js";
 import { installedAgentsSnapshotDir, loadAgentSnapshots } from "../agents.js";
 
 // ─── Claude Code adapter ─────────────────────────────────────────────────
 
-export function formatClaudeCommand(meta: CommandMeta): string {
-  // Claude Code consumes `description` and `argument-hint`; name/category/tags
-  // are ignored there and only made the frontmatter noisier.
-  return `---
-description: ${escapeYamlValue(meta.description)}
-argument-hint: "<change-name|all>"
----
-
-${meta.body}
-`;
-}
-
 export function getClaudeCommandPath(id: string): string {
   return join(".claude", "commands", "opsx", `${id}.md`);
 }
 
-export function hasClaudeCode(projectRoot: string): boolean {
-  return existsSync(join(projectRoot, ".claude"));
-}
+const CLAUDE_ARTIFACT: ArtifactSpec = {
+  path: getClaudeCommandPath,
+  naming: "namespace-dir",
+  // Claude Code consumes `description` and `argument-hint`; name/category/tags
+  // are ignored there and only made the frontmatter noisier.
+  frontmatter: { description: true, argumentHint: "<change-name|all>" },
+};
 
-export const claudeAdapter: EditorAdapter = defineAdapter({
+const claudeDeclaration: AdapterDeclaration = {
   id: "claude",
   label: "claude",
   displayName: "Claude Code",
-  detect: hasClaudeCode,
-  commandFilePath: getClaudeCommandPath,
-  formatCommand: formatClaudeCommand,
-  // Claude Code reads CLAUDE.md directly — override the AGENTS.md default.
-  projectRulesPath: (root) => join(root, "CLAUDE.md"),
-  isMcpInstalled(root, serverName) {
-    // Project scope: Playwright MCP lives in the project-root .mcp.json.
-    // Read the file directly instead of `claude mcp list` — zero CLI
-    // dependency, testable, and never confuses a global user-scope entry
-    // with a project-scoped one.
-    try {
-      const mcpJson = readFileSync(join(root, ".mcp.json"), "utf-8");
-      const parsed = JSON.parse(mcpJson);
-      return (
-        typeof parsed === "object" &&
-        parsed !== null &&
-        typeof parsed.mcpServers === "object" &&
-        parsed.mcpServers !== null &&
-        Object.hasOwn(parsed.mcpServers, serverName)
-      );
-    } catch {
-      // Missing or unparseable file — server not installed
-      return false;
-    }
-  },
-  installMcp(_root, serverName, command) {
-    execFileSync(
-      "claude",
-      ["mcp", "add", "--scope", "project", serverName, ...command],
-      {
-        encoding: "utf-8",
-        timeout: TIMEOUT.MCP_LIST,
-        stdio: ["pipe", "pipe", "pipe"],
-        shell: needsShell,
-      },
-    );
-  },
-  removeMcp(_root, serverName) {
-    execFileSync(
-      "claude",
-      ["mcp", "remove", "--scope", "project", serverName],
-      {
-        encoding: "utf-8",
-        timeout: TIMEOUT.MCP_LIST,
-        stdio: ["pipe", "pipe", "pipe"],
-        shell: needsShell,
-      },
-    );
+  artifacts: [CLAUDE_ARTIFACT],
+  detection: {
+    projectPaths: [".claude"],
+    // A root CLAUDE.md means the project already uses Claude Code — first-run
+    // pre-select only, never write authorization.
+    intentPaths: ["CLAUDE.md"],
   },
   // Claude Code's project scope IS the project-root .mcp.json — the same
-  // file the CodeBuddy CLI and MiniMax Code adapters read and write.
-  mcpConfigPath: (root) => join(root, ".mcp.json"),
+  // file CodeBuddy CLI and MiniMax Code read and write. Writes go through
+  // the CLI (`claude mcp add --scope project`), reads hit the file directly.
+  mcp: { kind: "claude-cli", configPath: (root) => join(root, ".mcp.json") },
+  rules: { path: (root) => join(root, "CLAUDE.md") },
+  // Pre-0.3.74 installs wrote a skill directory instead of a command file.
+  legacyArtifacts: [CLAUDE_LEGACY_SKILL_REL],
   // Vendored official Playwright agents (init --agents). Read lazily from
   // the installed package templates; byte-identity with the official
   // init-agents output is load-bearing (content-based ownership), so the
   // files are shipped and written unmodified.
-  optionalArtifacts: (install) => (install ? loadAgentSnapshots(installedAgentsSnapshotDir()) : []),
-});
+  optionalArtifacts: (install) =>
+    install ? loadAgentSnapshots(installedAgentsSnapshotDir()) : [],
+};
+
+export const claudeAdapter = defineAdapter(claudeDeclaration);
+
+// ─── Named exports (derived from the declaration) ────────────────────────
+
+export function formatClaudeCommand(meta: CommandMeta): string {
+  return formatArtifact(CLAUDE_ARTIFACT, meta);
+}
+
+export function hasClaudeCode(projectRoot: string, homeDir?: string): boolean {
+  return claudeAdapter.detect(projectRoot, homeDir);
+}
 
 registerAdapter(claudeAdapter);

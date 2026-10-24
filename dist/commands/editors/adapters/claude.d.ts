@@ -1,5 +1,5 @@
-import { type EditorAdapter, type CommandMeta } from "../types.js";
-export declare function formatClaudeCommand(meta: CommandMeta): string;
+import type { CommandMeta } from "../types.js";
 export declare function getClaudeCommandPath(id: string): string;
-export declare function hasClaudeCode(projectRoot: string): boolean;
-export declare const claudeAdapter: EditorAdapter;
+export declare const claudeAdapter: import("../types.js").EditorAdapter;
+export declare function formatClaudeCommand(meta: CommandMeta): string;
+export declare function hasClaudeCode(projectRoot: string, homeDir?: string): boolean;

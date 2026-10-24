@@ -12,81 +12,14 @@
  * `<workspace>/AGENTS.md` second, so AGENTS.md stays the single source of
  * truth and no MiniMax-specific wrapper file is created.
  */
-import { existsSync } from "fs";
-import { homedir } from "os";
 import { join } from "path";
-import { defineAdapter } from "../types.js";
-import { formatSkillCommand, isMcpServerInFile, installMcpServerInFile, removeMcpServerFromFile, } from "../shared.js";
+import { defineAdapter } from "../declaration.js";
+import { formatArtifact } from "../shared.js";
 import { registerAdapter } from "../registry.js";
 // ─── MiniMax Code adapter ────────────────────────────────────────────────
-/**
- * MiniMax Code conventions (verified against the published CLI runtime):
- *   - Skills:   `<root>/skills/<name>/SKILL.md` with YAML frontmatter
- *                (name + description). Workspace roots include
- *                `.minimax/skills`, `.claude/skills` and `.agents/skills`.
- *                Invoked as `/<name>`.
- *   - MCP:      project-root `.mcp.json`, auto-loaded from the workspace.
- *   - Rules:    `<workspace>/CLAUDE.md` then `<workspace>/AGENTS.md`.
- */
-export function formatMinimaxSkill(meta) {
-    return formatSkillCommand(meta);
-}
 export function getMinimaxSkillPath(id) {
     return join(".agents", "skills", `opsx-${id}`, "SKILL.md");
 }
-/** Directory holding the installed skill for a given command id. */
-function minimaxSkillDir(id) {
-    return join(".agents", "skills", `opsx-${id}`);
-}
-/**
- * True when the project carries the openspec-pw MiniMax Code skill.
- *
- * The artifact is a detection signal in its own right: Cline's marker dir
- * `.cline/` contains its skill path, so Cline's artifact implies its marker
- * dir — but `.agents/` does not contain `.minimax/`. Without this signal a
- * project holding only the installed skill would be invisible to
- * `detectAdapters()` and drop out of doctor's command hint, the interactive
- * pre-select and the non-TTY fallback.
- */
-function hasMinimaxSkill(projectRoot) {
-    return existsSync(join(projectRoot, minimaxSkillDir("e2e"), "SKILL.md"));
-}
-/**
- * Detection: the project's `.minimax/` marker dir, the global CLI install
- * root, or the installed skill artifact.
- *
- * The global signal is a pre-select hint only — `projectSignal` excludes it.
- */
-export function hasMinimax(projectRoot, homeDir) {
-    const home = homeDir ?? homedir();
-    return (existsSync(join(projectRoot, ".minimax")) ||
-        existsSync(join(home, ".minimax-code")) ||
-        hasMinimaxSkill(projectRoot));
-}
-/** Project-level signal only: marker dir or the installed skill. */
-export function hasMinimaxProjectSignal(projectRoot) {
-    return (existsSync(join(projectRoot, ".minimax")) || hasMinimaxSkill(projectRoot));
-}
-export const minimaxAdapter = defineAdapter({
-    id: "minimax",
-    label: "minimax",
-    displayName: "MiniMax Code",
-    detect: hasMinimax,
-    projectSignal: hasMinimaxProjectSignal,
-    commandFilePath: getMinimaxSkillPath,
-    formatCommand: formatMinimaxSkill,
-    // MiniMax Code reads AGENTS.md natively — that's the default.
-    isMcpInstalled(projectRoot, serverName) {
-        return isMcpServerInFile(minimaxMcpPath(projectRoot), serverName);
-    },
-    installMcp(projectRoot, serverName, command) {
-        installMcpServerInFile(minimaxMcpPath(projectRoot), serverName, command);
-    },
-    removeMcp(projectRoot, serverName) {
-        removeMcpServerFromFile(minimaxMcpPath(projectRoot), serverName);
-    },
-    mcpConfigPath: minimaxMcpPath,
-});
 /**
  * Path to the MCP config file MiniMax Code loads from the project workspace.
  * Shared with the Claude Code and CodeBuddy CLI adapters — all three read
@@ -94,6 +27,55 @@ export const minimaxAdapter = defineAdapter({
  */
 export function minimaxMcpPath(projectRoot) {
     return join(projectRoot, ".mcp.json");
+}
+/**
+ * Skills: `<root>/skills/<name>/SKILL.md` with YAML frontmatter
+ * (name + description). Workspace roots include `.minimax/skills`,
+ * `.claude/skills` and `.agents/skills`. Invoked as `/<name>`.
+ */
+const MINIMAX_ARTIFACT = {
+    path: getMinimaxSkillPath,
+    naming: "hyphen-prefix",
+    frontmatter: { name: true, description: true },
+};
+const minimaxDeclaration = {
+    id: "minimax",
+    label: "minimax",
+    displayName: "MiniMax Code",
+    artifacts: [MINIMAX_ARTIFACT],
+    detection: {
+        projectPaths: [".minimax"],
+        globalPaths: [".minimax-code"],
+        // `.agents/skills` is NOT contained by `.minimax/`, so the installed
+        // skill is its own project signal. Any `opsx-*` skill counts, not only
+        // today's command — the directory is named after the command id, so a
+        // second command must not need a second detection rule.
+        artifactRoots: [
+            { dir: join(".agents", "skills"), prefix: "opsx-", entry: "SKILL.md" },
+        ],
+    },
+    // Shared with Claude Code and CodeBuddy CLI.
+    mcp: { kind: "mcp-servers-file", path: minimaxMcpPath },
+    // MiniMax Code reads AGENTS.md natively — that's the default.
+};
+export const minimaxAdapter = defineAdapter(minimaxDeclaration);
+// ─── Named exports (derived from the declaration) ────────────────────────
+export function formatMinimaxSkill(meta) {
+    return formatArtifact(MINIMAX_ARTIFACT, meta);
+}
+/**
+ * Detection: the project's `.minimax/` marker dir, the global CLI install
+ * root, or the installed skill artifact.
+ *
+ * The global signal is a pre-select hint only — `hasMinimaxProjectSignal`
+ * excludes it.
+ */
+export function hasMinimax(projectRoot, homeDir) {
+    return minimaxAdapter.detect(projectRoot, homeDir);
+}
+/** Project-level signal only: marker dir or the installed skill. */
+export function hasMinimaxProjectSignal(projectRoot) {
+    return minimaxAdapter.projectSignal(projectRoot);
 }
 registerAdapter(minimaxAdapter);
 //# sourceMappingURL=minimax.js.map

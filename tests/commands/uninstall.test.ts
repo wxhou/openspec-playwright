@@ -16,7 +16,7 @@ vi.mock("fs", () => ({
 }));
 
 import { execFileSync } from "child_process";
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { claudeAdapter } from "../../src/commands/editors.js";
 import { removePlaywrightMcp } from "../../src/shared/mcp.js";
 
@@ -25,6 +25,10 @@ describe("removePlaywrightMcp", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // The shared mcpServers helpers probe existsSync before reading; a real
+    // `.mcp.json` would pass this. The failure case is simulated by
+    // readFileSync throwing, not by a missing file.
+    vi.mocked(existsSync).mockReturnValue(true);
   });
 
   it("removes MCP when installed", () => {
@@ -80,6 +84,7 @@ describe("removeTestRunnerMcp", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(existsSync).mockReturnValue(true);
     // clearAllMocks keeps implementations — reset the CLI mock fully so an
     // earlier failing-removal mockImplementation doesn't leak into here.
     vi.mocked(execFileSync).mockReset();

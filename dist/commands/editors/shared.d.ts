@@ -1,3 +1,10 @@
+import type { ArtifactSpec, CommandMeta } from "./types.js";
+/**
+ * The claude-only skill directory retired installs (pre-0.3.74) left
+ * behind. Declared by the claude adapter and reused by uninstall's fixed
+ * historical cleanup.
+ */
+export declare const CLAUDE_LEGACY_SKILL_REL: string;
 /** Escape a value for safe inclusion in a YAML frontmatter scalar. */
 export declare function escapeYamlValue(value: string): string;
 /** Format tags as a YAML inline array. */
@@ -8,26 +15,17 @@ export declare function formatTagsArray(tags: string[]): string;
  * command body for OpenCode installation.
  */
 export declare function transformToHyphenCommands(text: string): string;
-export interface CommandMeta {
-    id: string;
-    name: string;
-    description: string;
-    category: string;
-    tags: string[];
-    body: string;
-}
-/** Build the command metadata for the /opsx:e2e command. */
-export declare function buildCommandMeta(body: string): CommandMeta;
 /**
- * Format a skill-based command artifact: `name` + `description` frontmatter
- * over a hyphen-rewritten body.
+ * Render one artifact from its declaration. The naming convention is the
+ * single source of truth for both the invocation form and the body rewrite:
+ * `hyphen-prefix` artifacts invoke as `/opsx-<id>` and get their `/opsx:`
+ * references rewritten; `namespace-dir` artifacts invoke as `/opsx:<id>`
+ * and keep the body unchanged.
  *
- * Shared by Cline (`.cline/skills/opsx-<id>/SKILL.md`) and MiniMax Code
- * (`.agents/skills/opsx-<id>/SKILL.md`) so the two skill formats cannot
- * drift. Editors that load skills as slash commands invoke them as
- * `/<name>` — hence the hyphenated `/opsx-` body references.
+ * Frontmatter fields always emit in the order name → description →
+ * argument-hint → disable-model-invocation so artifacts stay byte-stable.
  */
-export declare function formatSkillCommand(meta: CommandMeta): string;
+export declare function formatArtifact(spec: ArtifactSpec, meta: CommandMeta): string;
 export interface McpStdioServer {
     command: string;
     args: string[];

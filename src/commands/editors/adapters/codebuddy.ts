@@ -6,68 +6,57 @@
  * to the project-root `.mcp.json` (never via `codebuddy mcp`: the CLI
  * starts a port-bound service that conflicts with running sessions).
  */
-import { existsSync } from "fs";
 import { join } from "path";
-import { defineAdapter, type EditorAdapter, type CommandMeta } from "../types.js";
-import {
-  escapeYamlValue,
-  isMcpServerInFile,
-  installMcpServerInFile,
-  removeMcpServerFromFile,
-} from "../shared.js";
+import type {
+  AdapterDeclaration,
+  ArtifactSpec,
+  CommandMeta,
+} from "../types.js";
+import { defineAdapter } from "../declaration.js";
+import { formatArtifact } from "../shared.js";
 import { registerAdapter } from "../registry.js";
 
 // ─── CodeBuddy CLI adapter ───────────────────────────────────────────────
-
-/**
- * CodeBuddy's documented command frontmatter fields are description,
- * argument-hint, model, allowed-tools, disable-model-invocation — no
- * `name` field (extra keys are ignored). Same shape as Claude's, so the
- * body keeps its `/opsx:` references (subdirectory colon naming).
- */
-export function formatCodebuddyCommand(meta: CommandMeta): string {
-  return `---
-description: ${escapeYamlValue(meta.description)}
-argument-hint: "<change-name|all>"
----
-
-${meta.body}
-`;
-}
 
 export function getCodebuddyCommandPath(id: string): string {
   return join(".codebuddy", "commands", "opsx", `${id}.md`);
 }
 
-export function hasCodebuddy(projectRoot: string): boolean {
-  return existsSync(join(projectRoot, ".codebuddy"));
-}
+const CODEBUDDY_ARTIFACT: ArtifactSpec = {
+  path: getCodebuddyCommandPath,
+  naming: "namespace-dir",
+  // CodeBuddy's documented frontmatter fields are description,
+  // argument-hint, model, allowed-tools, disable-model-invocation — no
+  // `name` field (extra keys are ignored). Same shape as Claude's.
+  frontmatter: { description: true, argumentHint: "<change-name|all>" },
+};
 
-export const codebuddyAdapter: EditorAdapter = defineAdapter({
+const codebuddyDeclaration: AdapterDeclaration = {
   id: "codebuddy",
   label: "codebuddy",
   displayName: "CodeBuddy CLI",
-  detect: hasCodebuddy,
-  commandFilePath: getCodebuddyCommandPath,
-  formatCommand: formatCodebuddyCommand,
+  artifacts: [CODEBUDDY_ARTIFACT],
+  detection: {
+    projectPaths: [".codebuddy"],
+    intentPaths: ["CODEBUDDY.md"],
+  },
+  // Shared with Claude Code and MiniMax Code.
+  mcp: { kind: "mcp-servers-file", path: (root) => join(root, ".mcp.json") },
   // CodeBuddy prefers CODEBUDDY.md over AGENTS.md when both exist — the
   // wrapper (installProjectRules phase) keeps the standards reachable.
-  projectRulesPath: (root) => join(root, "CODEBUDDY.md"),
-  isMcpInstalled(projectRoot, serverName) {
-    return isMcpServerInFile(codebuddyMcpPath(projectRoot), serverName);
-  },
-  installMcp(projectRoot, serverName, command) {
-    installMcpServerInFile(codebuddyMcpPath(projectRoot), serverName, command);
-  },
-  removeMcp(projectRoot, serverName) {
-    removeMcpServerFromFile(codebuddyMcpPath(projectRoot), serverName);
-  },
-  mcpConfigPath: codebuddyMcpPath,
-});
+  rules: { path: (root) => join(root, "CODEBUDDY.md") },
+};
 
-/** Path to the project-scope MCP config file for CodeBuddy CLI. */
-function codebuddyMcpPath(projectRoot: string): string {
-  return join(projectRoot, ".mcp.json");
+export const codebuddyAdapter = defineAdapter(codebuddyDeclaration);
+
+// ─── Named exports (derived from the declaration) ────────────────────────
+
+export function formatCodebuddyCommand(meta: CommandMeta): string {
+  return formatArtifact(CODEBUDDY_ARTIFACT, meta);
+}
+
+export function hasCodebuddy(projectRoot: string, homeDir?: string): boolean {
+  return codebuddyAdapter.detect(projectRoot, homeDir);
 }
 
 registerAdapter(codebuddyAdapter);

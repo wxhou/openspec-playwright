@@ -418,8 +418,14 @@ describe("init deselect-removal: shared .mcp.json entry is kept for a selected e
       },
     );
 
-    const kept = logs.filter((l) => l.includes("playwright-test") && l.includes("kept"));
-    expect(kept.length).toBeGreaterThan(0);
+    // Kept entries are listed apart from the removal list — the heading
+    // says so, and the item line carries no "will be removed" wording.
+    const heading = logs.find((l) => l.includes("Kept — shared MCP config file"));
+    expect(heading).toBeDefined();
+    const item = logs.find(
+      (l) => l.includes("playwright-test MCP entry") && !l.includes("kept"),
+    );
+    expect(item).toBeDefined();
   });
 
   it("removes the shared entry once no selected editor depends on the file", async () => {

@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import chalk from "chalk";
 import {
   buildCommandMeta,
+  CLAUDE_LEGACY_SKILL_REL,
   cleanProjectRules,
   claudeAdapter,
   codebuddyAdapter,
@@ -96,7 +97,7 @@ export async function uninstall() {
 
   // 3. Remove legacy skill directory (if present from older versions)
   console.log(chalk.blue("\n─── Removing Legacy Skill ───"));
-  const skillDir = join(projectRoot, ".claude", "skills", "openspec-e2e");
+  const skillDir = join(projectRoot, CLAUDE_LEGACY_SKILL_REL);
   if (existsSync(skillDir)) {
     rmSync(skillDir, { recursive: true, force: true });
     console.log(chalk.green("  ✓ Removed .claude/skills/openspec-e2e/"));

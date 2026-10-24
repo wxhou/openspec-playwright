@@ -1,4 +1,5 @@
 import { type EditorAdapter } from "./types.js";
+import { CLAUDE_LEGACY_SKILL_REL } from "./shared.js";
 /**
  * The Playwright MCP servers openspec-pw manages. `playwright-test` is the
  * official test-runner server installed today; `playwright` is the legacy
@@ -7,13 +8,13 @@ import { type EditorAdapter } from "./types.js";
  * editors facade that re-exports this module (import cycle).
  */
 export declare const OPENSPEC_PW_MCP_SERVERS: readonly ["playwright-test", "playwright"];
-/** The claude-only skill directory retired installs left behind. */
-export declare const CLAUDE_LEGACY_SKILL_REL: string;
+/** Re-exported for uninstall's fixed historical cleanup and the facade. */
+export { CLAUDE_LEGACY_SKILL_REL };
 export interface AdapterArtifactInventory {
     /** Existing openspec-pw command/skill artifact paths (project-relative). */
     commandPaths: string[];
-    /** Claude-only legacy skill dir, when present (project-relative). */
-    legacySkillPath: string | null;
+    /** Declared legacy artifact directories that exist (project-relative). */
+    legacyArtifacts: string[];
     /** openspec-pw MCP server entries present in this editor's config. */
     mcpServers: string[];
     /**
@@ -61,8 +62,11 @@ export declare function removeAdapterCommandArtifacts(adapter: EditorAdapter, pr
  * reported as kept-modified. Returns the removed project-relative paths.
  */
 export declare function removeOwnedVendoredAgents(projectRoot: string, adapter: EditorAdapter): string[];
-/** Delete claude's retired-install skill directory. Returns the path or null. */
-export declare function removeClaudeLegacySkill(projectRoot: string): string | null;
+/**
+ * Delete one legacy artifact directory declared by the adapter. Returns the
+ * removed project-relative path, or null when it does not exist.
+ */
+export declare function removeLegacyArtifact(adapter: EditorAdapter, projectRoot: string, relPath: string): string | null;
 /**
  * Remove the openspec-pw wrapper block from the adapter's wrapper file
  * (CLAUDE.md for claude, CODEBUDDY.md for codebuddy — adapter-owned

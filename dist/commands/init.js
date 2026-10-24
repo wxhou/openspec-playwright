@@ -4,7 +4,7 @@ import { join, basename, relative } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { readFile } from "fs/promises";
-import { buildCommandMeta, detectAdapters, detectProjectAdapters, getAdapter, getAllAdapters, installCommand, installOptionalArtifacts, installProjectRules, migrateLegacyMarkers, readEmployeeStandards, resolveToolsArg, slashCommandForAdapter, intentFileEditors, enumerateAdapterArtifacts, enumerateVendoredAgents, installedAgentsSnapshotDir, isInventoryEmpty, removeAdapterMcp, retainedMcpConfigFiles, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, removeClaudeLegacySkill, removeWrapper, removeMarkersFromFile, normalizeEol, } from "./editors.js";
+import { buildCommandMeta, detectAdapters, detectProjectAdapters, preselectAdapters, getAdapter, getAllAdapters, installCommand, installOptionalArtifacts, installProjectRules, migrateLegacyMarkers, readEmployeeStandards, resolveToolsArg, slashCommandForAdapter, enumerateAdapterArtifacts, enumerateVendoredAgents, installedAgentsSnapshotDir, isInventoryEmpty, removeAdapterMcp, retainedMcpConfigFiles, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, removeLegacyArtifact, removeWrapper, removeMarkersFromFile, normalizeEol, } from "./editors.js";
 import { isEditorConfigured, agentsFileHasMarkers, } from "./editors/configured.js";
 import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, TEST_RUNNER_MCP_SERVER, needsShell, hasFrontendSignal, explainFrontendSignal, detectCodeGraphStatus, codegraphHintLines, ensureGitignoreEntries, findUncoveredManagedPaths, detectTrackedFiles, managedBlockAdvisoryHint, installOrRefreshChecklist, installLintConfig, LINT_ESLINT_SNIPPET, LINT_GUIDELINES_RELPATH, } from "../shared/index.js";
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
@@ -169,14 +169,10 @@ export async function init(options, deps = {}) {
     const hasAnyState = configuredIds.size > 0 || agentsFileHasMarkers(projectRoot);
     // Two-tier pre-select: artifact-manifest tier pre-checks only configured
     // editors; the first-run bypass (zero openspec-pw state) pre-checks the
-    // pre-select signal set — project marker dirs plus root intent files.
-    // Machine state (global home dirs) never pre-checks an editor.
-    const preselectHintIds = [
-        ...new Set([
-            ...projectDetected.map((a) => a.id),
-            ...intentFileEditors(projectRoot),
-        ]),
-    ];
+    // pre-select signal set — project marker dirs plus root intent files,
+    // both declared on each adapter. Machine state (global home dirs) never
+    // pre-checks an editor.
+    const preselectHintIds = preselectAdapters(projectRoot).map((a) => a.id);
     const preselectedIds = hasAnyState
         ? configuredIds
         : new Set(preselectHintIds);
@@ -290,18 +286,21 @@ export async function init(options, deps = {}) {
         if (inventories.length > 0 || agentsHasBlock) {
             console.log(chalk.blue("\n─── Removing Deselected Editors ───"));
             console.log(chalk.yellow("  The following openspec-pw artifacts will be removed:"));
+            // Entries that are NOT removed are listed separately below — mixing
+            // them into the "will be removed" list contradicts the heading.
+            const keptMcpEntries = [];
             for (const { adapter, inv } of inventories) {
                 for (const relPath of inv.commandPaths) {
                     console.log(chalk.gray(`    - ${adapter.label}: ${relPath}`));
                 }
-                if (inv.legacySkillPath) {
-                    console.log(chalk.gray(`    - ${adapter.label}: ${inv.legacySkillPath}/`));
+                for (const relPath of inv.legacyArtifacts) {
+                    console.log(chalk.gray(`    - ${adapter.label}: ${relPath}/`));
                 }
                 for (const server of inv.mcpServers) {
                     console.log(chalk.gray(`    - ${adapter.label}: ${server} MCP entry`));
                 }
                 for (const server of inv.retainedMcpServers) {
-                    console.log(chalk.gray(`    - ${adapter.label}: ${server} MCP entry kept (shared config file still used by a selected editor)`));
+                    keptMcpEntries.push(`${adapter.label}: ${server} MCP entry`);
                 }
                 if (inv.hasWrapper) {
                     console.log(chalk.gray(`    - ${adapter.label}: ${basename(adapter.projectRulesPath(projectRoot))} wrapper block`));
@@ -317,6 +316,12 @@ export async function init(options, deps = {}) {
             if (agentsHasBlock) {
                 console.log(chalk.gray("    - AGENTS.md: shared openspec-pw block"));
             }
+            if (keptMcpEntries.length > 0) {
+                console.log(chalk.gray("  Kept — shared MCP config file still used by a selected editor:"));
+                for (const entry of keptMcpEntries) {
+                    console.log(chalk.gray(`    - ${entry}`));
+                }
+            }
             const agreed = await confirmPrompt("Proceed with removal?");
             if (!agreed) {
                 console.log(chalk.gray("  - Removal declined — keeping existing artifacts (deselect only skips writes this run)"));
@@ -326,8 +331,8 @@ export async function init(options, deps = {}) {
                     removeAdapterMcp(adapter, projectRoot, inv.mcpServers, retainedMcpFiles);
                     removeAdapterCommandArtifacts(adapter, projectRoot);
                     removeOwnedVendoredAgents(projectRoot, adapter);
-                    if (inv.legacySkillPath) {
-                        removeClaudeLegacySkill(projectRoot);
+                    for (const relPath of inv.legacyArtifacts) {
+                        removeLegacyArtifact(adapter, projectRoot, relPath);
                     }
                     if (inv.hasWrapper) {
                         removeWrapper(adapter, projectRoot);
