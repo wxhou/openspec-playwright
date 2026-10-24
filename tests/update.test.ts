@@ -1,5 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from "fs";
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+} from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 import { fileURLToPath } from "url";
@@ -732,5 +739,72 @@ describe("update.ts: minimal-mode block-removed alarm", () => {
         l.includes("AGENTS.md has no OPENSPEC-PW block — the employee-grade standards block is missing"),
       ),
     ).toBe(true);
+  });
+});
+
+// ─── syncCommandArtifacts (update refresh, per-adapter) ──────────────────────
+
+describe("syncCommandArtifacts", () => {
+  let projectDir: string;
+
+  beforeEach(() => {
+    projectDir = mkdtempSync(join(tmpdir(), "openspec-pw-sync-cmd-"));
+  });
+
+  afterEach(() => {
+    rmSync(projectDir, { recursive: true, force: true });
+  });
+
+  it("refreshes a stale MiniMax Code skill to the latest template", async () => {
+    const { syncCommandArtifacts } = await import("../../src/commands/update.js");
+    const { getMinimaxSkillPath } = await import(
+      "../../src/commands/editors.js"
+    );
+
+    // A stale skill from an earlier install — the artifact exists, so the
+    // editor is authorized and update maintains (not expands) its territory.
+    const skillPath = join(projectDir, getMinimaxSkillPath("e2e"));
+    mkdirSync(join(projectDir, ".agents", "skills", "opsx-e2e"), {
+      recursive: true,
+    });
+    writeFileSync(skillPath, "---\nname: opsx-e2e\n---\n\nstale body\n");
+
+    syncCommandArtifacts(projectDir, "fresh body with /opsx:e2e reference\n");
+
+    const updated = readFileSync(skillPath, "utf-8");
+    expect(updated).toContain("fresh body with /opsx-e2e reference");
+    expect(updated).not.toContain("stale body");
+  });
+
+  it("leaves an up-to-date skill untouched", async () => {
+    const { syncCommandArtifacts } = await import("../../src/commands/update.js");
+    const { getMinimaxSkillPath, formatMinimaxSkill, buildCommandMeta } =
+      await import("../../src/commands/editors.js");
+
+    const body = "current body\n";
+    const skillPath = join(projectDir, getMinimaxSkillPath("e2e"));
+    mkdirSync(join(projectDir, ".agents", "skills", "opsx-e2e"), {
+      recursive: true,
+    });
+    writeFileSync(skillPath, formatMinimaxSkill(buildCommandMeta(body)));
+
+    syncCommandArtifacts(projectDir, body);
+
+    expect(readFileSync(skillPath, "utf-8")).toBe(
+      formatMinimaxSkill(buildCommandMeta(body)),
+    );
+  });
+
+  it("does not create a skill for an editor that has no artifacts", async () => {
+    const { syncCommandArtifacts } = await import("../../src/commands/update.js");
+    const { getMinimaxSkillPath } = await import(
+      "../../src/commands/editors.js"
+    );
+
+    syncCommandArtifacts(projectDir, "body\n");
+
+    expect(existsSync(join(projectDir, getMinimaxSkillPath("e2e")))).toBe(
+      false,
+    );
   });
 });

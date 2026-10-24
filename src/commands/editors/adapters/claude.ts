@@ -89,6 +89,9 @@ export const claudeAdapter: EditorAdapter = defineAdapter({
       },
     );
   },
+  // Claude Code's project scope IS the project-root .mcp.json — the same
+  // file the CodeBuddy CLI and MiniMax Code adapters read and write.
+  mcpConfigPath: (root) => join(root, ".mcp.json"),
   // Vendored official Playwright agents (init --agents). Read lazily from
   // the installed package templates; byte-identity with the official
   // init-agents output is load-bearing (content-based ownership), so the

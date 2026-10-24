@@ -39,6 +39,7 @@ export function defineAdapter(init) {
         isMcpInstalled: init.isMcpInstalled ?? alwaysFalse,
         installMcp: init.installMcp ?? noop,
         removeMcp: init.removeMcp ?? noop,
+        mcpConfigPath: init.mcpConfigPath,
         registerInstructions: init.registerInstructions,
         extraArtifacts: init.extraArtifacts,
         optionalArtifacts: init.optionalArtifacts,

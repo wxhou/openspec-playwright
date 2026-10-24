@@ -9,6 +9,10 @@ import { type EditorAdapter, type CommandMeta } from "../types.js";
  *   - MCP:      `.cline/mcp.json` with `{ "mcpServers": { ... } }` structure.
  *   - Rules:    Cline auto-detects `AGENTS.md` — no wrapper file needed.
  */
+/**
+ * Cline's skill artifact. Delegates to the shared skill formatter so Cline
+ * and MiniMax Code emit byte-identical skill files.
+ */
 export declare function formatClineCommand(meta: CommandMeta): string;
 export declare function getClineCommandPath(id: string): string;
 export declare function hasCline(projectRoot: string): boolean;

@@ -15,7 +15,16 @@ import {
 // ─── resolveToolsArg (--tools flag parsing) ──────────────────────────────
 
 describe("resolveToolsArg", () => {
-  const ALL = ["claude", "opencode", "cline", "cursor", "pi", "omp", "codebuddy"];
+  const ALL = [
+    "claude",
+    "opencode",
+    "cline",
+    "cursor",
+    "pi",
+    "omp",
+    "codebuddy",
+    "minimax",
+  ];
 
   it("returns null when no --tools flag was provided", () => {
     expect(resolveToolsArg(undefined)).toBeNull();
@@ -35,6 +44,11 @@ describe("resolveToolsArg", () => {
 
   it("resolves a comma-separated subset", () => {
     expect(resolveToolsArg("claude,cursor")).toEqual(["claude", "cursor"]);
+  });
+
+  it("accepts the minimax-code alias for minimax", () => {
+    expect(resolveToolsArg("minimax-code")).toEqual(["minimax"]);
+    expect(resolveToolsArg("MINIMAX-CODE")).toEqual(["minimax"]);
   });
 
   it("accepts the oh-my-pi alias for omp", () => {

@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Node >= 20](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org)
 
-**OpenSpec projects get AI-driven E2E verification that lives where your code does.** One `/opsx:e2e <change>` command — seven editors supported — plans, generates, executes, and self-heals Playwright tests against the spec, with a per-change report and no manual harness wiring.
+**OpenSpec projects get AI-driven E2E verification that lives where your code does.** One `/opsx:e2e <change>` command — eight editors supported — plans, generates, executes, and self-heals Playwright tests against the spec, with a per-change report and no manual harness wiring.
 
 > **Why this exists**: spec-driven development without test automation is a half-finished loop. This tool completes it — write a change spec, run one command, get tests traceable to spec anchors and a report on what passed, what healed, and what is left for human review.
 
@@ -59,12 +59,13 @@ openspec-pw init          # Install Playwright E2E integration (--tools to pick 
 | **Pi** (earendil-works) | `/opsx-e2e` | **no** — uses `openspec-pw explore` + `npx playwright test` | native |
 | **Oh My Pi (omp)** | `/opsx-e2e` | yes (`.omp/mcp.json`) | native |
 | **CodeBuddy CLI** (Tencent) | `/opsx:e2e` | yes (project `.mcp.json`) | via `CODEBUDDY.md` → `@AGENTS.md` |
+| **MiniMax Code** | `/opsx-e2e` | yes (project `.mcp.json`) | native (`AGENTS.md`) |
 
 The command body is identical across editors (`/opsx:` → `/opsx-` rewrite at install time). Per-editor install paths, detection signals, and auth/MCP nuances are detailed in the [Usage](#usage) and [Prerequisites](#prerequisites) sections below.
 
 ## Usage
 
-Pick the editor that matches your project and invoke the same command. All seven editors share an identical workflow — `/opsx:` is rewritten to `/opsx-` at install time, only the file location of the command artifact differs.
+Pick the editor that matches your project and invoke the same command. All eight editors share an identical workflow — `/opsx:` is rewritten to `/opsx-` at install time, only the file location of the command artifact differs.
 
 | Editor | Command | Install location |
 |---|---|---|
@@ -75,6 +76,7 @@ Pick the editor that matches your project and invoke the same command. All seven
 | Pi | `/opsx-e2e <change-name>` | `.pi/prompts/opsx-e2e.md` (filename = command) |
 | Oh My Pi | `/opsx-e2e <change-name>` | `.omp/commands/opsx-e2e.md` |
 | CodeBuddy CLI | `/opsx:e2e <change-name>` | `.codebuddy/commands/opsx/e2e.md` |
+| MiniMax Code | `/opsx-e2e <change-name>` | `.agents/skills/opsx-e2e/SKILL.md` (skill) |
 
 <details>
 <summary><strong>Per-editor nuances</strong> (expand only if init reports a divergence)</summary>
@@ -83,6 +85,7 @@ Pick the editor that matches your project and invoke the same command. All seven
 - **Pi**: no MCP client — browser exploration runs via `openspec-pw explore`, test execution via `npx playwright test` in the shell (no Healer step).
 - **Oh My Pi**: also inherits MCP servers already configured in `.claude/` / `.cursor/` / `opencode.jsonc` when those are present.
 - **CodeBuddy CLI**: colon naming (`/opsx:e2e`, same as Claude Code) — the command body keeps its `/opsx:` references.
+- **MiniMax Code**: the workflow is delivered as a **Skill** (`SKILL.md`), because MiniMax Code loads no user-defined command files — skills are its only user-extensible command mechanism. Read `AGENTS.md` natively, no wrapper.
 
 </details>
 
@@ -102,7 +105,8 @@ openspec-pw init --tools none            # no editors; scaffold only
 ```
 
 Supported ids: `claude`, `opencode`, `cline`, `cursor`, `pi`, `omp`,
-`codebuddy` (`oh-my-pi` is accepted as an alias for `omp`). Ids are
+`codebuddy`, `minimax` (`oh-my-pi` is accepted as an alias for `omp`,
+`minimax-code` for `minimax`). Ids are
 case-insensitive, repeats are de-duplicated, and `all`/`none` cannot be
 mixed with specific ids. A `--tools` id is configured even when the editor
 is not detected (its config directory is created).
@@ -116,9 +120,9 @@ pre-checks **project-level signals only** — marker dirs plus root
 intent files (root `CLAUDE.md` → claude, root `.cursorrules` → cursor,
 root `opencode.json(c)` → opencode, root `CODEBUDDY.md` → codebuddy).
 Editors installed on your machine but
-not used by the project (e.g. Pi / Oh My Pi detected via the global
-`~/.pi/agent/` / `~/.omp/agent/` home dirs) are **listed unchecked** with a
-gray hint line. Once anything is configured, foreign files that keep an editor's directory
+not used by the project (e.g. Pi / Oh My Pi / MiniMax Code detected via the
+global `~/.pi/agent/` / `~/.omp/agent/` / `~/.minimax-code/` home dirs) are
+**listed unchecked** with a gray hint line. Once anything is configured, foreign files that keep an editor's directory
 alive (the official `openspec` CLI's own `opsx-*` files, your own
 settings, global home dirs) no longer influence the pre-select.
 `--tools` is documented as orthogonal to `--no-mcp`: the former picks
@@ -296,7 +300,7 @@ Audit is **report-only** — it never deletes or edits tests; retiring a test is
 
 ```
 /opsx:e2e <change-name>          # Claude Code / CodeBuddy CLI
-/opsx-e2e <change-name>          # OpenCode / Cline / Cursor / Pi / Oh My Pi
+/opsx-e2e <change-name>          # OpenCode / Cline / Cursor / Pi / Oh My Pi / MiniMax Code
   │
   ├── 1. Select change → read openspec/changes/<name>/specs/
   │
@@ -334,7 +338,7 @@ Audit is **report-only** — it never deletes or edits tests; retiring a test is
 **Required:**
 
 1. **Node.js >= 20**
-2. **Claude Code** (with `.claude/` directory) and/or **OpenCode** (with `.opencode/` directory) and/or **Cline** (with `.cline/` or `.clinerules/` directory) and/or **Cursor** (with `.cursor/` directory) and/or **Pi** (project `.pi/` or global `~/.pi/agent/`) and/or **Oh My Pi** (project `.omp/` or global `~/.omp/agent/`) and/or **CodeBuddy CLI** (with `.codebuddy/` directory)
+2. **Claude Code** (with `.claude/` directory) and/or **OpenCode** (with `.opencode/` directory) and/or **Cline** (with `.cline/` or `.clinerules/` directory) and/or **Cursor** (with `.cursor/` directory) and/or **Pi** (project `.pi/` or global `~/.pi/agent/`) and/or **Oh My Pi** (project `.omp/` or global `~/.omp/agent/`) and/or **CodeBuddy CLI** (with `.codebuddy/` directory) and/or **MiniMax Code** (project `.minimax/` or global `~/.minimax-code/`, or the installed `.agents/skills/opsx-e2e/` skill)
 3. **OpenSpec** initialized: `npm install -g @fission-ai/openspec@latest && openspec init`
 4. **Playwright MCP** (for test execution + Healer) — installed automatically by `openspec-pw init` when a frontend signal is detected (skipped for API-only projects — API tests use the `request` fixture), **project-scoped** (written to a project file; Claude Code uses `--scope project` → project-root `.mcp.json`, never your global `~/.claude.json`). A single server matching the official `playwright init-agents` layout:
    - `playwright-test` — official test-runner server (`npx playwright run-test-mcp-server`, bundled with the `playwright` package). Superset of `@playwright/mcp`: one entry exposes both `browser_*` tools (exploration + Healer page inspection) and the structured `test_run` / `test_debug` / `test_list` workflow tools for the Healer loop.
@@ -344,6 +348,7 @@ Audit is **report-only** — it never deletes or edits tests; retiring a test is
    - **Cursor**: merged into `.cursor/mcp.json` under `mcpServers["playwright-test"] = { "command": "npx", "args": ["playwright", "run-test-mcp-server"] }`
    - **Oh My Pi**: merged into `.omp/mcp.json` under `mcpServers["playwright-test"] = { "command": "npx", "args": ["playwright", "run-test-mcp-server"] }`
    - **CodeBuddy CLI**: merged into project-root `.mcp.json` under `mcpServers["playwright-test"] = { "command": "npx", "args": ["playwright", "run-test-mcp-server"] }` (direct file read/write, never via the `codebuddy mcp` CLI — the CLI starts a port-bound service that conflicts with running sessions)
+   - **MiniMax Code**: merged into project-root `.mcp.json` under `mcpServers["playwright-test"] = { "command": "npx", "args": ["playwright", "run-test-mcp-server"] }` (direct file read/write — MiniMax Code auto-loads the project-root `.mcp.json`)
    - **Pi**: no MCP client, skipped — browser exploration uses `openspec-pw explore` instead
 
 > **Migrating from older versions**: before this change, Claude Code's Playwright MCP was installed at global user scope (`~/.claude.json`). If you initialized with an older `openspec-pw`, a stale global entry may still load everywhere. Clean it up once: `claude mcp remove playwright` (user scope). Note that project-scoped servers prompt for approval the first time they are used interactively (`claude mcp reset-project-choices` resets those choices).
@@ -354,8 +359,8 @@ Browser exploration is provided out of the box by Playwright MCP and `openspec-p
 
 ## What `openspec-pw init` Does
 
-1. Detects supported editors in the project (Claude Code and/or OpenCode and/or Cline and/or Cursor and/or Pi and/or Oh My Pi and/or CodeBuddy CLI; Pi and Oh My Pi are also detected via their global config dirs `~/.pi/agent/` / `~/.omp/agent/`)
-2. Installs the E2E command for each detected editor (`/opsx:e2e` for Claude Code and CodeBuddy CLI, `/opsx-e2e` for OpenCode, Cline, Cursor, Pi, and Oh My Pi; Cursor also gets an Agent Skill)
+1. Detects supported editors in the project (Claude Code and/or OpenCode and/or Cline and/or Cursor and/or Pi and/or Oh My Pi and/or CodeBuddy CLI and/or MiniMax Code; Pi, Oh My Pi and MiniMax Code are also detected via their global config dirs `~/.pi/agent/` / `~/.omp/agent/` / `~/.minimax-code/`)
+2. Installs the E2E command for each detected editor (`/opsx:e2e` for Claude Code and CodeBuddy CLI, `/opsx-e2e` for OpenCode, Cline, Cursor, Pi, Oh My Pi, and MiniMax Code; Cursor also gets an Agent Skill, MiniMax Code gets an Agent Skill as its only command artifact)
 3. Generates `tests/playwright/seed.spec.ts`, `auth.setup.ts`, `credentials.yaml`, `app-knowledge.md`, `pages/BasePage.ts`, plus the project-root `lint-guidelines.md` swallow-error lint checklist (refreshed by `update` while unmodified, removed by `uninstall`)
 
 > **`--lint-config` (opt-in)**: creates a minimal `eslint.config.mjs` (eslint 9+ declared, no config anywhere in the project or its ancestors up to the git root; TypeScript projects get the declared parser — `typescript-eslint` or `@typescript-eslint/parser` — wired into `files`/`languageOptions`) and creates or extends the ruff config with a managed `extend-select = ["B904"]` block (`.ruff.toml` > `ruff.toml` > `pyproject.toml`, ruff's own precedence). Existing configs are never edited — a paste-ready snippet is printed instead. Re-runs are idempotent; a hand-edited managed block is kept as-is.
@@ -373,12 +378,12 @@ Run through these steps in order when using the E2E workflow for the first time:
 | 1. Install CLI | `npm install -g openspec-playwright@latest` | Check Node.js version `node -v` (needs >= 20) |
 | 2. Install OpenSpec | `npm install -g @fission-ai/openspec@latest && openspec init` | `npm cache clean -f && npm install -g @fission-ai/openspec@latest` |
 | 3. Initialize E2E | `openspec-pw init` | Run `openspec-pw doctor` to see what's missing |
-| 4. Install Playwright MCP | `claude mcp add --scope project playwright-test npx playwright run-test-mcp-server` (Claude, writes project-root `.mcp.json`), or add `mcp["playwright-test"]` to `opencode.jsonc` (OpenCode), or `mcpServers["playwright-test"]` in `.cline/mcp.json` (Cline) / `.cursor/mcp.json` (Cursor) / `.omp/mcp.json` (Oh My Pi), or merge it into project-root `.mcp.json` (CodeBuddy CLI, direct file write); Pi has no simple MCP config file, skipped | `cat .mcp.json` (Claude + CodeBuddy CLI, check `mcpServers["playwright-test"]`) / `cat opencode.jsonc` (OpenCode) / `cat .cline/mcp.json` (Cline) / `cat .cursor/mcp.json` (Cursor) / `cat .omp/mcp.json` (Oh My Pi) |
+| 4. Install Playwright MCP | `claude mcp add --scope project playwright-test npx playwright run-test-mcp-server` (Claude, writes project-root `.mcp.json`), or add `mcp["playwright-test"]` to `opencode.jsonc` (OpenCode), or `mcpServers["playwright-test"]` in `.cline/mcp.json` (Cline) / `.cursor/mcp.json` (Cursor) / `.omp/mcp.json` (Oh My Pi), or merge it into project-root `.mcp.json` (CodeBuddy CLI and MiniMax Code, direct file write); Pi has no simple MCP config file, skipped | `cat .mcp.json` (Claude + CodeBuddy CLI + MiniMax Code, check `mcpServers["playwright-test"]`) / `cat opencode.jsonc` (OpenCode) / `cat .cline/mcp.json` (Cline) / `cat .cursor/mcp.json` (Cursor) / `cat .omp/mcp.json` (Oh My Pi) |
 | 5. Install browsers | `npx playwright install chromium` | Linux CI images may need system deps: `npx playwright install --with-deps chromium` (macOS may need `xcode-select --install` first) |
 | 6. Start dev server | `npm run dev` (in a separate terminal) | Confirm port, set `BASE_URL` if non-standard |
 | 7. Validate env | `npx playwright test tests/playwright/seed.spec.ts` | Check `webServer` in `playwright.config.ts` |
 | 8. Configure auth (if needed) | See "Authentication" below | Debug with `npx playwright test --project=setup` |
-| 9. Run first E2E | `/opsx:e2e <change-name>` (Claude / CodeBuddy CLI) or `/opsx-e2e <change-name>` (OpenCode / Cline / Cursor / Pi / Oh My Pi) | Check `openspec/reports/` for the report |
+| 9. Run first E2E | `/opsx:e2e <change-name>` (Claude / CodeBuddy CLI) or `/opsx-e2e <change-name>` (OpenCode / Cline / Cursor / Pi / Oh My Pi / MiniMax Code) | Check `openspec/reports/` for the report |
 
 ### What `openspec-pw doctor` checks
 
@@ -436,7 +441,7 @@ If your project already has `playwright.config.ts`, `openspec-pw init` will not 
 
 If your app requires login, set up credentials once, then all tests run authenticated automatically.
 
-> **Credentials are ignored automatically**: init and update maintain a marked block at the tail of your `.gitignore` that ignores `tests/playwright/credentials.yaml`, its `.bak`, `tests/playwright/test-results/`, and exploration screenshots (`tests/playwright/screenshots/` — they age as the app evolves; stay local like app-exploration.md) — plus auth storageState (`playwright/.auth/`, logged-in session cookies), MCP config (`.mcp.json` — user-added servers often carry API keys in env/headers), tool-local data (`.codegraph/`, `.playwright-mcp/`), and first-tier names like `.claude/`, `.cursor/`, `.codebuddy/`, `openspec/`, `AGENTS.md`, `CLAUDE.md`, `CODEBUDDY.md` (the generated products stay local, per design). The block is idempotent, never touches your own rules, and is cleaned up by `uninstall`. If the block cannot be written, a warning lists the uncovered paths instead. Note: ignore rules do not apply to already-tracked files — if credentials were committed before, run `git rm --cached tests/playwright/credentials.yaml`. Alternatively keep credentials in the `E2E_USERNAME` / `E2E_PASSWORD` env vars.
+> **Credentials are ignored automatically**: init and update maintain a marked block at the tail of your `.gitignore` that ignores `tests/playwright/credentials.yaml`, its `.bak`, `tests/playwright/test-results/`, and exploration screenshots (`tests/playwright/screenshots/` — they age as the app evolves; stay local like app-exploration.md) — plus auth storageState (`playwright/.auth/`, logged-in session cookies), MCP config (`.mcp.json` — user-added servers often carry API keys in env/headers), tool-local data (`.codegraph/`, `.playwright-mcp/`), and first-tier names like `.claude/`, `.cursor/`, `.codebuddy/`, `.agents/`, `openspec/`, `AGENTS.md`, `CLAUDE.md`, `CODEBUDDY.md` (the generated products stay local, per design). The block is idempotent, never touches your own rules, and is cleaned up by `uninstall`. If the block cannot be written, a warning lists the uncovered paths instead. Note: ignore rules do not apply to already-tracked files — if credentials were committed before, run `git rm --cached tests/playwright/credentials.yaml`. Alternatively keep credentials in the `E2E_USERNAME` / `E2E_PASSWORD` env vars.
 
 ```bash
 # 1. Edit credentials
@@ -455,7 +460,7 @@ npx playwright test --project=setup
 /opsx:e2e my-feature
 ```
 
-Supports **API login** (preferred) and **UI login** (fallback). For multi-user tests (admin vs user), add multiple users in `credentials.yaml` and run `/opsx:e2e` (or `/opsx-e2e` in OpenCode/Cline/Cursor/Pi/Oh My Pi; CodeBuddy CLI uses the `/opsx:e2e` colon form) — it auto-detects roles from specs.
+Supports **API login** (preferred) and **UI login** (fallback). For multi-user tests (admin vs user), add multiple users in `credentials.yaml` and run `/opsx:e2e` (or `/opsx-e2e` in OpenCode/Cline/Cursor/Pi/Oh My Pi/MiniMax Code; CodeBuddy CLI uses the `/opsx:e2e` colon form) — it auto-detects roles from specs.
 
 ## Customization
 
@@ -520,10 +525,14 @@ Editors (auto-detected by openspec-pw init)
       ├── .omp/commands/opsx-e2e.md       → Command file (name + description frontmatter)
       ├── .omp/mcp.json                   → Playwright MCP (mcpServers["playwright-test"])
       └── AGENTS.md                       → Employee-grade standards (auto-detected by omp)
-  └── CodeBuddy CLI (/opsx:e2e)
-      ├── .codebuddy/commands/opsx/e2e.md → Command file (subdirectory colon naming, no `name` frontmatter)
-      ├── .mcp.json                       → Playwright MCP (mcpServers["playwright-test"], project root)
-      └── CODEBUDDY.md                    → imports AGENTS.md via `@AGENTS.md`
+  ├── CodeBuddy CLI (/opsx:e2e)
+  │   ├── .codebuddy/commands/opsx/e2e.md → Command file (subdirectory colon naming, no `name` frontmatter)
+  │   ├── .mcp.json                       → Playwright MCP (mcpServers["playwright-test"], project root)
+  │   └── CODEBUDDY.md                    → imports AGENTS.md via `@AGENTS.md`
+  └── MiniMax Code (/opsx-e2e)
+      ├── .agents/skills/opsx-e2e/SKILL.md → Skill file (name + description frontmatter; MiniMax Code loads no command files)
+      ├── .mcp.json                        → Playwright MCP (mcpServers["playwright-test"], project root)
+      └── AGENTS.md                        → Employee-grade standards (auto-detected by MiniMax Code)
 
 Employee-grade standards live in **AGENTS.md** as the single source of truth. Claude Code
 loads them via a CLAUDE.md that imports AGENTS.md through `@AGENTS.md` — Claude Code's
@@ -532,8 +541,8 @@ position is unconstrained
 ("anywhere in your CLAUDE.md"); the only rule is the `@` line must not sit inside backticks
 or a code block. The import line sits outside the OPENSPEC-PW:START/END comments (stripped
 before context injection), so the markers act as the tool-owned boundary while the import is
-honored. OpenCode registers AGENTS.md in `opencode.jsonc` under `instructions`. Cline and
-Cursor auto-detect `AGENTS.md` natively — no wrapper file needed. CodeBuddy CLI loads them
+honored. OpenCode registers AGENTS.md in `opencode.jsonc` under `instructions`. Cline,
+Cursor and MiniMax Code auto-detect `AGENTS.md` natively — no wrapper file needed. CodeBuddy CLI loads them
 the same way Claude Code does, via a thin CODEBUDDY.md wrapper with the same `@AGENTS.md`
 import (CodeBuddy prefers CODEBUDDY.md over AGENTS.md when both exist).
 

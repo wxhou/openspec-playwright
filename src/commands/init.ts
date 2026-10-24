@@ -30,6 +30,7 @@ import {
   installedAgentsSnapshotDir,
   isInventoryEmpty,
   removeAdapterMcp,
+  retainedMcpConfigFiles,
   removeAdapterCommandArtifacts,
   removeOwnedVendoredAgents,
   removeClaudeLegacySkill,
@@ -415,14 +416,14 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   if (selectedIds === null && editors.length === 0) {
     console.log(
       chalk.yellow(
-        "\n  ⚠ No supported editor detected in the project (need .claude/, .opencode/, .cline/, .cursor/, .pi/, .omp/, or .codebuddy/).",
+        "\n  ⚠ No supported editor detected in the project (need .claude/, .opencode/, .cline/, .cursor/, .pi/, .omp/, .codebuddy/, or .minimax/).",
       ),
     );
     console.log(
       chalk.gray("  For Cursor without an existing .cursor/ dir: mkdir -p .cursor\n"),
     );
     throw new Error(
-      'No supported editor detected and no --tools flag provided. Use --tools all, --tools none, or a comma-separated list: claude, opencode, cline, cursor, pi, omp (oh-my-pi aliases omp).',
+      'No supported editor detected and no --tools flag provided. Use --tools all, --tools none, or a comma-separated list: claude, opencode, cline, cursor, pi, omp, codebuddy, minimax (oh-my-pi aliases omp, minimax-code aliases minimax).',
     );
   }
 
@@ -459,10 +460,19 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
         (a) =>
           !selectedIds!.includes(a.id) && configuredIds.has(a.id),
       );
+    // MCP config files still needed by the editors that remain selected.
+    // Claude Code, CodeBuddy CLI and MiniMax Code share the project-root
+    // `.mcp.json`, so an MCP entry there serves all of them — removing it
+    // while another editor still depends on that file would break that
+    // editor's Playwright MCP.
+    const retainedMcpFiles = retainedMcpConfigFiles(
+      getAllAdapters().filter((a) => selectedIds!.includes(a.id)),
+      projectRoot,
+    );
     const inventories = deselected
       .map((adapter) => ({
         adapter,
-        inv: enumerateAdapterArtifacts(adapter, projectRoot),
+        inv: enumerateAdapterArtifacts(adapter, projectRoot, retainedMcpFiles),
       }))
       // Editors with nothing to remove are silent — no confirm-list noise.
       .filter(({ inv }) => !isInventoryEmpty(inv));
@@ -488,6 +498,13 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
         for (const server of inv.mcpServers) {
           console.log(chalk.gray(`    - ${adapter.label}: ${server} MCP entry`));
         }
+        for (const server of inv.retainedMcpServers) {
+          console.log(
+            chalk.gray(
+              `    - ${adapter.label}: ${server} MCP entry kept (shared config file still used by a selected editor)`,
+            ),
+          );
+        }
         if (inv.hasWrapper) {
           console.log(chalk.gray(`    - ${adapter.label}: ${basename(adapter.projectRulesPath(projectRoot))} wrapper block`));
         }
@@ -511,7 +528,7 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
         );
       } else {
         for (const { adapter, inv } of inventories) {
-          removeAdapterMcp(adapter, projectRoot, inv.mcpServers);
+          removeAdapterMcp(adapter, projectRoot, inv.mcpServers, retainedMcpFiles);
           removeAdapterCommandArtifacts(adapter, projectRoot);
           removeOwnedVendoredAgents(projectRoot, adapter);
           if (inv.legacySkillPath) {

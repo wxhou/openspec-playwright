@@ -67,6 +67,7 @@ export const ompAdapter = defineAdapter({
     removeMcp(projectRoot, serverName) {
         removeMcpServerFromFile(ompMcpPath(projectRoot), serverName);
     },
+    mcpConfigPath: ompMcpPath,
 });
 /** Path to the project-level MCP config file for Oh My Pi. */
 function ompMcpPath(projectRoot) {

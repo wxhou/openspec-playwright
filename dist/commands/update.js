@@ -141,40 +141,7 @@ export async function update(options) {
                 console.log(chalk.gray('  - No openspec-pw artifacts in this project — run "openspec-pw init" to set up editor integrations'));
             }
             else if (body) {
-                const meta = buildCommandMeta(body);
-                for (const adapter of getAllAdapters()) {
-                    if (!hasCommandArtifacts(projectRoot, adapter)) {
-                        console.log(chalk.gray(`  - ${adapter.label}: not configured in this project (run "openspec-pw init --tools ${adapter.id}" to add)`));
-                        continue;
-                    }
-                    // Drift-aware: only rewrite a command file when its content differs
-                    // from the formatted template. Untouched files keep their mtime.
-                    const relPath = adapter.commandFilePath(meta.id);
-                    const absPath = join(projectRoot, relPath);
-                    const expected = adapter.formatCommand(meta);
-                    let needsWrite = !existsSync(absPath);
-                    if (!needsWrite) {
-                        needsWrite = readFileSync(absPath, "utf-8") !== expected;
-                    }
-                    // Extra artifacts (e.g. Cursor skill SKILL.md) must also match —
-                    // a missing/stale secondary file is repaired along with the command.
-                    if (!needsWrite) {
-                        for (const extra of adapter.extraArtifacts?.(meta) ?? []) {
-                            const extraAbs = join(projectRoot, extra.relativePath);
-                            if (!existsSync(extraAbs) ||
-                                readFileSync(extraAbs, "utf-8") !== extra.contents) {
-                                needsWrite = true;
-                                break;
-                            }
-                        }
-                    }
-                    if (needsWrite) {
-                        installCommand(adapter, meta, projectRoot);
-                    }
-                    else {
-                        console.log(chalk.gray(`  - ${adapter.label}: ${relPath} already current`));
-                    }
-                }
+                syncCommandArtifacts(projectRoot, body);
             }
             // Sync project templates (BasePage.ts, seed.spec.ts)
             syncProjectTemplates(tmpDir, projectRoot);
@@ -401,6 +368,53 @@ async function fetchLatestBundle() {
         strip: 1,
     });
     return tmpDir;
+}
+/**
+ * Drift-aware refresh of every configured editor's command artifact.
+ *
+ * Write authorization = tool-owned artifacts exist ("existing artifacts are
+ * the manifest") — never detect(): a global config dir or a hand-created
+ * marker directory does not authorize writes. update maintains territory; it
+ * never expands it. Editors without artifacts are reported and skipped.
+ *
+ * Extracted from `update()` so the per-adapter refresh is testable without a
+ * network round-trip to the npm registry.
+ */
+export function syncCommandArtifacts(projectRoot, body) {
+    const meta = buildCommandMeta(body);
+    for (const adapter of getAllAdapters()) {
+        if (!hasCommandArtifacts(projectRoot, adapter)) {
+            console.log(chalk.gray(`  - ${adapter.label}: not configured in this project (run "openspec-pw init --tools ${adapter.id}" to add)`));
+            continue;
+        }
+        // Drift-aware: only rewrite a command file when its content differs
+        // from the formatted template. Untouched files keep their mtime.
+        const relPath = adapter.commandFilePath(meta.id);
+        const absPath = join(projectRoot, relPath);
+        const expected = adapter.formatCommand(meta);
+        let needsWrite = !existsSync(absPath);
+        if (!needsWrite) {
+            needsWrite = readFileSync(absPath, "utf-8") !== expected;
+        }
+        // Extra artifacts (e.g. Cursor skill SKILL.md) must also match —
+        // a missing/stale secondary file is repaired along with the command.
+        if (!needsWrite) {
+            for (const extra of adapter.extraArtifacts?.(meta) ?? []) {
+                const extraAbs = join(projectRoot, extra.relativePath);
+                if (!existsSync(extraAbs) ||
+                    readFileSync(extraAbs, "utf-8") !== extra.contents) {
+                    needsWrite = true;
+                    break;
+                }
+            }
+        }
+        if (needsWrite) {
+            installCommand(adapter, meta, projectRoot);
+        }
+        else {
+            console.log(chalk.gray(`  - ${adapter.label}: ${relPath} already current`));
+        }
+    }
 }
 /**
  * Drift-aware sync of employee-grade standards into AGENTS.md (SSOT) and the

@@ -16,9 +16,24 @@ export interface AdapterArtifactInventory {
     legacySkillPath: string | null;
     /** openspec-pw MCP server entries present in this editor's config. */
     mcpServers: string[];
+    /**
+     * openspec-pw MCP server entries present in this editor's config that are
+     * KEPT because a still-selected editor shares the same MCP config file.
+     */
+    retainedMcpServers: string[];
     /** True when the adapter's wrapper file (CLAUDE.md / CODEBUDDY.md) holds an openspec-pw wrapper block. */
     hasWrapper: boolean;
 }
+/**
+ * The MCP config files still depended on by the editors that remain selected.
+ *
+ * Several editors share one MCP config file — Claude Code, CodeBuddy CLI and
+ * MiniMax Code all use the project-root `.mcp.json` — so an MCP entry in a
+ * shared file serves every one of them. Removing it while another editor
+ * still depends on that file would silently break that editor's Playwright
+ * MCP, so the removal phase keeps it.
+ */
+export declare function retainedMcpConfigFiles(selected: readonly EditorAdapter[], projectRoot: string): Set<string>;
 /**
  * Enumerate the openspec-pw artifacts one editor owns in this project —
  * command/skill files (incl. extraArtifacts), MCP server entries, the
@@ -26,15 +41,18 @@ export interface AdapterArtifactInventory {
  * the source for init's confirmation list, so it must not write, delete,
  * or print.
  */
-export declare function enumerateAdapterArtifacts(adapter: EditorAdapter, projectRoot: string): AdapterArtifactInventory;
+export declare function enumerateAdapterArtifacts(adapter: EditorAdapter, projectRoot: string, retainedFiles?: ReadonlySet<string>): AdapterArtifactInventory;
 /** True when this editor has nothing for init to remove. */
 export declare function isInventoryEmpty(inv: AdapterArtifactInventory): boolean;
 /**
  * Remove the openspec-pw MCP entries for one editor. Only entries passed in
  * `servers` (the enumeration result) are touched — user-owned server entries
  * in the same config file are never written to.
+ *
+ * When `retainedFiles` names this editor's MCP config file, the entries are
+ * kept: a still-selected editor shares that file and depends on the entry.
  */
-export declare function removeAdapterMcp(adapter: EditorAdapter, projectRoot: string, servers: readonly string[]): void;
+export declare function removeAdapterMcp(adapter: EditorAdapter, projectRoot: string, servers: readonly string[], retainedFiles?: ReadonlySet<string>): void;
 /** Delete one editor's openspec-pw command/skill files. Returns the removed project-relative paths. */
 export declare function removeAdapterCommandArtifacts(adapter: EditorAdapter, projectRoot: string): string[];
 /**

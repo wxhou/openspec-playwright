@@ -60,6 +60,29 @@ export function buildCommandMeta(body: string): CommandMeta {
   };
 }
 
+// ─── Skill artifact format ───────────────────────────────────────────────
+
+/**
+ * Format a skill-based command artifact: `name` + `description` frontmatter
+ * over a hyphen-rewritten body.
+ *
+ * Shared by Cline (`.cline/skills/opsx-<id>/SKILL.md`) and MiniMax Code
+ * (`.agents/skills/opsx-<id>/SKILL.md`) so the two skill formats cannot
+ * drift. Editors that load skills as slash commands invoke them as
+ * `/<name>` — hence the hyphenated `/opsx-` body references.
+ */
+export function formatSkillCommand(meta: CommandMeta): string {
+  const body = transformToHyphenCommands(meta.body);
+  const skillName = `opsx-${meta.id}`;
+  return `---
+name: ${escapeYamlValue(skillName)}
+description: ${escapeYamlValue(meta.description)}
+---
+
+${body}
+`;
+}
+
 // ─── Shared mcpServers JSON helpers (Cline + Cursor) ─────────────────────
 
 export interface McpStdioServer {

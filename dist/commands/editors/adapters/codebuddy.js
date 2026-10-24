@@ -52,6 +52,7 @@ export const codebuddyAdapter = defineAdapter({
     removeMcp(projectRoot, serverName) {
         removeMcpServerFromFile(codebuddyMcpPath(projectRoot), serverName);
     },
+    mcpConfigPath: codebuddyMcpPath,
 });
 /** Path to the project-scope MCP config file for CodeBuddy CLI. */
 function codebuddyMcpPath(projectRoot) {

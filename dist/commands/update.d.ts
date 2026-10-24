@@ -13,6 +13,18 @@ export declare function update(options: UpdateOptions): Promise<void>;
  */
 export declare function versionMismatchLines(resolvedPath: string, projectRoot: string, resolvedVersion: string, publishedVersion: string): string[];
 /**
+ * Drift-aware refresh of every configured editor's command artifact.
+ *
+ * Write authorization = tool-owned artifacts exist ("existing artifacts are
+ * the manifest") — never detect(): a global config dir or a hand-created
+ * marker directory does not authorize writes. update maintains territory; it
+ * never expands it. Editors without artifacts are reported and skipped.
+ *
+ * Extracted from `update()` so the per-adapter refresh is testable without a
+ * network round-trip to the npm registry.
+ */
+export declare function syncCommandArtifacts(projectRoot: string, body: string): void;
+/**
  * Drift-aware sync of employee-grade standards into AGENTS.md (SSOT) and the
  * CLAUDE.md wrapper (when Claude is detected). Extracted so it can also run
  * under `--no-skill` — standards sync is not a skill install and must not be

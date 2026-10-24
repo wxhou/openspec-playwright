@@ -34,6 +34,34 @@ import { enumerateVendoredAgents, installedAgentsSnapshotDir } from "./agents.js
 export const OPENSPEC_PW_MCP_SERVERS = ["playwright-test", "playwright"];
 /** The claude-only skill directory retired installs left behind. */
 export const CLAUDE_LEGACY_SKILL_REL = join(".claude", "skills", "openspec-e2e");
+// ─── Shared MCP config files (multi-editor consumers) ─────────────────────
+/**
+ * The MCP config files still depended on by the editors that remain selected.
+ *
+ * Several editors share one MCP config file — Claude Code, CodeBuddy CLI and
+ * MiniMax Code all use the project-root `.mcp.json` — so an MCP entry in a
+ * shared file serves every one of them. Removing it while another editor
+ * still depends on that file would silently break that editor's Playwright
+ * MCP, so the removal phase keeps it.
+ */
+export function retainedMcpConfigFiles(selected, projectRoot) {
+    const files = new Set();
+    for (const adapter of selected) {
+        if (adapter.supportsMcp === false)
+            continue;
+        const path = adapter.mcpConfigPath?.(projectRoot);
+        if (path)
+            files.add(path);
+    }
+    return files;
+}
+/** True when this adapter's MCP entries live in a file another editor still needs. */
+function isMcpFileRetained(adapter, projectRoot, retainedFiles) {
+    if (!retainedFiles || retainedFiles.size === 0)
+        return false;
+    const path = adapter.mcpConfigPath?.(projectRoot);
+    return !!path && retainedFiles.has(path);
+}
 /** Does the adapter's wrapper file carry an openspec-pw marker block we could remove? */
 function wrapperFileHasMarkersForRemoval(adapter, projectRoot) {
     const wrapper = wrapperRulesFile(adapter, projectRoot);
@@ -56,24 +84,31 @@ function wrapperFileHasMarkersForRemoval(adapter, projectRoot) {
  * the source for init's confirmation list, so it must not write, delete,
  * or print.
  */
-export function enumerateAdapterArtifacts(adapter, projectRoot) {
+export function enumerateAdapterArtifacts(adapter, projectRoot, retainedFiles) {
     const meta = buildCommandMeta("");
     const commandPaths = listCommandArtifactPaths(adapter, meta).filter((rel) => existsSync(join(projectRoot, rel)));
     const legacySkillPath = adapter.id === "claude" && existsSync(join(projectRoot, CLAUDE_LEGACY_SKILL_REL))
         ? CLAUDE_LEGACY_SKILL_REL
         : null;
-    const mcpServers = adapter.supportsMcp === false
+    const installedMcpServers = adapter.supportsMcp === false
         ? []
         : OPENSPEC_PW_MCP_SERVERS.filter((server) => adapter.isMcpInstalled(projectRoot, server));
+    // An MCP entry in a shared config file is kept while another selected
+    // editor depends on that file — it is reported separately so the confirm
+    // list never promises a removal that will not happen.
+    const sharedFile = isMcpFileRetained(adapter, projectRoot, retainedFiles);
+    const mcpServers = sharedFile ? [] : installedMcpServers;
+    const retainedMcpServers = sharedFile ? installedMcpServers : [];
     const hasWrapper = wrapperRulesFile(adapter, projectRoot) !== null &&
         wrapperFileHasMarkersForRemoval(adapter, projectRoot);
-    return { commandPaths, legacySkillPath, mcpServers, hasWrapper };
+    return { commandPaths, legacySkillPath, mcpServers, retainedMcpServers, hasWrapper };
 }
 /** True when this editor has nothing for init to remove. */
 export function isInventoryEmpty(inv) {
     return (inv.commandPaths.length === 0 &&
         inv.legacySkillPath === null &&
         inv.mcpServers.length === 0 &&
+        inv.retainedMcpServers.length === 0 &&
         !inv.hasWrapper);
 }
 // ─── Delete functions (small, single-purpose) ────────────────────────────
@@ -81,10 +116,19 @@ export function isInventoryEmpty(inv) {
  * Remove the openspec-pw MCP entries for one editor. Only entries passed in
  * `servers` (the enumeration result) are touched — user-owned server entries
  * in the same config file are never written to.
+ *
+ * When `retainedFiles` names this editor's MCP config file, the entries are
+ * kept: a still-selected editor shares that file and depends on the entry.
  */
-export function removeAdapterMcp(adapter, projectRoot, servers) {
+export function removeAdapterMcp(adapter, projectRoot, servers, retainedFiles) {
     if (adapter.supportsMcp === false)
         return;
+    if (isMcpFileRetained(adapter, projectRoot, retainedFiles)) {
+        if (servers.length > 0) {
+            console.log(chalk.gray(`  - ${adapter.label}: ${servers.join(", ")} MCP kept (shared config file still used by a selected editor)`));
+        }
+        return;
+    }
     for (const serverName of servers) {
         try {
             adapter.removeMcp(projectRoot, serverName);
