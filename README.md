@@ -146,7 +146,12 @@ writes this run). Only openspec-pw-owned territory is touched — your own
 config entries in the same files stay (user-modified vendored agent files
 are kept and reported, never deleted). Shared rules: the AGENTS.md
 openspec-pw block is removed only when **no** editor remains selected; a
-symlinked CLAUDE.md is never written through. `--tools` and non-TTY runs
+symlinked CLAUDE.md is never written through. MCP entries are judged per
+**config file**: Claude Code, CodeBuddy CLI and MiniMax Code share the
+project-root `.mcp.json`, so the shared entry is kept (and reported as kept
+in the confirmation list) while any still-selected editor reads that file —
+those editors load it at runtime, and deleting it would cut the Playwright
+MCP of an editor you kept. Deselect all three and the entry goes as usual. `--tools` and non-TTY runs
 never remove anything (`--tools` is an explicit allow list). Removal
 feeds straight back into the pre-select: a removed editor is no longer
 pre-checked on the next init (the pre-select reads the openspec-pw

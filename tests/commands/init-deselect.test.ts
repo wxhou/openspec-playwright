@@ -436,4 +436,28 @@ describe("init deselect-removal: shared .mcp.json entry is kept for a selected e
     expect(mcp.mcpServers["playwright-test"]).toBeUndefined();
     expect(mcp.mcpServers["user-server"]).toBeDefined();
   });
+
+  it("keeps the shared entry in minimal mode, where the MCP install phase never runs", async () => {
+    // Minimal mode (no readable package.json) skips the MCP install phase, so
+    // nothing in this run re-creates the entry. It still belongs to the
+    // still-selected editor: claude reads the very same project-root
+    // .mcp.json at runtime, so removing it would strip claude's Playwright
+    // MCP. The shared-file rule is file-scoped, not install-scoped.
+    await init(
+      { mcp: true },
+      {
+        isTTY: true,
+        prompt: async () => ["claude"], // deselect codebuddy
+        confirm: async () => true,
+      },
+    );
+
+    // codebuddy's own command file is gone…
+    expect(existsSync(join(tmpRoot, ".codebuddy", "commands", "opsx", "e2e.md"))).toBe(false);
+    expect(existsSync(join(tmpRoot, ".claude", "commands", "opsx", "e2e.md"))).toBe(true);
+    // …but the shared entry stays, because claude still reads that file.
+    const mcp = JSON.parse(readFileSync(join(tmpRoot, ".mcp.json"), "utf-8"));
+    expect(mcp.mcpServers["playwright-test"]).toBeDefined();
+    expect(mcp.mcpServers["user-server"]).toBeDefined();
+  });
 });

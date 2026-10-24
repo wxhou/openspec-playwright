@@ -17,6 +17,9 @@ import { registerAdapter } from "../registry.js";
 // ─── Cline adapter ───────────────────────────────────────────────────────
 
 /**
+ * Cline's skill artifact. Delegates to the shared skill formatter so Cline
+ * and MiniMax Code emit byte-identical skill files.
+ *
  * Cline stores project-level config in `.cline/` (skills/, rules/, mcp.json).
  * `.clinerules/` is the legacy rules-only directory, still auto-detected.
  *
@@ -25,10 +28,6 @@ import { registerAdapter } from "../registry.js";
  *                (name + description). Triggered via `/<name>` slash command.
  *   - MCP:      `.cline/mcp.json` with `{ "mcpServers": { ... } }` structure.
  *   - Rules:    Cline auto-detects `AGENTS.md` — no wrapper file needed.
- */
-/**
- * Cline's skill artifact. Delegates to the shared skill formatter so Cline
- * and MiniMax Code emit byte-identical skill files.
  */
 export function formatClineCommand(meta: CommandMeta): string {
   return formatSkillCommand(meta);

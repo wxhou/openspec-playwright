@@ -55,10 +55,13 @@ export interface EditorAdapter {
     removeMcp(projectRoot: string, serverName: string): void;
     /**
      * Optional: absolute path of the MCP config file this adapter reads and
-     * writes. Declared by every adapter that owns an MCP file so the init
-     * deselect-removal phase can tell whether an MCP entry is shared with a
-     * still-selected editor (see `mcpConfigPath` in removal.ts). Adapters
-     * without an MCP client (pi) declare none.
+     * writes. Declared by every adapter that owns an MCP config file, so the
+     * init deselect-removal phase can tell whether an MCP entry is shared with
+     * a still-selected editor (see `retainedMcpConfigFiles` in removal.ts).
+     *
+     * Two adapters declare none: pi (no MCP client at all) and opencode, whose
+     * `opencode.json(c)` is exclusive to OpenCode — nothing can share its
+     * entries, so the shared-file guard never applies to it.
      */
     mcpConfigPath?(projectRoot: string): string;
     /** Optional: register project rules file path in editor config. */

@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import { join, basename } from "path";
 import { execFileSync } from "child_process";
 import chalk from "chalk";
-import { detectAdapters, hasCommandArtifacts, slashCommandForAdapter, claudeAdapter, codebuddyAdapter, claudeWrapperStandardsContent, enumerateVendoredAgents, installedAgentsSnapshotDir, } from "../commands/editors.js";
+import { detectAdapters, getAllAdapters, hasCommandArtifacts, slashCommandForAdapter, claudeAdapter, codebuddyAdapter, claudeWrapperStandardsContent, enumerateVendoredAgents, installedAgentsSnapshotDir, } from "../commands/editors.js";
 import { detectAppServer, isTestRunnerMcpInstalled, needsShell, detectCodeGraphStatus, findEslintConfig, findRuffConfig, findSourceFile, } from "../shared/index.js";
 import { bundledStandardsPath, compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
 import { hasRuleFileMarkers, wrapperRulesFile, wrapperHasMarkers } from "./editors/project-rules.js";
@@ -177,6 +177,34 @@ function probeRuffB904(projectRoot) {
     catch (err) {
         return { ok: false, reason: describeExecError(err) };
     }
+}
+/**
+ * Command hint for a project where no editor is authorized yet: every
+ * supported editor, grouped by the command form it actually accepts.
+ *
+ * Only Claude Code and CodeBuddy CLI use the colon form (`/opsx:e2e`);
+ * OpenCode, Cline, Cursor, Pi, Oh My Pi and MiniMax Code invoke the skill
+ * command with a hyphen (`/opsx-e2e`). The list is built from the registry
+ * so a new adapter can never drift out of the hint.
+ */
+export function allEditorCommandHints() {
+    const byCommand = new Map();
+    for (const adapter of getAllAdapters()) {
+        const command = slashCommandForAdapter(adapter);
+        const names = byCommand.get(command) ?? [];
+        names.push(adapter.displayName);
+        byCommand.set(command, names);
+    }
+    return [...byCommand.entries()]
+        .map(([command, names]) => {
+        const last = names[names.length - 1];
+        const head = names.slice(0, -1);
+        const label = head.length
+            ? `${head.join(", ")}${head.length > 1 ? "," : ""} or ${last}`
+            : last;
+        return `${command} (in ${label})`;
+    })
+        .join("  or  ");
 }
 export async function doctor(options = {}) {
     const checks = [];
@@ -1022,7 +1050,7 @@ export async function doctor(options = {}) {
             ? detected.map((a) => {
                 return `${slashCommandForAdapter(a)} (in ${a.displayName})`;
             })
-            : ["/opsx:e2e (in Claude Code, OpenCode, Cline, Cursor, Pi, Oh My Pi, CodeBuddy CLI, or MiniMax Code)"];
+            : [allEditorCommandHints()];
         console.log(chalk.gray(`  Run: ${hints.join("  or  ")} <change-name>\n`));
     }
     else {

@@ -132,7 +132,7 @@ openspec-pw init --tools none            # 不配置编辑器，只生成脚手�
 
 init 打印两种输出信号：预选提示行（仅未传 `--tools` 时出现）——有 openspec-pw 状态的项目是 `Configured (pre-select):`，首次运行回退则是 `Detected (pre-select):`——**不是**实际安装集；`Selected editors:` 行（总是打印，位于任何编辑器配置之前）才是实际安装集。判断装了什么，看 `Selected editors`。
 
-**取消勾选 = 移除**。交互式多选里，*已被探测但你取消勾选的*编辑器的 openspec-pw 产物会被移除——命令/技能文件、该编辑器的 openspec-pw MCP 条目（含 claude 的 wrapper 块与 legacy 技能目录，以及归本工具所有的 vendored agents），前置一次列出全部待移除项的确认（拒绝则保持旧行为：本次仅跳过写入）。只动 openspec-pw 自有领土——同一文件中你自有的配置条目不受影响；你手改过的 vendored agent 文件会被保留并报告，绝不删除。共享规则：AGENTS.md 的 openspec-pw 块仅在**没有任何编辑器保留**时移除；symlink 的 CLAUDE.md 永不穿透写入。`--tools` 与非 TTY 运行不做任何移除（`--tools` 是显式授权清单）。移除直接反哺预选：被移除的编辑器下次 init 不再预勾选（预选读 openspec-pw 清单——保留的 `mcp.json`、你自己的文件、全局目录都不再重要）；*全部*取消并确认的项目下次 init 重置回首-运行预选语义。
+**取消勾选 = 移除**。交互式多选里，*已被探测但你取消勾选的*编辑器的 openspec-pw 产物会被移除——命令/技能文件、该编辑器的 openspec-pw MCP 条目（含 claude 的 wrapper 块与 legacy 技能目录，以及归本工具所有的 vendored agents），前置一次列出全部待移除项的确认（拒绝则保持旧行为：本次仅跳过写入）。只动 openspec-pw 自有领土——同一文件中你自有的配置条目不受影响；你手改过的 vendored agent 文件会被保留并报告，绝不删除。共享规则：AGENTS.md 的 openspec-pw 块仅在**没有任何编辑器保留**时移除；symlink 的 CLAUDE.md 永不穿透写入。MCP 条目按**配置文件**判定：Claude Code / CodeBuddy CLI / MiniMax Code 共用项目根 `.mcp.json`，只要仍有被选中的编辑器读取该文件，共享条目即保留（确认清单中标注为「保留」）——该文件是这几个编辑器运行时直接读取的，删掉会连带切断仍被选中编辑器的 Playwright MCP；把三者全部取消勾选时条目照常移除。`--tools` 与非 TTY 运行不做任何移除（`--tools` 是显式授权清单）。移除直接反哺预选：被移除的编辑器下次 init 不再预勾选（预选读 openspec-pw 清单——保留的 `mcp.json`、你自己的文件、全局目录都不再重要）；*全部*取消并确认的项目下次 init 重置回首-运行预选语义。
 
 **编辑器领土**：`update` 只维护项目内已有 openspec-pw 命令工件的编辑器——不会新增编辑器（全局配置目录或手建的 `.cursor/` 不构成写入授权）。给已初始化项目新增编辑器请重跑 `openspec-pw init --tools <id>`（幂等）。
 
