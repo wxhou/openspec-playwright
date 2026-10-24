@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.103] - 2026-10-24
 - **docs(standards): 「点名」术语归位——只保留验收语义**. 该词此前兼指「用户指定动作」（§3 授权范围）与「用户明确要求」（§1 注释、具体值豁免），与 §6 的验收定义相互干扰。三处非验收语义改为「明确要求 / 明确指定」，§6 定义与用法不变；中英副本同步。
   - `employee-standards.md`、`docs/script.js`（ZH/EN 副本）、`CHANGELOG.md`
 
