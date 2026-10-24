@@ -19,7 +19,11 @@ export declare function detectProjectAdapters(projectRoot: string): EditorAdapte
  */
 export declare function hasCommandArtifacts(projectRoot: string, adapter: EditorAdapter): boolean;
 export declare function registerAdapter(adapter: EditorAdapter): void;
-/** Slash-command hint for user-facing messages. */
+/**
+ * Slash-command hint for user-facing messages. The form comes from the
+ * adapter — colon for editors that load command files, hyphen for the
+ * skill-based ones — so a new adapter cannot drift out of the hint.
+ */
 export declare function slashCommandForAdapter(adapter: EditorAdapter): string;
 /** Relative paths installCommand writes for this adapter + meta. */
 export declare function listCommandArtifactPaths(adapter: EditorAdapter, meta: CommandMeta): string[];

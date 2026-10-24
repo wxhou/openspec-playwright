@@ -39,6 +39,8 @@ export const codebuddyAdapter = defineAdapter({
     displayName: "CodeBuddy CLI",
     detect: hasCodebuddy,
     commandFilePath: getCodebuddyCommandPath,
+    // Command files → colon form: /opsx:e2e
+    commandForm: "colon",
     formatCommand: formatCodebuddyCommand,
     // CodeBuddy prefers CODEBUDDY.md over AGENTS.md when both exist — the
     // wrapper (installProjectRules phase) keeps the standards reachable.

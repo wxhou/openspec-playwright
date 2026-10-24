@@ -45,6 +45,12 @@ export interface ExtraArtifact {
   contents: string;
 }
 
+/**
+ * How an editor spells its slash command: `colon` (`/opsx:e2e`, editors that
+ * load command files) or `hyphen` (`/opsx-e2e`, editors that load skills).
+ */
+export type CommandForm = "colon" | "hyphen";
+
 export interface EditorAdapter {
   id: EditorId;
   /** Short label used in log messages. */
@@ -75,6 +81,14 @@ export interface EditorAdapter {
   supportsMcp?: boolean;
   /** Relative path of the command file inside the project. */
   commandFilePath(id: string): string;
+  /**
+   * How this editor spells its slash command: `colon` (`/opsx:e2e`, editors
+   * that load command files) or `hyphen` (`/opsx-e2e`, editors that load
+   * skills). Defaults to `hyphen` — the skill form every skill-delivering
+   * adapter uses. The body transform must match: skill artifacts are written
+   * with hyphenated command references, command files keep the colon form.
+   */
+  commandForm?: CommandForm;
   /** Format command file contents (frontmatter + body). */
   formatCommand(meta: CommandMeta): string;
   /** Absolute path of the project rules file. */
@@ -129,6 +143,8 @@ export interface EditorAdapterInit {
    */
   projectSignal?: EditorAdapter["projectSignal"];
   commandFilePath: EditorAdapter["commandFilePath"];
+  /** Optional: slash-command form. Defaults to "hyphen" (the skill form). */
+  commandForm?: EditorAdapter["commandForm"];
   formatCommand: EditorAdapter["formatCommand"];
   /** Optional: true by default; set false for editors without an MCP client. */
   supportsMcp?: boolean;
@@ -168,6 +184,7 @@ export function defineAdapter(init: EditorAdapterInit): EditorAdapter {
     projectSignal:
       init.projectSignal ?? ((root) => init.detect(root, NO_HOME)),
     commandFilePath: init.commandFilePath,
+    commandForm: init.commandForm ?? "hyphen",
     formatCommand: init.formatCommand,
     supportsMcp: init.supportsMcp ?? true,
     projectRulesPath:

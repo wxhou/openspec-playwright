@@ -33,6 +33,7 @@ export function defineAdapter(init) {
         detect: init.detect,
         projectSignal: init.projectSignal ?? ((root) => init.detect(root, NO_HOME)),
         commandFilePath: init.commandFilePath,
+        commandForm: init.commandForm ?? "hyphen",
         formatCommand: init.formatCommand,
         supportsMcp: init.supportsMcp ?? true,
         projectRulesPath: init.projectRulesPath ?? ((root) => join(root, "AGENTS.md")),

@@ -31,17 +31,23 @@ afterEach(() => {
 });
 
 describe("managed gitignore coverage for the MiniMax Code skill root", () => {
-  it("covers .agents/ so the generated skill stays local", () => {
-    expect(MANAGED_GITIGNORE_PATHS).toContain(".agents/");
-    expect(findUncoveredManagedPaths(projectRoot)).toContain(".agents/");
+  it("covers the tool-owned skill dir, not the whole .agents/ tree", () => {
+    expect(MANAGED_GITIGNORE_PATHS).toContain(".agents/skills/opsx-e2e/");
+    // The rest of .agents/ belongs to the user — it must stay committable.
+    expect(MANAGED_GITIGNORE_PATHS).not.toContain(".agents/");
+    expect(findUncoveredManagedPaths(projectRoot)).toContain(
+      ".agents/skills/opsx-e2e/",
+    );
   });
 
-  it("writes .agents/ into the managed block and reports it covered afterwards", () => {
+  it("writes the skill dir into the managed block and reports it covered afterwards", () => {
     const result = ensureGitignoreEntries(projectRoot);
     expect(result.changed).toBe(true);
     const block = readFileSync(join(projectRoot, ".gitignore"), "utf-8");
-    expect(block).toContain(".agents/");
-    expect(findUncoveredManagedPaths(projectRoot)).not.toContain(".agents/");
+    expect(block).toContain(".agents/skills/opsx-e2e/");
+    expect(findUncoveredManagedPaths(projectRoot)).not.toContain(
+      ".agents/skills/opsx-e2e/",
+    );
   });
 });
 

@@ -51,11 +51,13 @@ export function hasCommandArtifacts(projectRoot, adapter) {
 export function registerAdapter(adapter) {
     ADAPTERS.push(adapter);
 }
-/** Slash-command hint for user-facing messages. */
+/**
+ * Slash-command hint for user-facing messages. The form comes from the
+ * adapter — colon for editors that load command files, hyphen for the
+ * skill-based ones — so a new adapter cannot drift out of the hint.
+ */
 export function slashCommandForAdapter(adapter) {
-    return adapter.id === "claude" || adapter.id === "codebuddy"
-        ? "/opsx:e2e"
-        : "/opsx-e2e";
+    return adapter.commandForm === "colon" ? "/opsx:e2e" : "/opsx-e2e";
 }
 /** Relative paths installCommand writes for this adapter + meta. */
 export function listCommandArtifactPaths(adapter, meta) {

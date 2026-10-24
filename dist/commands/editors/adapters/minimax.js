@@ -12,7 +12,7 @@
  * `<workspace>/AGENTS.md` second, so AGENTS.md stays the single source of
  * truth and no MiniMax-specific wrapper file is created.
  */
-import { existsSync } from "fs";
+import { existsSync, readdirSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
 import { defineAdapter } from "../types.js";
@@ -34,12 +34,8 @@ export function formatMinimaxSkill(meta) {
 export function getMinimaxSkillPath(id) {
     return join(".agents", "skills", `opsx-${id}`, "SKILL.md");
 }
-/** Directory holding the installed skill for a given command id. */
-function minimaxSkillDir(id) {
-    return join(".agents", "skills", `opsx-${id}`);
-}
 /**
- * True when the project carries the openspec-pw MiniMax Code skill.
+ * True when the project carries an openspec-pw MiniMax Code skill.
  *
  * The artifact is a detection signal in its own right: Cline's marker dir
  * `.cline/` contains its skill path, so Cline's artifact implies its marker
@@ -47,9 +43,24 @@ function minimaxSkillDir(id) {
  * project holding only the installed skill would be invisible to
  * `detectAdapters()` and drop out of doctor's command hint, the interactive
  * pre-select and the non-TTY fallback.
+ *
+ * Any `opsx-*` skill counts, not only today's command: the skill directory
+ * is named after the command id, so a second command must not need a second
+ * detection rule. `opsx-` is the tool's own skill namespace.
  */
 function hasMinimaxSkill(projectRoot) {
-    return existsSync(join(projectRoot, minimaxSkillDir("e2e"), "SKILL.md"));
+    const skillsRoot = join(projectRoot, ".agents", "skills");
+    let entries;
+    try {
+        entries = readdirSync(skillsRoot, { withFileTypes: true });
+    }
+    catch {
+        // no skills dir (or unreadable) — nothing installed
+        return false;
+    }
+    return entries.some((entry) => entry.isDirectory() &&
+        entry.name.startsWith("opsx-") &&
+        existsSync(join(skillsRoot, entry.name, "SKILL.md")));
 }
 /**
  * Detection: the project's `.minimax/` marker dir, the global CLI install

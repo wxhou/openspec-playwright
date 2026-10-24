@@ -42,6 +42,8 @@ export const claudeAdapter: EditorAdapter = defineAdapter({
   displayName: "Claude Code",
   detect: hasClaudeCode,
   commandFilePath: getClaudeCommandPath,
+  // Command files → colon form: /opsx:e2e
+  commandForm: "colon",
   formatCommand: formatClaudeCommand,
   // Claude Code reads CLAUDE.md directly — override the AGENTS.md default.
   projectRulesPath: (root) => join(root, "CLAUDE.md"),

@@ -153,6 +153,24 @@ describe("minimax detection", () => {
     expect(hasMinimaxProjectSignal(tmpRoot)).toBe(true);
   });
 
+  it("detects a skill for any command id, not just today's", () => {
+    // A second command lands in its own opsx-<id> skill dir — the detection
+    // must not need a second rule for it.
+    const dir = join(tmpRoot, ".agents", "skills", "opsx-verify");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "SKILL.md"), "---\nname: opsx-verify\n---\n");
+    expect(hasMinimax(tmpRoot, "/nonexistent-home")).toBe(true);
+    expect(hasMinimaxProjectSignal(tmpRoot)).toBe(true);
+  });
+
+  it("ignores skills outside the tool's opsx- namespace", () => {
+    const dir = join(tmpRoot, ".agents", "skills", "my-own-skill");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "SKILL.md"), "---\nname: my-own-skill\n---\n");
+    expect(hasMinimax(tmpRoot, "/nonexistent-home")).toBe(false);
+    expect(hasMinimaxProjectSignal(tmpRoot)).toBe(false);
+  });
+
   it("a project holding only the skill artifact appears in detectAdapters", () => {
     installCommand(minimaxAdapter, buildCommandMeta("body"), tmpRoot);
     const ids = detectAdapters(tmpRoot, "/nonexistent-home").map((a) => a.id);

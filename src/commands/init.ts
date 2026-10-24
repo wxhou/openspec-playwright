@@ -488,6 +488,9 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     if (inventories.length > 0 || agentsHasBlock) {
       console.log(chalk.blue("\n─── Removing Deselected Editors ───"));
       console.log(chalk.yellow("  The following openspec-pw artifacts will be removed:"));
+      // Entries that are NOT removed are listed separately below — mixing
+      // them into the "will be removed" list contradicts the heading.
+      const keptMcpEntries: string[] = [];
       for (const { adapter, inv } of inventories) {
         for (const relPath of inv.commandPaths) {
           console.log(chalk.gray(`    - ${adapter.label}: ${relPath}`));
@@ -499,11 +502,7 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
           console.log(chalk.gray(`    - ${adapter.label}: ${server} MCP entry`));
         }
         for (const server of inv.retainedMcpServers) {
-          console.log(
-            chalk.gray(
-              `    - ${adapter.label}: ${server} MCP entry kept (shared config file still used by a selected editor)`,
-            ),
-          );
+          keptMcpEntries.push(`${adapter.label}: ${server} MCP entry`);
         }
         if (inv.hasWrapper) {
           console.log(chalk.gray(`    - ${adapter.label}: ${basename(adapter.projectRulesPath(projectRoot))} wrapper block`));
@@ -518,6 +517,16 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
       }
       if (agentsHasBlock) {
         console.log(chalk.gray("    - AGENTS.md: shared openspec-pw block"));
+      }
+      if (keptMcpEntries.length > 0) {
+        console.log(
+          chalk.gray(
+            "  Kept — shared MCP config file still used by a selected editor:",
+          ),
+        );
+        for (const entry of keptMcpEntries) {
+          console.log(chalk.gray(`    - ${entry}`));
+        }
       }
 
       const agreed = await confirmPrompt("Proceed with removal?");
