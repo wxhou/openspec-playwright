@@ -155,4 +155,33 @@ describe("formatArtifact", () => {
     expect(colon).toContain("/opsx:e2e");
     expect(colon).not.toContain("/opsx-e2e");
   });
+
+  it("emits frontmatter before the header when both are declared", () => {
+    const out = formatArtifact(
+      {
+        path,
+        naming: "hyphen-prefix",
+        frontmatter: { description: true },
+        header: "<!-- note -->",
+      },
+      META,
+    );
+    expect(out.startsWith("---\n")).toBe(true);
+    expect(out).toContain("<!-- note -->");
+    expect(out.indexOf("<!-- note -->")).toBeGreaterThan(
+      out.indexOf("description:"),
+    );
+  });
+
+  it("escapes quotes in argument-hint", () => {
+    const out = formatArtifact(
+      {
+        path,
+        naming: "hyphen-prefix",
+        frontmatter: { description: true, argumentHint: 'say "hi"' },
+      },
+      META,
+    );
+    expect(out).toContain('argument-hint: "say \\"hi\\""');
+  });
 });

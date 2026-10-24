@@ -24,13 +24,22 @@ export const CLAUDE_LEGACY_SKILL_REL = join(
 export function escapeYamlValue(value: string): string {
   const needsQuoting = /[:\n\r#{}[\],&*!|>'"%@`]|^\s|\s$/.test(value);
   if (needsQuoting) {
-    const escaped = value
-      .replace(/\\/g, "\\\\")
-      .replace(/"/g, '\\"')
-      .replace(/\n/g, "\\n");
-    return `"${escaped}"`;
+    return quoteYamlScalar(value);
   }
   return value;
+}
+
+/**
+ * Always double-quote a YAML scalar. Used for values that are conventionally
+ * quoted even when safe (argument hints), so a value containing quotes or
+ * backslashes cannot produce invalid YAML.
+ */
+function quoteYamlScalar(value: string): string {
+  const escaped = value
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, "\\n");
+  return `"${escaped}"`;
 }
 
 /** Format tags as a YAML inline array. */
@@ -69,12 +78,8 @@ export function formatArtifact(spec: ArtifactSpec, meta: CommandMeta): string {
 
   let out = "";
 
-  if (spec.header !== undefined) {
-    const header =
-      typeof spec.header === "function" ? spec.header(meta) : spec.header;
-    out += `${header}\n\n`;
-  }
-
+  // Frontmatter must be the first block in the file — an editor with fatal
+  // frontmatter parsing treats anything before `---` as body text.
   if (spec.frontmatter) {
     const lines: string[] = [];
     if (spec.frontmatter.name) {
@@ -84,12 +89,18 @@ export function formatArtifact(spec: ArtifactSpec, meta: CommandMeta): string {
       lines.push(`description: ${escapeYamlValue(meta.description)}`);
     }
     if (spec.frontmatter.argumentHint !== undefined) {
-      lines.push(`argument-hint: "${spec.frontmatter.argumentHint}"`);
+      lines.push(`argument-hint: ${quoteYamlScalar(spec.frontmatter.argumentHint)}`);
     }
     if (spec.frontmatter.disableModelInvocation) {
       lines.push("disable-model-invocation: true");
     }
     out += `---\n${lines.join("\n")}\n---\n\n`;
+  }
+
+  if (spec.header !== undefined) {
+    const header =
+      typeof spec.header === "function" ? spec.header(meta) : spec.header;
+    out += `${header}\n\n`;
   }
 
   return `${out}${body}\n`;

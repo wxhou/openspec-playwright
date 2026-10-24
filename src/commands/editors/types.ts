@@ -85,7 +85,7 @@ export interface ArtifactSpec {
   path(id: string): string;
   naming: ArtifactNaming;
   frontmatter?: ArtifactFrontmatter;
-  /** Text emitted before the frontmatter/body (Cursor's `$1` comment). */
+  /** Text emitted after the frontmatter and before the body (Cursor's `$1` comment). */
   header?: string | ((meta: CommandMeta) => string);
 }
 
@@ -178,12 +178,12 @@ export interface EditorAdapter {
    */
   detect(projectRoot: string, homeDir?: string): boolean;
   /**
-   * Project-level signal only (marker dir inside the project). Used for
-   * the init non-TTY fallback and anywhere a global dir must not count.
-   * Defaults to detect() with a sentinel home so home-blind adapters
-   * (claude/opencode/cline/cursor) reuse their detect() unchanged.
+   * Project-level signal only: declared project marker paths or tool-owned
+   * artifacts (see `DetectionSpec`). Global config dirs never count here.
+   * Used for the init non-TTY fallback and anywhere a global dir must not
+   * authorize a write. Always supplied by `defineAdapter`.
    */
-  projectSignal?(projectRoot: string): boolean;
+  projectSignal(projectRoot: string): boolean;
   /**
    * True when this editor has an MCP client to configure. False skips all
    * MCP install/check/remove phases (Pi has no MCP client).

@@ -16,13 +16,21 @@ export const CLAUDE_LEGACY_SKILL_REL = join(".claude", "skills", "openspec-e2e")
 export function escapeYamlValue(value) {
     const needsQuoting = /[:\n\r#{}[\],&*!|>'"%@`]|^\s|\s$/.test(value);
     if (needsQuoting) {
-        const escaped = value
-            .replace(/\\/g, "\\\\")
-            .replace(/"/g, '\\"')
-            .replace(/\n/g, "\\n");
-        return `"${escaped}"`;
+        return quoteYamlScalar(value);
     }
     return value;
+}
+/**
+ * Always double-quote a YAML scalar. Used for values that are conventionally
+ * quoted even when safe (argument hints), so a value containing quotes or
+ * backslashes cannot produce invalid YAML.
+ */
+function quoteYamlScalar(value) {
+    const escaped = value
+        .replace(/\\/g, "\\\\")
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, "\\n");
+    return `"${escaped}"`;
 }
 /** Format tags as a YAML inline array. */
 export function formatTagsArray(tags) {
@@ -53,10 +61,8 @@ export function formatArtifact(spec, meta) {
         ? transformToHyphenCommands(meta.body)
         : meta.body;
     let out = "";
-    if (spec.header !== undefined) {
-        const header = typeof spec.header === "function" ? spec.header(meta) : spec.header;
-        out += `${header}\n\n`;
-    }
+    // Frontmatter must be the first block in the file — an editor with fatal
+    // frontmatter parsing treats anything before `---` as body text.
     if (spec.frontmatter) {
         const lines = [];
         if (spec.frontmatter.name) {
@@ -66,12 +72,16 @@ export function formatArtifact(spec, meta) {
             lines.push(`description: ${escapeYamlValue(meta.description)}`);
         }
         if (spec.frontmatter.argumentHint !== undefined) {
-            lines.push(`argument-hint: "${spec.frontmatter.argumentHint}"`);
+            lines.push(`argument-hint: ${quoteYamlScalar(spec.frontmatter.argumentHint)}`);
         }
         if (spec.frontmatter.disableModelInvocation) {
             lines.push("disable-model-invocation: true");
         }
         out += `---\n${lines.join("\n")}\n---\n\n`;
+    }
+    if (spec.header !== undefined) {
+        const header = typeof spec.header === "function" ? spec.header(meta) : spec.header;
+        out += `${header}\n\n`;
     }
     return `${out}${body}\n`;
 }

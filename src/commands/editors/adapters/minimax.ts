@@ -90,7 +90,7 @@ export function hasMinimax(projectRoot: string, homeDir?: string): boolean {
 
 /** Project-level signal only: marker dir or the installed skill. */
 export function hasMinimaxProjectSignal(projectRoot: string): boolean {
-  return minimaxAdapter.projectSignal!(projectRoot);
+  return minimaxAdapter.projectSignal(projectRoot);
 }
 
 registerAdapter(minimaxAdapter);

@@ -51,7 +51,7 @@ export function detectAdapters(
  * hasCommandArtifacts).
  */
 export function detectProjectAdapters(projectRoot: string): EditorAdapter[] {
-  return ADAPTERS.filter((a) => a.projectSignal!(projectRoot));
+  return ADAPTERS.filter((a) => a.projectSignal(projectRoot));
 }
 
 /**

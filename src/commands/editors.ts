@@ -146,7 +146,6 @@ export {
   removeAdapterMcp,
   removeAdapterCommandArtifacts,
   removeOwnedVendoredAgents,
-  removeClaudeLegacySkill,
   removeLegacyArtifact,
   removeWrapper,
   cleanupEmptyDirs,

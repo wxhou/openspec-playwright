@@ -67,8 +67,6 @@ export declare function removeOwnedVendoredAgents(projectRoot: string, adapter: 
  * removed project-relative path, or null when it does not exist.
  */
 export declare function removeLegacyArtifact(adapter: EditorAdapter, projectRoot: string, relPath: string): string | null;
-/** Delete claude's retired-install skill directory. Returns the path or null. */
-export declare function removeClaudeLegacySkill(projectRoot: string): string | null;
 /**
  * Remove the openspec-pw wrapper block from the adapter's wrapper file
  * (CLAUDE.md for claude, CODEBUDDY.md for codebuddy — adapter-owned

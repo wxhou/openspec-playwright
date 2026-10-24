@@ -120,7 +120,7 @@ describe("minimax detection", () => {
     mkdirSync(join(tmpRoot, ".minimax"));
     expect(hasMinimax(tmpRoot, "/nonexistent-home")).toBe(true);
     expect(minimaxAdapter.detect(tmpRoot, "/nonexistent-home")).toBe(true);
-    expect(minimaxAdapter.projectSignal!(tmpRoot)).toBe(true);
+    expect(minimaxAdapter.projectSignal(tmpRoot)).toBe(true);
   });
 
   it("detects the global CLI install root", () => {
@@ -140,7 +140,7 @@ describe("minimax detection", () => {
       mkdirSync(join(home, ".minimax-code"));
       expect(hasMinimax(tmpRoot, home)).toBe(true);
       expect(hasMinimaxProjectSignal(tmpRoot)).toBe(false);
-      expect(minimaxAdapter.projectSignal!(tmpRoot)).toBe(false);
+      expect(minimaxAdapter.projectSignal(tmpRoot)).toBe(false);
     } finally {
       rmSync(home, { recursive: true, force: true });
     }

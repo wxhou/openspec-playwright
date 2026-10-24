@@ -21,8 +21,9 @@ import {
   isInventoryEmpty,
   removeAdapterCommandArtifacts,
   removeAdapterMcp,
-  removeClaudeLegacySkill,
+  removeLegacyArtifact,
   removeWrapper,
+  CLAUDE_LEGACY_SKILL_REL,
   OPENSPEC_PW_MCP_SERVERS,
 } from "../src/commands/editors/removal.js";
 
@@ -176,15 +177,17 @@ describe("removeAdapterMcp", () => {
   });
 });
 
-describe("removeClaudeLegacySkill", () => {
-  it("removes the legacy skill dir and cascades empty parents; null when absent", () => {
-    expect(removeClaudeLegacySkill(projectRoot)).toBeNull();
-    const skillDir = join(projectRoot, ".claude", "skills", "openspec-e2e");
+describe("removeLegacyArtifact", () => {
+  it("removes the declared legacy dir and cascades empty parents; null when absent", () => {
+    expect(
+      removeLegacyArtifact(claudeAdapter, projectRoot, CLAUDE_LEGACY_SKILL_REL),
+    ).toBeNull();
+    const skillDir = join(projectRoot, CLAUDE_LEGACY_SKILL_REL);
     mkdirSync(skillDir, { recursive: true });
     writeFileSync(join(skillDir, "SKILL.md"), "x");
-    expect(removeClaudeLegacySkill(projectRoot)).toBe(
-      join(".claude", "skills", "openspec-e2e"),
-    );
+    expect(
+      removeLegacyArtifact(claudeAdapter, projectRoot, CLAUDE_LEGACY_SKILL_REL),
+    ).toBe(CLAUDE_LEGACY_SKILL_REL);
     expect(existsSync(skillDir)).toBe(false);
     expect(existsSync(join(projectRoot, ".claude"))).toBe(false);
   });

@@ -295,7 +295,7 @@ describe("detection tiers", () => {
       // None of the signals present.
       const empty = projectDir("detect", row.id, "none");
       expect(adapter.detect(empty, home)).toBe(false);
-      expect(adapter.projectSignal!(empty)).toBe(false);
+      expect(adapter.projectSignal(empty)).toBe(false);
       expect(intentFileEditors(empty)).toEqual([]);
 
       // Project marker directory present.
@@ -304,14 +304,14 @@ describe("detection tiers", () => {
         mkdirSync(join(marker, path), { recursive: true });
       }
       expect(adapter.detect(marker, home)).toBe(true);
-      expect(adapter.projectSignal!(marker)).toBe(true);
+      expect(adapter.projectSignal(marker)).toBe(true);
       expect(detectAdapters(marker, home).map((a) => a.id)).toContain(row.id);
 
       // Tool-owned artifact present (with no marker for minimax).
       const artifact = projectDir("detect", row.id, "artifact");
       installCommand(adapter, META, artifact);
       expect(adapter.detect(artifact, home)).toBe(true);
-      expect(adapter.projectSignal!(artifact)).toBe(true);
+      expect(adapter.projectSignal(artifact)).toBe(true);
 
       // Intent file alone: pre-select only — never detect / project signal.
       if (row.intent) {
@@ -321,7 +321,7 @@ describe("detection tiers", () => {
           row.intent.endsWith(".json") ? "{}\n" : "# notes\n",
         );
         expect(adapter.detect(intent, home)).toBe(false);
-        expect(adapter.projectSignal!(intent)).toBe(false);
+        expect(adapter.projectSignal(intent)).toBe(false);
         expect(intentFileEditors(intent)).toEqual([row.id]);
       }
     });
@@ -335,7 +335,7 @@ describe("detection tiers", () => {
       const rowHome = join(home, row.id);
       mkdirSync(join(rowHome, row.global), { recursive: true });
       expect(adapter.detect(empty, rowHome)).toBe(true);
-      expect(adapter.projectSignal!(empty)).toBe(false);
+      expect(adapter.projectSignal(empty)).toBe(false);
     }
   });
 });

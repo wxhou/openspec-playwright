@@ -51,7 +51,7 @@ describe("codebuddyAdapter", () => {
     mkdirSync(join(tmpRoot, ".codebuddy"));
     expect(hasCodebuddy(tmpRoot)).toBe(true);
     expect(codebuddyAdapter.detect(tmpRoot)).toBe(true);
-    expect(codebuddyAdapter.projectSignal!(tmpRoot)).toBe(true);
+    expect(codebuddyAdapter.projectSignal(tmpRoot)).toBe(true);
   });
 
   it("command path is .codebuddy/commands/opsx/<id>.md", () => {

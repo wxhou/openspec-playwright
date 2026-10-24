@@ -191,16 +191,6 @@ export function removeLegacyArtifact(adapter, projectRoot, relPath) {
     console.log(chalk.green(`  ✓ ${adapter.label}: ${relPath}/`));
     return relPath;
 }
-/** Delete claude's retired-install skill directory. Returns the path or null. */
-export function removeClaudeLegacySkill(projectRoot) {
-    const absPath = join(projectRoot, CLAUDE_LEGACY_SKILL_REL);
-    if (!existsSync(absPath))
-        return null;
-    rmSync(absPath, { recursive: true, force: true });
-    cleanupEmptyDirs(dirname(absPath), projectRoot);
-    console.log(chalk.green(`  ✓ claude: ${CLAUDE_LEGACY_SKILL_REL}/`));
-    return CLAUDE_LEGACY_SKILL_REL;
-}
 /**
  * Remove the openspec-pw wrapper block from the adapter's wrapper file
  * (CLAUDE.md for claude, CODEBUDDY.md for codebuddy — adapter-owned

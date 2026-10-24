@@ -33,7 +33,7 @@ export { formatOmpCommand, getOmpCommandPath, hasOmp, ompAdapter, } from "./edit
 export { formatCodebuddyCommand, getCodebuddyCommandPath, hasCodebuddy, codebuddyAdapter, } from "./editors/adapters/codebuddy.js";
 export { formatMinimaxSkill, getMinimaxSkillPath, hasMinimax, hasMinimaxProjectSignal, minimaxAdapter, minimaxMcpPath, } from "./editors/adapters/minimax.js";
 export { resolveToolsArg } from "./editors/tool-selection.js";
-export { OPENSPEC_PW_MCP_SERVERS, CLAUDE_LEGACY_SKILL_REL, type AdapterArtifactInventory, enumerateAdapterArtifacts, isInventoryEmpty, retainedMcpConfigFiles, removeAdapterMcp, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, removeClaudeLegacySkill, removeLegacyArtifact, removeWrapper, cleanupEmptyDirs, } from "./editors/removal.js";
+export { OPENSPEC_PW_MCP_SERVERS, CLAUDE_LEGACY_SKILL_REL, type AdapterArtifactInventory, enumerateAdapterArtifacts, isInventoryEmpty, retainedMcpConfigFiles, removeAdapterMcp, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, removeLegacyArtifact, removeWrapper, cleanupEmptyDirs, } from "./editors/removal.js";
 export { VENDORED_AGENT_ROLES, vendoredAgentRelPath, vendoredAgentRelPaths, type AgentsManifest, installedAgentsSnapshotDir, readAgentsManifest, loadAgentSnapshots, sha256Contents, roleForRelPath, classifyAgentFile, enumerateVendoredAgents, syncVendoredAgents, } from "./editors/agents.js";
 export { isEditorConfigured, anyEditorConfigured, agentsFileHasMarkers, } from "./editors/configured.js";
 export { intentFileEditors } from "./editors/preselect.js";
