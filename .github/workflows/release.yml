@@ -131,6 +131,11 @@ jobs:
               exit 0
             }
             echo "$ERR"
+            # Re-runs after a successful publish must not go red (registry returns E403).
+            if echo "$ERR" | grep -q "cannot publish over the previously published versions"; then
+              echo "Version already published — treating as success"
+              exit 0
+            fi
             if [ "$i" -eq "$ATTEMPTS" ]; then
               echo "All $ATTEMPTS attempts exhausted"
               exit 1
