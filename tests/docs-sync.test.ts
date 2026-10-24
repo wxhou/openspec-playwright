@@ -34,11 +34,14 @@ const ZH_ANCHORS: [string, string][] = [
   ["§1 模块化", "模块化与关注点分离"],
   ["§2 挪动随迁", "其 import 随迁"],
   ["§2 豁免标注", "例外须行内注明缘由"],
+  ["§2 破坏性命令授权", "破坏性/不可逆命令"],
   ["§3 阶段自动串联", "做到绿"],
   ["§3 两轮审查", "自动审查两轮"],
   ["§3 独立视角", "独立上下文"],
   ["§3 高风险设计确认", "高风险变更"],
-  ["§3 归档默认人工", "归档默认人工"],
+  ["§3 自动归档条件", "要求「自动归档」，且"],
+  ["§3 归档授权", "commit/push/merge/release/archive 须用户授权"],
+  ["§3 自动链止于 verify", "e2e 不在自动链内"],
   ["§3 规模门槛", "300+ 行且跨多个文件"],
   ["§0 同档冲突处置", "先按该条款执行"],
   ["§1 授权标注豁免", "来源与授权标注"],
@@ -81,11 +84,14 @@ const EN_ANCHORS: [string, string][] = [
   ["§1 selection chain", "priority chain"],
   ["§2 move migration", "its imports migrate with it"],
   ["§2 exemption annotation", "annotated inline with its reason"],
+  ["§2 destructive command consent", "Destructive/irreversible commands"],
   ["§3 phase auto-chain", "run this change through"],
   ["§3 two-round review", "two automatic review rounds"],
   ["§3 independent review", "independent context"],
   ["§3 high-risk design gate", "High-risk changes"],
-  ["§3 archive manual default", "Archive stays manual"],
+  ["§3 auto-archive conditions", "Auto-archive only when explicitly requested"],
+  ["§3 archive authorization", "commit/push/merge/release/archive require user authorization"],
+  ["§3 auto-chain stops at verify", "e2e is not part of the auto-chain"],
   ["§3 size gate", "300+ lines across multiple files"],
   ["§0 same-tier conflict handling", "follow that clause first"],
   ["§1 authorization annotation exemption", "source and authorization annotations"],
@@ -141,5 +147,38 @@ describe("docs/script.js embedded standards stay in sync", () => {
   it("demotes embed headings (renderMarkdown never emits an h1)", () => {
     expect(scriptJs).not.toMatch(/<h1>/);
     expect(scriptJs).toContain('h${level + offset}');
+  });
+});
+
+// The renderer lives in a plain browser script, so it cannot be imported.
+// Extract the two functions it needs and run them here: the standards use
+// nested lists (2-space indent) for sub-rules, and flattening them would
+// drop the structure the embed is read for.
+function loadRenderer(): (md: string) => string {
+  const start = scriptJs.indexOf("function processInline");
+  const end = scriptJs.indexOf("\nfunction setLanguage");
+  const source = scriptJs.slice(start, end);
+  const factory = new Function(`${source}\nreturn renderMarkdown;`) as () => (md: string) => string;
+  return factory();
+}
+
+describe("landing-page markdown renderer", () => {
+  const render = loadRenderer();
+
+  it("renders indented items as a nested <ul> inside the parent <li>", () => {
+    const html = render("- parent\n  - child\n- sibling");
+    expect(html).toContain("<li>parent<ul>");
+    expect(html).toContain("<li>child</li>");
+    expect(html).toContain("<li>sibling</li>");
+  });
+
+  it("closes the nested list before the next block", () => {
+    const html = render("- parent\n  - child\n\ntext");
+    expect(html.indexOf("</ul>")).toBeLessThan(html.indexOf("<p>text</p>"));
+  });
+
+  it("the standards embed actually uses nested lists", () => {
+    expect(zh).toMatch(/^ {2}- /m);
+    expect(en).toMatch(/^ {2}- /m);
   });
 });

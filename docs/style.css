@@ -1003,6 +1003,18 @@ section[id],
   margin-bottom: 10px;
 }
 
+/* Nested standards rules (2-space indent in the embed) — a quieter marker
+   so the parent rule stays the visual anchor. */
+.claude-config-rendered ul ul {
+  padding-left: 16px;
+  margin: 4px 0 6px;
+}
+
+.claude-config-rendered ul ul > li::marker {
+  content: "– ";
+  color: var(--text-secondary);
+}
+
 .claude-config-rendered li {
   font-size: 0.85rem;
   color: var(--text-secondary);

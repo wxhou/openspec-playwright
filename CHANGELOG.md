@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+- **docs(standards): 补齐不可逆命令授权，收口两处判定冲突**. ① §2 新增 🔴：破坏性/不可逆命令（`git clean -fdx`/`git reset --hard`/`rm -rf`）执行前声明影响范围并取得明确同意，「清理/重置」等宽泛指令不构成授权，§5 允许的自有临时产物清理除外（否则与「超 24 小时临时文件须删」冲突）——此前全文只对 commit/push/merge/release/archive 设授权，本地不可逆操作无拦截；② §7 量级未知时「问用户」与「无界读取条默认流式」两条对立，收窄为「会改变实现结构（分页/分批/索引）才问，其余默认流式」；③ §1 异常出口②的「影响更重直接上抛」无判据，换成可观察项（失败结果是否被下游消费、是否留下不一致状态）；④ §3 skill 优先级条点名「人工保留点」含高风险设计确认，消除与自动链「连续执行」的误读。中英副本同步，+2 锚点。
+  - `employee-standards.md`、`docs/script.js`（ZH/EN 副本）、`tests/docs-sync.test.ts`、`CHANGELOG.md`
+
+- **docs(standards): 归档授权收敛到一处**. §3 授权清单由 `commit/push/merge/release` 扩为 `commit/push/merge/release/archive`——归档此前只在归档条目里设边界、授权清单里没有，模型在 verify 之后照 skill 收尾建议顺手归档时无条款可依；归档条目的「归档默认人工；」随之下线（默认不归档已由授权清单承担），该条目只保留自动归档模式与四个条件（tasks 全勾无 blocked、verify 无 CRITICAL、e2e 无 active App Bug、commit/merge 已授权完成），触发词收窄为「自动归档」——「一路归档」描述的是整条链跑完，不构成归档授权。中英副本同步；净字数 −5（授权清单 +8、删「归档默认人工；」−7、触发词收窄 −6），收敛的是规则出处而非篇幅。锚点调整：ZH「归档默认人工」→「自动归档」，EN「Archive stays manual」→ auto-archive 条件，另加归档授权锚点。
+  - `employee-standards.md`、`docs/script.js`（ZH/EN 副本）、`tests/docs-sync.test.ts`（锚点 −1 ZH / −1 EN / +2）、`CHANGELOG.md`
+
+- **docs(standards): 自动链条目去重——e2e 排除合并、凑绿禁令改为指路**. ① 同一条内「e2e 不在自动链内」与「「做到绿」…不含 e2e」是同一事实的两遍，合并为一句（括号收在 e2e 排除句后，诱惑点仍贴着「做到绿」）；② 「不得以修改断言/期望值绕过失败」是 §6 断言分歧条款（"不单方面弱化断言把两边凑绿"）的复述，按「规范只声明自动化边界」改为一句边界 + 指路。SSOT 226 → 200 字，ZH 副本 212 → 194，EN 副本 628 → 604。规则语义未变；e2e 在 §3 的 4 处提及仍全为边界句。
+  - `employee-standards.md`、`docs/script.js`（ZH/EN 副本）、`CHANGELOG.md`
+
+- **docs(standards): 密集规则改为嵌套列表，落地页渲染器支持缩进嵌套**. §0 的优先级决策规则（原为一行内塞三档定义 + 冲突裁决 + 用户指令优先）拆成逐档条目；§1 的 gate 生命周期、推测性买断、注释纪律、异常出口四条由单行长句拆成「父项（判据）+ 子项（条件）」，父项保留 🔴/🟡 档位，子项不再重复结论（中英副本同步）；落地页 `renderMarkdown` 新增按缩进（2 空格一级，最多三级）生成嵌套 `<ul>` 的支持，嵌套 `<ul>` 置于父 `<li>` 内，样式上子项用 `–` 标记；新增 3 条测试锁住嵌套渲染与副本确实使用嵌套列表。规则语义未变，字数略增——结构换可判定性。
+  - `employee-standards.md`、`docs/script.js`（渲染器 + ZH/EN 副本）、`docs/style.css`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
+
+- **docs(standards): 合并碎片条款（规则与条件不变）**. ① gate 异常处理（工具缺失 / 检查未运行 / 仍失败）由两条并为一条；② §4 数据流程（询问 → 拒绝 / 占位 / 给数据 / 授权）由三条并为一条；③ §0「用户指令优先」并入优先级裁决条；④ §2 去掉只挂一条条目的冗余标题；⑤ §1 推测性买断的例外清单与「简化有边界」重复的部分删除（该清单由「简化有边界」承担，未用 import 的清理由「精准改动」承担）；⑥ 异常出口条目补一句指向随包分发的 `lint-guidelines.md`（各语言吞错 lint 规则）。全文 9,272 → 9,246 字，条目 70 → 67；中英副本同步。
+  - `employee-standards.md`、`docs/script.js`（ZH/EN 副本）、`CHANGELOG.md`
+
+- **docs(standards): e2e 移出自动链——自动链止于 verify**. §3 的自动链由「apply → verify →（条件触发）e2e」改为「apply → verify 即止」；e2e 改为仅在用户显式调用时运行（浏览器流程成本高，不再由链条自动承担），其内部 HARD STOP 由 e2e 命令模板自身强制，规范不再复述；「做到绿」只授权 apply → verify，不含 e2e；tasks.md「## 状态」的 e2e 字段改为「未运行或运行结果」。同批精简 §3：「停下后续跑 / 跨会话需重新表达完成意图」从 e2e 条目移入走偏与转场检查条目（它描述的是链条停止语义）；门槛、授权、两轮审查三处压缩措辞，规则不变。CLI 行为不变，已安装项目下次 `update` 生效。
+  - `employee-standards.md`、`docs/script.js`（ZH/EN 副本）、`tests/docs-sync.test.ts`（+1 ZH / +1 EN 锚点）、`CHANGELOG.md`
+
 ## [0.3.103] - 2026-10-24
 - **docs(standards): 「点名」术语归位——只保留验收语义**. 该词此前兼指「用户指定动作」（§3 授权范围）与「用户明确要求」（§1 注释、具体值豁免），与 §6 的验收定义相互干扰。三处非验收语义改为「明确要求 / 明确指定」，§6 定义与用法不变；中英副本同步。
   - `employee-standards.md`、`docs/script.js`（ZH/EN 副本）、`CHANGELOG.md`
