@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+- **fix(cli): `update` 强制刷新 npm 缓存，版本不一致提示按来源分流**. ① 两处 `npm install …@latest`（全局与 devDependency）加 `--prefer-online`——刚发布后 npm 的 packument 缓存仍指向旧版本，`@latest` 会解析成同版本、退出码 0，`update` 误判为已更新并继续用旧二进制；② 版本不一致提示此前无条件断言"devDependency 影子"，而解析路径在全局前缀下时该结论不成立（实测 `/Users/…/.npm-global/lib/node_modules/…` 且项目无该依赖），现按解析路径是否落在 `<project>/node_modules/` 分流，全局分支给出 `npm install -g openspec-playwright@latest --prefer-online`。新增 4 条单测覆盖两个分支与路径前缀边界。
+  - `src/commands/update.ts`、`tests/update.version-shadow.test.ts`、`CHANGELOG.md`
+
 ## [0.3.104] - 2026-10-24
 - **docs(standards): 补齐不可逆命令授权，收口两处判定冲突**. ① §2 新增 🔴：破坏性/不可逆命令（`git clean -fdx`/`git reset --hard`/`rm -rf`）执行前声明影响范围并取得明确同意，「清理/重置」等宽泛指令不构成授权，§5 允许的自有临时产物清理除外（否则与「超 24 小时临时文件须删」冲突）——此前全文只对 commit/push/merge/release/archive 设授权，本地不可逆操作无拦截；② §7 量级未知时「问用户」与「无界读取条默认流式」两条对立，收窄为「会改变实现结构（分页/分批/索引）才问，其余默认流式」；③ §1 异常出口②的「影响更重直接上抛」无判据，换成可观察项（失败结果是否被下游消费、是否留下不一致状态）；④ §3 skill 优先级条点名「人工保留点」含高风险设计确认，消除与自动链「连续执行」的误读。中英副本同步，+2 锚点。
   - `employee-standards.md`、`docs/script.js`（ZH/EN 副本）、`tests/docs-sync.test.ts`、`CHANGELOG.md`

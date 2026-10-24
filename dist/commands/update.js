@@ -1,6 +1,6 @@
 import { execFile, execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
-import { join, basename } from "path";
+import { join, basename, sep } from "path";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync, statSync, lstatSync, } from "fs";
 import { tmpdir } from "os";
 import { promisify } from "util";
@@ -38,7 +38,7 @@ export async function update(options) {
         console.log(chalk.blue("─── Updating CLI ───"));
         let cliUpdated = false;
         try {
-            await execFileAsync("npm", ["install", "-g", "openspec-playwright@latest"], {
+            await execFileAsync("npm", ["install", "-g", "openspec-playwright@latest", "--prefer-online"], {
                 timeout: 120000,
                 cwd: projectRoot,
                 stdio: "inherit",
@@ -98,7 +98,7 @@ export async function update(options) {
             console.log(chalk.gray("    Node module resolution will use local version, not global CLI."));
             console.log(chalk.gray("    Syncing local devDependency to latest..."));
             try {
-                await execFileAsync("npm", ["install", "-D", "openspec-playwright@latest"], {
+                await execFileAsync("npm", ["install", "-D", "openspec-playwright@latest", "--prefer-online"], {
                     timeout: 120000,
                     cwd: projectRoot,
                     stdio: "inherit",
@@ -291,10 +291,10 @@ export async function update(options) {
     console.log(chalk.green("  ✓ Update complete!"));
     // Self-check: detect when the actually-resolved package version
     // (by Node module resolution from this CLI script) differs from
-    // the latest published version. The most common cause is a
-    // devDependency in the user's package.json shadowing the global
-    // CLI binary. See Node module resolution rules.
-    await checkVersionShadow();
+    // the latest published version. Either a project-local devDependency
+    // shadows the global binary, or the global install itself is stale —
+    // the advice printed depends on which one it is.
+    await checkVersionShadow(projectRoot);
     const editorsForHint = getAllAdapters().filter((a) => hasCommandArtifacts(projectRoot, a));
     if (editorsForHint.length > 0) {
         const labels = editorsForHint.map((a) => a.displayName).join(" + ");
@@ -316,13 +316,34 @@ export async function update(options) {
     }
 }
 /**
+ * Lines describing a CLI-vs-registry version mismatch. The advice depends on
+ * where the running copy resolved from: a copy inside the project's
+ * node_modules shadows the global binary, while a stale global install is
+ * fixed by reinstalling globally (npm can serve a cached "latest" right after
+ * a release, hence --prefer-online). Exported for tests.
+ */
+export function versionMismatchLines(resolvedPath, projectRoot, resolvedVersion, publishedVersion) {
+    const installRoot = resolvedPath.replace(/[\\/]package\.json$/, "");
+    const localModules = join(projectRoot, "node_modules") + sep;
+    const isProjectLocal = (installRoot + sep).startsWith(localModules);
+    const lines = [
+        `\n  ⚠ Version mismatch: loaded ${resolvedVersion}, latest ${publishedVersion}`,
+        `    Resolved from: ${installRoot}`,
+    ];
+    if (isProjectLocal) {
+        lines.push("    A devDependency in this project's package.json shadows the global CLI binary.", "    Fix: npm uninstall openspec-playwright, then re-run: openspec-pw update", "         (or: npm install -D openspec-playwright@latest)");
+    }
+    else {
+        lines.push('    The global install is outdated (npm may still serve a cached "latest" right after a release).', "    Fix: npm install -g openspec-playwright@latest --prefer-online");
+    }
+    return lines;
+}
+/**
  * Self-check: print warning if Node module resolution is loading
  * a different `openspec-playwright` version than the one just
- * installed. The most common cause is a devDependency in the
- * current project's package.json shadowing the global CLI binary
- * (Node module resolution prefers local node_modules over global).
+ * installed, with advice matching where that copy came from.
  */
-async function checkVersionShadow() {
+async function checkVersionShadow(projectRoot) {
     let resolvedVersion;
     let resolvedPath;
     try {
@@ -336,7 +357,7 @@ async function checkVersionShadow() {
         // openspec-playwright not in module path — nothing to check
         return;
     }
-    if (!resolvedVersion)
+    if (!resolvedVersion || !resolvedPath)
         return;
     let publishedVersion;
     try {
@@ -349,11 +370,11 @@ async function checkVersionShadow() {
     }
     if (!publishedVersion || resolvedVersion === publishedVersion)
         return;
-    console.log(chalk.yellow(`\n  ⚠ Version mismatch: loaded ${resolvedVersion}, latest ${publishedVersion}`));
-    console.log(chalk.gray(`    This update script resolved from: ${resolvedPath.replace(/[\\/]package\.json$/, "")}`));
-    console.log(chalk.gray("    A devDependency in this project's package.json is shadowing the global CLI binary."));
-    console.log(chalk.gray("    Fix: upgrade or remove it with: npm uninstall openspec-playwright"));
-    console.log(chalk.gray("         then re-run: openspec-pw update (or: npm install -D openspec-playwright@latest)"));
+    const lines = versionMismatchLines(resolvedPath, projectRoot, resolvedVersion, publishedVersion);
+    console.log(chalk.yellow(lines[0]));
+    for (const line of lines.slice(1)) {
+        console.log(chalk.gray(line));
+    }
 }
 /**
  * Fetch the latest published bundle into a fresh tmp dir via `npm pack` and
