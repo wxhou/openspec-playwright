@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+- **docs(standards): 「点名」术语归位——只保留验收语义**. 该词此前兼指「用户指定动作」（§3 授权范围）与「用户明确要求」（§1 注释、具体值豁免），与 §6 的验收定义相互干扰。三处非验收语义改为「明确要求 / 明确指定」，§6 定义与用法不变；中英副本同步。
+  - `employee-standards.md`、`docs/script.js`（ZH/EN 副本）、`CHANGELOG.md`
+
+- **fix(standards): 两处标记档位归位，WHY 去重**. §6「无断言价值的测试一律不写」由 🟡 升 🔴，与同节「验收点名行为必须被覆盖」的硬禁令对齐；§4「不编造 URL/路径/字段名」补 🔴，与相邻编撰禁令同档；§6 WHY 删去与首条规则重复的「测试只随验收存在」，只保留意图与验收判据。中英副本同步。
+  - `employee-standards.md`、`docs/script.js`（ZH/EN 副本）、`CHANGELOG.md`
+
+- **docs(standards): 规范减法第一轮——合并重复表述（不改变语义）**. 六处压缩：🟡 IMPORTANT 定义内的同义重复合并；gate 条尾「工具不存在」并入 REQUIRE 的告知义务；注释纪律把「多轮间叙述」并入「改动叙述」定义并删去单列句；§2 回退与 §3 停止条件不再各写一遍「2 轮预算」，统一由 §1 gate 定义；§3 收尾条删去与 e2e HARD STOP 条重复的短语；URL/字段名与循环内 I/O 两条改为单句义务式（🟡 档位不变）。
+  - `employee-standards.md`、`docs/script.js`（ZH/EN 副本）、`CHANGELOG.md`
+
+- **fix(standards): 跨章节矛盾与副本漂移修正（`standards-consistency-fixes`）**. ① §0 冲突裁决补全 🔴 > 🟡 > ⚪；同级冲突先执行已有明确处置的条款（如 gate 的 auto-fix 循环），无规定才停问，解开与 lint gate 的死锁；② `// fake data（用户授权）` 与来源标注并入 §1 注释豁免清单；③ 规模门槛改为 **300+ 行且跨多个文件** 或架构级变更，单文件不因行数单独触发；④ §7 无界读取例外要求「已有确认的上界」（config 记录或用户确认），仅当前大小不算；⑤ §4 用户拒绝时裸 `return null` 不再算显式失败，改用 `throw` / 显式错误类型 / stub；⑥ 中英副本改用语义节名（消除悬空 `§N`）、补 `.tsx`、区分 linter auto-fix 与 `ruff format`/`gofmt`（`go vet` 无 auto-fix），并修正错配标题、推送标记、上下文压缩步骤与「点名」措辞。CLI 行为不变。
+  - `employee-standards.md`、`docs/script.js`（ZH/EN 副本）、`tests/docs-sync.test.ts`（+4 ZH / +4 EN 锚点）、`CHANGELOG.md`
+
+- **docs(standards): OpenSpec 阶段自动串联——两端人工 + 中间自动**. §3 的「各阶段由用户手动触发」替换为：提案范围与 commit/push/merge/release 须人工（一次授权只覆盖点名动作）；提案后自动审查两轮（第二轮用独立视角，verify 直接执行），自修不得增删范围；自动链仅由显式完成意图或 `/opsx:apply` 触发，连续执行 apply → verify →（用户可见交互时）e2e，e2e 内部 HARD STOP 照旧；修复预算按同一失败计 2 轮；高风险变更 apply 前追加设计确认；归档默认人工，自动归档要求 tasks 无 blocked、verify 无 CRITICAL、e2e 无 active App Bug 且 commit/merge 已完成；状态写入 tasks.md。不新增技能或命令，CLI 行为不变。
+  - `employee-standards.md`、`docs/script.js`（ZH/EN 内嵌副本）、`tests/docs-sync.test.ts`（+5 ZH / +5 EN 锚点）、`CHANGELOG.md`
+
 ## [0.3.102] - 2026-10-23
 - **refactor(standards): CLAUDE.md / CODEBUDDY.md wrapper 只保留 `@AGENTS.md` 导入**. init/update 写入的 thin wrapper 移除 CodeGraph 块与 OpenSpec 工作流提示，现在只含 `@AGENTS.md`（外加 OPENSPEC-PW 标记）；完整规范继续由 AGENTS.md 承载，裸 `@AGENTS.md` 不再提示。已初始化项目下次 `update` 自动重写 wrapper；本仓库 `CLAUDE.md` / `CODEBUDDY.md` 同步。
   - `src/commands/editors/project-rules.ts`、`src/commands/update.ts`、`tests/editors.test.ts`、`tests/editors-codebuddy.test.ts`、`tests/update.standards.test.ts`、`README.md`、`README.zh-CN.md`、`CLAUDE.md`、`CHANGELOG.md`
