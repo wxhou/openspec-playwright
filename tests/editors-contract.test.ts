@@ -68,6 +68,15 @@ function legacyPaths(inv: Record<string, unknown>): string[] {
   return single ? [single] : [];
 }
 
+/**
+ * Adapter paths are built with `join()`, so they carry the host separator.
+ * Snapshots assert the layout, not the platform — normalize to POSIX so the
+ * same expectations hold on Windows CI.
+ */
+function posix(relativePath: string): string {
+  return relativePath.replace(/\\/g, "/");
+}
+
 let root: string;
 let home: string;
 
@@ -174,9 +183,9 @@ describe("artifact formatting is byte-stable", () => {
       getAllAdapters().map((a) => ({
         id: a.id,
         commandForm: a.commandForm,
-        path: a.commandFilePath("e2e"),
+        path: posix(a.commandFilePath("e2e")),
         extras: (a.extraArtifacts?.(META) ?? []).map((e) => ({
-          path: e.relativePath,
+          path: posix(e.relativePath),
           contents: e.contents,
         })),
         slash: slashCommandForAdapter(a),
@@ -408,8 +417,8 @@ describe("removal inventory", () => {
 
     const inv = enumerateAdapterArtifacts(claudeAdapter, proj);
     expect({
-      commandPaths: inv.commandPaths,
-      legacy: legacyPaths(inv as unknown as Record<string, unknown>),
+      commandPaths: inv.commandPaths.map(posix),
+      legacy: legacyPaths(inv as unknown as Record<string, unknown>).map(posix),
       mcpServers: inv.mcpServers,
       retainedMcpServers: inv.retainedMcpServers,
       hasWrapper: inv.hasWrapper,
