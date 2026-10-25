@@ -84,7 +84,7 @@ describe("pipeline template", () => {
   });
 
   it("runs verify after the gate, advisory only, and records it in the PR", () => {
-    const gate = template.indexOf("- name: Gate\n");
+    const gate = template.lastIndexOf("- name: Gate\n");
     const verify = template.indexOf("- name: Verify (advisory)");
     const pr = template.indexOf("- name: Open or update the PR");
     expect(gate).toBeGreaterThan(-1);
@@ -118,6 +118,45 @@ describe("pipeline template", () => {
     expect(verifyBlock).toContain('--tools "Bash,Read"');
     expect(verifyBlock).toContain('--allowedTools "Read" "Bash"');
     expect(verifyBlock).not.toContain("--tools \"Bash,Read,Edit,Write\"");
+  });
+
+  it("gates the cheap checks before the browser-driven stage", () => {
+    // lint/typecheck/test are seconds and free; E2E needs a server and a
+    // browser. A half-finished apply must not reach the expensive stage.
+    const apply = template.indexOf("- name: Apply change");
+    const staticGate = template.indexOf("- name: Gate (static)");
+    const e2e = template.indexOf("- name: Generate E2E tests");
+    // `- name: Gate` also exists in the PR job, which comes first in the file.
+    const fullGate = template.lastIndexOf("- name: Gate\n");
+    const verify = template.indexOf("- name: Verify (advisory)");
+    expect(apply).toBeGreaterThan(-1);
+    expect(staticGate).toBeGreaterThan(apply);
+    expect(e2e).toBeGreaterThan(staticGate);
+    expect(fullGate).toBeGreaterThan(e2e);
+    expect(verify).toBeGreaterThan(fullGate);
+  });
+
+  it("keeps the apply self-check off e2e until the tests exist", () => {
+    // The "scenarios but no tests" guard fails a full gate before the E2E
+    // stage has run, so asking the agent for a full gate is a loop that can
+    // never terminate — and an unsatisfiable check invites a stub test.
+    const applyBlock = template.slice(
+      template.indexOf("- name: Apply change"),
+      template.indexOf("- name: Check task completion"),
+    );
+    expect(applyBlock).toContain("openspec-pw gate $CHANGE --skip e2e");
+    expect(applyBlock).toContain("do not write them yourself");
+  });
+
+  it("does not let tee swallow a red gate", () => {
+    const gateBlock = template.slice(template.lastIndexOf("- name: Gate\n"));
+    expect(gateBlock).toContain("set -o pipefail");
+  });
+
+  it("skips the e2e check when E2E generation is switched off", () => {
+    const gateBlock = template.slice(template.lastIndexOf("- name: Gate\n"));
+    expect(gateBlock).toContain('"$E2E" = "false"');
+    expect(gateBlock).toContain("--skip e2e");
   });
 
   it("references credentials only through secrets", () => {

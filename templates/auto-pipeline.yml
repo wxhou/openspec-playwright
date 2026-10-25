@@ -146,14 +146,19 @@ jobs:
           echo "change=$CHANGE" >> "$GITHUB_OUTPUT"
 
       # The prompt carries the self-verification loop: the agent is told to run
-      # the gate and revise until it is green. The explicit gate step below is
+      # the gate and revise until it is green. The explicit gate steps below are
       # the independent second opinion — either one alone leaves a hole.
+      #
+      # `--skip e2e` is load-bearing: the change's E2E tests do not exist until
+      # the next stage, and the "scenarios but no tests" guard fails the gate on
+      # that. Asking for a full gate here is a loop that cannot terminate — and
+      # an agent that cannot satisfy a check may write a stub test to silence it.
       - name: Apply change
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           CHANGE: ${{ steps.resolve.outputs.change }}
         run: |
-          claude -p "/opsx:apply $CHANGE. Run \`openspec-pw gate $CHANGE\` and revise until it exits 0." \
+          claude -p "/opsx:apply $CHANGE. Run \`openspec-pw gate $CHANGE --skip e2e\` and revise until it exits 0. E2E tests are generated in a later step — do not write them yourself." \
             --permission-mode acceptEdits \
             --permission-prompts none \
             --tools "Bash,Read,Edit,Write" \
@@ -174,6 +179,15 @@ jobs:
             exit 1
           fi
 
+      # Cheap gates first. These checks take seconds and cost no tokens, so a
+      # half-finished apply must not reach the browser-driven stage below. E2E
+      # is excluded for the same reason as in the apply prompt: its tests do
+      # not exist yet.
+      - name: Gate (static)
+        env:
+          CHANGE: ${{ steps.resolve.outputs.change }}
+        run: openspec-pw gate "$CHANGE" --only validate,lint,typecheck,test,flake --keep-going
+
       - name: Generate E2E tests
         if: ${{ inputs.e2e != false }}
         env:
@@ -190,10 +204,21 @@ jobs:
             --output-format json > e2e.json || true
           openspec-pw coverage "$CHANGE" --plan "tests/playwright/changes/$CHANGE/test-plan.md"
 
+      # Full gate, E2E included — run independently of both agent stages: the
+      # E2E agent can edit code too, so the static result above is not assumed
+      # to still hold. `pipefail` matters: without it `tee` returns 0 and a red
+      # gate would still open the PR.
+      # When E2E is switched off, its tests are never generated, so asking the
+      # gate to check them would fail on a change that did nothing wrong.
       - name: Gate
         env:
           CHANGE: ${{ steps.resolve.outputs.change }}
-        run: openspec-pw gate "$CHANGE" --json --keep-going | tee gate.json
+          E2E: ${{ inputs.e2e }}
+        run: |
+          set -o pipefail
+          ARGS=()
+          [ "$E2E" = "false" ] && ARGS+=(--skip e2e)
+          openspec-pw gate "$CHANGE" "${ARGS[@]}" --json --keep-going | tee gate.json
 
       # Advisory only: checks the implementation against the change artifacts and
       # records the report in the PR. It never decides whether the PR opens.
