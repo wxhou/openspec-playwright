@@ -3,7 +3,11 @@ interface AuditResult {
     issue: string;
     detail?: string;
 }
-export declare function audit(): Promise<void>;
+export declare function audit(opts?: {
+    gate?: boolean;
+}): Promise<number>;
+/** `--gate` turns the audit from a report into a check. */
+export declare function auditExitCode(issueCount: number, gate?: boolean): number;
 export interface SpecAnchor {
     capability: string;
     requirementTitle: string;

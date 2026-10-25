@@ -43,7 +43,7 @@ npm install -g openspec-playwright@latest
 **必需：**
 
 1. **Node.js >= 20**
-2. **Claude Code**（带 `.claude/` 目录）和/或 **OpenCode**（带 `.opencode/` 目录）和/或 **Cline**（带 `.cline/` 或 `.clinerules/` 目录）和/或 **Cursor**（带 `.cursor/` 目录）和/或 **Pi**（项目 `.pi/` 或全局 `~/.pi/agent/`）和/或 **Oh My Pi**（项目 `.omp/` 或全局 `~/.omp/agent/`）和/或 **CodeBuddy CLI**（带 `.codebuddy/` 目录）和/或 **MiniMax Code**（项目 `.minimax/` 或全局 `~/.minimax-code/`，或已安装的 `.agents/skills/opsx-e2e/` 技能）
+2. **Claude Code**（带 `.claude/` 目录）和/或 **OpenCode**（带 `.opencode/` 目录）和/或 **Cline**（带 `.cline/` 或 `.clinerules/` 目录）和/或 **Cursor**（带 `.cursor/` 目录）和/或 **Pi**（项目 `.pi/` 或全局 `~/.pi/agent/`）和/或 **Oh My Pi**（项目 `.omp/` 或全局 `~/.omp/agent/`）和/或 **CodeBuddy CLI**（带 `.codebuddy/` 目录）和/或 **MiniMax Code CLI**（`mcode`；项目 `.minimax/` 或全局 `~/.minimax-code/`，或已安装的 `.agents/skills/opsx-e2e/` 技能）
 3. **OpenSpec** 已初始化：`npm install -g @fission-ai/openspec@latest && openspec init`
 4. **Playwright MCP**（用于测试执行 + Healer）— `openspec-pw init` 会在检测到前端信号时按编辑器自动安装（纯 API 项目跳过——API 测试用 `request` fixture），**全部项目级**（写入项目内文件；Claude Code 用 `--scope project` 写项目根 `.mcp.json`，不碰全局 `~/.claude.json`）。安装**单个** server，与 Playwright 官方 `playwright init-agents` 布局一致：
    - `playwright-test` — 官方 test-runner server（`npx playwright run-test-mcp-server`，`playwright` 包自带）。是 `@playwright/mcp` 的**超集**：一个条目同时暴露 `browser_*` 浏览器工具（探索 + Healer 页面检查）和结构化的 `test_run` / `test_debug` / `test_list` 工作流工具（Healer 闭环）。
@@ -83,7 +83,7 @@ openspec-pw init          # 安装 Playwright E2E 集成（--tools 选编辑器�
 | **Pi**（earendil-works） | `/opsx-e2e` | **否** — 改用 `openspec-pw explore` + `npx playwright test` | 原生 |
 | **Oh My Pi（omp）** | `/opsx-e2e` | 是（`.omp/mcp.json`） | 原生 |
 | **CodeBuddy CLI**（腾讯） | `/opsx:e2e` | 是（项目根 `.mcp.json`） | 经 `CODEBUDDY.md` → `@AGENTS.md` |
-| **MiniMax Code** | `/opsx-e2e` | 是（项目根 `.mcp.json`） | 原生（`AGENTS.md`） |
+| **MiniMax Code**（`mcode` CLI） | `/opsx-e2e` | 是（项目根 `.mcp.json`） | 原生（`AGENTS.md`） |
 
 各编辑器命令体完全相同（安装时 `/opsx:` → `/opsx-` 改写）。具体安装路径、检测信号、auth/MCP 细节见下方 [使用](#使用) 与 [前置条件](#前置条件) 两节。
 
@@ -100,7 +100,7 @@ openspec-pw init          # 安装 Playwright E2E 集成（--tools 选编辑器�
 | Pi | `/opsx-e2e <change-name>` | `.pi/prompts/opsx-e2e.md`（文件名即命令名） |
 | Oh My Pi | `/opsx-e2e <change-name>` | `.omp/commands/opsx-e2e.md` |
 | CodeBuddy CLI | `/opsx:e2e <change-name>` | `.codebuddy/commands/opsx/e2e.md` |
-| MiniMax Code | `/opsx-e2e <change-name>` | `.agents/skills/opsx-e2e/SKILL.md`（技能） |
+| MiniMax Code CLI | `/opsx-e2e <change-name>` | `.agents/skills/opsx-e2e/SKILL.md`（技能） |
 
 <details>
 <summary><strong>各编辑器的差异</strong>（默认折叠；只有 init 报错时才需要展开）</summary>
@@ -109,7 +109,7 @@ openspec-pw init          # 安装 Playwright E2E 集成（--tools 选编辑器�
 - **Pi**：没有 MCP 客户端——浏览器探索改用 `openspec-pw explore`，测试执行用 shell 跑 `npx playwright test`（无 Healer 步骤）。
 - **Oh My Pi**：若 `.claude/` / `.cursor/` / `opencode.jsonc` 已存在并配置了 MCP，omp 会一并继承。
 - **CodeBuddy CLI**：冒号命名（同 Claude Code，`/opsx:e2e`）——命令正文保留 `/opsx:` 引用不做改写。
-- **MiniMax Code**：工作流以 **Skill**（`SKILL.md`）形式交付——MiniMax Code 不加载任何用户自定义命令文件，技能是它唯一可扩展的命令机制。原生读取 `AGENTS.md`，无包装文件。
+- **MiniMax Code**：工作流以 **Skill**（`SKILL.md`）形式交付——`mcode` CLI 不加载任何用户自定义命令文件，技能是它唯一可扩展的命令机制。原生读取 `AGENTS.md`，无包装文件。**集成目标是 `mcode` CLI；桌面端不在覆盖范围。**
 
 </details>
 
@@ -166,16 +166,30 @@ openspec-pw init --tools claude --agents   # 额外安装官方三个 agent 定�
 ### CLI 命令
 
 ```bash
-openspec-pw init          # 初始化集成（--tools all|none|ids… 可选编辑器；--agents 加装官方 agents；--lint-config 生成/扩展吞错清单的 ESLint 与 ruff 配置）
+openspec-pw init          # 初始化集成（--tools all|none|ids… 可选编辑器；--agents 加装官方 agents；--lint-config 生成/扩展吞错清单的 ESLint 与 ruff 配置；--hook[=static|full] 安装 Claude Code Stop hook；--auto-pipeline 生成无头 CI 工作流）
 openspec-pw update        # 更新 CLI 和命令到最新版本
 openspec-pw doctor        # 检查前置条件 (Node, Playwright, OpenSpec, 配置, 测试) + 应用服务器诊断
-openspec-pw audit         # 检查测试文件是否有孤儿文件和配置问题
-openspec-pw coverage      # 分析 spec 与测试之间的覆盖率
+openspec-pw audit         # 检查测试文件是否有孤儿文件和配置问题（--gate 有问题时退出码 1）
+openspec-pw coverage      # 分析 spec 与测试之间的覆盖率（--fail-under <pct> 低于阈值时退出码 1；--plan <file> 要求 delta spec 的每条 scenario 都出现在该测试计划中，否则退出码 1）
 openspec-pw flake         # 检测测试文件中的静态不稳定模式
+openspec-pw gate [change]  # 跑全部质量检查，退出码 0 / 1 / 2（通过 / 不达标 / 无法判定）
 openspec-pw migrate       # 迁移旧测试文件到新目录结构
 openspec-pw explore       # 探索应用路由
 openspec-pw uninstall     # 移除项目中的集成
 ```
+
+`openspec-pw gate` 是其余所有环节共用的唯一裁决入口——Claude Code 的 Stop hook 与生成的 CI 工作流都调用它，不再各自维护一份检查清单。它按「validate → lint → typecheck → test → flake → e2e」的顺序执行（廉价在前，默认首败即停，`--keep-going` 跑完全部），退出码三值：`0` 全部通过、`1` 有检查不达标、`2` 无法判定（工具缺失、超时、变更名有歧义）。
+
+两条确定性护栏专门堵假绿：
+
+- delta spec 声明了 scenario，但 `tests/playwright/changes/<change>/` 下没有任何测试文件 → E2E 判失败。仅当项目根存在 Playwright 配置时生效，纯后端项目不受影响；
+- 本次 diff 新增 `test.fixme(` → 判失败，并列出文件与行号。
+
+改动 lint 配置、`tsconfig*.json`、Playwright 或 Vitest 配置会出现在裁决的 `flags` 中。只报告不判失败：放宽配置有时正当，但评审者需要知道尺子被挪过。
+
+**Stop hook。** `openspec-pw init --hook` 会向 `.claude/settings.json` 合并一个 `Stop` 钩子，调用 `openspec-pw gate --hook`。门禁为红时钩子以退出码 2 结束、把失败项写到 stderr，agent 必须继续修而不是宣布完成。两档：`static`（默认——validate、lint、typecheck、单元测试）与 `full`（额外含 flake 与 e2e）。`full` 只在该变更的 E2E 测试已存在后再用：此前「有 scenario 无测试」护栏会让每回合都判红，把进展正常的活儿卡住。每回合最多阻断一次（读取 Claude Code 的 `stop_hook_active`），并按工作树指纹缓存结论，工作树没变就不重复检查。`--no-hook` 或 `openspec-pw uninstall` 可移除；同一文件里你自己的钩子不会被改动。
+
+**全自动流水线。** `openspec-pw init --auto-pipeline` 生成 `.github/workflows/openspec-auto.yml`，只写一次、之后不再覆盖。两种触发是刻意的：每个 PR 只跑 `gate`——请把该 job 设为**必需状态检查**，否则门禁为红的 PR 仍能合并；`openspec:auto` 标签或手动触发才起无头 agent（apply → 静态门禁 → 生成 E2E → 全量门禁）并开 PR。需要 secret：`ANTHROPIC_API_KEY`。阶段按「便宜的在前」排列：apply 用 `gate --skip e2e` 自证（此时该变更的 E2E 测试还不存在，「有 scenario 无测试」护栏会让全量 gate 判红——那是个永远不会结束的循环），随后是零 token 的静态门禁，再到需要浏览器的 E2E 阶段，最后才用全量 gate 作作业侧裁决。apply 的完成度以 `openspec list --json` 的任务计数判定，因为无头运行停下来提问时退出码同样是 0。末尾的 `/opsx:verify` 只作 advisory——报告与各阶段 `total_cost_usd` 写进 PR 正文，不拦截流程。E2E 步骤以 `/opsx:e2e --auto` 运行：人工确认测试计划改为 `openspec-pw coverage --plan`，所有原本「等用户」的节点改为结构化中止并以非零码退出。CI 是 checkout 仓库跑的，所以流水线项目里 `openspec/` 不进受管 `.gitignore` 块——规格与变更必须提交，否则 agent 无可应用；块外自己写的忽略规则只提示、不改写。
 
 ## 工作原理
 
@@ -206,6 +220,7 @@ audit **只报告、绝不删除**——测试退役永远是人工决策。存�
 ```
 # 由 /opsx:e2e <change-name>（Claude Code / CodeBuddy CLI）或 /opsx-e2e <change-name>（OpenCode/Cline/Cursor/Pi/Oh My Pi/MiniMax Code）触发
 /opsx:e2e <change-name>
+/opsx:e2e <change-name> --auto   # 无头——无人工确认点（见「全自动流水线」）
   │
   ├── 1. 选择 change → 读取 openspec/changes/<name>/specs/
   │

@@ -9,8 +9,13 @@ export declare const GITIGNORE_BLOCK_END = "# openspec-pw: end managed block";
  * this module exists for). Never throws (review F1): rule-file read errors
  * are swallowed by loadIgnoreRules; the ignore matcher itself cannot throw
  * on plain path strings.
+ *
+ * `omit` drops paths from the managed set for callers that need one of them
+ * committed (the auto pipeline needs `openspec/` in the tree).
  */
-export declare function findUncoveredManagedPaths(projectRoot: string): string[];
+export declare function findUncoveredManagedPaths(projectRoot: string, omit?: readonly string[]): string[];
+/** Is this path ignored by any rule file the repo applies? */
+export declare function isIgnoredPath(projectRoot: string, rel: string): boolean;
 /**
  * Ensure every managed path is covered: locate the marker block in the
  * project's .gitignore (CRLF-tolerant) and add missing lines inside it;
@@ -18,10 +23,17 @@ export declare function findUncoveredManagedPaths(projectRoot: string): string[]
  * only the block. Lines outside the block keep their bytes — including
  * CRLF endings (F2) and blank-line structure (F5). Write errors propagate
  * to the caller, which degrades to an advisory.
+ *
+ * `omit` names paths that must stay committable: they are never added, and
+ * an existing line for them is dropped from the managed block (the block is
+ * tool-owned territory; rules outside it are the user's and stay untouched).
  */
-export declare function ensureGitignoreEntries(projectRoot: string): {
+export declare function ensureGitignoreEntries(projectRoot: string, opts?: {
+    omit?: readonly string[];
+}): {
     changed: boolean;
     added: string[];
+    removed: string[];
 };
 /**
  * Remove the managed block (uninstall). Block-external lines are preserved
@@ -54,4 +66,4 @@ export declare function managedBlockAdvisoryHint(uncovered: string[]): string;
  * the advisory dead there while the block itself still got written
  * (review F6) — git resolves the repo upward from -C on its own.
  */
-export declare function detectTrackedFiles(projectRoot: string): string[];
+export declare function detectTrackedFiles(projectRoot: string, omit?: readonly string[]): string[];

@@ -2,6 +2,7 @@ import { existsSync, readFileSync, rmSync, rmdirSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
+import { uninstallStopHook } from "./hooks.js";
 import {
   buildCommandMeta,
   CLAUDE_LEGACY_SKILL_REL,
@@ -202,6 +203,16 @@ export async function uninstall() {
     }
   } else {
     console.log(chalk.gray("  - No managed block found, skipping"));
+  }
+
+  console.log(chalk.blue("\n─── Removing Stop Hook ───"));
+  const hookResult = uninstallStopHook(projectRoot);
+  if ("error" in hookResult) {
+    console.log(chalk.yellow(`  ⚠ ${hookResult.error}`));
+  } else if (hookResult.removed) {
+    console.log(chalk.green(`  ✓ Removed openspec-pw Stop hook from ${hookResult.path}`));
+  } else {
+    console.log(chalk.gray("  - No openspec-pw Stop hook found, skipping"));
   }
 
   // Summary

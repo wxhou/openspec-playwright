@@ -50,6 +50,15 @@ program
     "--lint-config",
     "generate/adjust ESLint and ruff config for the swallow-error checklist (opt-in)",
   )
+  .option(
+    "--hook [tier]",
+    'install a Claude Code Stop hook that runs the gate (tier: "static" (default) or "full")',
+  )
+  .option("--no-hook", "remove the openspec-pw Stop hook")
+  .option(
+    "--auto-pipeline",
+    "generate .github/workflows/openspec-auto.yml (gate on PRs, headless agent on label/dispatch)",
+  )
   .action(async (opts) => {
     const { init } = await import("./commands/init.js");
     const { checkForUpdate } = await import("./shared/version-check.js");
@@ -117,10 +126,11 @@ program
 program
   .command("audit")
   .description("Audit test files for orphaned specs, missing auth, sitemap issues")
-  .action(async () => {
+  .option("--gate", "Exit non-zero when any issue is found")
+  .action(async (opts) => {
     const { audit } = await import("./commands/audit.js");
     const { checkForUpdate } = await import("./shared/version-check.js");
-    await audit();
+    process.exitCode = await audit(opts);
     await checkForUpdate(pkg.version);
   });
 
@@ -128,10 +138,15 @@ program
   .command("coverage [change-name]")
   .description("Analyze spec–test coverage for OpenSpec changes")
   .option("--json", "Output results as JSON")
+  .option("--fail-under <pct>", "Exit non-zero when coverage is below this percentage")
+  .option(
+    "--plan <path>",
+    "Check that every delta-spec scenario appears in this test plan (exit 1 if not)",
+  )
   .action(async (changeName, opts) => {
     const { coverage } = await import("./commands/coverage.js");
     const { checkForUpdate } = await import("./shared/version-check.js");
-    await coverage(changeName, opts);
+    process.exitCode = await coverage(changeName, opts);
     await checkForUpdate(pkg.version);
   });
 
@@ -146,6 +161,33 @@ program
     // No checkForUpdate — flake --gate HIGH runs in CI on every PR; the
     // 0–10s npm view latency hurts CI for no benefit (CI auto-updates
     // the CLI via npm install, not via interactive hints).
+  });
+
+program
+  .command("gate [change-name]")
+  .description(
+    "Run every quality check for a change and exit 0 (pass) / 1 (fail) / 2 (cannot decide)",
+  )
+  .option("--json", "Output the verdict as JSON")
+  .option("--keep-going", "Run all checks instead of stopping at the first failure")
+  .option(
+    "--only <checks>",
+    "Comma-separated checks to run (validate,lint,typecheck,test,flake,e2e,coverage,audit)",
+  )
+  .option("--skip <checks>", "Comma-separated checks to skip")
+  .option(
+    "--coverage-min <pct>",
+    "Coverage threshold; without it the coverage check reports skipped",
+  )
+  .option(
+    "--hook",
+    "Stop-hook mode: read the Claude Code payload from stdin, block with exit 2, cache by working-tree fingerprint",
+  )
+  .action(async (changeName, opts) => {
+    const { gate } = await import("./commands/gate.js");
+    // No checkForUpdate: the gate runs in CI and in the Stop hook, where a
+    // 0–10s npm view latency costs more than the hint is worth.
+    process.exitCode = await gate(changeName, opts);
   });
 
 program

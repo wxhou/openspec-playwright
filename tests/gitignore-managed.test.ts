@@ -215,6 +215,45 @@ describe("removeManagedBlock", () => {
   });
 });
 
+describe("ensureGitignoreEntries with omitted paths", () => {
+  it("never adds an omitted path to a fresh block", () => {
+    const result = ensureGitignoreEntries(projectRoot, { omit: ["openspec/"] });
+    expect(result.added).not.toContain("openspec/");
+    expect(readFileSync(join(projectRoot, ".gitignore"), "utf-8")).not.toContain(
+      "openspec/",
+    );
+  });
+
+  it("drops an omitted path from an existing block and does not re-add it", () => {
+    ensureGitignoreEntries(projectRoot);
+    expect(readFileSync(join(projectRoot, ".gitignore"), "utf-8")).toContain(
+      "openspec/",
+    );
+
+    const result = ensureGitignoreEntries(projectRoot, { omit: ["openspec/"] });
+    expect(result.removed).toEqual(["openspec/"]);
+    expect(result.changed).toBe(true);
+
+    const after = readFileSync(join(projectRoot, ".gitignore"), "utf-8");
+    expect(after).not.toContain("openspec/");
+    expect(after).toContain(".claude/");
+    expect(after.split(GITIGNORE_BLOCK_BEGIN)).toHaveLength(2);
+  });
+
+  it("leaves a user rule outside the block untouched", () => {
+    const user = "openspec/\n";
+    writeFileSync(join(projectRoot, ".gitignore"), user);
+    ensureGitignoreEntries(projectRoot, { omit: ["openspec/"] });
+    const after = readFileSync(join(projectRoot, ".gitignore"), "utf-8");
+    expect(after.startsWith(user)).toBe(true);
+  });
+
+  it("reports no removal when the block never had the path", () => {
+    const result = ensureGitignoreEntries(projectRoot, { omit: ["openspec/"] });
+    expect(result.removed).toEqual([]);
+  });
+});
+
 describe("detectTrackedFiles (task 3.9)", () => {
   it("returns [] outside a git repo (no .git)", () => {
     expect(detectTrackedFiles(projectRoot)).toEqual([]);
@@ -235,5 +274,27 @@ describe("detectTrackedFiles (task 3.9)", () => {
 
     const tracked = detectTrackedFiles(projectRoot);
     expect(tracked.some((t) => t.startsWith("tests/playwright/credentials.yaml"))).toBe(true);
+  });
+
+  it("does not report an omitted path as needing git rm --cached", async () => {
+    const { execFileSync } = await import("child_process");
+    const run = (...args: string[]) =>
+      execFileSync("git", ["-C", projectRoot, ...args], { encoding: "utf-8" });
+    run("init");
+    run("config", "user.email", "t@t");
+    run("config", "user.name", "t");
+    mkdirSync(join(projectRoot, "openspec", "specs"), { recursive: true });
+    writeFileSync(join(projectRoot, "openspec", "specs", "spec.md"), "# x\n");
+    run("add", "openspec/specs/spec.md");
+    run("commit", "-m", "specs", "--no-gpg-sign");
+
+    expect(
+      detectTrackedFiles(projectRoot).some((t) => t.startsWith("openspec/")),
+    ).toBe(true);
+    expect(
+      detectTrackedFiles(projectRoot, ["openspec/"]).some((t) =>
+        t.startsWith("openspec/"),
+      ),
+    ).toBe(false);
   });
 });

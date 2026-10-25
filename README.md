@@ -59,7 +59,7 @@ openspec-pw init          # Install Playwright E2E integration (--tools to pick 
 | **Pi** (earendil-works) | `/opsx-e2e` | **no** — uses `openspec-pw explore` + `npx playwright test` | native |
 | **Oh My Pi (omp)** | `/opsx-e2e` | yes (`.omp/mcp.json`) | native |
 | **CodeBuddy CLI** (Tencent) | `/opsx:e2e` | yes (project `.mcp.json`) | via `CODEBUDDY.md` → `@AGENTS.md` |
-| **MiniMax Code** | `/opsx-e2e` | yes (project `.mcp.json`) | native (`AGENTS.md`) |
+| **MiniMax Code** (`mcode` CLI) | `/opsx-e2e` | yes (project `.mcp.json`) | native (`AGENTS.md`) |
 
 The command body is identical across editors (`/opsx:` → `/opsx-` rewrite at install time). Per-editor install paths, detection signals, and auth/MCP nuances are detailed in the [Usage](#usage) and [Prerequisites](#prerequisites) sections below.
 
@@ -76,7 +76,7 @@ Pick the editor that matches your project and invoke the same command. All eight
 | Pi | `/opsx-e2e <change-name>` | `.pi/prompts/opsx-e2e.md` (filename = command) |
 | Oh My Pi | `/opsx-e2e <change-name>` | `.omp/commands/opsx-e2e.md` |
 | CodeBuddy CLI | `/opsx:e2e <change-name>` | `.codebuddy/commands/opsx/e2e.md` |
-| MiniMax Code | `/opsx-e2e <change-name>` | `.agents/skills/opsx-e2e/SKILL.md` (skill) |
+| MiniMax Code CLI | `/opsx-e2e <change-name>` | `.agents/skills/opsx-e2e/SKILL.md` (skill) |
 
 <details>
 <summary><strong>Per-editor nuances</strong> (expand only if init reports a divergence)</summary>
@@ -85,7 +85,7 @@ Pick the editor that matches your project and invoke the same command. All eight
 - **Pi**: no MCP client — browser exploration runs via `openspec-pw explore`, test execution via `npx playwright test` in the shell (no Healer step).
 - **Oh My Pi**: also inherits MCP servers already configured in `.claude/` / `.cursor/` / `opencode.jsonc` when those are present.
 - **CodeBuddy CLI**: colon naming (`/opsx:e2e`, same as Claude Code) — the command body keeps its `/opsx:` references.
-- **MiniMax Code**: the workflow is delivered as a **Skill** (`SKILL.md`), because MiniMax Code loads no user-defined command files — skills are its only user-extensible command mechanism. Read `AGENTS.md` natively, no wrapper.
+- **MiniMax Code**: the workflow is delivered as a **Skill** (`SKILL.md`), because the `mcode` CLI loads no user-defined command files — skills are its only user-extensible command mechanism. It reads `AGENTS.md` natively, no wrapper. **Integration target is the `mcode` CLI; the desktop app is not covered.**
 
 </details>
 
@@ -266,16 +266,30 @@ a `/opsx:e2e` delivery.
 ### CLI Commands
 
 ```bash
-openspec-pw init          # Initialize integration (--tools all|none|ids… to select editors; --agents adds the official agents; --frontend/--no-frontend force the install mode; --lint-config generates/extends ESLint and ruff config for the swallow-error checklist)
+openspec-pw init          # Initialize integration (--tools all|none|ids… to select editors; --agents adds the official agents; --frontend/--no-frontend force the install mode; --lint-config generates/extends ESLint and ruff config for the swallow-error checklist; --hook[=static|full] installs a Claude Code Stop hook; --auto-pipeline generates the headless CI workflow)
 openspec-pw update        # Update CLI and commands to latest version
 openspec-pw doctor        # Check prerequisites (Node, Playwright, OpenSpec, config, tests) + app server diagnostics
-openspec-pw audit         # Audit tests for orphaned specs and issues
-openspec-pw coverage      # Analyze spec–test coverage for changes
+openspec-pw audit         # Audit tests for orphaned specs and issues (--gate exits 1 when any issue is found)
+openspec-pw coverage      # Analyze spec–test coverage for changes (--fail-under <pct> exits 1 below it; --plan <file> exits 1 unless every delta-spec scenario appears in that plan)
 openspec-pw flake         # Detect static flake patterns in test files
+openspec-pw gate [change]  # Run every quality check and exit 0 / 1 / 2 (pass / fail / cannot decide)
 openspec-pw migrate       # Migrate old test files to new structure
 openspec-pw explore       # Explore app routes with Playwright
 openspec-pw uninstall     # Remove integration from the project
 ```
+
+`openspec-pw gate` is the single verdict the rest of the tooling calls — the Claude Code Stop hook and the generated CI workflow both invoke it rather than keeping their own check lists. It runs `validate → lint → typecheck → test → flake → e2e` (cheap first, stop at the first failure unless `--keep-going`), and exit codes are three-valued: `0` every check passed, `1` a check failed, `2` the run could not decide (tool missing, timeout, ambiguous change name).
+
+Two deterministic guards stop a false green:
+
+- a change whose delta spec declares scenarios but whose `tests/playwright/changes/<change>/` holds no test files fails E2E — only when the project has a Playwright config, so backend-only projects are unaffected;
+- any newly added `test.fixme(` in the diff fails the gate and is listed with file and line.
+
+Edits to lint config, `tsconfig*.json`, Playwright or Vitest config appear under `flags` in the verdict. They are reported, not failed: loosening a config is sometimes legitimate, but a reviewer needs to know when the ruler moved.
+
+**Stop hook.** `openspec-pw init --hook` merges a `Stop` hook into `.claude/settings.json` that runs `openspec-pw gate --hook`. When the gate is red the hook exits 2 with the failing checks on stderr, so the agent keeps working instead of claiming done. Two tiers: `static` (default — validate, lint, typecheck, unit tests) and `full` (adds flake and e2e). Use `full` only once the change's E2E tests exist: before that, the "scenarios but no tests" guard fails the gate on every turn and the hook blocks work that is on the right track. It blocks at most once per turn (honouring Claude Code's `stop_hook_active`) and caches its verdict against a working-tree fingerprint, so an unchanged tree is not re-checked. `--no-hook` or `openspec-pw uninstall` removes it; your own hooks in the same file are never touched.
+
+**Autonomous pipeline.** `openspec-pw init --auto-pipeline` writes `.github/workflows/openspec-auto.yml` once and never overwrites it. Two triggers on purpose: every pull request runs `gate` only — mark that job as a **required status check**, or a PR with a red gate can still merge — while a `openspec:auto` label or a manual dispatch starts the headless agent (apply → static gate → generate E2E → full gate) and opens the PR. Required secret: `ANTHROPIC_API_KEY`. Stages run cheapest-first: apply verifies itself with `gate --skip e2e` (the change's E2E tests do not exist yet, and the "scenarios but no tests" guard would fail a full gate — a loop that cannot terminate), a static gate follows at zero token cost, then the browser-driven E2E stage, and only then the full gate as the job's own verdict. Apply is judged by `openspec list --json` task counts, because a headless run that stops to ask a question still exits 0. A final `/opsx:verify` pass is advisory — its report and every stage's `total_cost_usd` land in the PR body, and it never blocks. The E2E step runs `/opsx:e2e --auto`: the human plan approval becomes `openspec-pw coverage --plan`, and every point that would wait for a person becomes a structured abort with a non-zero exit. Because CI checks out the repository, `openspec/` is kept out of the managed `.gitignore` block in pipeline projects — the specs and changes must be committed or the agent has nothing to apply. A rule outside the block that still ignores `openspec/` is reported, not rewritten.
 
 ## How It Works
 
@@ -306,6 +320,7 @@ Audit is **report-only** — it never deletes or edits tests; retiring a test is
 ```
 /opsx:e2e <change-name>          # Claude Code / CodeBuddy CLI
 /opsx-e2e <change-name>          # OpenCode / Cline / Cursor / Pi / Oh My Pi / MiniMax Code
+/opsx:e2e <change-name> --auto   # headless — no human checkpoint (see Autonomous pipeline)
   │
   ├── 1. Select change → read openspec/changes/<name>/specs/
   │
@@ -343,7 +358,7 @@ Audit is **report-only** — it never deletes or edits tests; retiring a test is
 **Required:**
 
 1. **Node.js >= 20**
-2. **Claude Code** (with `.claude/` directory) and/or **OpenCode** (with `.opencode/` directory) and/or **Cline** (with `.cline/` or `.clinerules/` directory) and/or **Cursor** (with `.cursor/` directory) and/or **Pi** (project `.pi/` or global `~/.pi/agent/`) and/or **Oh My Pi** (project `.omp/` or global `~/.omp/agent/`) and/or **CodeBuddy CLI** (with `.codebuddy/` directory) and/or **MiniMax Code** (project `.minimax/` or global `~/.minimax-code/`, or the installed `.agents/skills/opsx-e2e/` skill)
+2. **Claude Code** (with `.claude/` directory) and/or **OpenCode** (with `.opencode/` directory) and/or **Cline** (with `.cline/` or `.clinerules/` directory) and/or **Cursor** (with `.cursor/` directory) and/or **Pi** (project `.pi/` or global `~/.pi/agent/`) and/or **Oh My Pi** (project `.omp/` or global `~/.omp/agent/`) and/or **CodeBuddy CLI** (with `.codebuddy/` directory) and/or **MiniMax Code CLI** (`mcode`; project `.minimax/` or global `~/.minimax-code/`, or the installed `.agents/skills/opsx-e2e/` skill)
 3. **OpenSpec** initialized: `npm install -g @fission-ai/openspec@latest && openspec init`
 4. **Playwright MCP** (for test execution + Healer) — installed automatically by `openspec-pw init` when a frontend signal is detected (skipped for API-only projects — API tests use the `request` fixture), **project-scoped** (written to a project file; Claude Code uses `--scope project` → project-root `.mcp.json`, never your global `~/.claude.json`). A single server matching the official `playwright init-agents` layout:
    - `playwright-test` — official test-runner server (`npx playwright run-test-mcp-server`, bundled with the `playwright` package). Superset of `@playwright/mcp`: one entry exposes both `browser_*` tools (exploration + Healer page inspection) and the structured `test_run` / `test_debug` / `test_list` workflow tools for the Healer loop.

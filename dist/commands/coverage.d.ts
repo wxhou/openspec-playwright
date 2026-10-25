@@ -31,7 +31,22 @@ interface TestCase {
 }
 export declare function coverage(changeName?: string, opts?: {
     json?: boolean;
-}): Promise<void>;
+    failUnder?: string;
+    plan?: string;
+}): Promise<number>;
+/** Threshold decision for `--fail-under`. No flag means "never fail". */
+export declare function coverageExitCode(overallPct: number, failUnder?: string): number;
+/**
+ * Collapse case, whitespace and punctuation so a scenario title matches the
+ * way it was written into a plan — Chinese and English alike.
+ */
+export declare function normalizeTitle(text: string): string;
+export declare function planCoverage(scenarios: string[], planText: string): {
+    covered: string[];
+    missing: string[];
+};
+/** Every `#### Scenario: <title>` across a change's delta spec files. */
+export declare function extractScenarioTitles(specsDir: string): string[];
 export declare function analyzeChange(name: string, projectRoot: string, testsDir: string, changesDir: string, _allTestFiles: string[]): CoverageChange;
 export declare function computeOverall(changes: CoverageChange[], orphanedTests: string[], recommendations: string[]): CoverageReport;
 export declare function parseScenarios(filePath: string): Scenario[];

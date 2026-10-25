@@ -2,6 +2,7 @@
 ## Input
 
 - **Change name**: `/opsx:e2e <name>` or `/opsx:e2e all` (full app exploration, no OpenSpec needed)
+- **Autonomous**: append `--auto` (`/opsx:e2e <name> --auto`) to run with no human checkpoint — see *Autonomous mode* below
 - **Specs**: `openspec/changes/<name>/specs/*.md` (if change mode)
 - **Credentials**: `E2E_USERNAME` + `E2E_PASSWORD` env vars
 
@@ -27,6 +28,15 @@
 > **STOP semantics**: **STOP** = end the current turn — output the blocking message, make no further tool calls, and wait for the user. Two flavors:
 > - **HARD STOP** (backend 5xx, seed failure, Phase 3 escalation, test-plan gate): report and wait.
 > - **SELF-HEAL** (only where explicitly stated, e.g. missing app-exploration → run Step 4): run the referenced step, then continue.
+> - **ABORT** (`--auto` only): nobody is there to answer. Every HARD STOP becomes a structured failure — print the same blocking message, then end the turn with `E2E ABORTED: <reason>` and a non-zero exit. Never wait, never proceed past a blocker.
+
+**Autonomous mode (`--auto`)** — for CI. Three substitutions; everything else is unchanged:
+
+1. **Step 5's human gate becomes deterministic.** Run `openspec-pw coverage <name> --plan <path to test-plan.md>` from the repo root. It exits `1` and names every scenario the plan does not cover; fix the plan until it exits `0`. Your own reading of the plan is not approval.
+2. **Phase 3 escalation becomes an abort.** There is no user to decide — apply the healer guardrails, then abort with a structured failure.
+3. **Every HARD STOP becomes `E2E ABORTED: <reason>`.**
+
+The healer guardrails are unchanged and non-negotiable: never loosen an assertion, edit an expected value, or delete a check to make a run green.
 
 **Mode × step matrix** (where the two modes diverge — everywhere else both modes run the step):
 
@@ -46,7 +56,10 @@
 | Generation / execution / repair | `playwright-test` MCP — sole home of its `test_*` / `planner_*` / `generator_*` tools |
 | Interactive exploration (Step 4) | prefer the `playwright-test` browser tools |
 | Exploration fallback | chrome-devtools or similar — only when the `playwright-test` browser tools are absent, failing or hanging (switch rather than retrying into the same failure), or for abilities `playwright-test` lacks (Performance trace, full network panel) |
+| No browser MCP at all (headless / CI) | drive the browser yourself: write a throwaway script, run it with `npx playwright test <file>` or `node <file>`, navigate the route, save a screenshot and dump the DOM. Put the script and any screenshots under `tmp/`, delete them when Step 4 ends, and never leave them under `tests/` |
 | ≥5 routes | `openspec-pw explore --parallel N` |
+
+The routing is a chain, not a menu: `playwright-test` → chrome-devtools → own script. Step down only when the tool above is unavailable or failing, say which one you used in `app-exploration.md`, and do not step down to escape a failure you could have diagnosed in place.
 
 Never switch tools to gain or reuse state — a persistent-profile login is not a valid E2E precondition. State semantics: Step 4 → Session state.
 
@@ -203,6 +216,8 @@ Create `openspec/changes/<name>/specs/playwright/test-plan.md`. Read inputs: spe
 
 **⚠️ Human verification**: After creating/reading test-plan.md, **STOP** and display summary. Ask user to confirm before proceeding to Step 6.
 
+**In `--auto`**: replace that gate with `openspec-pw coverage <name> --plan <test-plan.md>`. Continue only when it exits `0`; on `1`, the missing scenarios are listed — add them to the plan and re-run. Do not continue past a red plan gate.
+
 ### 6. Generate (Generator role)
 
 **All mode**: Build Page Objects for future tests. **Change mode**: Generate `tests/playwright/changes/<name>/<name>.spec.ts`.
@@ -313,6 +328,17 @@ Options: (a) Fix app, (b) Update spec, (c) Update assertion, (d) Skip
 
 Wait for user input. Track escalation attempts — if 3 consecutive Phase 3 with no progress, STOP and flag.
 
+**In `--auto`**: there is nobody to decide, so Phase 3 aborts instead of waiting. Apply the honest-failure guardrail below, then output:
+
+```
+E2E ABORTED — Human Decision Required
+Test: <name> | Failure: <type>
+Assertion: "<expected>" | Actual: "<actual>"
+Repairs attempted: <n>
+```
+
+and end the turn non-zero. Aborting is the correct outcome; a green run bought by weakening an assertion is worse than a red one.
+
 **Healer guardrails** (non-negotiable during autonomous repair; aligned with the official Playwright healer):
 - **One error per round**: fix a single error, re-run (`test_run` or `npx playwright test --grep`), then move to the next. Never batch multiple repairs.
 - **Honest failure exit**: if the test logic is verified correct and the failure persists, the product behavior is wrong — mark the test `test.fixme()` with a comment before the failing step explaining ACTUAL vs EXPECTED behavior. During autonomous repair, **never** loosen assertions, edit expected values, or delete checks to make a failing test pass. (Updating assertions or specs remains a legitimate *human* Phase 3 decision — option (c) below.)
@@ -355,6 +381,8 @@ Compile from `playwright-e2e-<name>-<timestamp>.md` and Phase 1–3 output:
 | Test plan ready | Human gate | **HARD STOP** — present the plan summary and wait for confirmation (Step 5) |
 | Phase 3 escalation | Human needed | **HARD STOP** — wait for user |
 | ≥3 active App Bugs | Warning | Add accumulation warning to report |
+
+> In `--auto`, every **HARD STOP** in this table becomes `E2E ABORTED: <reason>` with a non-zero exit, and the test-plan gate is replaced by `openspec-pw coverage --plan` (see *Autonomous mode*).
 
 ## Guardrails
 
