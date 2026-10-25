@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+- **docs(site): 修正 MiniMax Code 的官方链接并明确 CLI 集成目标**. ① 「适用于」链接原指向 npm 包 `@minimax-ai/code`，与同排其他编辑器的官方产品站不一致；改为官方仓库声明的 homepage `https://agent.minimax.io/download`（该页同时提供桌面端与 CLI 安装）；② 本工具实际适配的是 `mcode` CLI——装的是 `.agents/skills/` 技能、检测的是 CLI 安装目录 `~/.minimax-code/`，而 README 只写「MiniMax Code」，与「CodeBuddy CLI」的标注不一致；在支持列表、使用表、差异说明与前置条件中补 `mcode` CLI 标注，避免只装桌面端的用户误以为可用。无代码与版本变动。
+  - `docs/index.html`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
+
 ## [0.3.105] - 2026-10-25
 - **fix(standards): 自动链真正落到 verify——补规模豁免、点名收尾语、修好标准镜像脚本**. ① §3 自动链位于「大规模任务」节，继承 300+ 行门槛，小改动可据此主张本节不适用——补「本条适用于任何经 `/opsx:apply` 的变更，不受本节规模门槛限制」；② 「verify」是裸动词，与 §1 的日常验证同名，「连续执行 apply → verify」可被跑测试/自查冒充——改为「最后一项任务勾完即在同一回合调用 `/opsx:verify`」，并点名 `opsx:apply` 收尾的「review or verify as appropriate / 可归档」不构成跳过理由；③ 补 verify 之后的裁决边界（CRITICAL 按 §1 修复预算修复并复跑；需增删范围或预算耗尽仍有 CRITICAL 停下汇报；WARNING/SUGGESTION 记录交用户）；④ 优先级条删掉「机械」这一逃生口；⑤ `scripts/sync-standards.mjs` 的 CLI 此前静默失败——`if (check)` 引用未定义变量抛 ReferenceError，run-guard 的裸 `catch` 又把它吞掉，`--check` 永远 exit 0；现改为导出 `main` 返回退出码、改用 `parsed.check`、只吞 ENOENT，并补 4 条 CLI 级测试。中英副本同步，+2 ZH / +2 EN 锚点。
   - `employee-standards.md`、`docs/script.js`（ZH/EN 副本）、`tests/docs-sync.test.ts`、`scripts/sync-standards.mjs`、`tests/standards-sync.test.ts`、`CHANGELOG.md`

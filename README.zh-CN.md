@@ -43,7 +43,7 @@ npm install -g openspec-playwright@latest
 **必需：**
 
 1. **Node.js >= 20**
-2. **Claude Code**（带 `.claude/` 目录）和/或 **OpenCode**（带 `.opencode/` 目录）和/或 **Cline**（带 `.cline/` 或 `.clinerules/` 目录）和/或 **Cursor**（带 `.cursor/` 目录）和/或 **Pi**（项目 `.pi/` 或全局 `~/.pi/agent/`）和/或 **Oh My Pi**（项目 `.omp/` 或全局 `~/.omp/agent/`）和/或 **CodeBuddy CLI**（带 `.codebuddy/` 目录）和/或 **MiniMax Code**（项目 `.minimax/` 或全局 `~/.minimax-code/`，或已安装的 `.agents/skills/opsx-e2e/` 技能）
+2. **Claude Code**（带 `.claude/` 目录）和/或 **OpenCode**（带 `.opencode/` 目录）和/或 **Cline**（带 `.cline/` 或 `.clinerules/` 目录）和/或 **Cursor**（带 `.cursor/` 目录）和/或 **Pi**（项目 `.pi/` 或全局 `~/.pi/agent/`）和/或 **Oh My Pi**（项目 `.omp/` 或全局 `~/.omp/agent/`）和/或 **CodeBuddy CLI**（带 `.codebuddy/` 目录）和/或 **MiniMax Code CLI**（`mcode`；项目 `.minimax/` 或全局 `~/.minimax-code/`，或已安装的 `.agents/skills/opsx-e2e/` 技能）
 3. **OpenSpec** 已初始化：`npm install -g @fission-ai/openspec@latest && openspec init`
 4. **Playwright MCP**（用于测试执行 + Healer）— `openspec-pw init` 会在检测到前端信号时按编辑器自动安装（纯 API 项目跳过——API 测试用 `request` fixture），**全部项目级**（写入项目内文件；Claude Code 用 `--scope project` 写项目根 `.mcp.json`，不碰全局 `~/.claude.json`）。安装**单个** server，与 Playwright 官方 `playwright init-agents` 布局一致：
    - `playwright-test` — 官方 test-runner server（`npx playwright run-test-mcp-server`，`playwright` 包自带）。是 `@playwright/mcp` 的**超集**：一个条目同时暴露 `browser_*` 浏览器工具（探索 + Healer 页面检查）和结构化的 `test_run` / `test_debug` / `test_list` 工作流工具（Healer 闭环）。
@@ -83,7 +83,7 @@ openspec-pw init          # 安装 Playwright E2E 集成（--tools 选编辑器�
 | **Pi**（earendil-works） | `/opsx-e2e` | **否** — 改用 `openspec-pw explore` + `npx playwright test` | 原生 |
 | **Oh My Pi（omp）** | `/opsx-e2e` | 是（`.omp/mcp.json`） | 原生 |
 | **CodeBuddy CLI**（腾讯） | `/opsx:e2e` | 是（项目根 `.mcp.json`） | 经 `CODEBUDDY.md` → `@AGENTS.md` |
-| **MiniMax Code** | `/opsx-e2e` | 是（项目根 `.mcp.json`） | 原生（`AGENTS.md`） |
+| **MiniMax Code**（`mcode` CLI） | `/opsx-e2e` | 是（项目根 `.mcp.json`） | 原生（`AGENTS.md`） |
 
 各编辑器命令体完全相同（安装时 `/opsx:` → `/opsx-` 改写）。具体安装路径、检测信号、auth/MCP 细节见下方 [使用](#使用) 与 [前置条件](#前置条件) 两节。
 
@@ -100,7 +100,7 @@ openspec-pw init          # 安装 Playwright E2E 集成（--tools 选编辑器�
 | Pi | `/opsx-e2e <change-name>` | `.pi/prompts/opsx-e2e.md`（文件名即命令名） |
 | Oh My Pi | `/opsx-e2e <change-name>` | `.omp/commands/opsx-e2e.md` |
 | CodeBuddy CLI | `/opsx:e2e <change-name>` | `.codebuddy/commands/opsx/e2e.md` |
-| MiniMax Code | `/opsx-e2e <change-name>` | `.agents/skills/opsx-e2e/SKILL.md`（技能） |
+| MiniMax Code CLI | `/opsx-e2e <change-name>` | `.agents/skills/opsx-e2e/SKILL.md`（技能） |
 
 <details>
 <summary><strong>各编辑器的差异</strong>（默认折叠；只有 init 报错时才需要展开）</summary>
@@ -109,7 +109,7 @@ openspec-pw init          # 安装 Playwright E2E 集成（--tools 选编辑器�
 - **Pi**：没有 MCP 客户端——浏览器探索改用 `openspec-pw explore`，测试执行用 shell 跑 `npx playwright test`（无 Healer 步骤）。
 - **Oh My Pi**：若 `.claude/` / `.cursor/` / `opencode.jsonc` 已存在并配置了 MCP，omp 会一并继承。
 - **CodeBuddy CLI**：冒号命名（同 Claude Code，`/opsx:e2e`）——命令正文保留 `/opsx:` 引用不做改写。
-- **MiniMax Code**：工作流以 **Skill**（`SKILL.md`）形式交付——MiniMax Code 不加载任何用户自定义命令文件，技能是它唯一可扩展的命令机制。原生读取 `AGENTS.md`，无包装文件。
+- **MiniMax Code**：工作流以 **Skill**（`SKILL.md`）形式交付——`mcode` CLI 不加载任何用户自定义命令文件，技能是它唯一可扩展的命令机制。原生读取 `AGENTS.md`，无包装文件。**集成目标是 `mcode` CLI；桌面端不在覆盖范围。**
 
 </details>
 
