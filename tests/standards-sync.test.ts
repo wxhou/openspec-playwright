@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import {
   buildMirrorContent,
+  main,
   parseArgs,
   syncAgentsMirror,
   OPENSPEC_PW_BEGIN,
@@ -145,5 +146,47 @@ describe("syncAgentsMirror", () => {
   it("throws when the SSOT is missing instead of fabricating one", () => {
     expect(() => syncAgentsMirror(tmpRoot)).toThrow(/SSOT not found/);
     expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(false);
+  });
+});
+
+// The pure functions above were always covered; main() was not, which let
+// two CLI bugs live: an undefined `check` (ReferenceError) and a bare catch
+// in the run-guard that swallowed it — `--check` exited 0 on drift forever.
+describe("main (CLI exit semantics)", () => {
+  const writeSSOT = () => writeFileSync(join(tmpRoot, "employee-standards.md"), SSOT);
+  let restoreConsole = () => {};
+  beforeEach(() => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    restoreConsole = () => {
+      log.mockRestore();
+      error.mockRestore();
+    };
+  });
+  afterEach(() => restoreConsole());
+
+  it("returns 0 when already in sync, in both modes", () => {
+    writeSSOT();
+    expect(main([], tmpRoot)).toBe(0);
+    expect(main(["--check"], tmpRoot)).toBe(0);
+  });
+
+  it("returns 1 on drift in --check mode without writing", () => {
+    writeSSOT();
+    writeFileSync(join(tmpRoot, "AGENTS.md"), "drifted\n");
+    expect(main(["--check"], tmpRoot)).toBe(1);
+    expect(readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8")).toBe("drifted\n");
+  });
+
+  it("writes and returns 0 in apply mode", () => {
+    writeSSOT();
+    expect(main([], tmpRoot)).toBe(0);
+    expect(readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8")).toContain(
+      OPENSPEC_PW_BEGIN,
+    );
+  });
+
+  it("returns 1 for an unknown flag", () => {
+    expect(main(["--dry-run"], tmpRoot)).toBe(1);
   });
 });

@@ -118,30 +118,27 @@ export function syncAgentsMirror(root, { check = false } = {}) {
   return { changed: true, wrote: !check };
 }
 
-function main(argv) {
+export function main(argv, root = join(dirname(fileURLToPath(import.meta.url)), "..")) {
   const parsed = parseArgs(argv);
   if (parsed.error) {
     console.error(`${parsed.error}\n${USAGE}`);
-    process.exit(1);
-    return;
+    return 1;
   }
-  const root = join(dirname(fileURLToPath(import.meta.url)), "..");
   const result = syncAgentsMirror(root, { check: parsed.check });
   if (result.error) {
     console.error(`AGENTS.md has malformed OPENSPEC-PW markers — fix by hand, refusing to touch: ${result.error}`);
-    process.exit(1);
-    return;
+    return 1;
   }
   if (!result.changed) {
     console.log("AGENTS.md already in sync with employee-standards.md");
-    return;
+    return 0;
   }
-  if (check) {
+  if (parsed.check) {
     console.error("AGENTS.md drifted from employee-standards.md — run: npm run standards:sync");
-    process.exit(1);
-    return;
+    return 1;
   }
   console.log("AGENTS.md regenerated from employee-standards.md");
+  return 0;
 }
 
 // Run-guard via realpath: import.meta.url is the module's realpath, so a
@@ -151,9 +148,12 @@ function main(argv) {
 if (process.argv[1]) {
   try {
     if (import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
-      main(process.argv.slice(2));
+      process.exitCode = main(process.argv.slice(2));
     }
-  } catch {
-    /* argv path does not exist — cannot be this script; ignore */
+  } catch (err) {
+    // Only a nonexistent argv path is ignorable ("cannot be this script").
+    // This catch is deliberately narrow: a bare catch here once swallowed a
+    // ReferenceError thrown by main, so `--check` exited 0 on drift.
+    if (err?.code !== "ENOENT") throw err;
   }
 }
