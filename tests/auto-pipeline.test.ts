@@ -9,10 +9,13 @@ import {
   generateAutoPipeline,
 } from "../src/commands/pipeline.js";
 
-const template = readFileSync(
+const rawTemplate = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), "..", "templates", "auto-pipeline.yml"),
   "utf-8",
 );
+// Git checks templates out with CRLF on Windows; normalize before matching
+// strings that end at a line break.
+const template = rawTemplate.replace(/\r\n/g, "\n");
 
 describe("pipeline template", () => {
   it("triggers on pull_request and workflow_dispatch, never on push", () => {
@@ -152,7 +155,7 @@ describe("generateAutoPipeline", () => {
     const result = generateAutoPipeline(root);
     expect("status" in result && result.status).toBe("created");
     expect(existsSync(join(root, AUTO_PIPELINE_REL))).toBe(true);
-    expect(readFileSync(join(root, AUTO_PIPELINE_REL), "utf-8")).toBe(template);
+    expect(readFileSync(join(root, AUTO_PIPELINE_REL), "utf-8")).toBe(rawTemplate);
   });
 
   it("never overwrites an edited workflow", () => {
