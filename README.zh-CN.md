@@ -166,16 +166,30 @@ openspec-pw init --tools claude --agents   # 额外安装官方三个 agent 定�
 ### CLI 命令
 
 ```bash
-openspec-pw init          # 初始化集成（--tools all|none|ids… 可选编辑器；--agents 加装官方 agents；--lint-config 生成/扩展吞错清单的 ESLint 与 ruff 配置）
+openspec-pw init          # 初始化集成（--tools all|none|ids… 可选编辑器；--agents 加装官方 agents；--lint-config 生成/扩展吞错清单的 ESLint 与 ruff 配置；--hook[=static|full] 安装 Claude Code Stop hook；--auto-pipeline 生成无头 CI 工作流）
 openspec-pw update        # 更新 CLI 和命令到最新版本
 openspec-pw doctor        # 检查前置条件 (Node, Playwright, OpenSpec, 配置, 测试) + 应用服务器诊断
-openspec-pw audit         # 检查测试文件是否有孤儿文件和配置问题
-openspec-pw coverage      # 分析 spec 与测试之间的覆盖率
+openspec-pw audit         # 检查测试文件是否有孤儿文件和配置问题（--gate 有问题时退出码 1）
+openspec-pw coverage      # 分析 spec 与测试之间的覆盖率（--fail-under <pct> 低于阈值时退出码 1；--plan <file> 要求 delta spec 的每条 scenario 都出现在该测试计划中，否则退出码 1）
 openspec-pw flake         # 检测测试文件中的静态不稳定模式
+openspec-pw gate [change]  # 跑全部质量检查，退出码 0 / 1 / 2（通过 / 不达标 / 无法判定）
 openspec-pw migrate       # 迁移旧测试文件到新目录结构
 openspec-pw explore       # 探索应用路由
 openspec-pw uninstall     # 移除项目中的集成
 ```
+
+`openspec-pw gate` 是其余所有环节共用的唯一裁决入口——Claude Code 的 Stop hook 与生成的 CI 工作流都调用它，不再各自维护一份检查清单。它按「validate → lint → typecheck → test → flake → e2e」的顺序执行（廉价在前，默认首败即停，`--keep-going` 跑完全部），退出码三值：`0` 全部通过、`1` 有检查不达标、`2` 无法判定（工具缺失、超时、变更名有歧义）。
+
+两条确定性护栏专门堵假绿：
+
+- delta spec 声明了 scenario，但 `tests/playwright/changes/<change>/` 下没有任何测试文件 → E2E 判失败。仅当项目根存在 Playwright 配置时生效，纯后端项目不受影响；
+- 本次 diff 新增 `test.fixme(` → 判失败，并列出文件与行号。
+
+改动 lint 配置、`tsconfig*.json`、Playwright 或 Vitest 配置会出现在裁决的 `flags` 中。只报告不判失败：放宽配置有时正当，但评审者需要知道尺子被挪过。
+
+**Stop hook。** `openspec-pw init --hook` 会向 `.claude/settings.json` 合并一个 `Stop` 钩子，调用 `openspec-pw gate --hook`。门禁为红时钩子以退出码 2 结束、把失败项写到 stderr，agent 必须继续修而不是宣布完成。两档：`static`（默认——validate、lint、typecheck、单元测试）与 `full`（额外含 flake 与 e2e）。每回合最多阻断一次（读取 Claude Code 的 `stop_hook_active`），并按工作树指纹缓存结论，工作树没变就不重复检查。`--no-hook` 或 `openspec-pw uninstall` 可移除；同一文件里你自己的钩子不会被改动。
+
+**全自动流水线。** `openspec-pw init --auto-pipeline` 生成 `.github/workflows/openspec-auto.yml`，只写一次、之后不再覆盖。两种触发是刻意的：每个 PR 只跑 `gate`——请把该 job 设为**必需状态检查**，否则门禁为红的 PR 仍能合并；`openspec:auto` 标签或手动触发才起无头 agent（apply → 生成 E2E → gate）并开 PR。需要 secret：`ANTHROPIC_API_KEY`。提示词要求 agent 自己把 gate 跑到退出 0，作业侧随后再独立跑一遍；apply 的完成度以 `openspec list --json` 的任务计数判定，因为无头运行停下来提问时退出码同样是 0。末尾的 `/opsx:verify` 只作 advisory——报告与各阶段 `total_cost_usd` 写进 PR 正文，不拦截流程。E2E 步骤以 `/opsx:e2e --auto` 运行：人工确认测试计划改为 `openspec-pw coverage --plan`，所有原本「等用户」的节点改为结构化中止并以非零码退出。CI 是 checkout 仓库跑的，所以流水线项目里 `openspec/` 不进受管 `.gitignore` 块——规格与变更必须提交，否则 agent 无可应用；块外自己写的忽略规则只提示、不改写。
 
 ## 工作原理
 
@@ -206,6 +220,7 @@ audit **只报告、绝不删除**——测试退役永远是人工决策。存�
 ```
 # 由 /opsx:e2e <change-name>（Claude Code / CodeBuddy CLI）或 /opsx-e2e <change-name>（OpenCode/Cline/Cursor/Pi/Oh My Pi/MiniMax Code）触发
 /opsx:e2e <change-name>
+/opsx:e2e <change-name> --auto   # 无头——无人工确认点（见「全自动流水线」）
   │
   ├── 1. 选择 change → 读取 openspec/changes/<name>/specs/
   │

@@ -9,6 +9,7 @@ import * as tar from "tar";
 import { buildCommandMeta, getAllAdapters, hasCommandArtifacts, installCommand, installOpenSpecBlock, installClaudeWrapper, installCodebuddyWrapper, migrateLegacyMarkers, claudeAdapter, codebuddyAdapter, claudeWrapperStandardsContent, opencodeAdapter, syncVendoredAgents, normalizeEol, } from "./editors.js";
 import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, hasFrontendSignal, needsShell, detectCodeGraphStatus, codegraphHintLines, findUncoveredManagedPaths, managedBlockAdvisoryHint, ensureGitignoreEntries, installOrRefreshChecklist, LINT_GUIDELINES_RELPATH, } from "../shared/index.js";
 import { compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
+import { pipelineGitignoreOmit } from "./pipeline.js";
 import { wrapperHasMarkers, hasRuleFileMarkers } from "./editors/project-rules.js";
 /** Editors whose project rules file is a thin wrapper (not AGENTS.md), with their installers. */
 const WRAPPER_EDITORS = [
@@ -532,7 +533,9 @@ export function syncProjectTemplates(tmpDir, projectRoot) {
     // the early return below must not skip it, or a minimal project whose
     // .gitignore lost the block silently stops ignoring openspec/ etc.
     try {
-        const result = ensureGitignoreEntries(projectRoot);
+        const result = ensureGitignoreEntries(projectRoot, {
+            omit: pipelineGitignoreOmit(projectRoot),
+        });
         if (result.changed) {
             console.log(chalk.green(`  ✓ .gitignore: managed block updated (+${result.added.length} paths)`));
         }
@@ -665,7 +668,7 @@ export function syncCredentials(tmpDir, projectRoot) {
  * the credentials, so no warning follows a green ✓ line.
  */
 function printCredentialsIgnoreHint(projectRoot) {
-    const uncovered = findUncoveredManagedPaths(projectRoot);
+    const uncovered = findUncoveredManagedPaths(projectRoot, pipelineGitignoreOmit(projectRoot));
     if (uncovered.length > 0) {
         console.log(chalk.yellow(`\n  ⚠ ${managedBlockAdvisoryHint(uncovered)}`));
     }

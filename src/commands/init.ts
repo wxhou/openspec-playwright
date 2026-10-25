@@ -11,6 +11,12 @@ import { join, basename, relative } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { readFile } from "fs/promises";
+import { installStopHook, isHookTier, uninstallStopHook } from "./hooks.js";
+import {
+  BRANCH_PROTECTION_HINT,
+  generateAutoPipeline,
+  PIPELINE_TRACKED_PATHS,
+} from "./pipeline.js";
 import {
   buildCommandMeta,
   detectAdapters,
@@ -55,6 +61,7 @@ import {
   ensureGitignoreEntries,
   findUncoveredManagedPaths,
   detectTrackedFiles,
+  isIgnoredPath,
   managedBlockAdvisoryHint,
   installOrRefreshChecklist,
   installLintConfig,
@@ -93,6 +100,13 @@ export interface InitOptions {
    * configs or append the managed ruff block; existing configs are never edited.
    */
   lintConfig?: boolean;
+  /**
+   * Claude Code Stop hook (`--hook[=static|full]`, `--no-hook`): true means
+   * the default static tier, a string names the tier, false removes it.
+   */
+  hook?: boolean | string;
+  /** Generate `.github/workflows/openspec-auto.yml` (`--auto-pipeline`). */
+  autoPipeline?: boolean;
 }
 
 export interface InitDeps {
@@ -751,22 +765,36 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   // manual `git rm --cached` (user decision — never auto-executed).
   // Detection-only credential advisory now runs only on the degradation
   // path (block write failed) — on success the managed block covers them.
+  // The auto pipeline keeps the OpenSpec artifacts committable: CI checks
+  // out the repository, and without `openspec/` there is nothing to apply.
+  const pipelineOmit = options.autoPipeline ? [...PIPELINE_TRACKED_PATHS] : [];
   try {
-    const result = ensureGitignoreEntries(projectRoot);
+    const result = ensureGitignoreEntries(projectRoot, { omit: pipelineOmit });
     if (result.changed) {
+      const delta = [
+        result.added.length ? `+${result.added.length}` : "",
+        result.removed.length ? `-${result.removed.length}` : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
       console.log(
-        chalk.green(
-          `  ✓ .gitignore: managed block updated (+${result.added.length} paths)`,
+        chalk.green(`  ✓ .gitignore: managed block updated (${delta})`),
+      );
+    }
+    if (result.removed.length > 0) {
+      console.log(
+        chalk.gray(
+          `    kept committable for the pipeline: ${result.removed.join(", ")}`,
         ),
       );
     }
   } catch {
-    const uncovered = findUncoveredManagedPaths(projectRoot);
+    const uncovered = findUncoveredManagedPaths(projectRoot, pipelineOmit);
     if (uncovered.length > 0) {
       console.log(chalk.yellow(`\n  ⚠ ${managedBlockAdvisoryHint(uncovered)}`));
     }
   }
-  const tracked = detectTrackedFiles(projectRoot);
+  const tracked = detectTrackedFiles(projectRoot, pipelineOmit);
   if (tracked.length > 0) {
     console.log(
       chalk.yellow(
@@ -784,6 +812,36 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     await generateGithubWorkflow(projectRoot);
   }
 
+  // 7c. Autonomous pipeline workflow (opt-in; never overwritten)
+  if (options.autoPipeline) {
+    console.log(chalk.blue("\n─── Generating Auto Pipeline ───"));
+    const pipeline = generateAutoPipeline(projectRoot);
+    if ("error" in pipeline) {
+      console.log(chalk.yellow(`  ⚠ ${pipeline.error}`));
+    } else if (pipeline.status === "exists") {
+      console.log(
+        chalk.yellow(`  - ${pipeline.path} already exists — left untouched`),
+      );
+    } else {
+      console.log(chalk.green(`  ✓ Created ${pipeline.path}`));
+    }
+    // A rule outside the managed block still ignores the OpenSpec artifacts:
+    // the pipeline's checkout would carry no change to apply or validate.
+    const stillIgnored = PIPELINE_TRACKED_PATHS.filter((p) =>
+      isIgnoredPath(projectRoot, p),
+    );
+    if (stillIgnored.length > 0) {
+      console.log(
+        chalk.yellow(
+          `  ⚠ ${stillIgnored.join(", ")} is ignored outside the managed block — ` +
+            `CI checks out the repository and needs the OpenSpec artifacts in it. ` +
+            `Remove that rule from .gitignore.`,
+        ),
+      );
+    }
+    console.log(chalk.gray(BRANCH_PROTECTION_HINT.replace(/^/gm, "    ")));
+  }
+
   // 8. Install employee-grade standards (AGENTS.md + CLAUDE.md wrapper if Claude)
   if (editors.length > 0) {
     console.log(chalk.blue("\n─── Installing Employee Standards ───"));
@@ -798,6 +856,33 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
         editors.some((a) => a.id === "codebuddy"),
       );
       installProjectRules(projectRoot, standards, editors);
+    }
+  }
+
+  // 8b. Claude Code Stop hook (explicit opt-in; never installed by default)
+  if (options.hook === false) {
+    const removed = uninstallStopHook(projectRoot);
+    if ("error" in removed) {
+      console.log(chalk.yellow(`  ⚠ ${removed.error}`));
+    } else if (removed.removed) {
+      console.log(chalk.green(`  ✓ Removed Stop hook from ${removed.path}`));
+    }
+  } else if (options.hook !== undefined) {
+    const tier = typeof options.hook === "string" ? options.hook : "static";
+    if (!isHookTier(tier)) {
+      console.log(
+        chalk.yellow(`  ⚠ Unknown hook tier "${tier}" — use static or full; skipped.`),
+      );
+    } else {
+      const installed = installStopHook(projectRoot, tier);
+      if ("error" in installed) {
+        console.log(chalk.yellow(`  ⚠ Stop hook not installed: ${installed.error}`));
+        process.exitCode = 1;
+      } else {
+        console.log(
+          chalk.green(`  ✓ Stop hook (${installed.tier}) → ${installed.path}`),
+        );
+      }
     }
   }
 

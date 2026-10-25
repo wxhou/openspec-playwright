@@ -3,12 +3,12 @@ import { existsSync, readdirSync, readFileSync, } from "fs";
 import { join, sep as pathSep } from "path";
 import chalk from "chalk";
 import { SHARED_FILE_NAMES, TIMEOUT, needsShell, detectAppServer } from "../shared/index.js";
-export async function audit() {
+export async function audit(opts) {
     const projectRoot = process.cwd();
     const testsDir = join(projectRoot, "tests", "playwright");
     if (!existsSync(testsDir)) {
         console.log(chalk.yellow("  tests/playwright/ not found. Run `openspec-pw init` first.\n"));
-        return;
+        return 0;
     }
     console.log(chalk.blue("\n🔍 OpenSpec Playwright: Audit\n"));
     const results = [];
@@ -100,7 +100,7 @@ export async function audit() {
         if (anchorStats.length === 0) {
             console.log(chalk.green("  ✅ No issues found. All tests look healthy.\n"));
         }
-        return;
+        return 0;
     }
     console.log(chalk.yellow(`─── Found ${results.length} issue(s) ───`));
     // Group by issue type
@@ -130,6 +130,11 @@ export async function audit() {
         console.log(chalk.green("  Update sitemap or verify route is intentional."));
     }
     console.log();
+    return auditExitCode(results.length, opts?.gate);
+}
+/** `--gate` turns the audit from a report into a check. */
+export function auditExitCode(issueCount, gate) {
+    return gate && issueCount > 0 ? 1 : 0;
 }
 const ANCHOR_RE = /^\/\/\s*spec:\s*([^#\n]+)#(.+)$/;
 /** Shared-file exclusion set (SHARED_FILE_NAMES) as a local Set for helpers. */

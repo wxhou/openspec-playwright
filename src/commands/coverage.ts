@@ -1,6 +1,6 @@
 import { execFileSync } from "child_process";
 import { existsSync, readFileSync, readdirSync } from "fs";
-import { join } from "path";
+import { join, isAbsolute } from "path";
 import chalk from "chalk";
 import { TIMEOUT, needsShell } from "../shared/index.js";
 
@@ -43,8 +43,18 @@ interface TestCase {
 
 // ─── Main Entry Point ─────────────────────────────────────────────────
 
-export async function coverage(changeName?: string, opts?: { json?: boolean }) {
+export async function coverage(
+  changeName?: string,
+  opts?: { json?: boolean; failUnder?: string; plan?: string },
+): Promise<number> {
   const projectRoot = process.cwd();
+
+  // `--plan` swaps the analysis entirely: it checks a test plan against the
+  // delta spec's scenarios and needs neither tests/playwright nor a test run.
+  if (opts?.plan !== undefined) {
+    return planGate(changeName, opts.plan, projectRoot, opts.json);
+  }
+
   const testsDir = join(projectRoot, "tests", "playwright");
   const changesDir = join(projectRoot, "openspec", "changes");
 
@@ -52,7 +62,7 @@ export async function coverage(changeName?: string, opts?: { json?: boolean }) {
     console.log(
       chalk.yellow("  tests/playwright/ not found. Run `openspec-pw init` first.\n"),
     );
-    return;
+    return 0;
   }
 
   console.log(chalk.blue("\n📊 OpenSpec Playwright: Coverage Analysis\n"));
@@ -62,7 +72,7 @@ export async function coverage(changeName?: string, opts?: { json?: boolean }) {
 
   if (changeNames.length === 0) {
     console.log(chalk.yellow("  No OpenSpec changes found. Run `openspec init` first.\n"));
-    return;
+    return 0;
   }
 
   // Filter to single change if requested
@@ -72,7 +82,7 @@ export async function coverage(changeName?: string, opts?: { json?: boolean }) {
 
   if (changeName && targetChanges.length === 0) {
     console.log(chalk.yellow(`  Change "${changeName}" not found.\n`));
-    return;
+    return 0;
   }
 
   // 2. Collect test files
@@ -114,6 +124,120 @@ export async function coverage(changeName?: string, opts?: { json?: boolean }) {
   } else {
     renderReport(overall);
   }
+
+  // 7. Optional threshold. Without --fail-under the command stays report-only.
+  return coverageExitCode(overall.overallCoveragePct, opts?.failUnder);
+}
+
+/** Threshold decision for `--fail-under`. No flag means "never fail". */
+export function coverageExitCode(overallPct: number, failUnder?: string): number {
+  if (failUnder === undefined) return 0;
+  const min = Number.parseFloat(failUnder);
+  if (Number.isNaN(min)) return 1;
+  return overallPct < min ? 1 : 0;
+}
+
+// ─── Plan coverage (the deterministic gate behind `e2e --auto`) ────────
+
+/**
+ * Collapse case, whitespace and punctuation so a scenario title matches the
+ * way it was written into a plan — Chinese and English alike.
+ */
+export function normalizeTitle(text: string): string {
+  return text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+}
+
+export function planCoverage(
+  scenarios: string[],
+  planText: string,
+): { covered: string[]; missing: string[] } {
+  const haystack = normalizeTitle(planText);
+  const covered: string[] = [];
+  const missing: string[] = [];
+  for (const scenario of scenarios) {
+    if (haystack.includes(normalizeTitle(scenario))) covered.push(scenario);
+    else missing.push(scenario);
+  }
+  return { covered, missing };
+}
+
+/** Every `#### Scenario: <title>` across a change's delta spec files. */
+export function extractScenarioTitles(specsDir: string): string[] {
+  const titles: string[] = [];
+  const walk = (dir: string) => {
+    if (!existsSync(dir)) return;
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith(".md")) {
+        for (const line of readFileSync(full, "utf-8").split("\n")) {
+          const match = /^####\s+Scenario:\s*(.+?)\s*$/.exec(line);
+          if (match) titles.push(match[1]);
+        }
+      }
+    }
+  };
+  walk(specsDir);
+  return titles;
+}
+
+/**
+ * `coverage --plan <file>`: the autonomous e2e mode replaces the human plan
+ * approval with this. Missing plan or missing scenario both fail — a plan the
+ * agent never wrote must not pass silently.
+ */
+function planGate(
+  changeName: string | undefined,
+  planPath: string,
+  projectRoot: string,
+  json?: boolean,
+): number {
+  if (!changeName) {
+    console.error("  coverage --plan requires a change name\n");
+    return 2;
+  }
+  const scenarios = extractScenarioTitles(
+    join(projectRoot, "openspec", "changes", changeName, "specs"),
+  );
+  const resolved = isAbsolute(planPath) ? planPath : join(projectRoot, planPath);
+
+  if (scenarios.length === 0) {
+    if (json) console.log(JSON.stringify({ change: changeName, scenarios: 0, missing: [] }));
+    else console.log(chalk.yellow(`  No scenarios in "${changeName}" — nothing to check.\n`));
+    return 0;
+  }
+
+  if (!existsSync(resolved)) {
+    if (json) {
+      console.log(JSON.stringify({ change: changeName, plan: planPath, missing: scenarios }));
+    } else {
+      console.error(chalk.red(`  Test plan not found: ${planPath}`));
+      console.log("  Every scenario must appear in that file:");
+      for (const s of scenarios) console.log(`    - ${s}`);
+      console.log();
+    }
+    return 1;
+  }
+
+  const { covered, missing } = planCoverage(
+    scenarios,
+    readFileSync(resolved, "utf-8"),
+  );
+
+  if (json) {
+    console.log(JSON.stringify({ change: changeName, total: scenarios.length, covered: covered.length, missing }));
+  } else {
+    console.log(chalk.blue("\n📋 OpenSpec Playwright: Plan Coverage\n"));
+    console.log(`  ${covered.length}/${scenarios.length} scenarios planned in ${planPath}`);
+    if (missing.length > 0) {
+      console.log(chalk.red(`\n  Missing (${missing.length}):`));
+      for (const m of missing) console.log(chalk.red(`    ✗ ${m}`));
+    } else {
+      console.log(chalk.green("  ✓ Every scenario has a planned case"));
+    }
+    console.log();
+  }
+  return missing.length > 0 ? 1 : 0;
 }
 
 // ─── Analysis Functions ───────────────────────────────────────────────

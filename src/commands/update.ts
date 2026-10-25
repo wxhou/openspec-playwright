@@ -46,6 +46,7 @@ import {
   LINT_GUIDELINES_RELPATH,
 } from "../shared/index.js";
 import { compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
+import { pipelineGitignoreOmit } from "./pipeline.js";
 import { wrapperHasMarkers, hasRuleFileMarkers } from "./editors/project-rules.js";
 import type { EditorAdapter } from "./editors.js";
 
@@ -788,7 +789,9 @@ export function syncProjectTemplates(tmpDir: string, projectRoot: string) {
   // the early return below must not skip it, or a minimal project whose
   // .gitignore lost the block silently stops ignoring openspec/ etc.
   try {
-    const result = ensureGitignoreEntries(projectRoot);
+    const result = ensureGitignoreEntries(projectRoot, {
+      omit: pipelineGitignoreOmit(projectRoot),
+    });
     if (result.changed) {
       console.log(
         chalk.green(
@@ -982,7 +985,10 @@ export function syncCredentials(tmpDir: string, projectRoot: string) {
  * the credentials, so no warning follows a green ✓ line.
  */
 function printCredentialsIgnoreHint(projectRoot: string): void {
-  const uncovered = findUncoveredManagedPaths(projectRoot);
+  const uncovered = findUncoveredManagedPaths(
+    projectRoot,
+    pipelineGitignoreOmit(projectRoot),
+  );
   if (uncovered.length > 0) {
     console.log(chalk.yellow(`\n  ⚠ ${managedBlockAdvisoryHint(uncovered)}`));
   }

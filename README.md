@@ -266,16 +266,30 @@ a `/opsx:e2e` delivery.
 ### CLI Commands
 
 ```bash
-openspec-pw init          # Initialize integration (--tools all|none|ids… to select editors; --agents adds the official agents; --frontend/--no-frontend force the install mode; --lint-config generates/extends ESLint and ruff config for the swallow-error checklist)
+openspec-pw init          # Initialize integration (--tools all|none|ids… to select editors; --agents adds the official agents; --frontend/--no-frontend force the install mode; --lint-config generates/extends ESLint and ruff config for the swallow-error checklist; --hook[=static|full] installs a Claude Code Stop hook; --auto-pipeline generates the headless CI workflow)
 openspec-pw update        # Update CLI and commands to latest version
 openspec-pw doctor        # Check prerequisites (Node, Playwright, OpenSpec, config, tests) + app server diagnostics
-openspec-pw audit         # Audit tests for orphaned specs and issues
-openspec-pw coverage      # Analyze spec–test coverage for changes
+openspec-pw audit         # Audit tests for orphaned specs and issues (--gate exits 1 when any issue is found)
+openspec-pw coverage      # Analyze spec–test coverage for changes (--fail-under <pct> exits 1 below it; --plan <file> exits 1 unless every delta-spec scenario appears in that plan)
 openspec-pw flake         # Detect static flake patterns in test files
+openspec-pw gate [change]  # Run every quality check and exit 0 / 1 / 2 (pass / fail / cannot decide)
 openspec-pw migrate       # Migrate old test files to new structure
 openspec-pw explore       # Explore app routes with Playwright
 openspec-pw uninstall     # Remove integration from the project
 ```
+
+`openspec-pw gate` is the single verdict the rest of the tooling calls — the Claude Code Stop hook and the generated CI workflow both invoke it rather than keeping their own check lists. It runs `validate → lint → typecheck → test → flake → e2e` (cheap first, stop at the first failure unless `--keep-going`), and exit codes are three-valued: `0` every check passed, `1` a check failed, `2` the run could not decide (tool missing, timeout, ambiguous change name).
+
+Two deterministic guards stop a false green:
+
+- a change whose delta spec declares scenarios but whose `tests/playwright/changes/<change>/` holds no test files fails E2E — only when the project has a Playwright config, so backend-only projects are unaffected;
+- any newly added `test.fixme(` in the diff fails the gate and is listed with file and line.
+
+Edits to lint config, `tsconfig*.json`, Playwright or Vitest config appear under `flags` in the verdict. They are reported, not failed: loosening a config is sometimes legitimate, but a reviewer needs to know when the ruler moved.
+
+**Stop hook.** `openspec-pw init --hook` merges a `Stop` hook into `.claude/settings.json` that runs `openspec-pw gate --hook`. When the gate is red the hook exits 2 with the failing checks on stderr, so the agent keeps working instead of claiming done. Two tiers: `static` (default — validate, lint, typecheck, unit tests) and `full` (adds flake and e2e). It blocks at most once per turn (honouring Claude Code's `stop_hook_active`) and caches its verdict against a working-tree fingerprint, so an unchanged tree is not re-checked. `--no-hook` or `openspec-pw uninstall` removes it; your own hooks in the same file are never touched.
+
+**Autonomous pipeline.** `openspec-pw init --auto-pipeline` writes `.github/workflows/openspec-auto.yml` once and never overwrites it. Two triggers on purpose: every pull request runs `gate` only — mark that job as a **required status check**, or a PR with a red gate can still merge — while a `openspec:auto` label or a manual dispatch starts the headless agent (apply → generate E2E → gate) and opens the PR. Required secret: `ANTHROPIC_API_KEY`. The agent is told to run the gate and revise until it exits 0, and the job then runs the gate again on its own authority; apply is judged by `openspec list --json` task counts, because a headless run that stops to ask a question still exits 0. A final `/opsx:verify` pass is advisory — its report and every stage's `total_cost_usd` land in the PR body, and it never blocks. The E2E step runs `/opsx:e2e --auto`: the human plan approval becomes `openspec-pw coverage --plan`, and every point that would wait for a person becomes a structured abort with a non-zero exit. Because CI checks out the repository, `openspec/` is kept out of the managed `.gitignore` block in pipeline projects — the specs and changes must be committed or the agent has nothing to apply. A rule outside the block that still ignores `openspec/` is reported, not rewritten.
 
 ## How It Works
 
@@ -306,6 +320,7 @@ Audit is **report-only** — it never deletes or edits tests; retiring a test is
 ```
 /opsx:e2e <change-name>          # Claude Code / CodeBuddy CLI
 /opsx-e2e <change-name>          # OpenCode / Cline / Cursor / Pi / Oh My Pi / MiniMax Code
+/opsx:e2e <change-name> --auto   # headless — no human checkpoint (see Autonomous pipeline)
   │
   ├── 1. Select change → read openspec/changes/<name>/specs/
   │

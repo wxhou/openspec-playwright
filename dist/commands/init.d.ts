@@ -17,6 +17,13 @@ export interface InitOptions {
      * configs or append the managed ruff block; existing configs are never edited.
      */
     lintConfig?: boolean;
+    /**
+     * Claude Code Stop hook (`--hook[=static|full]`, `--no-hook`): true means
+     * the default static tier, a string names the tier, false removes it.
+     */
+    hook?: boolean | string;
+    /** Generate `.github/workflows/openspec-auto.yml` (`--auto-pipeline`). */
+    autoPipeline?: boolean;
 }
 export interface InitDeps {
     /** Interactive selection prompt; defaults to @inquirer/prompts checkbox.

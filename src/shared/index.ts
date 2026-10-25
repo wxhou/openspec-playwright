@@ -61,5 +61,6 @@ export {
   ensureGitignoreEntries,
   removeManagedBlock,
   detectTrackedFiles,
+  isIgnoredPath,
   managedBlockAdvisoryHint,
 } from "./gitignore-managed.js";

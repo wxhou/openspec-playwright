@@ -73,10 +73,18 @@ function loadIgnoreRules(projectRoot) {
  * this module exists for). Never throws (review F1): rule-file read errors
  * are swallowed by loadIgnoreRules; the ignore matcher itself cannot throw
  * on plain path strings.
+ *
+ * `omit` drops paths from the managed set for callers that need one of them
+ * committed (the auto pipeline needs `openspec/` in the tree).
  */
-export function findUncoveredManagedPaths(projectRoot) {
+export function findUncoveredManagedPaths(projectRoot, omit = []) {
     const ig = loadIgnoreRules(projectRoot);
-    return MANAGED_GITIGNORE_PATHS.filter((rel) => !ig.ignores(rel));
+    const skipped = new Set(omit);
+    return MANAGED_GITIGNORE_PATHS.filter((rel) => !skipped.has(rel) && !ig.ignores(rel));
+}
+/** Is this path ignored by any rule file the repo applies? */
+export function isIgnoredPath(projectRoot, rel) {
+    return loadIgnoreRules(projectRoot).ignores(rel);
 }
 /** Split content into lines, keeping each line's original `\r` (F2). */
 function toLines(content) {
@@ -108,11 +116,14 @@ function locateBlock(lines) {
  * only the block. Lines outside the block keep their bytes — including
  * CRLF endings (F2) and blank-line structure (F5). Write errors propagate
  * to the caller, which degrades to an advisory.
+ *
+ * `omit` names paths that must stay committable: they are never added, and
+ * an existing line for them is dropped from the managed block (the block is
+ * tool-owned territory; rules outside it are the user's and stay untouched).
  */
-export function ensureGitignoreEntries(projectRoot) {
-    const uncovered = findUncoveredManagedPaths(projectRoot);
-    if (uncovered.length === 0)
-        return { changed: false, added: [] };
+export function ensureGitignoreEntries(projectRoot, opts = {}) {
+    const omitted = new Set(opts.omit ?? []);
+    const uncovered = findUncoveredManagedPaths(projectRoot, [...omitted]);
     const gitignorePath = join(projectRoot, ".gitignore");
     const hadFile = existsSync(gitignorePath);
     // Raw line model (F2 + O3): each element keeps its original bytes (CRLF
@@ -130,13 +141,21 @@ export function ensureGitignoreEntries(projectRoot) {
     }
     const [beginIdx, endIdx] = locateBlock(lines);
     let added;
+    let removed = [];
     if (beginIdx !== -1) {
-        // Well-formed block: add only the lines missing from its body.
-        const body = new Set(lines.slice(beginIdx + 1, endIdx).map((l) => l.trim()));
-        added = uncovered.filter((p) => !body.has(p));
-        if (added.length === 0)
-            return { changed: false, added: [] };
-        lines.splice(beginIdx + 1, 0, ...added);
+        // Well-formed block: add only the lines missing from its body, and drop
+        // the ones the caller wants kept committable.
+        const body = lines.slice(beginIdx + 1, endIdx);
+        const kept = body.filter((l) => !omitted.has(l.trim()));
+        removed = body
+            .filter((l) => omitted.has(l.trim()))
+            .map((l) => l.trim());
+        const bodySet = new Set(kept.map((l) => l.trim()));
+        added = uncovered.filter((p) => !bodySet.has(p));
+        if (added.length === 0 && removed.length === 0) {
+            return { changed: false, added: [], removed: [] };
+        }
+        lines.splice(beginIdx + 1, endIdx - beginIdx - 1, ...added, ...kept);
     }
     else {
         // No well-formed block: append one at the tail. Orphan markers, if
@@ -144,13 +163,15 @@ export function ensureGitignoreEntries(projectRoot) {
         // pairing (F3). Line separation is the "\n" of the join itself; the
         // final newline written below restores the file's terminated state.
         added = [...uncovered];
+        if (added.length === 0)
+            return { changed: false, added: [], removed: [] };
         lines.push(GITIGNORE_BLOCK_BEGIN, ...added, GITIGNORE_BLOCK_END);
     }
     // join("\n") preserves every original line's bytes (CRLF lines keep
     // their \r as part of the line content); the file's original trailing
     // newline state is restored.
     writeFileSync(gitignorePath, lines.join("\n") + (hadTrailingNewline || !hadFile ? "\n" : ""));
-    return { changed: true, added };
+    return { changed: true, added, removed };
 }
 /**
  * Remove the managed block (uninstall). Block-external lines are preserved
@@ -203,14 +224,10 @@ export function managedBlockAdvisoryHint(uncovered) {
  * the advisory dead there while the block itself still got written
  * (review F6) — git resolves the repo upward from -C on its own.
  */
-export function detectTrackedFiles(projectRoot) {
-    const args = [
-        "-C",
-        projectRoot,
-        "ls-files",
-        "--",
-        ...MANAGED_GITIGNORE_PATHS,
-    ];
+export function detectTrackedFiles(projectRoot, omit = []) {
+    const skipped = new Set(omit);
+    const paths = MANAGED_GITIGNORE_PATHS.filter((p) => !skipped.has(p));
+    const args = ["-C", projectRoot, "ls-files", "--", ...paths];
     let stdout = "";
     try {
         // `?? ""` also guards mocked/odd runtimes returning undefined — an
@@ -231,7 +248,7 @@ export function detectTrackedFiles(projectRoot) {
         return [];
     const reported = [];
     let overflow = 0;
-    for (const rel of MANAGED_GITIGNORE_PATHS) {
+    for (const rel of paths) {
         const isDir = rel.endsWith("/");
         const hits = trackedLines.filter((t) => isDir ? t === rel.replace(/\/$/, "") || t.startsWith(rel) : t === rel);
         if (hits.length === 0)

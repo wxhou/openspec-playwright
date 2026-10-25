@@ -14,7 +14,7 @@ interface AuditResult {
   detail?: string;
 }
 
-export async function audit() {
+export async function audit(opts?: { gate?: boolean }): Promise<number> {
   const projectRoot = process.cwd();
   const testsDir = join(projectRoot, "tests", "playwright");
 
@@ -22,7 +22,7 @@ export async function audit() {
     console.log(
       chalk.yellow("  tests/playwright/ not found. Run `openspec-pw init` first.\n"),
     );
-    return;
+    return 0;
   }
 
   console.log(chalk.blue("\n🔍 OpenSpec Playwright: Audit\n"));
@@ -137,7 +137,7 @@ export async function audit() {
         chalk.green("  ✅ No issues found. All tests look healthy.\n"),
       );
     }
-    return;
+    return 0;
   }
 
   console.log(
@@ -180,6 +180,12 @@ export async function audit() {
     );
   }
   console.log();
+  return auditExitCode(results.length, opts?.gate);
+}
+
+/** `--gate` turns the audit from a report into a check. */
+export function auditExitCode(issueCount: number, gate?: boolean): number {
+  return gate && issueCount > 0 ? 1 : 0;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
