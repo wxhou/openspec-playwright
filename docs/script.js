@@ -39,11 +39,12 @@ const CLAUDE_MD_ZH = `# 项目规范
 
 ## 代码质量 · 禁止项与要求
 - 不假设外部输入可信：信任边界上的数据/响应/异步结果先校验（类型/范围/null/空/边界，数值含精度）再使用；资源用后必须释放；可预判的失败不裹 try 当控制流——预判守卫或取默认 API（如 \`dict.get\`、\`next(it, None)\`）先行
-- 🔴 捕获的异常不许无声消失——失败必须可见，出口任选：
-  - ① 上抛：原样上行（裸 \`raise\` / \`return err\` 传原对象），或新建错误带因（\`raise … from e\` / \`{cause: e}\` / \`%w\`）；catch 内新建错误不带因=丢因果，同判缺失
-  - ② 窄类型 catch 后按影响记 debug/warning + 行内原因再继续——继续=跳过该步骤及其依赖、或以替代值前行，失败结果本身不可再用；仅限可承受步骤（如清理、幂等二次释放）：失败结果不被下游消费且不留不一致状态，否则直接上抛；无类型 catch 按错误类别（instanceof/错误码）分流
-  - ③ catch-all 只放能把错误就地隔离、不影响其余输入与状态的边界（批量循环顶/事件分发/进程顶等），照样记录 + 行内原因
-  - 边界外没有第四种出口——\`except Exception: return default\`、\`.catch(()=>null)\` 这类兜底静默同判吞错，空 catch、\`except: pass\`、\`_ = err\`、\`.catch(()=>{})\` 类黑洞照禁。注释不算处理，行为才算；②③行内原因不受注释纪律黑名单约束
+- 🔴 默认不捕获——准入见下；准入后失败仍必须可见，出口任选：
+  - 准入：catch 必须在失败的去向或内容上留下可见变化，只有三种——改变控制流（重试，或按 catch-all 条在边界就地隔离）、给同一目的地更多信息（带因包装）、失败本会就此丢失时留下记录（目的地本会吞掉它）。降级继续不在此列，按窄类型条的条件判。都不能 → 不捕获；只做原样再抛的 catch=噪音，删，要附加上下文按上抛的带因形式
+  - 上抛（默认出口）：原样上行（裸 \`raise\` / \`return err\` 传原对象），或新建错误带因（\`raise … from e\` / \`{cause: e}\` / \`%w\`）；catch 内新建错误不带因=丢因果，同判缺失
+  - 窄类型 catch 后按影响记 debug/warning + 行内原因再继续——继续=跳过该步骤及其依赖、或以替代值前行，失败结果本身不可再用；仅限可承受步骤（如清理、幂等二次释放）：失败结果不被下游消费且不留不一致状态，否则直接上抛；无类型 catch 按错误类别（instanceof/错误码）分流
+  - catch-all 只放能把错误就地隔离、不影响其余输入与状态的边界（批量循环顶/事件分发/进程顶等），照样记录 + 行内原因
+  - 上述边界之外的兜底静默不算出口——\`except Exception: return default\`、\`.catch(()=>null)\` 这类兜底静默同判吞错，空 catch、\`except: pass\`、\`_ = err\`、\`.catch(()=>{})\` 类黑洞照禁。空 catch 里加注释不算处理，行为才算；窄类型与 catch-all 两处的行内原因不受注释纪律黑名单约束
   - 参考：各语言对应的 lint 规则见项目根 \`lint-guidelines.md\`
 - 不写只适配样例输入的逻辑、魔法数字（入常量；有确切依据才注原因，否则取达义常量名）、具体值断言（无验收锚定的数值，用户明确要求的除外）；路径/换行用语言内建跨平台 API（\`path.sep\`/\`path.join\`），比较前归一化 EOL
 - mock 数据/fixture → 参见数据编撰禁令
@@ -149,11 +150,12 @@ const CLAUDE_MD_EN = `# Project Guidelines
 
 ## No Non-Generic Changes
 - Don't assume external input is trusted: validate data/responses/async results at trust boundaries (type/range/null/empty/boundary, numeric precision included) before use; release resources after use; foreseeable failures don't get wrapped in try as control flow — precondition guards or default-fetching APIs (like \`dict.get\`, \`next(it, None)\`) go first
-- 🔴 A caught exception must never vanish silently — the failure must be visible, any exit:
-  - 1 rethrow — propagate the original object as-is (bare \`raise\` / \`return err\`) or create with cause (\`raise … from e\` / \`{cause: e}\` / \`%w\` — building a new error without cause inside a catch = dropped causality, same verdict)
-  - 2 narrow catch, log at debug/warning by impact + inline reason, then continue — continuing = skipping the step and its dependents or moving on with a substitute, the failed result itself is never reused; only tolerable steps (e.g. cleanup, idempotent double-release) — the failed result is not consumed downstream and leaves no inconsistent state; otherwise rethrow; untyped catch branches on error class (instanceof/error code)
-  - 3 catch-alls only at boundaries that isolate the error locally (batch loop top / event dispatch / process top), still logged + inline reason
-  - Outside those boundaries there is no fourth exit — \`except Exception: return default\` / \`.catch(()=>null)\` fallback silence counts as swallowing, bare catch / \`except: pass\` / \`_ = err\` / \`.catch(()=>{})\` black holes stay banned. A comment is not handling, the behavior is; inline reasons under 2/3 are exempt from the comment-discipline blacklist
+- 🔴 Default to not catching — admission below; once admitted, the failure must still be visible, any exit:
+  - Admission: a catch must leave a visible change in where the failure goes or what it carries, and only three shapes qualify — a control-flow change (retry, or local isolation at a boundary per the catch-all bullet), more information for the same destination (wrapping with cause), or a record when the failure would otherwise be lost (the destination would swallow it). Degrading and continuing is not on that list — judge it by the narrow-catch bullet. If none apply → don't catch; a catch that only rethrows unchanged is noise — delete it, and add context via the cause form in rethrow
+  - rethrow (the default exit) — propagate the original object as-is (bare \`raise\` / \`return err\`) or create with cause (\`raise … from e\` / \`{cause: e}\` / \`%w\` — building a new error without cause inside a catch = dropped causality, same verdict)
+  - narrow catch, log at debug/warning by impact + inline reason, then continue — continuing = skipping the step and its dependents or moving on with a substitute, the failed result itself is never reused; only tolerable steps (e.g. cleanup, idempotent double-release) — the failed result is not consumed downstream and leaves no inconsistent state; otherwise rethrow; untyped catch branches on error class (instanceof/error code)
+  - catch-alls only at boundaries that isolate the error locally (batch loop top / event dispatch / process top), still logged + inline reason
+  - Fallbacks outside those boundaries are not exits — \`except Exception: return default\` / \`.catch(()=>null)\` fallback silence counts as swallowing, bare catch / \`except: pass\` / \`_ = err\` / \`.catch(()=>{})\` black holes stay banned. A comment inside an empty catch is not handling, the behavior is; inline reasons in the narrow-catch and catch-all bullets are exempt from the comment-discipline blacklist
   - Reference: per-language lint rules are listed in the project's \`lint-guidelines.md\`
 - No logic that only fits sample inputs, no magic numbers (constants; a reason comment only when grounded in fact, otherwise a meaningful name), no specific-value assertions (ones unanchored to acceptance — except values the user explicitly specifies); paths/newlines via the language's built-in cross-platform APIs (\`path.sep\`/\`path.join\`), normalize EOL before comparing
 - Mock data / fixtures → see Data Fabrication section below

@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- **fix(standards): 异常处理条款改为「默认不捕获」，补 catch 准入判据**. 原条款标题是「**捕获的**异常不许无声消失」——它把捕获当既定动作、只在事后管出口，等于给了模型一个比 system prompt 更强的反向信号：Claude Code 的 system prompt 已内置「不为不可能发生的场景加防御、只在系统边界校验」，而项目规范每次都在上下文里且带 🔴，模型会优先服从后者，于是「必须处理失败」的最省力满足方式就是包一层 catch。现改为「默认不捕获——只在能改变结果的地方 catch；准入后失败仍必须可见」，并新增准入判据（catch 必须在失败的去向或内容上留下可见变化，只有三种：改变控制流＝重试/边界隔离、给同一目的地更多信息＝带因包装、失败本会丢失时留记录；降级继续不在准入之列，交由窄类型条的可承受条件判定），把「该不该捕获」与「捕获后怎么办」拆成两问——判据两次返工：初版「能否做一件调用方做不到的事」对重试给出错答（重试正是调用方做得到的事），二版「到达一个原本到不了的地方」又让两个分支能被兜空（「降级」无定义、「包装」的目的地其实没变，而后者同时被出口条要求），终版改为封闭三形态并把降级判定权交回可检查的窄类型条件。出口三条去掉 ①②③ 编号（本就是无序列表），并顺带吸收「catch 后原样再抛=噪音」、标题的「只在能改变结果的地方」删除（它与准入判据是两个不同的问题）、上抛标为默认出口、catch-all 的位置限制与「隔离」对齐。二轮复审还修掉两处：删编号把「②③行内原因」的指代弄丢，「后两类」落到被禁形状上（`.catch(()=>{})` 配注释即可豁免，正是 `no-empty` 的逃生口），改回点名「窄类型与 catch-all」；EN 副本 `would otherwise lose it` 使观测者限定恒真，改为对目的地的平铺断言。三处副本同步，+1 ZH / +1 EN 锚点。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 - **feat(cli): 新增 `openspec-pw gate` 组合门禁**. 单一命令、单一裁决、三值退出码（`0` 通过 / `1` 不达标 / `2` 无法判定）；按 validate → lint → typecheck → test → flake → e2e 顺序执行，默认首败即停，`--keep-going` 跑完，`--only`/`--skip` 选子集，`--json` 输出可直接用于 CI 断言与 PR 评论。两条确定性假绿护栏：delta spec 有 scenario 但变更目录下无测试文件（仅在有 Playwright 配置时）判失败；本次 diff 新增 `test.fixme(` 判失败并列出行号。检查配置（lint / `tsconfig*.json` / Playwright / Vitest）被改动时进入 `flags`——只报告不判失败。
   - `src/commands/gate.ts`、`src/index.ts`、`tests/gate.test.ts`、`README.md`、`README.zh-CN.md`
 - **feat(cli): `coverage` 与 `audit` 补齐判定退出码**. `coverage --fail-under <pct>` 低于阈值退 1；`audit --gate` 有任一问题退 1。两者默认行为不变（仍恒为 0，只作报告），因此可安全地加入 `gate --only` 子集。

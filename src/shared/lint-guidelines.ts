@@ -411,8 +411,8 @@ export function findSourceFile(
       items = readdirSync(dir, { withFileTypes: true });
     } catch (err) {
       // One unreadable directory must not abort the bounded scan, but the
-      // failure stays visible (AGENTS.md §1 exit ③): probes that fall back
-      // because a source file was skipped need this on stderr.
+      // failure stays visible (AGENTS.md §1 catch-all exit): probes that fall
+      // back because a source file was skipped need this on stderr.
       console.error(
         `openspec-pw: skipped unreadable directory during source scan — ${dir} (${err instanceof Error ? err.message : String(err)})`,
       );
