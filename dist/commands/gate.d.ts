@@ -13,6 +13,8 @@ export interface GateFlag {
     path: string;
     added: number;
     removed: number;
+    /** Why the file was flagged, when the reason is not just config churn. */
+    reason?: string;
 }
 export interface GateReport {
     verdict: Verdict;

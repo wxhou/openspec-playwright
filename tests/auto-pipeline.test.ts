@@ -93,8 +93,9 @@ describe("pipeline template", () => {
     expect(template).toContain("continue-on-error: true");
     expect(template).toContain("/opsx:verify $CHANGE");
     expect(template).toContain("--body-file pr-body.md");
-    // The PR body carries per-check gate results, per-stage costs and the report.
+    // The PR body carries per-check gate results, flags, per-stage costs and the report.
     expect(template).toMatch(/\.checks\[\]/);
+    expect(template).toMatch(/\.flags\[\]\?/);
     expect(template).toMatch(/Costs: apply/);
     expect(template).toContain("### Verify (advisory)");
   });

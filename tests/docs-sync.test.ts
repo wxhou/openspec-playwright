@@ -33,6 +33,8 @@ const ZH_ANCHORS: [string, string][] = [
   ["§1 库能力假设", "断言现成依赖缺少某能力"],
   ["§1 模块化", "模块化与关注点分离"],
   ["§1 捕获准入", "默认不捕获"],
+  ["§1 兜底返回形状", "记录不构成豁免"],
+  ["§1 错误类枚举逃生口", "枚举不出就直接上抛"],
   ["§2 挪动随迁", "其 import 随迁"],
   ["§2 豁免标注", "例外须行内注明缘由"],
   ["§2 破坏性命令授权", "破坏性/不可逆命令"],
@@ -83,6 +85,8 @@ const EN_ANCHORS: [string, string][] = [
   ["§1 library capability check", "lacks a capability"],
   ["§1 modularity", "separation of concerns"],
   ["§1 catch admission", "Default to not catching"],
+  ["§1 broad-catch fallback shape", "logging does not exempt it"],
+  ["§1 catch class-enumeration escape", "if the classes can't be enumerated"],
   ["§6 testing & verification", "Testing & Verification Strategy"],
   ["§6 screenshot ≠ behavior", "Screenshot alone does not pass"],
   ["§1 selection chain", "priority chain"],
@@ -115,6 +119,39 @@ const EN_ANCHORS: [string, string][] = [
   ["§7 unbounded concurrency", "Never fan out unbounded concurrency"],
 ];
 
+// The catch clause carries six sub-bullets. The mirrors must hold the same six
+// in the same order — a standards change that adds, drops or reorders one has
+// to update both mirrors and this list. A single phrase anchor cannot catch
+// that drift: the EN mistranslation in 0.3.106 shipped through one.
+const CATCH_SUB_BULLETS_ZH = [
+  "准入：",
+  "上抛（",
+  "窄类型 catch",
+  "catch-all ",
+  "上述边界之外的",
+  "参考：",
+];
+const CATCH_SUB_BULLETS_EN = [
+  "Admission:",
+  "rethrow (",
+  "narrow catch",
+  "catch-alls ",
+  "Fallbacks outside",
+  "Reference:",
+];
+
+function catchSubBullets(text: string, startMarker: string): string[] {
+  const start = text.indexOf(startMarker);
+  if (start === -1) return [];
+  const rest = text.slice(start);
+  const end = rest.search(/\n(?:- |## )/);
+  const clause = end === -1 ? rest : rest.slice(0, end);
+  return clause
+    .split("\n")
+    .filter((l) => l.startsWith("  - "))
+    .map((l) => l.slice(4));
+}
+
 describe("docs/script.js embedded standards stay in sync", () => {
   it("anchors exist in employee-standards.md (guard against stale anchors)", () => {
     for (const [label, phrase] of ZH_ANCHORS) {
@@ -128,6 +165,33 @@ describe("docs/script.js embedded standards stay in sync", () => {
 
   it.each(EN_ANCHORS)("EN embed contains %s", (_label, phrase) => {
     expect(en, `docs/script.js CLAUDE_MD_EN missing: ${phrase}`).toContain(phrase);
+  });
+
+  it("keeps the catch clause's sub-bullets aligned across all three copies", () => {
+    const ssot = catchSubBullets(standards, "🔴 默认不捕获");
+    const zhCopy = catchSubBullets(zh, "🔴 默认不捕获");
+    const enCopy = catchSubBullets(en, "🔴 Default to not catching");
+    expect(ssot).toHaveLength(CATCH_SUB_BULLETS_ZH.length);
+    expect(zhCopy).toHaveLength(CATCH_SUB_BULLETS_ZH.length);
+    expect(enCopy).toHaveLength(CATCH_SUB_BULLETS_EN.length);
+    ssot.forEach((line, i) => {
+      expect(
+        line.startsWith(CATCH_SUB_BULLETS_ZH[i]),
+        `standards sub-bullet ${i + 1} must start with "${CATCH_SUB_BULLETS_ZH[i]}"`,
+      ).toBe(true);
+    });
+    zhCopy.forEach((line, i) => {
+      expect(
+        line.startsWith(CATCH_SUB_BULLETS_ZH[i]),
+        `ZH embed sub-bullet ${i + 1} must start with "${CATCH_SUB_BULLETS_ZH[i]}"`,
+      ).toBe(true);
+    });
+    enCopy.forEach((line, i) => {
+      expect(
+        line.startsWith(CATCH_SUB_BULLETS_EN[i]),
+        `EN embed sub-bullet ${i + 1} must start with "${CATCH_SUB_BULLETS_EN[i]}"`,
+      ).toBe(true);
+    });
   });
 
   it("every standards section number 0..7 is represented in the ZH embed", () => {

@@ -106,7 +106,7 @@ program
 });
 program
     .command("flake [change-name]")
-    .description("Detect static flake patterns in Playwright test files")
+    .description("Detect flake patterns in Playwright test files (static patterns + raised timeouts)")
     .option("--json", "Output results as JSON")
     .option("--gate <severity>", "Exit non-zero if findings meet severity (HIGH|MEDIUM|ALL)")
     .action(async (changeName, opts) => {

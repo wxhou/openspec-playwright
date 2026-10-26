@@ -14,6 +14,7 @@ import { createHash } from "crypto";
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, mkdirSync } from "fs";
 import { dirname, join, relative } from "path";
 import { fileURLToPath } from "url";
+import { parseTimeoutIncreases } from "./flake.js";
 
 // ─── Types ───────────────────────────────────────────────────────────────
 
@@ -43,6 +44,8 @@ export interface GateFlag {
   path: string;
   added: number;
   removed: number;
+  /** Why the file was flagged, when the reason is not just config churn. */
+  reason?: string;
 }
 
 export interface GateReport {
@@ -581,9 +584,9 @@ function renderHuman(report: GateReport, out: (line: string) => void): void {
   }
   out("");
   if (report.flags.length > 0) {
-    out("  Check config changed (review these before trusting a green gate):");
+    out("  Review these before trusting a green gate:");
     for (const f of report.flags) {
-      out(`    ${f.path}  +${f.added}/-${f.removed}`);
+      out(`    ${f.path}${f.reason ? `  — ${f.reason}` : `  +${f.added}/-${f.removed}`}`);
     }
     out("");
   }
@@ -788,9 +791,28 @@ export async function gate(
     }
   }
 
-  const flags: GateFlag[] = changed
-    .filter((f) => isCheckConfigFile(f.path))
-    .map((f) => ({ path: f.path, added: f.added, removed: f.removed }));
+  // A raised test timeout is the same kind of signal as a loosened config: the
+  // check turns green without the code getting better.
+  const timeoutDiff = exec("git", ["diff", "-U0", "HEAD", "--", "tests/playwright"], {
+    cwd,
+    timeoutMs: 30_000,
+  });
+  const timeoutFlags: GateFlag[] =
+    timeoutDiff.exitCode === 0
+      ? parseTimeoutIncreases(timeoutDiff.stdout).map((t) => ({
+          path: t.file,
+          added: 0,
+          removed: 0,
+          reason: `timeout ${t.from} → ${t.to} at line ${t.line}`,
+        }))
+      : [];
+
+  const flags: GateFlag[] = [
+    ...changed
+      .filter((f) => isCheckConfigFile(f.path))
+      .map((f) => ({ path: f.path, added: f.added, removed: f.removed })),
+    ...timeoutFlags,
+  ];
 
   const report: GateReport = {
     verdict: computeVerdict(results),

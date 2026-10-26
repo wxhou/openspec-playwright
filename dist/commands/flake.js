@@ -1,5 +1,6 @@
 import { readFileSync, existsSync } from "fs";
-import { join } from "path";
+import { spawnSync } from "child_process";
+import { join, relative } from "path";
 import chalk from "chalk";
 import { SHARED_FILE_NAMES } from "../shared/index.js";
 import { collectSpecFiles } from "./coverage.js";
@@ -51,6 +52,26 @@ export async function flake(changeName, options) {
         findings.push(...detectRouteAfterGoto(content, relPath));
         findings.push(...detectStorageLeakage(content, relPath, configHasStorageState));
         findings.push(...detectTestUseScope(content, relPath, configHasStorageState));
+    }
+    // Timeout increases need a baseline, so they come from the diff rather than
+    // the file. Raising a timeout turns a failing test green without fixing the
+    // race that failed it.
+    const diff = spawnSync("git", ["diff", "-U0", "HEAD", "--", "tests/playwright"], {
+        cwd: projectRoot,
+        encoding: "utf-8",
+        timeout: 30_000,
+    });
+    if (diff.status === 0) {
+        const scope = specFiles.map((f) => relative(projectRoot, f).replace(/\\/g, "/"));
+        for (const t of parseTimeoutIncreases(String(diff.stdout ?? ""), scope)) {
+            findings.push({
+                pattern: "timeout-increase",
+                file: t.file.replace(/^tests\/playwright\//, ""),
+                line: t.line,
+                severity: "medium",
+                message: `timeout ${t.from} → ${t.to}: a longer timeout hides the failure instead of fixing it`,
+            });
+        }
     }
     // Build report
     const report = buildReport(findings);
@@ -256,6 +277,63 @@ export function detectTestUseScope(content, filePath, configHasStorageState) {
         }
     }
     return findings;
+}
+const TIMEOUT_RE = /(?:timeout\s*[:=]\s*|setTimeout\s*\(\s*)(\d+)/g;
+function timeoutValues(line) {
+    const values = [];
+    TIMEOUT_RE.lastIndex = 0;
+    let match;
+    while ((match = TIMEOUT_RE.exec(line)) !== null)
+        values.push(Number(match[1]));
+    return values;
+}
+/**
+ * Timeout values on added diff lines that exceed the value of the line they
+ * replaced, paired by position within each hunk (`git diff -U0`). `only`
+ * restricts the result to those repo-relative paths, so a scoped run stays
+ * inside its change.
+ */
+export function parseTimeoutIncreases(diff, only) {
+    const scope = only ? new Set(only) : null;
+    const increases = [];
+    let file = "";
+    let line = 0;
+    let removed = [];
+    for (const raw of diff.split("\n")) {
+        if (raw.startsWith("+++ b/")) {
+            file = raw.slice(6);
+            removed = [];
+            continue;
+        }
+        if (raw.startsWith("--- "))
+            continue;
+        const hunk = /^@@ -\d+(?:,\d+)? \+(\d+)/.exec(raw);
+        if (hunk) {
+            line = Number.parseInt(hunk[1], 10);
+            removed = [];
+            continue;
+        }
+        if (raw.startsWith("-")) {
+            removed.push(...timeoutValues(raw));
+            continue;
+        }
+        if (raw.startsWith(" ")) {
+            line++;
+            continue;
+        }
+        if (!raw.startsWith("+"))
+            continue;
+        const added = timeoutValues(raw);
+        if (!scope || scope.has(file)) {
+            added.forEach((to, i) => {
+                const from = removed[i];
+                if (from !== undefined && to > from)
+                    increases.push({ file, line, from, to });
+            });
+        }
+        line++;
+    }
+    return increases;
 }
 // ─── Report Helpers ───────────────────────────────────────────────────
 export function buildReport(findings) {

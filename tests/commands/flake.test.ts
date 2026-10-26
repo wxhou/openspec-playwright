@@ -283,3 +283,83 @@ describe("computeGateExitCode", () => {
     expect(computeGateExitCode(report, "INVALID")).toBe(1);
   });
 });
+
+// ─── parseTimeoutIncreases ───────────────────────────────────────────
+
+const timeoutDiff = (from: string, to: string) =>
+  [
+    "--- a/tests/playwright/a.spec.ts",
+    "+++ b/tests/playwright/a.spec.ts",
+    "@@ -10,1 +10,1 @@",
+    `-  ${from}`,
+    `+  ${to}`,
+  ].join("\n");
+
+describe("parseTimeoutIncreases", () => {
+  it("reports a raised timeout with its new line number", async () => {
+    const { parseTimeoutIncreases } = await importFlake();
+    const found = parseTimeoutIncreases(
+      timeoutDiff(
+        "await page.waitForSelector('#x', { timeout: 5000 });",
+        "await page.waitForSelector('#x', { timeout: 30000 });",
+      ),
+    );
+    expect(found).toEqual([
+      { file: "tests/playwright/a.spec.ts", line: 10, from: 5000, to: 30000 },
+    ]);
+  });
+
+  it("reports a raised test.setTimeout", async () => {
+    const { parseTimeoutIncreases } = await importFlake();
+    const found = parseTimeoutIncreases(
+      timeoutDiff("test.setTimeout(30000);", "test.setTimeout(120000);"),
+    );
+    expect(found).toEqual([
+      { file: "tests/playwright/a.spec.ts", line: 10, from: 30000, to: 120000 },
+    ]);
+  });
+
+  it("ignores lowered and unchanged values", async () => {
+    const { parseTimeoutIncreases } = await importFlake();
+    expect(
+      parseTimeoutIncreases(timeoutDiff("test.setTimeout(60000);", "test.setTimeout(30000);")),
+    ).toEqual([]);
+    expect(
+      parseTimeoutIncreases(timeoutDiff("timeout: 5000", "timeout: 5000")),
+    ).toEqual([]);
+  });
+
+  it("never pairs a removal with an addition in another file", async () => {
+    const { parseTimeoutIncreases } = await importFlake();
+    const diff = [
+      "--- a/a.spec.ts",
+      "+++ b/a.spec.ts",
+      "@@ -1,1 +1,0 @@",
+      "-  timeout: 5000",
+      "--- a/b.spec.ts",
+      "+++ b/b.spec.ts",
+      "@@ -1,0 +1,1 @@",
+      "+  timeout: 30000",
+    ].join("\n");
+    expect(parseTimeoutIncreases(diff)).toEqual([]);
+  });
+
+  it("restricts findings to the given scope", async () => {
+    const { parseTimeoutIncreases } = await importFlake();
+    const change = (name: string) => [
+      `--- a/tests/playwright/changes/${name}.spec.ts`,
+      `+++ b/tests/playwright/changes/${name}.spec.ts`,
+      "@@ -1,1 +1,1 @@",
+      "-  timeout: 1000",
+      "+  timeout: 9000",
+    ];
+    const diff = [...change("one"), ...change("two")].join("\n");
+    const scoped = parseTimeoutIncreases(diff, [
+      "tests/playwright/changes/one.spec.ts",
+    ]);
+    expect(scoped.map((f) => f.file)).toEqual([
+      "tests/playwright/changes/one.spec.ts",
+    ]);
+    expect(parseTimeoutIncreases(diff)).toHaveLength(2);
+  });
+});

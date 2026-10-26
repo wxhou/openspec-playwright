@@ -461,6 +461,38 @@ describe("false-green guards", () => {
     const report = JSON.parse(lines.lines[0]);
     expect(report.flags).toEqual([{ path: "eslint.config.js", added: 2, removed: 0 }]);
   });
+
+  it("flags a raised test timeout without failing the gate", async () => {
+    const exec = makeExec({
+      "git diff -U0": {
+        exitCode: 0,
+        stdout: [
+          "--- a/tests/playwright/changes/demo/a.spec.ts",
+          "+++ b/tests/playwright/changes/demo/a.spec.ts",
+          "@@ -7,1 +7,1 @@",
+          "-  await page.waitForSelector('#x', { timeout: 5000 });",
+          "+  await page.waitForSelector('#x', { timeout: 30000 });",
+        ].join("\n"),
+        stderr: "",
+      },
+    });
+    const lines = capture();
+    const code = await gate(
+      "demo",
+      { json: true, only: "lint" },
+      { cwd: root, exec, out: lines.out },
+    );
+    expect(code).toBe(0);
+    const report = JSON.parse(lines.lines[0]);
+    expect(report.flags).toEqual([
+      {
+        path: "tests/playwright/changes/demo/a.spec.ts",
+        added: 0,
+        removed: 0,
+        reason: "timeout 5000 → 30000 at line 7",
+      },
+    ]);
+  });
 });
 
 describe("stop-hook mode", () => {

@@ -171,7 +171,7 @@ openspec-pw update        # 更新 CLI 和命令到最新版本
 openspec-pw doctor        # 检查前置条件 (Node, Playwright, OpenSpec, 配置, 测试) + 应用服务器诊断
 openspec-pw audit         # 检查测试文件是否有孤儿文件和配置问题（--gate 有问题时退出码 1）
 openspec-pw coverage      # 分析 spec 与测试之间的覆盖率（--fail-under <pct> 低于阈值时退出码 1；--plan <file> 要求 delta spec 的每条 scenario 都出现在该测试计划中，否则退出码 1）
-openspec-pw flake         # 检测测试文件中的静态不稳定模式
+openspec-pw flake         # 检测测试文件中的不稳定模式（静态模式 + 被调大的超时）
 openspec-pw gate [change]  # 跑全部质量检查，退出码 0 / 1 / 2（通过 / 不达标 / 无法判定）
 openspec-pw migrate       # 迁移旧测试文件到新目录结构
 openspec-pw explore       # 探索应用路由
@@ -185,7 +185,7 @@ openspec-pw uninstall     # 移除项目中的集成
 - delta spec 声明了 scenario，但 `tests/playwright/changes/<change>/` 下没有任何测试文件 → E2E 判失败。仅当项目根存在 Playwright 配置时生效，纯后端项目不受影响；
 - 本次 diff 新增 `test.fixme(` → 判失败，并列出文件与行号。
 
-改动 lint 配置、`tsconfig*.json`、Playwright 或 Vitest 配置会出现在裁决的 `flags` 中。只报告不判失败：放宽配置有时正当，但评审者需要知道尺子被挪过。
+改动 lint 配置、`tsconfig*.json`、Playwright 或 Vitest 配置，或把测试文件里的超时调大（`timeout: N` / `test.setTimeout(N)`），都会出现在裁决的 `flags` 中。只报告不判失败：放宽配置或延长超时有时正当，但评审者需要知道尺子被挪过——调大超时只会让失败的测试变绿，并没有修掉它撞上的竞态。
 
 **Stop hook。** `openspec-pw init --hook` 会向 `.claude/settings.json` 合并一个 `Stop` 钩子，调用 `openspec-pw gate --hook`。门禁为红时钩子以退出码 2 结束、把失败项写到 stderr，agent 必须继续修而不是宣布完成。两档：`static`（默认——validate、lint、typecheck、单元测试）与 `full`（额外含 flake 与 e2e）。`full` 只在该变更的 E2E 测试已存在后再用：此前「有 scenario 无测试」护栏会让每回合都判红，把进展正常的活儿卡住。每回合最多阻断一次（读取 Claude Code 的 `stop_hook_active`），并按工作树指纹缓存结论，工作树没变就不重复检查。`--no-hook` 或 `openspec-pw uninstall` 可移除；同一文件里你自己的钩子不会被改动。
 
@@ -355,7 +355,7 @@ CLI (openspec-pw)
   ├── migrate    → 迁移旧测试文件到新目录结构
   ├── audit      → 检查测试文件是否有孤儿文件和配置问题
   ├── coverage   → 分析 spec 与测试之间的覆盖率
-  ├── flake      → 检测测试文件中的静态不稳定模式
+  ├── flake      → 检测测试文件中的不稳定模式（静态 + 被调大的超时）
   ├── doctor     → 检查前置条件
   ├── explore    → 探索应用路由
   └── uninstall  → 移除项目中的集成

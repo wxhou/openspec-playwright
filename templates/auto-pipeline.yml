@@ -255,6 +255,10 @@ jobs:
             printf 'openspec change: %s\n\n' "$CHANGE"
             printf 'Gate: `%s`\n\n' "$(jq -r .verdict gate.json 2>/dev/null || echo unknown)"
             jq -r '.checks[] | "- `\(.name)`: \(.status)"' gate.json 2>/dev/null || true
+            FLAGS=$(jq -r '.flags[]? | if .reason then "- `\(.path)` — \(.reason)" else "- `\(.path)` (+\(.added)/-\(.removed))" end' gate.json 2>/dev/null || true)
+            if [ -n "$FLAGS" ]; then
+              printf '\nFlags (review before trusting the gate):\n%s\n' "$FLAGS"
+            fi
             printf '\nCosts: apply $%s · e2e $%s · verify $%s\n\n' \
               "$(cost apply.json)" "$(cost e2e.json)" "$(cost verify.json)"
             printf '### Verify (advisory)\n\n%s\n' "$(cat verify.md)"

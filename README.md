@@ -271,7 +271,7 @@ openspec-pw update        # Update CLI and commands to latest version
 openspec-pw doctor        # Check prerequisites (Node, Playwright, OpenSpec, config, tests) + app server diagnostics
 openspec-pw audit         # Audit tests for orphaned specs and issues (--gate exits 1 when any issue is found)
 openspec-pw coverage      # Analyze spec–test coverage for changes (--fail-under <pct> exits 1 below it; --plan <file> exits 1 unless every delta-spec scenario appears in that plan)
-openspec-pw flake         # Detect static flake patterns in test files
+openspec-pw flake         # Detect flake patterns in test files (static patterns + raised timeouts)
 openspec-pw gate [change]  # Run every quality check and exit 0 / 1 / 2 (pass / fail / cannot decide)
 openspec-pw migrate       # Migrate old test files to new structure
 openspec-pw explore       # Explore app routes with Playwright
@@ -285,7 +285,7 @@ Two deterministic guards stop a false green:
 - a change whose delta spec declares scenarios but whose `tests/playwright/changes/<change>/` holds no test files fails E2E — only when the project has a Playwright config, so backend-only projects are unaffected;
 - any newly added `test.fixme(` in the diff fails the gate and is listed with file and line.
 
-Edits to lint config, `tsconfig*.json`, Playwright or Vitest config appear under `flags` in the verdict. They are reported, not failed: loosening a config is sometimes legitimate, but a reviewer needs to know when the ruler moved.
+Edits to lint config, `tsconfig*.json`, Playwright or Vitest config appear under `flags` in the verdict, as does any timeout raised inside a test file (`timeout: N` / `test.setTimeout(N)`). They are reported, not failed: loosening a config or extending a timeout is sometimes legitimate, but a reviewer needs to know when the ruler moved — a raised timeout turns a failing test green without fixing the race it tripped over.
 
 **Stop hook.** `openspec-pw init --hook` merges a `Stop` hook into `.claude/settings.json` that runs `openspec-pw gate --hook`. When the gate is red the hook exits 2 with the failing checks on stderr, so the agent keeps working instead of claiming done. Two tiers: `static` (default — validate, lint, typecheck, unit tests) and `full` (adds flake and e2e). Use `full` only once the change's E2E tests exist: before that, the "scenarios but no tests" guard fails the gate on every turn and the hook blocks work that is on the right track. It blocks at most once per turn (honouring Claude Code's `stop_hook_active`) and caches its verdict against a working-tree fingerprint, so an unchanged tree is not re-checked. `--no-hook` or `openspec-pw uninstall` removes it; your own hooks in the same file are never touched.
 
@@ -513,7 +513,7 @@ CLI (openspec-pw)
   ├── migrate    → Migrates old test files to new structure
   ├── audit      → Audits tests for orphaned specs and issues
   ├── coverage   → Analyzes spec–test coverage for changes
-  ├── flake      → Detects static flake patterns in test files
+  ├── flake      → Detects flake patterns in test files (static + raised timeouts)
   ├── doctor     → Checks prerequisites
   ├── explore    → Explores app routes with Playwright
   └── uninstall  → Removes integration from the project
