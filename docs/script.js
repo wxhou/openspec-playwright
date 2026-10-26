@@ -108,7 +108,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🔴 禁止无界读取进内存：整文件读入、无 LIMIT 全表查询、全量结果攒齐再处理——除非已有确认的上界（openspec/config.yaml 记录或用户确认）且单次驻留明显低于可用内存（仅知道当前大小不算确认，拿不准 → 流式）；大数据一律流式/分批（数据侧：流/游标/分页/chunk；展示侧：分页/虚拟列表），单批大小显式设定
 - 🔴 禁止无界并发：大批量任务不限并发度地一次性发起、无上限开连接/进程/线程——并发池/信号量显式限流
 - 🟡 循环内 I/O 须批量化（N+1 查询、循环内发请求/写文件；流式分块写不算"攒齐"，错误日志保留、聚合输出）
-- 🟡 不写随输入增长的无界缓存（无上限、无淘汰的累积结构）`;
+- 🟡 不写随输入增长的无界缓存（无上限、无淘汰的累积结构）`; // spec-embed:zh
 
 const CLAUDE_MD_EN = `# Project Guidelines
 - Read \`openspec/config.yaml\` first (tech stack, structure, conventions, constraints, etc.); no file or empty → skip this item, the rest applies as usual
@@ -219,7 +219,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🔴 Never read unbounded data into memory: whole-file reads, queries without LIMIT, accumulate-then-process — unless a confirmed upper bound exists (\`openspec/config.yaml\` record or user confirmation) and the single resident footprint is clearly below available memory (knowing only the current size doesn't count as confirmed; unsure → stream). Stream/batch by default (data side: streams/cursors/pagination/chunks; display side: pagination/virtual lists) with an explicit batch size
 - 🔴 Never fan out unbounded concurrency: launching a large batch of tasks all at once without a concurrency cap, or opening connections/processes/threads without a limit — bound them with an explicit pool/semaphore
 - 🟡 Per-item I/O inside loops (N+1 queries, per-row requests/file writes) must be batched (streamed chunked writes aren't "accumulate-then-process"; error logs stay, aggregate the rest)
-- 🟡 No unbounded caches growing with input (accumulating structures without a cap or eviction)`;
+- 🟡 No unbounded caches growing with input (accumulating structures without a cap or eviction)`; // spec-embed:en
 
 function processInline(text) {
   // **bold** → <strong>

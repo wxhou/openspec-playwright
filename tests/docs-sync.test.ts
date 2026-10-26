@@ -13,8 +13,22 @@ const scriptJs = readFileSync(join(root, "docs", "script.js"), "utf-8");
 // landing page "Copy config" button; nothing forces it to follow
 // employee-standards.md, and it has drifted before (fixed in 0.3.65).
 // These anchors fail loudly when a standards change forgets the docs copy.
-const zh = scriptJs.match(/CLAUDE_MD_ZH = `([\s\S]*?)`;/)?.[1] ?? "";
-const en = scriptJs.match(/CLAUDE_MD_EN = `([\s\S]*?)`;/)?.[1] ?? "";
+//
+// The end of each literal is marked by a `// spec-embed:<tag>` sentinel rather
+// than by the closing backtick: the body may legitimately contain a
+// backtick-semicolon pair, and a backtick-anchored scan stops there and
+// truncates the copy.
+function extractEmbed(script: string, name: string, tag: "zh" | "en"): string {
+  const head = `const ${name} = \``;
+  const start = script.indexOf(head);
+  if (start === -1) return "";
+  const bodyStart = start + head.length;
+  const end = script.indexOf(`\`; // spec-embed:${tag}`, bodyStart);
+  return end === -1 ? "" : script.slice(bodyStart, end);
+}
+
+const zh = extractEmbed(scriptJs, "CLAUDE_MD_ZH", "zh");
+const en = extractEmbed(scriptJs, "CLAUDE_MD_EN", "en");
 
 const ZH_ANCHORS: [string, string][] = [
   ["§0 openspec help", "npx openspec --help"],
@@ -48,6 +62,7 @@ const ZH_ANCHORS: [string, string][] = [
   ["§3 自动链同一回合调用 verify", "同一回合调用"],
   ["§3 自动链覆盖全部 apply 变更", "适用于任何经"],
   ["§3 规模门槛", "300+ 行且跨多个文件"],
+  ["§3 提案入口", "必须走 OpenSpec 提案流程"],
   ["§0 同档冲突处置", "先按该条款执行"],
   ["§1 授权标注豁免", "来源与授权标注"],
   ["§7 确认上界例外", "已有确认的上界"],
@@ -104,6 +119,7 @@ const EN_ANCHORS: [string, string][] = [
   ["§3 auto-chain same-turn verify", "the moment the last task is checked"],
   ["§3 auto-chain scope", "is not gated by the size threshold"],
   ["§3 size gate", "300+ lines across multiple files"],
+  ["§3 proposal entry", "must go through the OpenSpec proposal flow"],
   ["§0 same-tier conflict handling", "follow that clause first"],
   ["§1 authorization annotation exemption", "source and authorization annotations"],
   ["§7 confirmed upper bound", "confirmed upper bound"],
@@ -167,6 +183,11 @@ describe("docs/script.js embedded standards stay in sync", () => {
 
   it.each(EN_ANCHORS)("EN embed contains %s", (_label, phrase) => {
     expect(en, `docs/script.js CLAUDE_MD_EN missing: ${phrase}`).toContain(phrase);
+  });
+
+  it("extracts the whole embed when the body contains a backtick-semicolon", () => {
+    const fake = "const CLAUDE_MD_ZH = `a `; b`; // spec-embed:zh";
+    expect(extractEmbed(fake, "CLAUDE_MD_ZH", "zh")).toBe("a `; b");
   });
 
   it("keeps the catch clause's sub-bullets aligned across all three copies", () => {
