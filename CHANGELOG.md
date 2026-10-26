@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.108] - 2026-10-26
 - **fix(docs): 内嵌规范改用哨兵收尾，补 §3 提案入口锚点**. `docs/script.js` 的两份内嵌副本原先靠正文末尾的「反引号+分号」定位结尾，正文中出现该组合时抽取会在中途截断——上一轮改 Standards 时触发过一次，27 项断言因副本被截断而假红。改为在闭引号后加 `// spec-embed:zh|en` 哨兵（各出现 1 次），抽取按哨兵定位，正文再出现该组合也不受影响；当前两份副本的抽取结果与旧正则逐字相同。`tests/docs-sync.test.ts` 同时补 §3 提案入口的 ZH/EN 锚点各 1 条：`§3 规模门槛` 的锚点只覆盖「300+ 行且跨多个文件」，改动提案措辞时锚点仍会照绿。
   - `docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 - **fix(standards): 审阅驱动的一轮语义修正 + 措辞收敛**. `Prompt 工程师` 复审 SSOT，11 条逐条落地。① `§0` 的 🔴 定义改为「不可协商的硬性约束」，后果补「不可逆损失 / 绕过用户授权」，并把「停下确认」限定在**无法同时满足**时——原文按后果描述、标记实际按决策点使用（`密钥不入库`、`既有测试保持通过`、`无界读写` 等 🔴 从不触发询问），两者分叉让最高风险的信任边界条款反停在 🟡。② 同一轮给「不假设外部输入可信」挂 🔴。③ `经验沉淀` 改为不指名载体、只禁工具托管块：原文点名的 CLAUDE.md / AGENTS.md 都会被 `update` / `standards:sync` 整块重写（对没有 wrapper 的编辑器 Cursor/Cline/OpenCode/Pi/omp/MiniMax 是确定性丢失），而本文件随包发往任意项目，仓库专有路径不该随发。④ `§3` 规模门槛去掉编辑器分派，只留「走 OpenSpec 提案流程」与「建议用户运行该流程」——命令名按编辑器取值且随生态漂移，不进随包规范。⑤ 措辞批：lint gate 补 `.js/.jsx`，并规定项目脚本未覆盖该路径时直跑 linter（`docs/script.js` 即此类）；`lint-guidelines.md` 引用由其真实覆盖面（吞错一族）替代「各语言」；搜索分层主工具中立化；删 shell 改写条的无主语括号；`## 状态` 的两轮审查改为可填写格式；UI 组件禁令的冒号改包含式括号。三处副本同步（SSOT / `AGENTS.md` / `docs/script.js` ZH+EN），锚点与 catch 六子项全存活；`CLAUDE.md` 的 Code×Docs 表补 `employee-standards.md` 行——该文件此前不在表内。本轮撞见的盲区：`docs-sync` 锚点没覆盖 §0 经验沉淀与 §3 提案入口——SSOT 改完而副本仍是旧表述、测试照绿；已补 ZH/EN 各 1 条锚点（`非工具托管的载体` / `carrier the tooling does not own`）。已知脆弱点：`docs/script.js` 的提取正则 `\`([\s\S]*?)\`;` 会被正文里的「反引号+分号」提前截断（本轮触发过一次，27 项断言假红），下次再遇到应改正则，不要靠绕措辞。
