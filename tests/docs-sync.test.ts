@@ -66,6 +66,7 @@ const ZH_ANCHORS: [string, string][] = [
   ["§7 量级确认", "前先确认量级"],
   ["§7 无界读取禁令", "禁止无界读取进内存"],
   ["§7 无界并发禁令", "禁止无界并发"],
+  ["§0 经验沉淀载体", "非工具托管的载体"],
 ];
 
 const EN_ANCHORS: [string, string][] = [
@@ -117,6 +118,7 @@ const EN_ANCHORS: [string, string][] = [
   ["§7 performance section", "Performance & Resource Bounds"],
   ["§7 unbounded reads", "Never read unbounded data into memory"],
   ["§7 unbounded concurrency", "Never fan out unbounded concurrency"],
+  ["§0 experience-distillation carrier", "carrier the tooling does not own"],
 ];
 
 // The catch clause carries six sub-bullets. The mirrors must hold the same six
