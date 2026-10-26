@@ -125,7 +125,7 @@ Use pre-authenticated sessions from `auth.setup.ts` so CAPTCHA is bypassed befor
 - UI redirects to `/dashboard` after CAPTCHA pass
 - Database record created with correct values
 
-#### Strategy B: Skip with /handoff
+#### Strategy B: Skip and hand off to a human reviewer
 If CAPTCHA is the primary interaction under test, mark as non-automatable:
 
 ```

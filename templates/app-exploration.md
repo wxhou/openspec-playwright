@@ -60,7 +60,7 @@ BASE_URL: <from env or seed.spec.ts>
 
 ## Visual Anomalies
 
-Auto-populated by `openspec-pw vision-check`. Layout issues detected via Ollama VLM.
+Filled in by review: record a layout problem the exploration (or a later run) actually saw. Nothing ships a detector today, so an empty table is a normal result.
 
 | Route | Element | Type | Position | Severity | Description |
 | --- | --- | --- | --- | --- | --- |

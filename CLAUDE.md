@@ -6,7 +6,7 @@ Setup tool for OpenSpec + Playwright E2E integration.
 
 - `src/commands/init.ts` — `openspec-pw init` setup logic
 - `src/commands/doctor.ts` — `openspec-pw doctor` prerequisites checker
-- `templates/e2e-command.md` — E2E workflow template, installed as every editor's `/opsx:e2e` / `/opsx-e2e` command
+- `templates/e2e-command.md` — E2E workflow template, installed as `/opsx:e2e` / `/opsx-e2e` on command-based editors and as an `opsx-e2e` skill on MiniMax Code and DeepSeek Harness
 - `.claude/commands/opsx/e2e.md` — Claude Code command (installed copy)
 - `templates/seed.spec.ts` — Playwright seed test template
 - `templates/auth.setup.ts` — Authentication setup (API + UI login)
@@ -43,9 +43,9 @@ When touching these files, the docs **must be updated in the same commit**:
 | Modified | Must update |
 |----------|-------------|
 | `src/commands/*.ts` or `src/index.ts` | `README.md` (CLI tree), `CHANGELOG.md` |
-| `.claude/skills/openspec-e2e/SKILL.md` | `README.md` (architecture diagram), `CHANGELOG.md` |
 | `templates/*` | `README.md` (if paths are involved), `CHANGELOG.md` |
 | Any CLI logic change | `README.md` (CLI docs), `CHANGELOG.md` |
+| `employee-standards.md` | `AGENTS.md` (local mirror, `npm run standards:sync`), `docs/script.js` `CLAUDE_MD_ZH`/`CLAUDE_MD_EN`, `tests/docs-sync.test.ts` anchors |
 
 > Rule: doc updates land in the **same commit** as the code change — never split them out.
 

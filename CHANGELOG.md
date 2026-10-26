@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+- **fix(templates): 移除指向已删除命令与不存在命令名的两处说明**. ① `app-exploration.md` 的 Visual Anomalies 段写着「Auto-populated by `openspec-pw vision-check`，layout issues detected via Ollama VLM」——该命令早已从 `src/index.ts` 删除，`src/` 内也无任何 Ollama 引用，等于每个已装项目都附带一条指向空命令的指令；改为「review 时填写，没有检测器，空表属正常」。② `test-plan.md` 的 CAPTCHA 策略标题 `Skip with /handoff`——`/handoff` 全仓库仅此一处，Claude Code 与 openspec 均未定义该命令；改为 `Skip and hand off to a human reviewer`，策略内容不变。已装项目下次 `openspec-pw update` 刷新模板，无需迁移。
+  - `templates/app-exploration.md`、`templates/test-plan.md`、`CHANGELOG.md`
+- **docs(claude-md): 文档同步表去掉已删除路径，模板产物描述区分命令与 skill**. ① Code × Docs Sync 表的 `.claude/skills/openspec-e2e/SKILL.md` 行指向 `306329f refactor: remove SKILL-based openspec-e2e command` 删除的目录，无法再被「touch」；同一产物由 `templates/*` 行覆盖，故删行。② Project Structure 把 `templates/e2e-command.md` 描述为「每个编辑器的命令」，与 `init.ts` 的实际分发不符——MiniMax Code 与 DeepSeek Harness 拿到的是 `opsx-e2e` skill。
+  - `CLAUDE.md`、`CHANGELOG.md`
+
 ## [0.3.107] - 2026-10-26
 - **feat(cli): `flake` 与 `gate` 覆盖「调大超时掩盖竞态」，修正 OpenSpec 命令的调用方式**. ① `flake` 新增 `timeout-increase` 检测器：`timeout: N` / `test.setTimeout(N)` 在 diff 中被调大即报 medium finding（基线取自 `git diff -U0 HEAD`，同一 hunk 内按位置配对，跨文件不配对）——调研记录里「AI 只会加大超时掩盖 bug」这条已知失败模式，此前四个检测器都不覆盖。② `gate` 复用同一解析器把发现并入 `flags`（`GateFlag` 增加可选 `reason`，`gate --json` 的向后兼容加法），流水线模板的 PR 正文新增 flags 段落——`gate.json` 与 PR 都能看到，但不判失败，延长超时有时正当。`flake` 带变更名运行时按该变更的测试文件过滤，不串到别的变更。新发现为 medium 严重度：默认无 `--gate` 与 `gate` 使用的 `--gate HIGH` 都不受影响，`--gate MEDIUM` / `--gate ALL` 会因此判红。③ `playwright.config.ts` 本就在 `CHECK_CONFIG_PATTERNS` 内，配置级调整早已可见，本次补的是测试文件内的情况。④ §0 的 OpenSpec 命令改为 `openspec --help`、`npx openspec --help` 作「不在 PATH」兜底：`npx` 按包名解析，npm 上的 `openspec` 是 0.0.0 占位包，只有 OpenSpec 以 npm 安装时 npx 才找得到，官方独立二进制安装下会报 `could not determine executable to run`。
   - `src/commands/flake.ts`、`src/commands/gate.ts`、`src/index.ts`、`templates/auto-pipeline.yml`、`tests/commands/flake.test.ts`、`tests/gate.test.ts`、`tests/auto-pipeline.test.ts`、`employee-standards.md`、`docs/script.js`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
