@@ -10,6 +10,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -25,8 +26,10 @@ import {
   codebuddyAdapter,
   cursorAdapter,
   detectAdapters,
+  dshAdapter,
   enumerateAdapterArtifacts,
   getAllAdapters,
+  hasCommandArtifacts,
   installCommand,
   intentFileEditors,
   minimaxAdapter,
@@ -52,6 +55,7 @@ const REGISTRATION_ORDER = [
   "omp",
   "codebuddy",
   "minimax",
+  "dsh",
 ];
 
 const byId = () => new Map(getAllAdapters().map((a) => [a.id, a]));
@@ -134,6 +138,15 @@ describe("artifact formatting is byte-stable", () => {
 
       ",
         "cursor": "<!-- Change name: $1 (e.g. /opsx-e2e my-change) -->
+
+      Run /opsx-e2e for the change.
+      See /opsx-propose for planning.
+
+      ",
+        "dsh": "---
+      name: opsx-e2e
+      description: Run Playwright E2E verification for an OpenSpec change
+      ---
 
       Run /opsx-e2e for the change.
       See /opsx-propose for planning.
@@ -262,6 +275,13 @@ describe("artifact formatting is byte-stable", () => {
           "path": ".agents/skills/opsx-e2e/SKILL.md",
           "slash": "/opsx-e2e",
         },
+        {
+          "commandForm": "hyphen",
+          "extras": [],
+          "id": "dsh",
+          "path": ".dsh/skills/opsx-e2e/SKILL.md",
+          "slash": "/opsx-e2e",
+        },
       ]
     `);
   });
@@ -285,6 +305,7 @@ const DETECTION: DetectionRow[] = [
   { id: "omp", project: [".omp"], global: ".omp/agent" },
   { id: "codebuddy", project: [".codebuddy"], intent: "CODEBUDDY.md" },
   { id: "minimax", project: [".minimax"], global: ".minimax-code" },
+  { id: "dsh", project: [".dsh"], global: ".dsh" },
 ];
 
 describe("detection tiers", () => {
@@ -327,8 +348,18 @@ describe("detection tiers", () => {
     });
   }
 
-  it("a global install root is never a project signal", () => {
-    for (const row of DETECTION) {
+  it("hasCommandArtifacts recognizes every adapter's installed artifact", () => {
+    // doctor/update gate "the project ran init" on this helper; a hardcoded
+    // per-editor path list silently drifted twice before.
+    for (const adapter of getAllAdapters()) {
+      const proj = projectDir("authored", adapter.id);
+      expect(hasCommandArtifacts(proj, adapter)).toBe(false);
+      installCommand(adapter, META, proj);
+      expect(hasCommandArtifacts(proj, adapter)).toBe(true);
+    }
+  });
+
+  it("a global install root is never a project signal", () => {    for (const row of DETECTION) {
       if (!row.global) continue;
       const adapter = byId().get(row.id)!;
       const empty = projectDir("global", row.id);
@@ -397,6 +428,14 @@ describe("MCP carriers", () => {
     expect(piAdapter.supportsMcp).toBe(false);
     const proj = projectDir("mcp", "pi");
     expect(piAdapter.isMcpInstalled(proj, "playwright-test")).toBe(false);
+  });
+
+  it("dsh has no project-level MCP carrier", () => {
+    // MCP lives in per-user profile patch layers under $DSH_HOME.
+    expect(dshAdapter.supportsMcp).toBe(false);
+    const proj = projectDir("mcp", "dsh");
+    expect(dshAdapter.isMcpInstalled(proj, "playwright-test")).toBe(false);
+    expect(existsSync(join(proj, ".mcp.json"))).toBe(false);
   });
 });
 
@@ -474,6 +513,10 @@ describe("removal inventory", () => {
         ],
         [
           "minimax",
+          "/opsx-e2e",
+        ],
+        [
+          "dsh",
           "/opsx-e2e",
         ],
       ]

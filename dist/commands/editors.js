@@ -16,7 +16,7 @@
  * Re-export order matters for adapter self-registration: importing the
  * adapter modules loads them, and each calls `registerAdapter()` — the
  * order below fixes ADAPTERS registration order (claude → opencode →
- * cline → cursor → pi → omp → codebuddy → minimax), which
+ * cline → cursor → pi → omp → codebuddy → minimax → dsh), which
  * `resolveToolsArg("all")`, the interactive prompt order, and
  * tests/editors-tools.test.ts depend on.
  */
@@ -37,6 +37,7 @@ export { formatPiCommand, getPiCommandPath, hasPi, piAdapter, } from "./editors/
 export { formatOmpCommand, getOmpCommandPath, hasOmp, ompAdapter, } from "./editors/adapters/omp.js";
 export { formatCodebuddyCommand, getCodebuddyCommandPath, hasCodebuddy, codebuddyAdapter, } from "./editors/adapters/codebuddy.js";
 export { formatMinimaxSkill, getMinimaxSkillPath, hasMinimax, hasMinimaxProjectSignal, minimaxAdapter, minimaxMcpPath, } from "./editors/adapters/minimax.js";
+export { formatDshSkill, getDshSkillPath, hasDsh, hasDshProjectSignal, dshAdapter, } from "./editors/adapters/dsh.js";
 // Tool selection (--tools flag parsing)
 export { resolveToolsArg } from "./editors/tool-selection.js";
 // Per-editor artifact removal (init deselect + uninstall cleanup)

@@ -344,6 +344,25 @@ describe("doctor CodeGraph category", () => {
     expect(text).toContain("codegraph-mcp: n/a");
   });
 
+  it("names .dsh/ in the guidance when no editor is detected", async () => {
+    detectAdaptersMock.mockReturnValue([]);
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((...args) => {
+      logs.push(args.join(" "));
+    });
+    // No editor also fails the hard checks, so doctor exits 1 at the end.
+    const exitSpy = vi
+      .spyOn(process, "exit")
+      .mockImplementation((() => undefined) as never);
+    try {
+      await doctor();
+    } finally {
+      spy.mockRestore();
+      exitSpy.mockRestore();
+    }
+    expect(logs.join("\n")).toContain(".minimax/, or .dsh/)");
+  });
+
   it("reports version, initialized index, and installed adapters when present", async () => {
     detectMock.mockReturnValue({
       cliInstalled: true,

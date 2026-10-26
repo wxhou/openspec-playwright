@@ -426,14 +426,14 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   if (selectedIds === null && editors.length === 0) {
     console.log(
       chalk.yellow(
-        "\n  ⚠ No supported editor detected in the project (need .claude/, .opencode/, .cline/, .cursor/, .pi/, .omp/, .codebuddy/, or .minimax/).",
+        "\n  ⚠ No supported editor detected in the project (need .claude/, .opencode/, .cline/, .cursor/, .pi/, .omp/, .codebuddy/, .minimax/, or .dsh/).",
       ),
     );
     console.log(
       chalk.gray("  For Cursor without an existing .cursor/ dir: mkdir -p .cursor\n"),
     );
     throw new Error(
-      'No supported editor detected and no --tools flag provided. Use --tools all, --tools none, or a comma-separated list: claude, opencode, cline, cursor, pi, omp, codebuddy, minimax (oh-my-pi aliases omp, minimax-code aliases minimax).',
+      'No supported editor detected and no --tools flag provided. Use --tools all, --tools none, or a comma-separated list: claude, opencode, cline, cursor, pi, omp, codebuddy, minimax, dsh (oh-my-pi aliases omp, minimax-code aliases minimax).',
     );
   }
 
@@ -978,7 +978,7 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     console.log(chalk.bold("How it works:"));
     console.log(
       chalk.gray(
-        "  /opsx:e2e (Claude, CodeBuddy), /opsx-e2e (OpenCode/Cline/Cursor/Pi/Oh My Pi) read your OpenSpec specs",
+        "  /opsx:e2e (Claude, CodeBuddy), /opsx-e2e (OpenCode/Cline/Cursor/Pi/Oh My Pi), opsx-e2e skill (MiniMax Code, DeepSeek Harness) read your OpenSpec specs",
       ),
     );
     console.log(

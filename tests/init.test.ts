@@ -488,7 +488,7 @@ describe("init interactive prompt selection", () => {
       detected: ReadonlySet<string>,
     ) => {
       // All editors are offered — never fewer than the full registry.
-      expect(allEditors.length).toBe(8);
+      expect(allEditors.length).toBe(9);
       // Detected Cursor is pre-selected.
       // Detected Cursor is pre-selected.
       expect(detected.has("cursor")).toBe(true);
@@ -553,7 +553,7 @@ describe("init interactive prompt with no detected editors", () => {
       detected: ReadonlySet<string>,
     ) => {
       // All editors offered despite zero detections…
-      expect(allEditors.length).toBe(8);
+      expect(allEditors.length).toBe(9);
       // …with nothing pre-selected.
       expect(detected.size).toBe(0);
       detected.forEach((id) => seenDetected.add(id));

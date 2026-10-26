@@ -51,6 +51,26 @@ describe("managed gitignore coverage for the MiniMax Code skill root", () => {
   });
 });
 
+describe("managed gitignore coverage for the DeepSeek Harness skill root", () => {
+  it("covers the tool-owned skill dir, not the whole .dsh/ tree", () => {
+    expect(MANAGED_GITIGNORE_PATHS).toContain(".dsh/skills/opsx-e2e/");
+    // OpenSpec writes its own openspec-* skills there; those stay committable.
+    expect(MANAGED_GITIGNORE_PATHS).not.toContain(".dsh/");
+    expect(findUncoveredManagedPaths(projectRoot)).toContain(
+      ".dsh/skills/opsx-e2e/",
+    );
+  });
+
+  it("writes the skill dir into the managed block and reports it covered afterwards", () => {
+    ensureGitignoreEntries(projectRoot);
+    const block = readFileSync(join(projectRoot, ".gitignore"), "utf-8");
+    expect(block).toContain(".dsh/skills/opsx-e2e/");
+    expect(findUncoveredManagedPaths(projectRoot)).not.toContain(
+      ".dsh/skills/opsx-e2e/",
+    );
+  });
+});
+
 describe("findUncoveredManagedPaths", () => {
   it("is existence-independent: non-existent paths count as uncovered (review B1)", () => {
     const uncovered = findUncoveredManagedPaths(projectRoot);

@@ -24,6 +24,7 @@ describe("resolveToolsArg", () => {
     "omp",
     "codebuddy",
     "minimax",
+    "dsh",
   ];
 
   it("returns null when no --tools flag was provided", () => {
@@ -44,6 +45,11 @@ describe("resolveToolsArg", () => {
 
   it("resolves a comma-separated subset", () => {
     expect(resolveToolsArg("claude,cursor")).toEqual(["claude", "cursor"]);
+  });
+
+  it("accepts dsh and includes it in the all selection", () => {
+    expect(resolveToolsArg("dsh")).toEqual(["dsh"]);
+    expect(resolveToolsArg("all")).toContain("dsh");
   });
 
   it("accepts the minimax-code alias for minimax", () => {
@@ -80,6 +86,7 @@ describe("resolveToolsArg", () => {
     expect(() => resolveToolsArg("claude,unknown-editor")).toThrow(
       /Available values: all, none, claude, opencode/,
     );
+    expect(() => resolveToolsArg("claude,unknown-editor")).toThrow(/dsh$/);
   });
 
   it("throws when reserved values are mixed with specific ids", () => {

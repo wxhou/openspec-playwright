@@ -133,7 +133,6 @@ describe("uninstall() characterization (section output + file removal)", () => {
       "Removing Playwright MCP",
       "Removing E2E Commands",
       "Removing Legacy Skill",
-      "Removing Retired dsh Skill",
       "Removing Schema",
       "Cleaning Rules Files",
       "Summary",
@@ -143,6 +142,8 @@ describe("uninstall() characterization (section output + file removal)", () => {
     );
     expect(positions.every((p) => p >= 0)).toBe(true);
     expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+    // The retired-adapter cleanup section must not come back with the adapter.
+    expect(lines.join("\n")).not.toContain("Retired");
 
     // Artifacts are gone
     expect(existsSync(join(tmp, ".cursor", "commands", "opsx-e2e.md"))).toBe(false);

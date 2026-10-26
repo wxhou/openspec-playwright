@@ -480,7 +480,7 @@ export async function doctor(options: DoctorOptions = {}) {
       category: "Playwright MCP",
       name: "playwright-mcp",
       ok: false,
-      message: "no editors detected (configure .claude/, .opencode/, .cline/, .cursor/, .pi/, .omp/, .codebuddy/, or .minimax/)",
+      message: "no editors detected (configure .claude/, .opencode/, .cline/, .cursor/, .pi/, .omp/, .codebuddy/, .minimax/, or .dsh/)",
     });
   } else {
     for (const adapter of adapters) {
@@ -492,7 +492,7 @@ export async function doctor(options: DoctorOptions = {}) {
           name: `playwright-mcp-${adapter.label}`,
           ok: true,
           authorized: hasCommandArtifacts(projectRoot, adapter),
-          message: `${adapter.displayName} has no MCP client (use openspec-pw explore)`,
+          message: `${adapter.displayName} has no project-level MCP config (use openspec-pw explore)`,
         });
         continue;
       }
@@ -656,14 +656,9 @@ export async function doctor(options: DoctorOptions = {}) {
   // Sync — employee standards drift (AGENTS.md / CLAUDE.md OPENSPEC blocks)
   // Gated on "initialized": a project that never ran init is `ok:true` so CI
   // is not tripped; an initialized project with stale standards is `ok:false`.
-  const hasCommand =
-    existsSync(join(projectRoot, ".claude", "commands", "opsx", "e2e.md")) ||
-    existsSync(join(projectRoot, ".opencode", "commands", "opsx-e2e.md")) ||
-    existsSync(join(projectRoot, ".cline", "skills", "opsx-e2e", "SKILL.md")) ||
-    existsSync(join(projectRoot, ".cursor", "commands", "opsx-e2e.md")) ||
-    existsSync(join(projectRoot, ".cursor", "skills", "opsx-e2e", "SKILL.md")) ||
-    existsSync(join(projectRoot, ".pi", "prompts", "opsx-e2e.md")) ||
-    existsSync(join(projectRoot, ".omp", "commands", "opsx-e2e.md"));
+  const hasCommand = getAllAdapters().some((adapter) =>
+    hasCommandArtifacts(projectRoot, adapter),
+  );
   const initialized = hasCommand || hasOpenSpec;
   if (!initialized) {
     checks.push({

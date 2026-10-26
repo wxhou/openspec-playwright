@@ -199,7 +199,7 @@ describe("uninstall removes Cursor dual artifacts", () => {
   });
 });
 
-describe("uninstall retired dsh cleanup (adapter removed)", () => {
+describe("uninstall dsh artifacts (adapter in registry)", () => {
   const cwdRestore = async (fn: () => Promise<void>) => {
     const cwd = process.cwd();
     try {
@@ -213,8 +213,8 @@ describe("uninstall retired dsh cleanup (adapter removed)", () => {
   it("removes .dsh/skills/opsx-e2e and the AGENTS.md block (dsh-only project)", async () => {
     mkdirSync(join(tmpRoot, ".dsh", "skills", "opsx-e2e"), { recursive: true });
     writeFileSync(join(tmpRoot, ".dsh", "skills", "opsx-e2e", "SKILL.md"), "x");
-    // dsh-only project: no other editor artifacts, so the detected-adapters
-    // rules-cleaning loop is skipped — the retired cleanup must cover AGENTS.md.
+    // dsh is the only detected editor, so both its skill and the shared
+    // AGENTS.md block go through the normal uninstall path.
     writeFileSync(
       join(tmpRoot, "AGENTS.md"),
       `# proj\n\n<!-- OPENSPEC-PW:START -->\nstandards body\n<!-- OPENSPEC-PW:END -->\n\nuser tail\n`,
@@ -228,8 +228,9 @@ describe("uninstall retired dsh cleanup (adapter removed)", () => {
     expect(agents).toContain("user tail");
   });
 
-  it("keeps user-authored skills and only removes the exact retired path", async () => {
+  it("keeps user-authored skills and only removes this tool's artifact", async () => {
     mkdirSync(join(tmpRoot, ".dsh", "skills", "opsx-e2e"), { recursive: true });
+    writeFileSync(join(tmpRoot, ".dsh", "skills", "opsx-e2e", "SKILL.md"), "x");
     mkdirSync(join(tmpRoot, ".dsh", "skills", "my-opsx-helper"), { recursive: true });
     writeFileSync(join(tmpRoot, ".dsh", "skills", "my-opsx-helper", "SKILL.md"), "user skill");
 

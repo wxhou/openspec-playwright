@@ -21,13 +21,7 @@ export async function update(options) {
     console.log(chalk.blue("\n🔄 Updating OpenSpec + Playwright E2E\n"));
     const projectRoot = process.cwd();
     // Check if init has been run
-    const hasCommand = existsSync(join(projectRoot, ".claude", "commands", "opsx", "e2e.md")) ||
-        existsSync(join(projectRoot, ".opencode", "commands", "opsx-e2e.md")) ||
-        existsSync(join(projectRoot, ".cline", "skills", "opsx-e2e", "SKILL.md")) ||
-        existsSync(join(projectRoot, ".cursor", "commands", "opsx-e2e.md")) ||
-        existsSync(join(projectRoot, ".cursor", "skills", "opsx-e2e", "SKILL.md")) ||
-        existsSync(join(projectRoot, ".pi", "prompts", "opsx-e2e.md")) ||
-        existsSync(join(projectRoot, ".omp", "commands", "opsx-e2e.md"));
+    const hasCommand = getAllAdapters().some((adapter) => hasCommandArtifacts(projectRoot, adapter));
     const hasOpenSpec = existsSync(join(projectRoot, "openspec"));
     if (!hasCommand && !hasOpenSpec) {
         console.log(chalk.yellow("  ⚠ OpenSpec + Playwright E2E not initialized."));

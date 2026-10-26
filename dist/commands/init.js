@@ -238,9 +238,9 @@ export async function init(options, deps = {}) {
     console.log(chalk.gray(`  Selected editors: ${editors.map((a) => a.label).join(", ") || "none"}`));
     // No flag, non-TTY, and nothing detected → fail with --tools guidance.
     if (selectedIds === null && editors.length === 0) {
-        console.log(chalk.yellow("\n  ⚠ No supported editor detected in the project (need .claude/, .opencode/, .cline/, .cursor/, .pi/, .omp/, .codebuddy/, or .minimax/)."));
+        console.log(chalk.yellow("\n  ⚠ No supported editor detected in the project (need .claude/, .opencode/, .cline/, .cursor/, .pi/, .omp/, .codebuddy/, .minimax/, or .dsh/)."));
         console.log(chalk.gray("  For Cursor without an existing .cursor/ dir: mkdir -p .cursor\n"));
-        throw new Error('No supported editor detected and no --tools flag provided. Use --tools all, --tools none, or a comma-separated list: claude, opencode, cline, cursor, pi, omp, codebuddy, minimax (oh-my-pi aliases omp, minimax-code aliases minimax).');
+        throw new Error('No supported editor detected and no --tools flag provided. Use --tools all, --tools none, or a comma-separated list: claude, opencode, cline, cursor, pi, omp, codebuddy, minimax, dsh (oh-my-pi aliases omp, minimax-code aliases minimax).');
     }
     // --agents with no agent-capable editor in the selection: informational
     // no-op (agents are claude-scoped), the run itself still succeeds.
@@ -639,7 +639,7 @@ export async function init(options, deps = {}) {
     }
     if (mode === "frontend") {
         console.log(chalk.bold("How it works:"));
-        console.log(chalk.gray("  /opsx:e2e (Claude, CodeBuddy), /opsx-e2e (OpenCode/Cline/Cursor/Pi/Oh My Pi) read your OpenSpec specs"));
+        console.log(chalk.gray("  /opsx:e2e (Claude, CodeBuddy), /opsx-e2e (OpenCode/Cline/Cursor/Pi/Oh My Pi), opsx-e2e skill (MiniMax Code, DeepSeek Harness) read your OpenSpec specs"));
         console.log(chalk.gray("  and run Playwright E2E tests through a three-agent pipeline:"));
         console.log(chalk.gray("  Planner → Generator → Healer\n"));
     }

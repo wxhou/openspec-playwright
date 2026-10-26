@@ -221,6 +221,7 @@ describe("doctor.ts: fallback command hint", () => {
     expect(hyphen.sort()).toEqual([
       "Cline",
       "Cursor",
+      "DeepSeek Harness",
       "MiniMax Code",
       "Oh My Pi",
       "OpenCode",

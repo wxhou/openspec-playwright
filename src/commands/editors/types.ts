@@ -38,7 +38,8 @@ export type EditorId =
   | "pi"
   | "omp"
   | "codebuddy"
-  | "minimax";
+  | "minimax"
+  | "dsh";
 
 export interface ExtraArtifact {
   relativePath: string;
