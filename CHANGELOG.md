@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+- **fix(standards): 把四条工程纪律收进既有条款的最小落点**. ① `§1`「不假设外部输入可信」的「预判守卫」补半句：守卫须让失败不发生，而不是让它静默消失——原文读起来像兜底也算对，而 catch 条款只管事后吞错、不管事前守卫。② `§6`「无断言价值的测试」补可机械检验：把该测试依赖的返回值改成空/null，测试仍过 → 判为无断言价值；措辞取「最省事的检验」而非定义，因为空变异对「断言 null 输入报错信息」的测试会误判。③ `§6` 修复流程把复现的中介收紧为「复现先落成一个会失败的测试」（可自动化的前提下；无法用测试表达时用截图或测量并说明）——与「测试只随验收存在」的冲突由该条款自身消解（它即该测试的点名来源），不再另加指针条款。第四条纪律「最小编辑」已由 `§1` 精准改动覆盖，无需新增条款：本轮新增条款数为 0。三处副本同步（SSOT / `AGENTS.md` / `docs/script.js` ZH+EN），锚点新增 ZH/EN 各 3 条（守卫句、空变异判据、失败测试先行），原有锚点短语全部保留未改。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
+
 ## [0.3.108] - 2026-10-26
 - **fix(docs): 内嵌规范改用哨兵收尾，补 §3 提案入口锚点**. `docs/script.js` 的两份内嵌副本原先靠正文末尾的「反引号+分号」定位结尾，正文中出现该组合时抽取会在中途截断——上一轮改 Standards 时触发过一次，27 项断言因副本被截断而假红。改为在闭引号后加 `// spec-embed:zh|en` 哨兵（各出现 1 次），抽取按哨兵定位，正文再出现该组合也不受影响；当前两份副本的抽取结果与旧正则逐字相同。`tests/docs-sync.test.ts` 同时补 §3 提案入口的 ZH/EN 锚点各 1 条：`§3 规模门槛` 的锚点只覆盖「300+ 行且跨多个文件」，改动提案措辞时锚点仍会照绿。
   - `docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
