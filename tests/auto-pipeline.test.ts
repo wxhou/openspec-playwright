@@ -246,6 +246,16 @@ describe("init --auto-pipeline", () => {
     expect(gitignore).not.toContain("openspec/");
   });
 
+  it("a plain re-init keeps openspec/ committable once the workflow exists", async () => {
+    const { init } = await import("../src/commands/init.js");
+    await init({ tools: "none", autoPipeline: true });
+    // No --auto-pipeline this time — the workflow on disk is the only signal.
+    await init({ tools: "none" });
+
+    const gitignore = readFileSync(join(root, ".gitignore"), "utf-8");
+    expect(gitignore).not.toContain("\nopenspec/\n");
+  });
+
   it("warns when a rule outside the managed block still ignores openspec/", async () => {
     writeFileSync(join(root, ".gitignore"), "openspec/\n");
     const { init } = await import("../src/commands/init.js");

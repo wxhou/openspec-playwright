@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- **fix(init): 已装 auto-pipeline 的项目重跑 init 不再重新忽略 `openspec/`**. `init` 只按本次 `--auto-pipeline` 计算 omission，于是已有 workflow 的项目跑一次普通 init 就会把 `openspec/` 写回受管块——CI 检出后拿不到新变更，且没有提示（那条「被忽略」的警告只在带 flag 时打印）。改为 flag 与磁盘上的 workflow 取并集：首次带 flag 运行时 workflow 尚未写入，只看文件会漏。补回归测试。
+  - `src/commands/init.ts`、`tests/auto-pipeline.test.ts`、`CHANGELOG.md`
 - **feat(init): 受管 .gitignore 路径改为初始化时可勾选**. 交互式 init 在编辑器选择后多选受管路径，默认全选（回车即维持原行为）；取消勾选的路径不写进块，并以块首 `# openspec-pw: skip=…` 记录，后续 update 与非交互 init 都不再补回，重新勾选即恢复。`AGENTS.md` / `CLAUDE.md` / `CODEBUDDY.md` 每次 init 都会注入受管块，固定忽略、不进候选集。非交互运行（含 stdin 非 TTY）不询问，沿用块中已记录的 skip。顺带修正 `cli/init` spec 中受管集合「11 条…可达 14 项」与实际 24 条的偏差。
   - `src/shared/gitignore-managed.ts`、`src/commands/init.ts`、`src/commands/update.ts`、`tests/gitignore-managed.test.ts`、`tests/init.test.ts`、`README.md`、`openspec/specs/cli/init/spec.md`、`CHANGELOG.md`
 - **fix(standards): 把四条工程纪律收进既有条款的最小落点**. ① `§1`「不假设外部输入可信」的「预判守卫」补半句：守卫须让失败不发生，而不是让它静默消失——原文读起来像兜底也算对，而 catch 条款只管事后吞错、不管事前守卫。② `§6`「无断言价值的测试」补可机械检验：把该测试依赖的返回值改成空/null，测试仍过 → 判为无断言价值；措辞取「最省事的检验」而非定义，因为空变异对「断言 null 输入报错信息」的测试会误判。③ `§6` 修复流程把复现的中介收紧为「复现先落成一个会失败的测试」（可自动化的前提下；无法用测试表达时用截图或测量并说明）——与「测试只随验收存在」的冲突由该条款自身消解（它即该测试的点名来源），不再另加指针条款。第四条纪律「最小编辑」已由 `§1` 精准改动覆盖，无需新增条款：本轮新增条款数为 0。三处副本同步（SSOT / `AGENTS.md` / `docs/script.js` ZH+EN），锚点新增 ZH/EN 各 3 条（守卫句、空变异判据、失败测试先行），原有锚点短语全部保留未改。

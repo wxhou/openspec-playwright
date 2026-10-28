@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { readFile } from "fs/promises";
 import { installStopHook, isHookTier, uninstallStopHook } from "./hooks.js";
-import { BRANCH_PROTECTION_HINT, generateAutoPipeline, PIPELINE_TRACKED_PATHS, } from "./pipeline.js";
+import { BRANCH_PROTECTION_HINT, generateAutoPipeline, pipelineGitignoreOmit, PIPELINE_TRACKED_PATHS, } from "./pipeline.js";
 import { buildCommandMeta, detectAdapters, detectProjectAdapters, preselectAdapters, getAdapter, getAllAdapters, installCommand, installOptionalArtifacts, installProjectRules, migrateLegacyMarkers, readEmployeeStandards, resolveToolsArg, slashCommandForAdapter, enumerateAdapterArtifacts, enumerateVendoredAgents, installedAgentsSnapshotDir, isInventoryEmpty, removeAdapterMcp, retainedMcpConfigFiles, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, removeLegacyArtifact, removeWrapper, removeMarkersFromFile, normalizeEol, } from "./editors.js";
 import { isEditorConfigured, agentsFileHasMarkers, } from "./editors/configured.js";
 import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, TEST_RUNNER_MCP_SERVER, needsShell, hasFrontendSignal, explainFrontendSignal, detectCodeGraphStatus, codegraphHintLines, ensureGitignoreEntries, findUncoveredManagedPaths, skippableManagedPaths, readManagedSkips, detectTrackedFiles, isIgnoredPath, managedBlockAdvisoryHint, installOrRefreshChecklist, installLintConfig, LINT_ESLINT_SNIPPET, LINT_GUIDELINES_RELPATH, } from "../shared/index.js";
@@ -570,7 +570,15 @@ export async function init(options, deps = {}) {
     // path (block write failed) — on success the managed block covers them.
     // The auto pipeline keeps the OpenSpec artifacts committable: CI checks
     // out the repository, and without `openspec/` there is nothing to apply.
-    const pipelineOmit = options.autoPipeline ? [...PIPELINE_TRACKED_PATHS] : [];
+    // The flag covers the current run (the workflow is written after this
+    // step); the helper covers a workflow an earlier run left behind, so a
+    // plain re-init never re-ignores what the pipeline needs committed.
+    const pipelineOmit = [
+        ...new Set([
+            ...(options.autoPipeline ? [...PIPELINE_TRACKED_PATHS] : []),
+            ...pipelineGitignoreOmit(projectRoot),
+        ]),
+    ];
     // Interactive opt-out of individual managed paths. Non-TTY runs keep the
     // full set (today's behavior); the choice lands in the block header so a
     // later update never re-adds a path the user chose to commit.
