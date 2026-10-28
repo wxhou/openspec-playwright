@@ -948,6 +948,7 @@ describe("init credentials ignore hint", () => {
     // Rule carriers are never offered: every init injects a block into them.
     expect(offered).not.toContain("AGENTS.md");
     expect(offered).not.toContain("CLAUDE.md");
+    expect(offered).not.toContain("CODEBUDDY.md");
   });
 
   it("writes no skip record when nothing is opted out", async () => {

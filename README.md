@@ -145,10 +145,10 @@ files, local data and credentials) with everything checked — pressing Enter
 keeps the previous behavior. Uncheck a path to keep it committable; the
 choice is recorded on the block's header line (`# openspec-pw: skip=…`) so
 `update` never re-adds it, and re-running init with the path checked takes it
-back. `AGENTS.md` and `CLAUDE.md` are not offered: every init injects the
-standards block into them. Non-interactive runs (including a piped stdin)
-skip the prompt and keep whatever an earlier interactive run recorded; a
-fresh project ignores everything managed.
+back. `AGENTS.md`, `CLAUDE.md` and `CODEBUDDY.md` are not offered: every
+init injects the standards block into them. Non-interactive runs (including
+a piped stdin) skip the prompt and keep whatever an earlier interactive run
+recorded; a fresh project ignores everything managed.
 
 **Deselect = remove.** In the interactive multi-select, a *detected editor
 you deselect* has its openspec-pw products removed — command/skill files,

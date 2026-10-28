@@ -8,7 +8,7 @@ export declare const GITIGNORE_BLOCK_END = "# openspec-pw: end managed block";
  * Skipping them would commit a file into which every init/update injects a
  * regenerated block.
  */
-export declare const LOCKED_GITIGNORE_PATHS: readonly ["AGENTS.md", "CLAUDE.md"];
+export declare const LOCKED_GITIGNORE_PATHS: readonly ["AGENTS.md", "CLAUDE.md", "CODEBUDDY.md"];
 /** Candidates for the init selection prompt: managed paths minus locked/omitted. */
 export declare function skippableManagedPaths(omit?: readonly string[]): string[];
 /**

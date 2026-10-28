@@ -53,7 +53,11 @@ export const GITIGNORE_BLOCK_END = "# openspec-pw: end managed block";
  * Skipping them would commit a file into which every init/update injects a
  * regenerated block.
  */
-export const LOCKED_GITIGNORE_PATHS = ["AGENTS.md", "CLAUDE.md"];
+export const LOCKED_GITIGNORE_PATHS = [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "CODEBUDDY.md",
+];
 /** Block-header line recording the init-time opt-outs, honored by later runs. */
 const SKIP_LINE_PREFIX = "# openspec-pw: skip=";
 /** Candidates for the init selection prompt: managed paths minus locked/omitted. */
@@ -124,6 +128,17 @@ function locateBlock(lines) {
     }
     return [-1, -1];
 }
+/** Paths recorded on a skip line; `undefined` line → none. */
+function parseSkipLine(line) {
+    const t = line?.trim() ?? "";
+    if (!t.startsWith(SKIP_LINE_PREFIX))
+        return [];
+    return t
+        .slice(SKIP_LINE_PREFIX.length)
+        .split(",")
+        .map((p) => p.trim())
+        .filter(Boolean);
+}
 /**
  * Paths the user opted out of ignoring at init, read from the block-header
  * skip line. Update honors them so a later run never re-adds what the user
@@ -138,17 +153,9 @@ export function readManagedSkips(projectRoot) {
     const [beginIdx, endIdx] = locateBlock(lines);
     if (beginIdx === -1)
         return [];
-    for (const line of lines.slice(beginIdx + 1, endIdx)) {
-        const t = line.trim();
-        if (!t.startsWith(SKIP_LINE_PREFIX))
-            continue;
-        return t
-            .slice(SKIP_LINE_PREFIX.length)
-            .split(",")
-            .map((p) => p.trim())
-            .filter(Boolean);
-    }
-    return [];
+    return parseSkipLine(lines
+        .slice(beginIdx + 1, endIdx)
+        .find((l) => l.trim().startsWith(SKIP_LINE_PREFIX)));
 }
 /**
  * Ensure every managed path is covered: locate the marker block in the
@@ -170,9 +177,10 @@ export function readManagedSkips(projectRoot) {
  */
 export function ensureGitignoreEntries(projectRoot, opts = {}) {
     const omitted = new Set(opts.omit ?? []);
-    const explicitSkips = [...new Set(opts.skip ?? [])].filter((p) => !omitted.has(p));
-    const skipped = new Set([...omitted, ...explicitSkips]);
-    const uncovered = findUncoveredManagedPaths(projectRoot, [...skipped]);
+    // `skip: undefined` means "keep the block's record in force", not "reset":
+    // the recorded paths then supply the opt-outs. A recorded choice is never
+    // intersected with `omit` — a pipeline run is transient, the choice is not.
+    const requestedSkips = opts.skip === undefined ? undefined : [...new Set(opts.skip)];
     const gitignorePath = join(projectRoot, ".gitignore");
     const hadFile = existsSync(gitignorePath);
     // Raw line model (F2 + O3): each element keeps its original bytes (CRLF
@@ -189,18 +197,25 @@ export function ensureGitignoreEntries(projectRoot, opts = {}) {
         lines = toLines(raw);
     }
     const [beginIdx, endIdx] = locateBlock(lines);
+    const body = beginIdx === -1 ? [] : lines.slice(beginIdx + 1, endIdx);
+    const existingSkipLine = body.find((l) => l.trim().startsWith(SKIP_LINE_PREFIX));
+    // Rewriting a CRLF skip line as LF would make every run look "changed".
+    const skipLineEol = (existingSkipLine ?? lines[beginIdx])?.endsWith("\r")
+        ? "\r"
+        : "";
+    const skips = requestedSkips ?? parseSkipLine(existingSkipLine);
+    const skipped = new Set([...omitted, ...skips]);
+    const uncovered = findUncoveredManagedPaths(projectRoot, [...skipped]);
+    const skipLine = requestedSkips === undefined
+        ? existingSkipLine
+        : requestedSkips.length > 0
+            ? SKIP_LINE_PREFIX + requestedSkips.join(",") + skipLineEol
+            : undefined;
     let added;
     let removed = [];
     if (beginIdx !== -1) {
         // Well-formed block: add only the lines missing from its body, drop the
         // ones the caller wants kept committable, and rewrite the skip record.
-        const body = lines.slice(beginIdx + 1, endIdx);
-        const existingSkipLine = body.find((l) => l.trim().startsWith(SKIP_LINE_PREFIX));
-        const skipLine = opts.skip === undefined
-            ? existingSkipLine
-            : explicitSkips.length > 0
-                ? SKIP_LINE_PREFIX + explicitSkips.join(",")
-                : undefined;
         const content = body.filter((l) => !l.trim().startsWith(SKIP_LINE_PREFIX));
         const kept = content.filter((l) => !skipped.has(l.trim()));
         removed = content
@@ -223,13 +238,10 @@ export function ensureGitignoreEntries(projectRoot, opts = {}) {
         // An opt-out needs the header line to survive, so it alone justifies a
         // block even when every path is already covered by the user's rules.
         added = [...uncovered];
-        const skipLine = explicitSkips.length > 0
-            ? [SKIP_LINE_PREFIX + explicitSkips.join(",")]
-            : [];
-        if (added.length === 0 && skipLine.length === 0) {
+        if (added.length === 0 && skipLine === undefined) {
             return { changed: false, added: [], removed: [] };
         }
-        lines.push(GITIGNORE_BLOCK_BEGIN, ...skipLine, ...added, GITIGNORE_BLOCK_END);
+        lines.push(GITIGNORE_BLOCK_BEGIN, ...(skipLine ? [skipLine] : []), ...added, GITIGNORE_BLOCK_END);
     }
     // join("\n") preserves every original line's bytes (CRLF lines keep
     // their \r as part of the line content); the file's original trailing

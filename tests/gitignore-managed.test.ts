@@ -327,10 +327,15 @@ describe("init-time opt-outs recorded in the block header", () => {
     readFileSync(join(projectRoot, ".gitignore"), "utf-8");
 
   it("keeps the rule carriers out of the candidate set", () => {
-    expect([...LOCKED_GITIGNORE_PATHS]).toEqual(["AGENTS.md", "CLAUDE.md"]);
+    expect([...LOCKED_GITIGNORE_PATHS]).toEqual([
+      "AGENTS.md",
+      "CLAUDE.md",
+      "CODEBUDDY.md",
+    ]);
     const candidates = skippableManagedPaths();
     expect(candidates).not.toContain("AGENTS.md");
     expect(candidates).not.toContain("CLAUDE.md");
+    expect(candidates).not.toContain("CODEBUDDY.md");
     expect(candidates).toContain(".claude/");
     expect(skippableManagedPaths(["tmp/"])).not.toContain("tmp/");
   });
@@ -371,6 +376,35 @@ describe("init-time opt-outs recorded in the block header", () => {
     ensureGitignoreEntries(projectRoot, { skip: ["tmp/"] });
     ensureGitignoreEntries(projectRoot);
     expect(readManagedSkips(projectRoot)).toEqual(["tmp/"]);
+    expect(readBlock()).not.toContain("\ntmp/\n");
+  });
+
+  it("keeps a CRLF skip line byte-identical instead of rewriting it every run", () => {
+    writeFileSync(
+      join(projectRoot, ".gitignore"),
+      [
+        GITIGNORE_BLOCK_BEGIN,
+        "# openspec-pw: skip=tmp/",
+        GITIGNORE_BLOCK_END,
+      ].join("\r\n") + "\r\n",
+    );
+    expect(
+      ensureGitignoreEntries(projectRoot, { skip: ["tmp/"] }).changed,
+    ).toBe(true);
+    expect(readBlock()).toContain("# openspec-pw: skip=tmp/\r\n");
+    expect(
+      ensureGitignoreEntries(projectRoot, { skip: ["tmp/"] }).changed,
+    ).toBe(false);
+  });
+
+  it("does not let a pipeline omit rewrite the recorded choice", () => {
+    ensureGitignoreEntries(projectRoot, { skip: ["openspec/", "tmp/"] });
+    ensureGitignoreEntries(projectRoot, {
+      omit: ["openspec/"],
+      skip: readManagedSkips(projectRoot),
+    });
+    expect(readManagedSkips(projectRoot)).toEqual(["openspec/", "tmp/"]);
+    expect(readBlock()).not.toContain("\nopenspec/\n");
   });
 
   it("does not record a pipeline-only omit", () => {

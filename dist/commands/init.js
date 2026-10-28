@@ -583,12 +583,22 @@ export async function init(options, deps = {}) {
     const selectedPaths = askGitignore
         ? await (deps.gitignorePrompt ?? promptSelectGitignorePaths)(groupGitignoreCandidates(gitignoreCandidates))
         : undefined;
-    // Not asking ≠ "ignore everything again": a non-interactive run keeps the
-    // opt-outs an earlier interactive run recorded, exactly like update.
-    const skippedPaths = selectedPaths === undefined
-        ? readManagedSkips(projectRoot)
-        : gitignoreCandidates.filter((p) => !selectedPaths.includes(p));
+    let skippedPaths = [];
     try {
+        // Not asking ≠ "ignore everything again": a non-interactive run keeps
+        // the opt-outs an earlier interactive run recorded, exactly like update.
+        // Recorded paths outside the candidate set (openspec/ while the pipeline
+        // owns it) stay recorded.
+        const recordedSkips = readManagedSkips(projectRoot);
+        skippedPaths =
+            selectedPaths === undefined
+                ? recordedSkips
+                : [
+                    ...new Set([
+                        ...recordedSkips.filter((p) => !gitignoreCandidates.includes(p)),
+                        ...gitignoreCandidates.filter((p) => !selectedPaths.includes(p)),
+                    ]),
+                ];
         const result = ensureGitignoreEntries(projectRoot, {
             omit: pipelineOmit,
             skip: skippedPaths,
