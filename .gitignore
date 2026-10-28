@@ -71,6 +71,9 @@ tests/playwright/
 tmp/
 !tmp/.gitkeep
 
+# Local research notes (not shipped)
+research/
+
 # Local assistant tooling (workbuddy)
 .workbuddy/
 # openspec-pw: begin managed block
