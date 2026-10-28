@@ -58,6 +58,8 @@ jobs:
         run: |
           # Enforce a max line count per file to prevent runaway files.
           # Scans our own source only; skips vendored/cached deps.
+          # CHANGELOG.md is an append-only release log, not code: it grows by
+          # design and will always cross the cap eventually.
           MAX_LINES=1500
           violations=$(find . -type f \
             \( -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.mjs' \
@@ -65,7 +67,9 @@ jobs:
             -not -path './node_modules/*' \
             -not -path './.opencode/*' \
             -not -path './dist/*' \
+            -not -path './coverage/*' \
             -not -path './.git/*' \
+            -not -path './CHANGELOG.md' \
             | xargs wc -l 2>/dev/null \
             | awk -v max="$MAX_LINES" '$1 > max && $2 != "total" { printf "%s: %d lines\n", $2, $1 }')
           if [ -n "$violations" ]; then
