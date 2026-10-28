@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.109] - 2026-10-28
 - **fix(init): 已装 auto-pipeline 的项目重跑 init 不再重新忽略 `openspec/`**. `init` 只按本次 `--auto-pipeline` 计算 omission，于是已有 workflow 的项目跑一次普通 init 就会把 `openspec/` 写回受管块——CI 检出后拿不到新变更，且没有提示（那条「被忽略」的警告只在带 flag 时打印）。改为 flag 与磁盘上的 workflow 取并集：首次带 flag 运行时 workflow 尚未写入，只看文件会漏。补回归测试。
   - `src/commands/init.ts`、`tests/auto-pipeline.test.ts`、`CHANGELOG.md`
 - **feat(init): 受管 .gitignore 路径改为初始化时可勾选**. 交互式 init 在编辑器选择后多选受管路径，默认全选（回车即维持原行为）；取消勾选的路径不写进块，并以块首 `# openspec-pw: skip=…` 记录，后续 update 与非交互 init 都不再补回，重新勾选即恢复。`AGENTS.md` / `CLAUDE.md` / `CODEBUDDY.md` 每次 init 都会注入受管块，固定忽略、不进候选集。非交互运行（含 stdin 非 TTY）不询问，沿用块中已记录的 skip。顺带修正 `cli/init` spec 中受管集合「11 条…可达 14 项」与实际 24 条的偏差。
