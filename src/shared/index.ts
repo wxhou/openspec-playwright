@@ -55,6 +55,9 @@ export {
 } from "./ignore-check.js";
 export {
   MANAGED_GITIGNORE_PATHS,
+  LOCKED_GITIGNORE_PATHS,
+  skippableManagedPaths,
+  readManagedSkips,
   GITIGNORE_BLOCK_BEGIN,
   GITIGNORE_BLOCK_END,
   findUncoveredManagedPaths,

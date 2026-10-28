@@ -4,6 +4,14 @@ export declare const MANAGED_GITIGNORE_PATHS: readonly [".claude/", ".cursor/", 
 export declare const GITIGNORE_BLOCK_BEGIN = "# openspec-pw: begin managed block";
 export declare const GITIGNORE_BLOCK_END = "# openspec-pw: end managed block";
 /**
+ * Paths the tool owns outright: always ignored, never offered for opt-out.
+ * Skipping them would commit a file into which every init/update injects a
+ * regenerated block.
+ */
+export declare const LOCKED_GITIGNORE_PATHS: readonly ["AGENTS.md", "CLAUDE.md", "CODEBUDDY.md"];
+/** Candidates for the init selection prompt: managed paths minus locked/omitted. */
+export declare function skippableManagedPaths(omit?: readonly string[]): string[];
+/**
  * Managed paths NOT yet covered by any ignore rule — existence-independent
  * (a path that does not exist on disk is exactly the forward-looking case
  * this module exists for). Never throws (review F1): rule-file read errors
@@ -17,6 +25,13 @@ export declare function findUncoveredManagedPaths(projectRoot: string, omit?: re
 /** Is this path ignored by any rule file the repo applies? */
 export declare function isIgnoredPath(projectRoot: string, rel: string): boolean;
 /**
+ * Paths the user opted out of ignoring at init, read from the block-header
+ * skip line. Update honors them so a later run never re-adds what the user
+ * chose to commit. Unreadable .gitignore propagates — the caller degrades to
+ * an advisory rather than silently resurrecting the skipped paths.
+ */
+export declare function readManagedSkips(projectRoot: string): string[];
+/**
  * Ensure every managed path is covered: locate the marker block in the
  * project's .gitignore (CRLF-tolerant) and add missing lines inside it;
  * no block → append one at the file tail; no file → create one containing
@@ -24,12 +39,19 @@ export declare function isIgnoredPath(projectRoot: string, rel: string): boolean
  * CRLF endings (F2) and blank-line structure (F5). Write errors propagate
  * to the caller, which degrades to an advisory.
  *
- * `omit` names paths that must stay committable: they are never added, and
- * an existing line for them is dropped from the managed block (the block is
- * tool-owned territory; rules outside it are the user's and stay untouched).
+ * `omit` names paths that must stay committable for this run only: they are
+ * never added, and an existing line for them is dropped from the managed
+ * block (the block is tool-owned territory; rules outside it are the user's
+ * and stay untouched) — but nothing is recorded, or the next run would
+ * inherit a pipeline-only decision.
+ *
+ * `skip` is the user's init-time opt-out: same removal, plus a skip line in
+ * the block header so later runs keep honoring it. Passing `skip` replaces
+ * that line; leaving it undefined preserves whatever the block records.
  */
 export declare function ensureGitignoreEntries(projectRoot: string, opts?: {
     omit?: readonly string[];
+    skip?: readonly string[];
 }): {
     changed: boolean;
     added: string[];

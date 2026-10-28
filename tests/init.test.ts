@@ -923,4 +923,64 @@ describe("init credentials ignore hint", () => {
     const block = after.slice(after.indexOf("# openspec-pw: begin"));
     expect(block).not.toContain("tests/playwright/credentials.yaml\n");
   });
+
+  it("records opted-out managed paths in the block header and leaves them committable", async () => {
+    const { init } = await import("../../src/commands/init.js");
+    let offered: string[] = [];
+    await init(
+      { tools: "none" },
+      {
+        isTTY: true,
+        gitignorePrompt: async (groups) => {
+          offered = groups.flatMap((g) => [...g.paths]);
+          return offered.filter(
+            (p) => p !== "tmp/" && p !== "tests/playwright/credentials.yaml",
+          );
+        },
+      },
+    );
+    const gitignore = readFileSync(join(tmpRoot, ".gitignore"), "utf-8");
+    expect(gitignore).toContain(
+      "# openspec-pw: skip=tmp/,tests/playwright/credentials.yaml",
+    );
+    expect(gitignore).not.toContain("\ntmp/\n");
+    expect(gitignore).not.toContain("\ntests/playwright/credentials.yaml\n");
+    // Rule carriers are never offered: every init injects a block into them.
+    expect(offered).not.toContain("AGENTS.md");
+    expect(offered).not.toContain("CLAUDE.md");
+    expect(offered).not.toContain("CODEBUDDY.md");
+  });
+
+  it("writes no skip record when nothing is opted out", async () => {
+    const { init } = await import("../../src/commands/init.js");
+    await init(
+      { tools: "none" },
+      {
+        isTTY: true,
+        gitignorePrompt: async (groups) => groups.flatMap((g) => [...g.paths]),
+      },
+    );
+    const gitignore = readFileSync(join(tmpRoot, ".gitignore"), "utf-8");
+    expect(gitignore).not.toContain("openspec-pw: skip=");
+    expect(gitignore).toContain("tests/playwright/credentials.yaml");
+  });
+
+  it("non-interactive init keeps an opt-out recorded by an earlier run", async () => {
+    const { init } = await import("../../src/commands/init.js");
+    await init(
+      { tools: "none" },
+      {
+        isTTY: true,
+        gitignorePrompt: async (groups) =>
+          groups
+            .flatMap((g) => [...g.paths])
+            .filter((p) => p !== "tmp/"),
+      },
+    );
+    // CI runs init without a terminal — that must not undo the user's choice.
+    await init({ tools: "none" }, { isTTY: false });
+    const gitignore = readFileSync(join(tmpRoot, ".gitignore"), "utf-8");
+    expect(gitignore).toContain("# openspec-pw: skip=tmp/");
+    expect(gitignore).not.toContain("\ntmp/\n");
+  });
 });
