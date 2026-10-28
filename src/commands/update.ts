@@ -42,6 +42,7 @@ import {
   findUncoveredManagedPaths,
   managedBlockAdvisoryHint,
   ensureGitignoreEntries,
+  readManagedSkips,
   installOrRefreshChecklist,
   LINT_GUIDELINES_RELPATH,
 } from "../shared/index.js";
@@ -781,9 +782,12 @@ export function syncProjectTemplates(tmpDir: string, projectRoot: string) {
   // maintenance — the block is a forward-looking declaration (review F4):
   // the early return below must not skip it, or a minimal project whose
   // .gitignore lost the block silently stops ignoring openspec/ etc.
+  let managedSkips: readonly string[] = [];
   try {
+    managedSkips = readManagedSkips(projectRoot);
     const result = ensureGitignoreEntries(projectRoot, {
       omit: pipelineGitignoreOmit(projectRoot),
+      skip: managedSkips,
     });
     if (result.changed) {
       console.log(
@@ -793,7 +797,7 @@ export function syncProjectTemplates(tmpDir: string, projectRoot: string) {
       );
     }
   } catch {
-    printCredentialsIgnoreHint(projectRoot);
+    printCredentialsIgnoreHint(projectRoot, managedSkips);
   }
   if (!existsSync(testsDir)) return;
 
@@ -977,11 +981,14 @@ export function syncCredentials(tmpDir: string, projectRoot: string) {
  * degradation branch (review S3) — a successful managed-block write covers
  * the credentials, so no warning follows a green ✓ line.
  */
-function printCredentialsIgnoreHint(projectRoot: string): void {
-  const uncovered = findUncoveredManagedPaths(
-    projectRoot,
-    pipelineGitignoreOmit(projectRoot),
-  );
+function printCredentialsIgnoreHint(
+  projectRoot: string,
+  skips: readonly string[],
+): void {
+  const uncovered = findUncoveredManagedPaths(projectRoot, [
+    ...pipelineGitignoreOmit(projectRoot),
+    ...skips,
+  ]);
   if (uncovered.length > 0) {
     console.log(chalk.yellow(`\n  ⚠ ${managedBlockAdvisoryHint(uncovered)}`));
   }

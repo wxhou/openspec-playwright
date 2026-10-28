@@ -7,7 +7,7 @@ import { promisify } from "util";
 import chalk from "chalk";
 import * as tar from "tar";
 import { buildCommandMeta, getAllAdapters, hasCommandArtifacts, installCommand, installOpenSpecBlock, installClaudeWrapper, installCodebuddyWrapper, migrateLegacyMarkers, claudeAdapter, codebuddyAdapter, claudeWrapperStandardsContent, opencodeAdapter, syncVendoredAgents, normalizeEol, } from "./editors.js";
-import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, hasFrontendSignal, needsShell, detectCodeGraphStatus, codegraphHintLines, findUncoveredManagedPaths, managedBlockAdvisoryHint, ensureGitignoreEntries, installOrRefreshChecklist, LINT_GUIDELINES_RELPATH, } from "../shared/index.js";
+import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, hasFrontendSignal, needsShell, detectCodeGraphStatus, codegraphHintLines, findUncoveredManagedPaths, managedBlockAdvisoryHint, ensureGitignoreEntries, readManagedSkips, installOrRefreshChecklist, LINT_GUIDELINES_RELPATH, } from "../shared/index.js";
 import { compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
 import { pipelineGitignoreOmit } from "./pipeline.js";
 import { wrapperHasMarkers, hasRuleFileMarkers } from "./editors/project-rules.js";
@@ -526,16 +526,19 @@ export function syncProjectTemplates(tmpDir, projectRoot) {
     // maintenance — the block is a forward-looking declaration (review F4):
     // the early return below must not skip it, or a minimal project whose
     // .gitignore lost the block silently stops ignoring openspec/ etc.
+    let managedSkips = [];
     try {
+        managedSkips = readManagedSkips(projectRoot);
         const result = ensureGitignoreEntries(projectRoot, {
             omit: pipelineGitignoreOmit(projectRoot),
+            skip: managedSkips,
         });
         if (result.changed) {
             console.log(chalk.green(`  ✓ .gitignore: managed block updated (+${result.added.length} paths)`));
         }
     }
     catch {
-        printCredentialsIgnoreHint(projectRoot);
+        printCredentialsIgnoreHint(projectRoot, managedSkips);
     }
     if (!existsSync(testsDir))
         return;
@@ -661,8 +664,11 @@ export function syncCredentials(tmpDir, projectRoot) {
  * degradation branch (review S3) — a successful managed-block write covers
  * the credentials, so no warning follows a green ✓ line.
  */
-function printCredentialsIgnoreHint(projectRoot) {
-    const uncovered = findUncoveredManagedPaths(projectRoot, pipelineGitignoreOmit(projectRoot));
+function printCredentialsIgnoreHint(projectRoot, skips) {
+    const uncovered = findUncoveredManagedPaths(projectRoot, [
+        ...pipelineGitignoreOmit(projectRoot),
+        ...skips,
+    ]);
     if (uncovered.length > 0) {
         console.log(chalk.yellow(`\n  ⚠ ${managedBlockAdvisoryHint(uncovered)}`));
     }

@@ -139,6 +139,17 @@ is **not** the install set; the `Selected editors:` line (always printed,
 before any editor is configured) is the actual install set. When in
 doubt, read `Selected editors`.
 
+**Choosing what to ignore.** After the editor selection, interactive init
+shows the managed `.gitignore` paths grouped (editor directories, project
+files, local data and credentials) with everything checked — pressing Enter
+keeps the previous behavior. Uncheck a path to keep it committable; the
+choice is recorded on the block's header line (`# openspec-pw: skip=…`) so
+`update` never re-adds it, and re-running init with the path checked takes it
+back. `AGENTS.md` and `CLAUDE.md` are not offered: every init injects the
+standards block into them. Non-interactive runs (including a piped stdin)
+skip the prompt and keep whatever an earlier interactive run recorded; a
+fresh project ignores everything managed.
+
 **Deselect = remove.** In the interactive multi-select, a *detected editor
 you deselect* has its openspec-pw products removed — command/skill files,
 the editor's openspec-pw MCP entries (claude's wrapper block and legacy
@@ -464,7 +475,7 @@ If your project already has `playwright.config.ts`, `openspec-pw init` will not 
 
 If your app requires login, set up credentials once, then all tests run authenticated automatically.
 
-> **Credentials are ignored automatically**: init and update maintain a marked block at the tail of your `.gitignore` that ignores `tests/playwright/credentials.yaml`, its `.bak`, `tests/playwright/test-results/`, and exploration screenshots (`tests/playwright/screenshots/` — they age as the app evolves; stay local like app-exploration.md) — plus auth storageState (`playwright/.auth/`, logged-in session cookies), MCP config (`.mcp.json` — user-added servers often carry API keys in env/headers), tool-local data (`.codegraph/`, `.playwright-mcp/`), and first-tier names like `.claude/`, `.cursor/`, `.codebuddy/`, `.agents/skills/opsx-e2e/`, `.dsh/skills/opsx-e2e/`, `openspec/`, `AGENTS.md`, `CLAUDE.md`, `CODEBUDDY.md` (the generated products stay local, per design). The block is idempotent, never touches your own rules, and is cleaned up by `uninstall`. If the block cannot be written, a warning lists the uncovered paths instead. Note: ignore rules do not apply to already-tracked files — if credentials were committed before, run `git rm --cached tests/playwright/credentials.yaml`. Alternatively keep credentials in the `E2E_USERNAME` / `E2E_PASSWORD` env vars.
+> **Credentials are ignored automatically**: init and update maintain a marked block at the tail of your `.gitignore` that ignores `tests/playwright/credentials.yaml`, its `.bak`, `tests/playwright/test-results/`, and exploration screenshots (`tests/playwright/screenshots/` — they age as the app evolves; stay local like app-exploration.md) — plus auth storageState (`playwright/.auth/`, logged-in session cookies), MCP config (`.mcp.json` — user-added servers often carry API keys in env/headers), tool-local data (`.codegraph/`, `.playwright-mcp/`), and first-tier names like `.claude/`, `.cursor/`, `.codebuddy/`, `.agents/skills/opsx-e2e/`, `.dsh/skills/opsx-e2e/`, `openspec/`, `AGENTS.md`, `CLAUDE.md`, `CODEBUDDY.md` (the generated products stay local, per design). The block is idempotent, never touches your own rules, and is cleaned up by `uninstall`. If the block cannot be written, a warning lists the uncovered paths instead. Note: ignore rules do not apply to already-tracked files — if credentials were committed before, run `git rm --cached tests/playwright/credentials.yaml`. Alternatively keep credentials in the `E2E_USERNAME` / `E2E_PASSWORD` env vars. Interactive init can uncheck individual paths; the opt-outs are stored on the block's `# openspec-pw: skip=…` header line and honored by every later `update`.
 
 ```bash
 # 1. Edit credentials

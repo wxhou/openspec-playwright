@@ -12,6 +12,9 @@ import { join } from "path";
 
 import {
   MANAGED_GITIGNORE_PATHS,
+  LOCKED_GITIGNORE_PATHS,
+  skippableManagedPaths,
+  readManagedSkips,
   GITIGNORE_BLOCK_BEGIN,
   GITIGNORE_BLOCK_END,
   findUncoveredManagedPaths,
@@ -316,5 +319,72 @@ describe("detectTrackedFiles (task 3.9)", () => {
         t.startsWith("openspec/"),
       ),
     ).toBe(false);
+  });
+});
+
+describe("init-time opt-outs recorded in the block header", () => {
+  const readBlock = () =>
+    readFileSync(join(projectRoot, ".gitignore"), "utf-8");
+
+  it("keeps the rule carriers out of the candidate set", () => {
+    expect([...LOCKED_GITIGNORE_PATHS]).toEqual(["AGENTS.md", "CLAUDE.md"]);
+    const candidates = skippableManagedPaths();
+    expect(candidates).not.toContain("AGENTS.md");
+    expect(candidates).not.toContain("CLAUDE.md");
+    expect(candidates).toContain(".claude/");
+    expect(skippableManagedPaths(["tmp/"])).not.toContain("tmp/");
+  });
+
+  it("records the opted-out paths and leaves them out of the block", () => {
+    const result = ensureGitignoreEntries(projectRoot, {
+      skip: ["tmp/", "tests/playwright/credentials.yaml"],
+    });
+    expect(result.changed).toBe(true);
+    const block = readBlock();
+    expect(block).toContain(
+      "# openspec-pw: skip=tmp/,tests/playwright/credentials.yaml",
+    );
+    expect(block).not.toContain("\ntmp/\n");
+    expect(block).not.toContain("\ntests/playwright/credentials.yaml\n");
+    expect(readManagedSkips(projectRoot)).toEqual([
+      "tmp/",
+      "tests/playwright/credentials.yaml",
+    ]);
+  });
+
+  it("is idempotent: a second run with the same opt-outs writes nothing", () => {
+    ensureGitignoreEntries(projectRoot, { skip: ["tmp/"] });
+    const second = ensureGitignoreEntries(projectRoot, { skip: ["tmp/"] });
+    expect(second.changed).toBe(false);
+    expect(readBlock().match(/openspec-pw: skip=/g)).toHaveLength(1);
+  });
+
+  it("clears the record and re-covers the paths when the opt-out is dropped", () => {
+    ensureGitignoreEntries(projectRoot, { skip: ["tmp/"] });
+    const result = ensureGitignoreEntries(projectRoot, { skip: [] });
+    expect(result.added).toContain("tmp/");
+    expect(readBlock()).not.toContain("openspec-pw: skip=");
+    expect(readManagedSkips(projectRoot)).toEqual([]);
+  });
+
+  it("leaves a recorded opt-out alone when the caller passes no skip at all", () => {
+    ensureGitignoreEntries(projectRoot, { skip: ["tmp/"] });
+    ensureGitignoreEntries(projectRoot);
+    expect(readManagedSkips(projectRoot)).toEqual(["tmp/"]);
+  });
+
+  it("does not record a pipeline-only omit", () => {
+    ensureGitignoreEntries(projectRoot, { omit: ["openspec/"] });
+    expect(readBlock()).not.toContain("openspec-pw: skip=");
+    expect(readBlock()).not.toContain("\nopenspec/\n");
+  });
+
+  it("update's read → ensure composition keeps a recorded opt-out", () => {
+    ensureGitignoreEntries(projectRoot, { skip: ["tmp/"] });
+    ensureGitignoreEntries(projectRoot, {
+      skip: readManagedSkips(projectRoot),
+    });
+    expect(readBlock()).not.toContain("\ntmp/\n");
+    expect(readManagedSkips(projectRoot)).toEqual(["tmp/"]);
   });
 });

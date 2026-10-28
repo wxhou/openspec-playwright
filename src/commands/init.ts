@@ -60,6 +60,8 @@ import {
   codegraphHintLines,
   ensureGitignoreEntries,
   findUncoveredManagedPaths,
+  skippableManagedPaths,
+  readManagedSkips,
   detectTrackedFiles,
   isIgnoredPath,
   managedBlockAdvisoryHint,
@@ -125,6 +127,14 @@ export interface InitDeps {
    * would block on stdin.
    */
   confirm?: (message: string) => Promise<boolean>;
+  /**
+   * Managed-.gitignore opt-out prompt; defaults to @inquirer/prompts
+   * checkbox. Receives the grouped candidates and returns the paths that
+   * stay ignored — the rest are recorded as skip in the block header.
+   */
+  gitignorePrompt?: (
+    groups: readonly { label: string; paths: readonly string[] }[],
+  ) => Promise<string[]>;
   /** Override TTY detection (tests inject false here). */
   isTTY?: boolean;
   /** Override home dir for Pi/Oh My Pi global detection (tests inject an empty dir). */
@@ -156,6 +166,89 @@ export async function promptSelectEditors(
     })),
   });
   return selected as EditorId[];
+}
+
+/**
+ * Grouping for the .gitignore opt-out prompt. A path missing here lands in
+ * "Other" rather than disappearing, so a newly managed path still reaches
+ * the prompt without a second edit.
+ */
+const GITIGNORE_GROUPS: readonly {
+  label: string;
+  paths: readonly string[];
+}[] = [
+  {
+    label: "Editor directories",
+    paths: [
+      ".claude/",
+      ".cursor/",
+      ".opencode/",
+      ".cline/",
+      ".pi/",
+      ".omp/",
+      ".codebuddy/",
+      ".agents/skills/opsx-e2e/",
+      ".dsh/skills/opsx-e2e/",
+    ],
+  },
+  {
+    label: "Project files",
+    paths: [
+      "openspec/",
+      "CODEBUDDY.md",
+      "app-exploration.md",
+      "opencode.json",
+      ".mcp.json",
+    ],
+  },
+  {
+    label: "Local data and credentials",
+    paths: [
+      ".codegraph/",
+      ".playwright-mcp/",
+      "tmp/",
+      "playwright/.auth/",
+      "tests/playwright/test-results/",
+      "tests/playwright/screenshots/",
+      "tests/playwright/credentials.yaml",
+      "tests/playwright/credentials.yaml.bak",
+    ],
+  },
+];
+
+export function groupGitignoreCandidates(
+  candidates: readonly string[],
+): { label: string; paths: string[] }[] {
+  const known = new Set(GITIGNORE_GROUPS.flatMap((g) => g.paths));
+  const groups = GITIGNORE_GROUPS.map((g) => ({
+    label: g.label,
+    paths: candidates.filter((p) => g.paths.includes(p)),
+  })).filter((g) => g.paths.length > 0);
+  const rest = candidates.filter((p) => !known.has(p));
+  if (rest.length > 0) groups.push({ label: "Other", paths: rest });
+  return groups;
+}
+
+/**
+ * Multi-select of managed paths that stay ignored — all checked, so Enter
+ * keeps the previous behavior; unchecking records the path as a skip in the
+ * block header.
+ */
+export async function promptSelectGitignorePaths(
+  groups: readonly { label: string; paths: readonly string[] }[],
+): Promise<string[]> {
+  const { checkbox, Separator } = await import("@inquirer/prompts");
+  const choices = groups.flatMap((g, index) => [
+    ...(index === 0 ? [] : [new Separator(" ")]),
+    new Separator(g.label),
+    ...g.paths.map((p) => ({ name: p, value: p, checked: true })),
+  ]);
+  const selected = await checkbox({
+    message: "Generated paths to keep out of git (uncheck to commit)",
+    choices,
+    pageSize: 20,
+  });
+  return selected as string[];
 }
 
 /**
@@ -768,8 +861,32 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   // The auto pipeline keeps the OpenSpec artifacts committable: CI checks
   // out the repository, and without `openspec/` there is nothing to apply.
   const pipelineOmit = options.autoPipeline ? [...PIPELINE_TRACKED_PATHS] : [];
+  // Interactive opt-out of individual managed paths. Non-TTY runs keep the
+  // full set (today's behavior); the choice lands in the block header so a
+  // later update never re-adds a path the user chose to commit.
+  const gitignoreCandidates = skippableManagedPaths(pipelineOmit);
+  // A checkbox reads stdin, so stdout being a TTY is not enough: a piped
+  // stdin would hang the prompt. An injected prompt needs no such check.
+  const askGitignore =
+    gitignoreCandidates.length > 0 &&
+    (deps.gitignorePrompt !== undefined ||
+      (isTTY && process.stdin.isTTY === true));
+  const selectedPaths = askGitignore
+    ? await (deps.gitignorePrompt ?? promptSelectGitignorePaths)(
+        groupGitignoreCandidates(gitignoreCandidates),
+      )
+    : undefined;
+  // Not asking ≠ "ignore everything again": a non-interactive run keeps the
+  // opt-outs an earlier interactive run recorded, exactly like update.
+  const skippedPaths =
+    selectedPaths === undefined
+      ? readManagedSkips(projectRoot)
+      : gitignoreCandidates.filter((p) => !selectedPaths.includes(p));
   try {
-    const result = ensureGitignoreEntries(projectRoot, { omit: pipelineOmit });
+    const result = ensureGitignoreEntries(projectRoot, {
+      omit: pipelineOmit,
+      skip: skippedPaths,
+    });
     if (result.changed) {
       const delta = [
         result.added.length ? `+${result.added.length}` : "",
@@ -784,17 +901,23 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     if (result.removed.length > 0) {
       console.log(
         chalk.gray(
-          `    kept committable for the pipeline: ${result.removed.join(", ")}`,
+          `    kept committable: ${result.removed.join(", ")}`,
         ),
       );
     }
   } catch {
-    const uncovered = findUncoveredManagedPaths(projectRoot, pipelineOmit);
+    const uncovered = findUncoveredManagedPaths(projectRoot, [
+      ...pipelineOmit,
+      ...skippedPaths,
+    ]);
     if (uncovered.length > 0) {
       console.log(chalk.yellow(`\n  ⚠ ${managedBlockAdvisoryHint(uncovered)}`));
     }
   }
-  const tracked = detectTrackedFiles(projectRoot, pipelineOmit);
+  const tracked = detectTrackedFiles(projectRoot, [
+    ...pipelineOmit,
+    ...skippedPaths,
+  ]);
   if (tracked.length > 0) {
     console.log(
       chalk.yellow(

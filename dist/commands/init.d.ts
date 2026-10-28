@@ -37,6 +37,15 @@ export interface InitDeps {
      * would block on stdin.
      */
     confirm?: (message: string) => Promise<boolean>;
+    /**
+     * Managed-.gitignore opt-out prompt; defaults to @inquirer/prompts
+     * checkbox. Receives the grouped candidates and returns the paths that
+     * stay ignored — the rest are recorded as skip in the block header.
+     */
+    gitignorePrompt?: (groups: readonly {
+        label: string;
+        paths: readonly string[];
+    }[]) => Promise<string[]>;
     /** Override TTY detection (tests inject false here). */
     isTTY?: boolean;
     /** Override home dir for Pi/Oh My Pi global detection (tests inject an empty dir). */
@@ -51,6 +60,19 @@ export interface InitDeps {
  * runs never load it.
  */
 export declare function promptSelectEditors(allEditors: EditorAdapter[], preselected: ReadonlySet<EditorId>, configured?: ReadonlySet<EditorId>): Promise<EditorId[]>;
+export declare function groupGitignoreCandidates(candidates: readonly string[]): {
+    label: string;
+    paths: string[];
+}[];
+/**
+ * Multi-select of managed paths that stay ignored — all checked, so Enter
+ * keeps the previous behavior; unchecking records the path as a skip in the
+ * block header.
+ */
+export declare function promptSelectGitignorePaths(groups: readonly {
+    label: string;
+    paths: readonly string[];
+}[]): Promise<string[]>;
 /**
  * Init modes: "frontend" keeps the full Playwright scaffold (existing
  * behavior); "minimal" delivers only tests/README.md plus employee
