@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `src/commands/init.ts`、`tests/auto-pipeline.test.ts`、`CHANGELOG.md`
 - **feat(init): 受管 .gitignore 路径改为初始化时可勾选**. 交互式 init 在编辑器选择后多选受管路径，默认全选（回车即维持原行为）；取消勾选的路径不写进块，并以块首 `# openspec-pw: skip=…` 记录，后续 update 与非交互 init 都不再补回，重新勾选即恢复。`AGENTS.md` / `CLAUDE.md` / `CODEBUDDY.md` 每次 init 都会注入受管块，固定忽略、不进候选集。非交互运行（含 stdin 非 TTY）不询问，沿用块中已记录的 skip。顺带修正 `cli/init` spec 中受管集合「11 条…可达 14 项」与实际 24 条的偏差。
   - `src/shared/gitignore-managed.ts`、`src/commands/init.ts`、`src/commands/update.ts`、`tests/gitignore-managed.test.ts`、`tests/init.test.ts`、`README.md`、`openspec/specs/cli/init/spec.md`、`CHANGELOG.md`
+- **fix(standards): 堵住 §6「测试红 → 更新断言」对重构的放行**. 原分类写「被测行为仍在 → 更新断言至新行为」：重构把行为改掉后该条件仍为真，于是「重构」被读成改断言的许可，且同节的「分歧先裁定谁错」允许裁定「实现对」。改为「行为本次有意变更」，重构并进该分支的条件（「重构不算：重构只改结构，红即改坏，非断言过期」），顺带消掉「仍在」的歧义；整条同步收紧（152 → 125 字）。单列一条重构规则（钉住 → 改结构 → 复跑）经评估未采纳：「保持测试通过」将成第 3 处，且定义离决策点太远。三副本同步，锚点新增 ZH/EN 各 1 条。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
+- **fix(standards): 补 3 处规则内部的漏口，拆开 2 处合写条**. ① 捕获准入的「重试」出口未受幂等约束——重试是重复写入最常见的来源，改为「重试——写操作须先满足幂等条」。② `§5` 的 🔴 条同时装着「禁提交」（不可协商）与「超 24h 清理」（可调整），🔴 只留前者，「可疑文件不自行删」归回该条，24h 清理单列为未标注条。③ `§3` 提案两轮审查把「审查内容/方法」与「节奏与阻断判定」写进同一条，拆成两条 🟡。三副本同步，无新增锚点。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`CHANGELOG.md`
 - **fix(standards): 修掉 4 处执行不了的规则 + 3 处按判据精简**. ① `§3`「按 §1 修复预算」指向不存在的术语（`修复预算` 只在 §3 自己定义），副本早已自行改写——改为自含的「同一失败最多 2 轮」。② 依赖条按 npm 语汇写（registry / install scripts），而 `§1` 声明覆盖 .py/.go——改为「该生态的包注册源」，安装期脚本降为条件分支（如 npm postinstall）。③ 自动链触发靠对用户措辞分类，没有判不准的兜底——补「按未触发处理并一句话确认」。④ `lint-guidelines.md` 由 `init` 安装，未 init 的项目根内没有——补「未安装 → 跳过本条」。精简：删「模块化」条尾句（与「精准改动」同义，第 3 次出现）、删 UI 文案条的冗余 🟡（未标注即 🟡）、删选型链的两个前端示例（精简副本早已删掉且语义无损）。三副本同步，无新增锚点。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`CHANGELOG.md`
 - **fix(standards): 守卫条按「失败是否可见」重写**. 原尾部写的是「守卫须让失败不发生」——判别轴取「失败是否发生」，既无法区分「在调用点拦住这一例」与「边界显式拒绝」，与后半句的根因要求也自相矛盾。改为「守卫只能把失败变成显式的拒绝或默认值，不能让它静默消失；根因在别处时修根因，不在调用点拦住这一例」：轴换成可见性，并接上同条款前半句推荐的 `dict.get` / `next(it, None)` 这类默认值——默认值合法，条件是它在该处语义正确，否则退化为掩盖。三副本同步，锚点改 2 条（`不能让它静默消失` / `根因在别处时修根因`）。

@@ -43,7 +43,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 ## 代码质量 · 禁止项与要求
 - 🔴 不假设外部输入可信：信任边界上的数据/响应/异步结果先校验（类型/范围/null/空/边界，数值含精度）再使用；资源用后必须释放；可预判的失败不裹 try 当控制流——预判守卫或取默认 API（如 \`dict.get\`、\`next(it, None)\`）先行，但守卫只能把失败变成显式的拒绝或默认值，不能让它静默消失；根因在别处时修根因，不在调用点拦住这一例
 - 🔴 默认不捕获——准入见下；准入后失败仍必须可见，出口任选：
-  - 准入：catch 必须在失败的去向或内容上留下可见变化，只有三种——改变控制流（重试，或按 catch-all 条在边界就地隔离）、给同一目的地更多信息（带因包装）、失败本会就此丢失时留下记录（目的地本会吞掉它）。降级继续不在此列，按窄类型条的条件判。都不能 → 不捕获；只做原样再抛的 catch=噪音，删，要附加上下文按上抛的带因形式
+  - 准入：catch 必须在失败的去向或内容上留下可见变化，只有三种——改变控制流（重试——写操作须先满足幂等条，或按 catch-all 条在边界就地隔离）、给同一目的地更多信息（带因包装）、失败本会就此丢失时留下记录（目的地本会吞掉它）。降级继续不在此列，按窄类型条的条件判。都不能 → 不捕获；只做原样再抛的 catch=噪音，删，要附加上下文按上抛的带因形式
   - 上抛（默认出口）：原样上行（裸 \`raise\` / \`return err\` 传原对象），或新建错误带因（\`raise … from e\` / \`{cause: e}\` / \`%w\`）；catch 内新建错误不带因=丢因果，同判缺失
   - 窄类型 catch 后按影响记 debug/warning + 行内原因再继续——继续=跳过该步骤及其依赖、或以替代值前行，失败结果本身不可再用；仅限可承受步骤（如清理、幂等二次释放）：失败结果不被下游消费且不留不一致状态，否则直接上抛；无类型 catch 按错误类别（instanceof/错误码）分流，枚举不出就直接上抛，不凭印象写错误类或错误码
   - catch-all 只放能把错误就地隔离、不影响其余输入与状态的边界（批量循环顶/事件分发/进程顶等），照样记录 + 行内原因
@@ -72,7 +72,8 @@ const CLAUDE_MD_ZH = `# 项目规范
 
 ## 工作流参考
 - 🔴 提案范围须用户确认，AI 不得自行确认；commit/push/merge/release/archive 须用户授权，一次授权只覆盖明确指定的动作，未授权动作不得自行执行
-- 🟡 提案后自动审查两轮：第 1 轮对照目标/约束/specs 检查完整性、一致性、正确性与范围蔓延并修正；第 2 轮换独立视角复检（子代理 → 独立上下文；否则重读并输出「需求/场景 → 证据(file:line) → 结论」表，不复用上轮自评）；自修限已声明范围，不得增删需求，需增删时列入最终待确认；两轮内不中途等确认；结束后逐条列出修正并请求范围确认——第 2 轮仍有阻断（目标不清/spec 冲突/不可测/范围失控）则停在提案阶段并列出，仅剩非阻断项则记录后进入确认，不加第三轮
+- 🟡 提案后自动审查两轮：第 1 轮对照目标/约束/specs 检查完整性、一致性、正确性与范围蔓延并修正；第 2 轮换独立视角复检（子代理 → 独立上下文；否则重读并输出「需求/场景 → 证据(file:line) → 结论」表，不复用上轮自评）；自修限已声明范围，不得增删需求，需增删时列入最终待确认
+- 🟡 两轮内不中途等确认；结束后逐条列出修正并请求范围确认——第 2 轮仍有阻断（目标不清/spec 冲突/不可测/范围失控）则停在提案阶段并列出，仅剩非阻断项则记录后进入确认，不加第三轮
 - 🟡 自动链唯一触发：用户明确要求完成该变更（「实现/做到绿/走完这个变更」或 \`/opsx:apply\`）；仅确认范围不触发；无法判定是否为完成意图 → 按未触发处理，并一句话向用户确认。触发后最后一项任务勾完即在同一回合调用 \`/opsx:verify\`（跑测试或自查不等于 verify；\`opsx:apply\` 收尾的「review or verify as appropriate / 可归档」不构成跳过理由）；本条适用于任何经 \`/opsx:apply\` 的变更，不受规模门槛限制；e2e 不在自动链内，仅在用户显式调用时执行（「做到绿」不含 e2e）；只说「改这个」或单独调用 propose/verify/e2e 等单阶段命令 → 该阶段结束即停；不得以修改断言/期望值绕过失败
 - 🟡 verify 之后：CRITICAL → 按「同一失败最多 2 轮」的预算修复并复跑 verify；需增删范围或预算耗尽仍有 CRITICAL → 停下汇报；WARNING/SUGGESTION → 记录后交用户裁决
 - 🟡 高风险变更（公共 API/CLI 契约、数据模型/迁移、鉴权与安全、跨模块架构；不确定按高风险）在 apply 前汇报设计要点、影响面与回滚方式并等待确认
@@ -88,11 +89,12 @@ const CLAUDE_MD_ZH = `# 项目规范
 
 ## 临时文件管理
 - 🟡 非源码临时文件（截图、日志、heapdump 等）放仓库根 \`tmp/\` 下（临时=本次验证/调试产生、任务结束即无用；测试数据按项目 fixtures 惯例存放），文件名含时间戳（如 \`screenshot-20260721T143000.png\`）
-- 🔴 禁止将临时文件提交到版本控制（确保 \`.gitignore\` 含 \`tmp/\`；已跟踪的历史文件先 \`git rm --cached\`）；超 24h 的临时文件在 commit 前删除——仅限 \`tmp/\` 下本次任务产生的临时产物，用户名下或来历不明的可疑文件报告请示、不自行删
+- 🔴 禁止将临时文件提交到版本控制（确保 \`.gitignore\` 含 \`tmp/\`；已跟踪的历史文件先 \`git rm --cached\`）；用户名下或来历不明的可疑文件报告请示、不自行删
+- 超 24h 的临时文件在 commit 前删除——仅限 \`tmp/\` 下本次任务产生的临时产物
 
 ## 测试与验证策略
 - 🟡 测试只随验收存在：验收条款（规范 requirement / change 完成条 / 任务验收标准）或用户在会话中明确要求，点名才写；未点名的有价值场景（业务核心计算/状态转换、边界与错误路径、被多处复用的工具、修过 bug 的回归）→ 提议用户（收尾汇总一次提出），不静默略过；一个行为一组断言
-- 🔴 保持现有测试通过；测试红时先分类——被测行为仍在 → 更新断言至新行为；行为本次已删 → 其专属测试随行为删除、删前列明并报告；范围外既有红测试 → 报告不动；不以本节 DO NOT 或「代码质量」节的简化类条款为由跳过/删除既有测试
+- 🔴 保持现有测试通过；红了先分类——行为本次有意变更（重构不算：重构只改结构，红即改坏）→ 更新断言；行为本次已删 → 专属测试随之删除并列明；范围外红测 → 报告不动；不得据本节 DO NOT 或「代码质量」节简化条款跳过/删除既有测试
 - 🟡 测试断言与实现的分歧先裁定谁错（spec 还是实现——矛盾本身是发现）；拿不准停下问用户，不单方面弱化断言把两边凑绿
 - 🔴 验收条款点名的行为必须被某层测试覆盖（单测或验收测试，一层即可）；点名项若落本节任一 DO NOT 条款（如纯透传、同义反复断言），停下向用户裁决——不静默写，也不静默不写
 - 🟡 后端/服务的验证对真实运行的服务发真实请求（真实数据/依赖，遵守数据编撰节；写操作限测试/预发环境，无隔离环境先问用户）；是否落成测试按本节第一条的点名标准判断
@@ -157,7 +159,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 ## Code Quality · Prohibitions and Requirements
 - 🔴 Don't assume external input is trusted: validate data/responses/async results at trust boundaries (type/range/null/empty/boundary, numeric precision included) before use; release resources after use; foreseeable failures don't get wrapped in try as control flow — precondition guards or default-fetching APIs (like \`dict.get\`, \`next(it, None)\`) go first, but a guard may only turn the failure into an explicit rejection or default value, never let it disappear silently; when the root cause lies elsewhere, fix the cause instead of stopping this one instance at the call site
 - 🔴 Default to not catching — admission below; once admitted, the failure must still be visible, any exit:
-  - Admission: a catch must leave a visible change in where the failure goes or what it carries, and only three shapes qualify — a control-flow change (retry, or local isolation at a boundary per the catch-all bullet), more information for the same destination (wrapping with cause), or a record when the failure would otherwise be lost (the destination would swallow it). Degrading and continuing is not on that list — judge it by the narrow-catch bullet. If none apply → don't catch; a catch that only rethrows unchanged is noise — delete it, and add context via the cause form in rethrow
+  - Admission: a catch must leave a visible change in where the failure goes or what it carries, and only three shapes qualify — a control-flow change (retry — for writes only after the idempotency rule is met, or local isolation at a boundary per the catch-all bullet), more information for the same destination (wrapping with cause), or a record when the failure would otherwise be lost (the destination would swallow it). Degrading and continuing is not on that list — judge it by the narrow-catch bullet. If none apply → don't catch; a catch that only rethrows unchanged is noise — delete it, and add context via the cause form in rethrow
   - rethrow (the default exit) — propagate the original object as-is (bare \`raise\` / \`return err\`) or create with cause (\`raise … from e\` / \`{cause: e}\` / \`%w\` — building a new error without cause inside a catch = dropped causality, same verdict)
   - narrow catch, log at debug/warning by impact + inline reason, then continue — continuing = skipping the step and its dependents or moving on with a substitute, the failed result itself is never reused; only tolerable steps (e.g. cleanup, idempotent double-release) — the failed result is not consumed downstream and leaves no inconsistent state; otherwise rethrow; untyped catch branches on error class (instanceof/error code) — if the classes can't be enumerated, rethrow rather than guess a class or code
   - catch-alls only at boundaries that isolate the error locally (batch loop top / event dispatch / process top), still logged + inline reason
@@ -186,7 +188,8 @@ const CLAUDE_MD_EN = `# Project Guidelines
 
 ## Workflow Reference
 - 🔴 Proposal scope is confirmed by the user, never self-confirmed; commit/push/merge/release/archive require user authorization, and one authorization covers only the explicitly specified action; unauthorized actions must never be performed
-- 🟡 After proposal creation, run two automatic review rounds: round 1 checks goals/constraints/existing specs for completeness, consistency, correctness and scope creep, and fixes findings; round 2 re-checks all artifacts from an independent perspective (subagents → independent context; otherwise re-read and output a "requirement/scenario → evidence (file:line) → conclusion" table, never reuse the previous self-assessment). Fixes stay within the declared scope — never add or remove requirements; proposed scope changes are listed for final confirmation. Do not pause between rounds; afterwards list every fix and request scope confirmation — blocking issues remaining after round 2 (unclear goals/spec conflicts/untestable/runaway scope) → stop at the proposal stage and list them; if only non-blocking items remain, record them and proceed to confirmation, with no third round
+- 🟡 After proposal creation, run two automatic review rounds: round 1 checks goals/constraints/existing specs for completeness, consistency, correctness and scope creep, and fixes findings; round 2 re-checks all artifacts from an independent perspective (subagents → independent context; otherwise re-read and output a "requirement/scenario → evidence (file:line) → conclusion" table, never reuse the previous self-assessment). Fixes stay within the declared scope — never add or remove requirements; proposed scope changes are listed for final confirmation
+- 🟡 Do not pause between rounds; afterwards list every fix and request scope confirmation — blocking issues remaining after round 2 (unclear goals/spec conflicts/untestable/runaway scope) → stop at the proposal stage and list them; if only non-blocking items remain, record them and proceed to confirmation, with no third round
 - 🟡 The auto-chain's only trigger is an explicit request to complete the change ("implement / make it green / run this change through" or invoking \`/opsx:apply\`); confirming scope alone does not trigger it; when completion intent is unclear, treat it as not triggered and confirm with the user in one line. Once triggered, the moment the last task is checked, invoke \`/opsx:verify\` in the same turn (running tests or a self-check is not verify; the \`opsx:apply\` closing line "review or verify as appropriate / you can archive" does not justify skipping it); this rule applies to every change run through \`/opsx:apply\` and is not gated by the size threshold; e2e is not part of the auto-chain and runs only when the user explicitly invokes it ("make it green" does not authorize e2e); a bare "change this" or invoking propose/verify/e2e alone stops after that phase. Never weaken assertions or expected values to force a green run — resolve spec/assertion conflicts per the Testing section
 - 🟡 After verify: CRITICAL → fix within a budget of at most 2 rounds per identical failure and re-run verify; if scope must change or CRITICAL remains after the budget → stop and report; WARNING/SUGGESTION → record and hand to the user
 - 🟡 High-risk changes (public API/CLI contracts, data models/migrations, auth & security, cross-module architecture; when unsure, treat as high-risk) report design essentials, impact and rollback before apply and wait for confirmation
@@ -202,11 +205,12 @@ const CLAUDE_MD_EN = `# Project Guidelines
 
 ## Temp File Management
 - 🟡 Non-source temp files (screenshots, logs, heapdumps, etc.) go in \`tmp/\` at the repo root (temp = produced for this round of verification/debugging; test data follows the project's fixtures convention), filenames include timestamp (e.g. \`screenshot-20260721T143000.png\`)
-- 🔴 Never commit temp files to version control (ensure \`.gitignore\` has \`tmp/\`, already-tracked ones get \`git rm --cached\` first); delete temp files older than 24h before commit — only those under \`tmp/\` produced by this task; user-owned or unclear-origin suspicious files get reported, not deleted
+- 🔴 Never commit temp files to version control (ensure \`.gitignore\` has \`tmp/\`, already-tracked ones get \`git rm --cached\` first); user-owned or unclear-origin suspicious files get reported, not deleted
+- Delete temp files older than 24h before commit — only those under \`tmp/\` produced by this task
 
 ## Testing & Verification Strategy
 - 🟡 Tests exist only where acceptance demands them: write tests only for cases named by acceptance clauses (spec requirements / change acceptance criteria / task acceptance standards) or explicitly requested by the user in the session; for valuable un-named scenarios (core business computation/state transitions, boundary & error paths, widely reused utilities, bug-fix regressions) → propose to the user (bundled, raised once at wrap-up), never skip silently; one behavior one assertion set
-- 🔴 Keep existing tests passing; triage red tests first — behavior still exists → update assertions to the new behavior; behavior deleted this round → its dedicated tests go with it, itemized in the report; pre-existing red tests outside scope → report, don't touch; never use this section's DO NOT rules or the Code Quality section's simplification clauses to skip/delete existing tests
+- 🔴 Keep existing tests passing; triage reds first — the tested behavior changed intentionally this round (a refactor doesn't count: it changes structure only, so red means the structure broke, not a stale assertion) → update assertions; behavior deleted this round → its tests go with it, itemized; pre-existing reds outside scope → report, don't touch; never cite this section's DO NOT rules or the Code Quality section's simplification clauses to skip/delete existing tests
 - 🟡 When a test assertion disagrees with the implementation, first rule on who is wrong (the spec or the code — the contradiction itself is a finding); unsure → stop and ask the user; never unilaterally weaken assertions to make both green
 - 🔴 Behaviors named by acceptance clauses must be covered by some test layer (unit OR acceptance — one is enough); when a named item falls into any DO NOT rule of this section (pure passthrough, tautological assertions), stop and let the user decide — never silently write it, never silently skip it
 - 🟡 Verify backend/service behavior with real requests against a real running service (real data/dependencies, per the Data Fabrication section; write operations only against test/staging environments — ask first when no isolated environment exists); whether it lands as a test follows the naming standard in this section's first rule
