@@ -42,6 +42,7 @@ const ZH_ANCHORS: [string, string][] = [
   ["§1 停下先写假设", "共同依赖的假设"],
   ["§1 无 linter 自查", "每次编辑后对改动自查"],
   ["§1 注释纪律自检", "交付前自检本次新增与所改的每条注释"],
+  ["§1 公共接口文档注释", "公共接口的文档注释必须有"],
   ["§1 机制标注豁免", "机制标注不受本条约束"],
   ["§1 UI 文案克制", "界面不写冗余"],
   ["§1 推测性扩展买断", "尚无复现"],
@@ -50,7 +51,7 @@ const ZH_ANCHORS: [string, string][] = [
   ["§1 非法组合挡在构造处", "把非法组合挡在构造处"],
   ["§1 写操作幂等", "不重复插入"],
   ["§1 可变状态单写入口", "收窄到单一写入口"],
-  ["§1 捕获准入", "默认不捕获"],
+  ["§1 默认上抛", "默认上抛"],
   ["§1 兜底返回形状", "记录不构成豁免"],
   ["§1 守卫不掩盖失败", "不能让它静默消失"],
   ["§1 修根因", "根因在别处时修根因"],
@@ -80,10 +81,12 @@ const ZH_ANCHORS: [string, string][] = [
   ["§6 无效测试判据", "测试仍过"],
   ["§6 测试随验收", "测试只随验收存在"],
   ["§6 测试提议义务", "不静默略过"],
+  ["§6 测试行为不钉实现", "测试钉住行为，不钉实现"],
+  ["§6 测试确定性", "测试自足且确定"],
   ["§6 覆盖义务", "必须被某层测试覆盖"],
   ["§6 点名滤网仲裁", "停下向用户裁决"],
   ["§6 验收定义", "对真实运行的服务发真实请求"],
-  ["§6 UI 组件禁令", "禁止生成 UI 组件测试"],
+  ["§6 UI 组件禁令", "禁止生成无行为断言的 UI 组件测试"],
   ["§6 修复复现时序", "完成前后各重现 bug 一次"],
   ["§6 失败测试先行", "会失败的测试"],
   ["§6 失败原因正确", "失败来自预期的那条断言"],
@@ -106,6 +109,7 @@ const EN_ANCHORS: [string, string][] = [
   ["§1 name the shared assumption", "the assumption both attempts relied on"],
   ["§1 no-linter self-check", "self-check the changes after every edit"],
   ["§1 comment self-check scope", "every new or edited comment"],
+  ["§1 public API doc comments", "doc comments on the public interface are required"],
   ["§1 mechanism-marking exemption", "exempt from this rule"],
   ["§1 UI copy restraint", "redundant secondary labels"],
   ["§1 speculative robustness buy-in", "in-project threat model"],
@@ -114,7 +118,7 @@ const EN_ANCHORS: [string, string][] = [
   ["§1 illegal combinations at construction", "make illegal combinations impossible at construction"],
   ["§1 idempotent writes", "no duplicate inserts"],
   ["§1 single writer entry", "funnel writes through a single entry point"],
-  ["§1 catch admission", "Default to not catching"],
+  ["§1 propagate by default", "Propagate by default"],
   ["§1 broad-catch fallback shape", "logging does not exempt it"],
   ["§1 guard vs silent failure", "never let it disappear silently"],
   ["§1 fix the root cause", "fix the cause instead of stopping this one instance"],
@@ -141,6 +145,8 @@ const EN_ANCHORS: [string, string][] = [
   ["§7 confirmed upper bound", "confirmed upper bound"],
   ["§6 tests follow acceptance", "Tests exist only where acceptance demands them"],
   ["§6 test proposal duty", "never skip silently"],
+  ["§6 test behavior not implementation", "Tests pin behavior, not implementation"],
+  ["§6 deterministic tests", "self-contained and deterministic"],
   ["§6 quality filter", "Tests without assertion value are never written"],
   ["§6 valueless test check", "if it still passes"],
   ["§6 coverage duty", "must be covered by some test layer"],
@@ -157,23 +163,25 @@ const EN_ANCHORS: [string, string][] = [
   ["§0 experience-distillation carrier", "carrier the tooling does not own"],
 ];
 
-// The catch clause carries six sub-bullets. The mirrors must hold the same six
-// in the same order — a standards change that adds, drops or reorders one has
-// to update both mirrors and this list. A single phrase anchor cannot catch
+// The catch clause carries seven sub-bullets. The mirrors must hold the same
+// seven in the same order — a standards change that adds, drops or reorders one
+// has to update both mirrors and this list. A single phrase anchor cannot catch
 // that drift: the EN mistranslation in 0.3.106 shipped through one.
 const CATCH_SUB_BULLETS_ZH = [
-  "准入：",
-  "上抛（",
-  "窄类型 catch",
-  "catch-all ",
-  "上述边界之外的",
+  "上抛（默认出口）",
+  "就地消化（仅两种）",
+  "同一错误只处理一次",
+  "降级继续（仅窄类型",
+  "try 块只包",
+  "兜底返回不算出口",
   "参考：",
 ];
 const CATCH_SUB_BULLETS_EN = [
-  "Admission:",
-  "rethrow (",
-  "narrow catch",
-  "catch-alls ",
+  "Rethrow (the default exit)",
+  "Absorb in place",
+  "Handle each error once",
+  "Degrade and continue",
+  "Try blocks contain",
   "Fallbacks outside",
   "Reference:",
 ];
@@ -211,9 +219,9 @@ describe("docs/script.js embedded standards stay in sync", () => {
   });
 
   it("keeps the catch clause's sub-bullets aligned across all three copies", () => {
-    const ssot = catchSubBullets(standards, "🔴 默认不捕获");
-    const zhCopy = catchSubBullets(zh, "🔴 默认不捕获");
-    const enCopy = catchSubBullets(en, "🔴 Default to not catching");
+    const ssot = catchSubBullets(standards, "🔴 默认上抛");
+    const zhCopy = catchSubBullets(zh, "🔴 默认上抛");
+    const enCopy = catchSubBullets(en, "🔴 Propagate by default");
     expect(ssot).toHaveLength(CATCH_SUB_BULLETS_ZH.length);
     expect(zhCopy).toHaveLength(CATCH_SUB_BULLETS_ZH.length);
     expect(enCopy).toHaveLength(CATCH_SUB_BULLETS_EN.length);

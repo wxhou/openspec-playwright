@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+- **fix(standards): 注释纪律改为「只写三类 + 一句判据」，不再坍缩成全部不写**. 原文只有「默认不写」与黑名单两条轴，缺「哪些符号的文档必须存在」——AI 取最强分支，Python 的 class/function 连 docstring 都不写。核对 PEP 257、Google Python/TS Style Guide、Go Code Review Comments、Rust API Guidelines、Linux 内核风格：公共接口的文档注释是硬要求，内容只写签名表达不了的契约，逐参数复述一律算噪音。重写为三类（接口注释必须有 / 实现注释只有 why / 机制标注豁免），黑名单合并为一条，并加一句可机械执行的判据「删掉这句，读者会不会调用错或改错？不会 → 删」；写法对齐 Anthropic 的「tell Claude what to do」与 OpenAI 的「pair prohibitions with the acceptable alternative」。790 → 630 字符（−20%），8 → 6 条。三副本同步，锚点短语全部保留。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
+- **fix(standards): 捕获条补两条机械规则，默认动作改为「上抛」**. 原文 7 条 863 字符，且「准入」段提前枚举了后面三条出口再各自展开，形成循环引用（准入 → 按 catch-all 条 → 回到准入）。核对 Google Python §2.4.4（宽 catch 仅允许 re-raise 或隔离点；try 块最小化）、Go Code Review Comments（handle / return，或 truly exceptional 才 panic；不得用 `_` 丢弃）、Rust Book ch.9（可能失败默认返回 `Result`）、ESLint `no-useless-catch`、ruff BLE001（re-raised 或 `exc_info` 记录的不报）、Dave Cheney「Only handle errors once」：补 ①同一错误只处理一次（记录后又原样上抛=重复处理）②try 块只包可能失败的那一句；起点由「默认不捕获」改为「默认上抛」——真正的默认动作是传播，不是沉默。863 → 777 字符（净增 2 条规则，去掉准入段的重复枚举与循环引用；随后一轮去重：跳过动作、记录 + 行内原因、代码例子各重复两次）。三副本同步，catch 子项断言 6 → 7 项，锚点改 2 条。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
+- **feat(standards): §6 补两条底层原则，合并重复的证据规则**. 核对 Google《Software Engineering at Google》ch.11（保持行为的重构不应改测试；测试应尽量 hermetic）与 Kent C. Dodds（实现细节=使用者看不到的东西，测它会双向失效——重构报假红、真坏仍绿）：补「测试钉住行为，不钉实现」，判据是重构实现而行为不变时测试不该改；补「测试自足且确定」，不依赖真实时钟/网络/顺序/共享状态，等待用条件轮询而非固定 sleep。同时把「验证前核对本次产物」与「验证证据取自本次运行」并成一条。§6 1367 → 1551 字符（+13.5%，两条新规则的正文成本）。三副本同步，锚点新增 ZH/EN 各 2 条。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
+- **refactor(standards): 两个超长条目拆成决策子项，§1 加分组标题**. 无措辞与语义改动，纯结构：① §3「自动链唯一触发」358 字符里串了触发 / 收尾 / 适用面 / 停止四件事，拆为子项，结尾「不得改断言凑绿」不再有被前半段淹没的风险；② §4「数据位处理」215 字符串了四个分支，改为「按回答分四种走」的列表；③ §1 的 41 条平铺加 6 个分组标题（校验与执行 / 选型与设计 / 注释纪律 / 规模与状态 / 输入与错误处理 / 代码与界面写法），条款一字未改。中英内嵌副本同步前两项，锚点全部保留。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`CHANGELOG.md`
+
+- **fix(standards): 组件测试禁令收窄到「无行为断言」**. §6 的 🔴 与同节「测试钉住行为，不钉实现」自相矛盾——行为级组件测试正是该原则的教科书例子，却被一并禁掉；改为「禁止无行为断言的 UI 组件测试（渲染冒烟 / 快照 / 纯存在断言），行为级按点名标准判断，不因「不是 E2E」排除」。三副本同步，锚点改 1 条。同批评估的「安全原语不走选型链」最终撤回：选型链的「标准库优先」在口令哈希上确实指错，但大厂规范正文普遍不写安全清单（SDL 只要求「用经过验证的实现」，Anthropic 的安全代理明言 practical risks 优先于 compliance checklists），且 §1 的「不假设外部输入可信」与依赖条已覆盖大半，单列一条边际收益不足。三副本同步，锚点改 1 条、新增 ZH/EN 各 1 条。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
+
 ## [0.3.109] - 2026-10-28
 - **fix(init): 已装 auto-pipeline 的项目重跑 init 不再重新忽略 `openspec/`**. `init` 只按本次 `--auto-pipeline` 计算 omission，于是已有 workflow 的项目跑一次普通 init 就会把 `openspec/` 写回受管块——CI 检出后拿不到新变更，且没有提示（那条「被忽略」的警告只在带 flag 时打印）。改为 flag 与磁盘上的 workflow 取并集：首次带 flag 运行时 workflow 尚未写入，只看文件会漏。补回归测试。
   - `src/commands/init.ts`、`tests/auto-pipeline.test.ts`、`CHANGELOG.md`

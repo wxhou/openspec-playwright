@@ -30,11 +30,12 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🔴 引入新依赖前先实查该生态的包注册源——AI 会幻觉包名（抢注攻击）；该生态有安装期脚本时（如 npm postinstall）再检查：下载并执行外部内容、包名与惯用名高度相似 → 可疑即弃
 - 🟡 精准改动：只改必要的，每一行都应能直接追溯到用户的请求；不"改进"相邻的代码/注释/格式，不重构没坏的东西；改完清理自己造成的垃圾（未使用的 import/export/prop/console.log 等；清理与重构分开提交）。匹配现有风格
 - 🟡 模块化与关注点分离：新增/改动的逻辑落在职责所属的模块——先复用承载同一职责的既有模块，没有才按现有目录约定新建；不因正在编辑就塞进当前文件，不塞进邻近的无关文件或万能工具（如 \`utils\`/\`helpers\`/\`common\`），不把无关职责塞进同一模块
-- 🟡 注释纪律：默认不写；仅写代码无法表达的 why（约束、workaround 原因、反直觉决策），且为确知原因，不确定则不写；一行以内（\`// 上游 429 无 Retry-After，故固定重试 3 次\`，非 \`// 重试次数\`——入库即噪音）
-  - 一律不留：改动叙述（含多轮间差异）、分步叙述、对已删代码的引用、注释掉的代码、复述代码字面含义、复述签名/参数的 docstring（用户明确要求的除外）——历史归 git log
-  - 混合句删叙述留 why，无 why 则整条删；顺手删掉因本次改动失效的相邻注释
-  - 交付前自检本次新增与所改的每条注释：非 why 内容或命中黑名单 → 删
+- 🟡 注释纪律：只写三类，其余不写
+  - 接口注释——公共接口的文档注释必须有：导出符号写一句用途，加签名表达不了的契约——单位、返回语义（None/空集合代表什么）、抛出的错误、副作用、前置条件；一行摘要为准，确有错误/单位/前置条件要列才补结构化段落。判定面用本语言惯例（Python docstring、TS 顶层导出的 JSDoc、Go 导出标识符、Rust pub 项）；私有与未导出不写
+  - 实现注释（只有 why）：约束、取舍、workaround、反直觉决策，确知原因才写，一行以内（好：\`// 上游 429 无 Retry-After，故固定重试 3 次\`；坏：\`// 重试次数\`）
   - 机制标注不受本条约束：spec 锚、lint/类型抑制标记、来源与授权标注（见「数据编撰」节，含 \`// fake data（用户授权）\`）与 TODO(user)
+  - 一律不写：改动叙述、分步叙述、对已删代码的引用、注释掉的代码、实现注释里复述代码字面含义、文档注释里逐参数复述签名（用户明确要求的除外）；混合句删叙述留 why
+  - 判据与自检：删掉这句会不会让读者调用错？不会 → 删；交付前自检本次新增与所改的每条注释，失效的相邻注释一并删
 - 🟡 代码文件行数上限 1500：本次编辑推过 1500 即违例，按职责拆分；存量已超限的报告不动，不得继续堆叠（生成/vendored 产物除外）
 - 🟡 新建或改建数据结构时，把非法组合挡在构造处（联合类型、枚举、构造参数校验），而不是散落成各使用点的 if 兜底；动态语言在构造或解析入口一次拦截；未被本次改动触及的既有结构不动
 - 🟡 会被重试、或可能中途失败的写操作做成幂等：重跑一次终态不变（不重复插入、不重复扣减）；做不到的在调用处注明不可重试，而不是默认调用方只调一次
@@ -42,13 +43,14 @@ const CLAUDE_MD_ZH = `# 项目规范
 
 ## 代码质量 · 禁止项与要求
 - 🔴 不假设外部输入可信：信任边界上的数据/响应/异步结果先校验（类型/范围/null/空/边界，数值含精度）再使用；资源用后必须释放；可预判的失败不裹 try 当控制流——预判守卫或取默认 API（如 \`dict.get\`、\`next(it, None)\`）先行，但守卫只能把失败变成显式的拒绝或默认值，不能让它静默消失；根因在别处时修根因，不在调用点拦住这一例
-- 🔴 默认不捕获——准入见下；准入后失败仍必须可见，出口任选：
-  - 准入：catch 必须在失败的去向或内容上留下可见变化，只有三种——改变控制流（重试——写操作须先满足幂等条，或按 catch-all 条在边界就地隔离）、给同一目的地更多信息（带因包装）、失败本会就此丢失时留下记录（目的地本会吞掉它）。降级继续不在此列，按窄类型条的条件判。都不能 → 不捕获；只做原样再抛的 catch=噪音，删，要附加上下文按上抛的带因形式
-  - 上抛（默认出口）：原样上行（裸 \`raise\` / \`return err\` 传原对象），或新建错误带因（\`raise … from e\` / \`{cause: e}\` / \`%w\`）；catch 内新建错误不带因=丢因果，同判缺失
-  - 窄类型 catch 后按影响记 debug/warning + 行内原因再继续——继续=跳过该步骤及其依赖、或以替代值前行，失败结果本身不可再用；仅限可承受步骤（如清理、幂等二次释放）：失败结果不被下游消费且不留不一致状态，否则直接上抛；无类型 catch 按错误类别（instanceof/错误码）分流，枚举不出就直接上抛，不凭印象写错误类或错误码
-  - catch-all 只放能把错误就地隔离、不影响其余输入与状态的边界（批量循环顶/事件分发/进程顶等），照样记录 + 行内原因
-  - 上述边界之外的兜底返回不算出口——\`except Exception: return default\`、\`.catch(()=>null)\` 这类宽 catch 的兜底返回同判吞错（记录不构成豁免），空 catch、\`except: pass\`、\`_ = err\`、\`.catch(()=>{})\` 类黑洞照禁。空 catch 里加注释不算处理，行为才算；窄类型与 catch-all 两处的行内原因不受注释纪律黑名单约束
-  - 参考：捕获/吞错规则的机器清单见项目根 \`lint-guidelines.md\`（未安装该清单 → 跳过本条）
+- 🔴 默认上抛：错误要么上抛，要么在能改变结局的地方处理一次，其余不碰
+  - 上抛（默认出口）：不要为了再抛而 catch，让异常自然上行（Go 直接 \`return err\`）；要加信息才捕获并带因（\`raise … from e\` / \`{cause: e}\` / \`%w\`），新建错误不带因=丢因果
+  - 就地消化（仅两种）：改变控制流——重试（写操作须先满足幂等条）、跳过该步骤及其依赖或以替代值前行；catch-all 隔离点——批量循环顶/事件分发/进程顶等不影响其余输入与状态的边界。两处都记录 + 行内原因
+  - 同一错误只处理一次：记录后又原样上抛=重复处理（调用方再记一次，顶层只剩无上下文的原始错误）——要记就记在终点，要传播就带上原因
+  - 降级继续（仅窄类型 catch，记 debug/warning + 行内原因）只限可承受步骤（如清理、幂等二次释放）：失败结果不被下游消费且不留不一致状态，否则直接上抛；无类型 catch 按错误类别（instanceof/错误码）分流，枚举不出就直接上抛
+  - try 块只包可能失败的那一句（块越大会吞掉无关异常）；清理放 finally / defer
+  - 兜底返回不算出口：宽 catch 兜底（\`except Exception: return default\`、\`.catch(()=>null)\`）、空 catch / \`except: pass\` / \`_ = err\` / \`.catch(()=>{})\` 同判吞错（记录不构成豁免）；空 catch 里加注释不算处理，行为才算；行内原因不受注释纪律黑名单约束
+  - 参考：捕获/吞错规则的机器清单见根目录 \`lint-guidelines.md\`（未安装 → 跳过）
 - 不写只适配样例输入的逻辑、魔法数字（入常量；有确切依据才注原因，否则取达义常量名）、具体值断言（无验收锚定的数值，用户明确要求的除外）；路径/换行用语言内建跨平台 API（\`path.sep\`/\`path.join\`），比较前归一化 EOL
 - mock 数据/fixture → 参见数据编撰禁令
 
@@ -74,7 +76,10 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🔴 提案范围须用户确认，AI 不得自行确认；commit/push/merge/release/archive 须用户授权，一次授权只覆盖明确指定的动作，未授权动作不得自行执行
 - 🟡 提案后自动审查两轮：第 1 轮对照目标/约束/specs 检查完整性、一致性、正确性与范围蔓延并修正；第 2 轮换独立视角复检（子代理 → 独立上下文；否则重读并输出「需求/场景 → 证据(file:line) → 结论」表，不复用上轮自评）；自修限已声明范围，不得增删需求，需增删时列入最终待确认
 - 🟡 两轮内不中途等确认；结束后逐条列出修正并请求范围确认——第 2 轮仍有阻断（目标不清/spec 冲突/不可测/范围失控）则停在提案阶段并列出，仅剩非阻断项则记录后进入确认，不加第三轮
-- 🟡 自动链唯一触发：用户明确要求完成该变更（「实现/做到绿/走完这个变更」或 \`/opsx:apply\`）；仅确认范围不触发；无法判定是否为完成意图 → 按未触发处理，并一句话向用户确认。触发后最后一项任务勾完即在同一回合调用 \`/opsx:verify\`（跑测试或自查不等于 verify；\`opsx:apply\` 收尾的「review or verify as appropriate / 可归档」不构成跳过理由）；本条适用于任何经 \`/opsx:apply\` 的变更，不受规模门槛限制；e2e 不在自动链内，仅在用户显式调用时执行（「做到绿」不含 e2e）；只说「改这个」或单独调用 propose/verify/e2e 等单阶段命令 → 该阶段结束即停；不得以修改断言/期望值绕过失败
+- 🟡 自动链唯一触发：用户明确要求完成该变更（「实现/做到绿/走完这个变更」或 \`/opsx:apply\`）；仅确认范围不触发；无法判定是否为完成意图 → 按未触发处理，并一句话向用户确认
+  - 收尾：最后一项任务勾完即在同一回合调用 \`/opsx:verify\`——跑测试或自查不等于 verify，\`opsx:apply\` 收尾的「review or verify as appropriate / 可归档」不构成跳过理由
+  - 适用面：适用于任何经 \`/opsx:apply\` 的变更，不受规模门槛限制；e2e 不在自动链内，仅在用户显式调用时执行（「做到绿」不含 e2e）
+  - 停止：只说「改这个」或单独调用 propose/verify/e2e 等单阶段命令 → 该阶段结束即停；不得以修改断言/期望值绕过失败
 - 🟡 verify 之后：CRITICAL → 按「同一失败最多 2 轮」的预算修复并复跑 verify；需增删范围或预算耗尽仍有 CRITICAL → 停下汇报；WARNING/SUGGESTION → 记录后交用户裁决
 - 🟡 高风险变更（公共 API/CLI 契约、数据模型/迁移、鉴权与安全、跨模块架构；不确定按高风险）在 apply 前汇报设计要点、影响面与回滚方式并等待确认
 - 🟡 仅当显式要求「自动归档」，且 tasks 全勾无 blocked、verify 无 CRITICAL、e2e（如运行）无 active App Bug 时自动；skipped 与 WARNING 列出交用户裁决；自动归档须 commit/merge 已授权完成，手动归档不受此限
@@ -84,7 +89,11 @@ const CLAUDE_MD_ZH = `# 项目规范
 ## 数据编撰
 - 🔴 严禁主动编撰模拟现实实体或外部系统形态的数据——mock 用户/手机号/邮箱/ID、凭空捏造配置默认值、假装存在的接口/字段/枚举值、编造测试期望值等，同类情形与改写措辞同判；算法演示的字面量输入不在禁区
 - 🔴 不编造 URL/路径/字段名 → 先检索并引用真实来源
-- 遇需数据/字段名/URL/接口形态的代码位 → 显式询问用户；用户拒绝 → 用 stub / \`throw\` / 显式错误类型做出可见失败（裸 \`null\` 会被调用方静默忽略，不算显式失败）；用户同意占位 → \`TODO(user)\` 标注并附问询上下文；用户提供数据 → 使用真实数据；用户明示可用假数据（如"随便造几个"）→ 视为授权，可造并标注 \`// fake data（用户授权）\`，禁止静默编造
+- 遇需数据/字段名/URL/接口形态的代码位 → 显式询问用户，按回答分四种走：
+  - 用户拒绝 → 用 stub / \`throw\` / 显式错误类型做出可见失败（裸 \`null\` 会被调用方静默忽略，不算显式失败）
+  - 用户同意占位 → \`TODO(user)\` 标注并附问询上下文
+  - 用户提供数据 → 使用真实数据
+  - 用户明示可用假数据（如"随便造几个"）→ 视为授权，可造并标注 \`// fake data（用户授权）\`，禁止静默编造
 - 写接口对接代码前先检索 OpenAPI/接口文档 → 查到查阅真实定义并标注来源（如 \`// 来源: docs/api/openapi.yaml#/paths/...\`），查不到询问用户
 
 ## 临时文件管理
@@ -96,14 +105,15 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🟡 测试只随验收存在：验收条款（规范 requirement / change 完成条 / 任务验收标准）或用户在会话中明确要求，点名才写；未点名的有价值场景（业务核心计算/状态转换、边界与错误路径、被多处复用的工具、修过 bug 的回归）→ 提议用户（收尾汇总一次提出），不静默略过；一个行为一组断言
 - 🔴 保持现有测试通过；红了先分类——行为本次有意变更（重构不算：重构只改结构，红即改坏）→ 更新断言；行为本次已删 → 专属测试随之删除并列明；范围外红测 → 报告不动；不得据本节 DO NOT 或「代码质量」节简化条款跳过/删除既有测试
 - 🟡 测试断言与实现的分歧先裁定谁错（spec 还是实现——矛盾本身是发现）；拿不准停下问用户，不单方面弱化断言把两边凑绿
+- 🟡 测试钉住行为，不钉实现：断言可观察结果（返回值、输出、状态变化、对外调用），不断言内部结构（私有方法与字段、调用顺序、内部状态名）；判据：重构实现而行为不变时，测试不该需要改动
+- 🟡 测试自足且确定：不依赖真实时钟、网络、执行顺序或共享可变状态；等待用条件轮询，不用固定 sleep；同一测试连跑两次结果一致，跑不了的报告里标明（需要真实依赖的验证按后端/服务条走）
 - 🔴 验收条款点名的行为必须被某层测试覆盖（单测或验收测试，一层即可）；点名项若落本节任一 DO NOT 条款（如纯透传、同义反复断言），停下向用户裁决——不静默写，也不静默不写
 - 🟡 后端/服务的验证对真实运行的服务发真实请求（真实数据/依赖，遵守数据编撰节；写操作限测试/预发环境，无隔离环境先问用户）；是否落成测试按本节第一条的点名标准判断
 - 🟡 按点名写测试时，点名行为在该层覆盖不到才抽 UI 可测客户端逻辑（自定义 hook / 组合式函数 / 纯函数）为独立单元测；改了用户可见可交互的东西 → 浏览器验证；纯逻辑 → 证据验证，不开浏览器
 - 🟡 修复类任务先复现后修复：复现先落成一个会失败的测试（可自动化的前提下；无法用测试表达时用截图或测量并说明），完成前后各重现 bug 一次（修前 = 证明它存在，且失败来自预期的那条断言；修后 = 证明它消失）；同法 ≥2 次未复现 → 以已试次数与现有证据回报并停下，等用户提供复现条件，或经用户明示授权后按分析修复；不宣称已验证
 - 🟡 验收期望锚定验收标准写「预期 X，实测 Y」（期望编造禁令见数据编撰节）
-- 🟡 验证前核对加载的是本次产物（清缓存/停用 Service Worker/核 hash）；权限类必须真实登录态=以真实凭据过登录流程（UI 登录或 API 登录取回），构造/硬编码 token 一律算注入；多角色各角色单独登录
-- 🟡 验证证据（截图/日志/输出）取自本次实际运行，不编造、不复用旧证据
-- 🔴 禁止生成 UI 组件测试（含渲染冒烟、快照、纯存在断言）
+- 🟡 验证证据取自本次运行：证据=实际跑的命令与输出，不编造、不复用旧证据；先核对加载的是本次产物（清缓存/停用 Service Worker/核 hash）；权限类必须真实登录态=以真实凭据过登录流程（UI 登录或 API 登录取回），构造/硬编码 token 一律算注入；多角色各角色单独登录
+- 🔴 禁止生成无行为断言的 UI 组件测试：渲染冒烟、快照、纯存在断言一律不写；行为级组件测试按本节点名标准判断，不因「不是 E2E」而排除
 - 🔴 仅截图不算通过——交互必须验证结果（点击后的状态/跳转/渲染），断言只作辅助证据；样式类改动（无行为变化）核对渲染截图并呈现给用户即可
 - 🔴 无断言价值的测试一律不写，点名不豁免：纯透传、getter/样板、类型系统已保证的行为、期望从实现反推的同义反复断言、只断言 mock 拓扑而非可观察行为；最省事的检验：把该测试依赖的返回值改成空/null，测试仍过 → 判为无断言价值
 
@@ -146,11 +156,12 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🔴 Before adding any new dependency, verify it on that ecosystem's package registry first — LLMs hallucinate package names (squatting attacks); if that ecosystem has install-time scripts (e.g. npm postinstall), check them: lifecycle scripts that download and execute external content, or names closely imitating a common package → discard
 - 🟡 Surgical changes: touch only what's needed, every line traceable to the user's request; don't "improve" adjacent code/comments/formatting, don't refactor what isn't broken; clean up your own mess (unused imports/exports/props/console.log etc.; cleanup and refactor in separate commits). Match existing style
 - 🟡 Modularity and separation of concerns: new/changed logic belongs in the module that owns the responsibility — reuse an existing module that already carries the same responsibility first, and only create one following the existing directory conventions; never bolt it onto the current file just because you are editing it, an unrelated neighboring file, or a catch-all utility (e.g., utils/helpers/common), never pack unrelated responsibilities into the same module
-- 🟡 Comment discipline: default to no comments; write only the why the code cannot express (constraints, workaround reasons, counterintuitive decisions) and only a known cause — if unsure, don't write; one line max (\`// upstream 429s with no Retry-After header, so retry 3 times\`, not \`// retry count\` — noise once in the codebase)
-  - Never kept: change narration (including differences across rounds), step narration, references to deleted code, commented-out code, literal-meaning restatements, and docstrings restating signature or parameters (unless the user explicitly asked for one) — history belongs in git log
-  - For mixed sentences strip the narration and keep the why, no why left → delete the whole; delete adjacent comments invalidated by this change
-  - Before delivery self-check every new or edited comment: no why content or a blacklist hit → delete
+- 🟡 Comment discipline: write only three kinds, nothing else
+  - Interface comments — doc comments on the public interface are required: an exported symbol gets one purpose line plus any contract the signature cannot express — units, return semantics (what \`None\`/empty means), errors raised, side effects, preconditions; keep it to a one-line summary and add structured sections only when errors, units or preconditions genuinely need listing. Scope by language convention: docstrings on public Python modules/classes/functions/methods, JSDoc on top-level TS exports, doc comments on exported Go identifiers, \`///\` on Rust \`pub\` items; private and unexported symbols (\`_foo\`) get none
+  - Implementation comments (why only): constraints, tradeoffs, workarounds, counterintuitive decisions, only a known cause, one line max (good: \`// upstream 429s with no Retry-After header, so retry 3 times\`; bad: \`// retry count\`)
   - Mechanism markings are exempt from this rule — spec anchors, lint/type suppression markers, source and authorization annotations (see the Data Fabrication section, including \`// fake data (user-approved)\`), and TODO(user)
+  - Never write: change narration (including differences across rounds), step narration, references to deleted code, commented-out code, literal-meaning restatements in implementation comments, and per-parameter restatements of the signature in doc comments such as \`@param x: x\` (unless the user explicitly asked); for mixed sentences strip the narration and keep the why — history belongs in git log
+  - Test and self-check: if deleting this line would not make a reader call or change the code wrongly, delete it; before delivery self-check every new or edited comment, and delete adjacent comments this change invalidated (invalidated = no longer true or no longer pointing at existing code)
 - 🟡 Code file line limit 1500: this edit pushing a file past 1500 is a violation — split by responsibility, never extend; existing over-limit files are reported, not touched (generated/vendored artifacts exempt)
 - 🟡 When creating or reshaping data structures, make illegal combinations impossible at construction (unions, enums, constructor validation) instead of scattering if-guards across call sites. In dynamic languages, block once at the construction or parse entry point; leave existing structures untouched unless this change touches them
 - 🟡 Make write operations that may be retried or may fail midway idempotent: running twice leaves the same end state (no duplicate inserts, no double decrements). Where that is impossible, note "not retryable" at the call site instead of assuming a single call
@@ -158,13 +169,14 @@ const CLAUDE_MD_EN = `# Project Guidelines
 
 ## Code Quality · Prohibitions and Requirements
 - 🔴 Don't assume external input is trusted: validate data/responses/async results at trust boundaries (type/range/null/empty/boundary, numeric precision included) before use; release resources after use; foreseeable failures don't get wrapped in try as control flow — precondition guards or default-fetching APIs (like \`dict.get\`, \`next(it, None)\`) go first, but a guard may only turn the failure into an explicit rejection or default value, never let it disappear silently; when the root cause lies elsewhere, fix the cause instead of stopping this one instance at the call site
-- 🔴 Default to not catching — admission below; once admitted, the failure must still be visible, any exit:
-  - Admission: a catch must leave a visible change in where the failure goes or what it carries, and only three shapes qualify — a control-flow change (retry — for writes only after the idempotency rule is met, or local isolation at a boundary per the catch-all bullet), more information for the same destination (wrapping with cause), or a record when the failure would otherwise be lost (the destination would swallow it). Degrading and continuing is not on that list — judge it by the narrow-catch bullet. If none apply → don't catch; a catch that only rethrows unchanged is noise — delete it, and add context via the cause form in rethrow
-  - rethrow (the default exit) — propagate the original object as-is (bare \`raise\` / \`return err\`) or create with cause (\`raise … from e\` / \`{cause: e}\` / \`%w\` — building a new error without cause inside a catch = dropped causality, same verdict)
-  - narrow catch, log at debug/warning by impact + inline reason, then continue — continuing = skipping the step and its dependents or moving on with a substitute, the failed result itself is never reused; only tolerable steps (e.g. cleanup, idempotent double-release) — the failed result is not consumed downstream and leaves no inconsistent state; otherwise rethrow; untyped catch branches on error class (instanceof/error code) — if the classes can't be enumerated, rethrow rather than guess a class or code
-  - catch-alls only at boundaries that isolate the error locally (batch loop top / event dispatch / process top), still logged + inline reason
-  - Fallbacks outside those boundaries are not exits — the fallback return of a broad catch (\`except Exception: return default\` / \`.catch(()=>null)\`) counts as swallowing, and logging does not exempt it; bare catch / \`except: pass\` / \`_ = err\` / \`.catch(()=>{})\` black holes stay banned. A comment inside an empty catch is not handling, the behavior is; inline reasons in the narrow-catch and catch-all bullets are exempt from the comment-discipline blacklist
-  - Reference: the machine checklist for catch/swallow rules lives in the project's \`lint-guidelines.md\` (if that checklist is not installed, skip this item)
+- 🔴 Propagate by default: either propagate the error, or handle it once where the outcome can change; nothing else:
+  - Rethrow (the default exit): never catch just to rethrow — let it propagate (in Go, just \`return err\`); catch only to add context with the cause form (\`raise … from e\` / \`{cause: e}\` / \`%w\`); a new error without a cause loses the chain
+  - Absorb in place (two cases only): change control flow — retry (for writes only after the idempotency rule is met), or skip the step and its dependents or move on with a substitute; or a catch-all isolation point — batch loop top / event dispatch / process top, not affecting other inputs or state; both log + an inline reason
+  - Handle each error once: logging then rethrowing unchanged = double handling (the caller logs it again; the top level is left with the bare original error) — log at the final destination, or propagate with the cause
+  - Degrade and continue (narrow catch only, log at debug/warning by impact + inline reason) only for tolerable steps (e.g. cleanup, idempotent double-release): the failed result is not consumed downstream and leaves no inconsistent state, otherwise propagate; untyped catch branches on error class (instanceof/error code) — if the classes can't be enumerated, rethrow rather than guess a class or code
+  - Try blocks contain only the line that can fail (a bigger block swallows unrelated exceptions); cleanup goes in finally / defer
+  - Fallbacks outside those boundaries are not exits — broad-catch fallbacks (\`except Exception: return default\` / \`.catch(()=>null)\`), bare catch, \`except: pass\`, \`_ = err\`, \`.catch(()=>{})\` all count as swallowing, and logging does not exempt it; a comment inside an empty catch is not handling, the behavior is; inline reasons are exempt from the comment-discipline blacklist
+  - Reference: the machine checklist for catch/swallow rules lives in the root \`lint-guidelines.md\` (if not installed, skip this item)
 - No logic that only fits sample inputs, no magic numbers (constants; a reason comment only when grounded in fact, otherwise a meaningful name), no specific-value assertions (ones unanchored to acceptance — except values the user explicitly specifies); paths/newlines via the language's built-in cross-platform APIs (\`path.sep\`/\`path.join\`), normalize EOL before comparing
 - Mock data / fixtures → see Data Fabrication section below
 
@@ -190,7 +202,10 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🔴 Proposal scope is confirmed by the user, never self-confirmed; commit/push/merge/release/archive require user authorization, and one authorization covers only the explicitly specified action; unauthorized actions must never be performed
 - 🟡 After proposal creation, run two automatic review rounds: round 1 checks goals/constraints/existing specs for completeness, consistency, correctness and scope creep, and fixes findings; round 2 re-checks all artifacts from an independent perspective (subagents → independent context; otherwise re-read and output a "requirement/scenario → evidence (file:line) → conclusion" table, never reuse the previous self-assessment). Fixes stay within the declared scope — never add or remove requirements; proposed scope changes are listed for final confirmation
 - 🟡 Do not pause between rounds; afterwards list every fix and request scope confirmation — blocking issues remaining after round 2 (unclear goals/spec conflicts/untestable/runaway scope) → stop at the proposal stage and list them; if only non-blocking items remain, record them and proceed to confirmation, with no third round
-- 🟡 The auto-chain's only trigger is an explicit request to complete the change ("implement / make it green / run this change through" or invoking \`/opsx:apply\`); confirming scope alone does not trigger it; when completion intent is unclear, treat it as not triggered and confirm with the user in one line. Once triggered, the moment the last task is checked, invoke \`/opsx:verify\` in the same turn (running tests or a self-check is not verify; the \`opsx:apply\` closing line "review or verify as appropriate / you can archive" does not justify skipping it); this rule applies to every change run through \`/opsx:apply\` and is not gated by the size threshold; e2e is not part of the auto-chain and runs only when the user explicitly invokes it ("make it green" does not authorize e2e); a bare "change this" or invoking propose/verify/e2e alone stops after that phase. Never weaken assertions or expected values to force a green run — resolve spec/assertion conflicts per the Testing section
+- 🟡 The auto-chain's only trigger is an explicit request to complete the change ("implement / make it green / run this change through" or invoking \`/opsx:apply\`); confirming scope alone does not trigger it; when completion intent is unclear, treat it as not triggered and confirm with the user in one line
+  - Close-out: the moment the last task is checked, invoke \`/opsx:verify\` in the same turn — running tests or a self-check is not verify, and the \`opsx:apply\` closing line "review or verify as appropriate / you can archive" does not justify skipping it
+  - Scope: applies to every change run through \`/opsx:apply\`, and is not gated by the size threshold; e2e is not part of the auto-chain and runs only when the user explicitly invokes it ("make it green" does not authorize e2e)
+  - Stop: a bare "change this" or invoking propose/verify/e2e alone stops after that phase; never weaken assertions or expected values to force a green run — resolve spec/assertion conflicts per the Testing section
 - 🟡 After verify: CRITICAL → fix within a budget of at most 2 rounds per identical failure and re-run verify; if scope must change or CRITICAL remains after the budget → stop and report; WARNING/SUGGESTION → record and hand to the user
 - 🟡 High-risk changes (public API/CLI contracts, data models/migrations, auth & security, cross-module architecture; when unsure, treat as high-risk) report design essentials, impact and rollback before apply and wait for confirmation
 - 🟡 Auto-archive only when explicitly requested ("auto archive") and all tasks are checked with no blocked item, verify has no CRITICAL, and e2e (if run) has no active App Bug; list skipped tests and WARNINGs for the user to decide; auto-archive additionally requires commit/merge to be authorized and completed — manual archive is exempt
@@ -200,7 +215,11 @@ const CLAUDE_MD_EN = `# Project Guidelines
 ## Data Fabrication
 - 🔴 Never fabricate data simulating real entities or external systems — mock users/phones/emails/IDs, imaginary config defaults, pretended APIs/fields/enum values, fabricated test expectations, etc., same-kind cases and rewordings count the same; literal inputs for algorithm demos are not in scope
 - 🔴 Don't fabricate URLs/paths/field names → search first, then cite real sources
-- When data/field names/URLs/API shapes are needed → ask the user explicitly; user refuses → stub / \`throw\` / an explicit error type for a visible failure (a bare \`null\` can be silently ignored by callers, so it doesn't count); user agrees to a placeholder → mark with \`TODO(user)\` and attach context; user provides data → use real data; user explicitly okays fake data ("just make some up") → treat as authorized, mark \`// fake data (user-approved)\`, never silently fabricate
+- When data/field names/URLs/API shapes are needed → ask the user explicitly, then take one of four paths:
+  - user refuses → stub / \`throw\` / an explicit error type for a visible failure (a bare \`null\` can be silently ignored by callers, so it doesn't count)
+  - user agrees to a placeholder → mark with \`TODO(user)\` and attach context
+  - user provides data → use real data
+  - user explicitly okays fake data ("just make some up") → treat as authorized, mark \`// fake data (user-approved)\`, never silently fabricate
 - Before writing API-integration code, search for OpenAPI/API docs → found: consult real definitions and cite source (e.g. \`// source: docs/api/openapi.yaml#/paths/...\`); not found: ask the user
 
 ## Temp File Management
@@ -212,14 +231,15 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🟡 Tests exist only where acceptance demands them: write tests only for cases named by acceptance clauses (spec requirements / change acceptance criteria / task acceptance standards) or explicitly requested by the user in the session; for valuable un-named scenarios (core business computation/state transitions, boundary & error paths, widely reused utilities, bug-fix regressions) → propose to the user (bundled, raised once at wrap-up), never skip silently; one behavior one assertion set
 - 🔴 Keep existing tests passing; triage reds first — the tested behavior changed intentionally this round (a refactor doesn't count: it changes structure only, so red means the structure broke, not a stale assertion) → update assertions; behavior deleted this round → its tests go with it, itemized; pre-existing reds outside scope → report, don't touch; never cite this section's DO NOT rules or the Code Quality section's simplification clauses to skip/delete existing tests
 - 🟡 When a test assertion disagrees with the implementation, first rule on who is wrong (the spec or the code — the contradiction itself is a finding); unsure → stop and ask the user; never unilaterally weaken assertions to make both green
+- 🟡 Tests pin behavior, not implementation: assert observable results (return values, output, state changes, outbound calls), never internal structure (private methods and fields, call order, internal state names); criterion: a refactor that preserves behavior should require no test changes
+- 🟡 Tests are self-contained and deterministic: no dependence on the real clock, network, execution order or shared mutable state; poll for a condition instead of a fixed sleep; the same test run twice gives the same result, and anything that can't is flagged in the report (verification needing real dependencies follows the backend/service rule)
 - 🔴 Behaviors named by acceptance clauses must be covered by some test layer (unit OR acceptance — one is enough); when a named item falls into any DO NOT rule of this section (pure passthrough, tautological assertions), stop and let the user decide — never silently write it, never silently skip it
 - 🟡 Verify backend/service behavior with real requests against a real running service (real data/dependencies, per the Data Fabrication section; write operations only against test/staging environments — ask first when no isolated environment exists); whether it lands as a test follows the naming standard in this section's first rule
 - 🟡 When writing named tests, extract testable client-side logic (custom hooks / composables / pure functions) into independent unit tests only when the named behavior isn't coverable at that layer; user-visible/interactive changes → browser-verify; pure logic → evidence verification, no browser
 - 🟡 Fix tasks: express the reproduction as a test that fails before the fix (when it can be automated; otherwise use screenshots or measurements and say so), reproduce before and after completion (before = prove it exists, with the failure coming from the expected assertion; after = prove it's gone); same-method ≥2 failed reproductions → report attempts and existing evidence and stop — wait for repro conditions from the user, or proceed with analysis-driven fixes only after explicit user authorization; never claim verified
 - 🟡 All acceptance expectations anchor to acceptance criteria ("expected X, got Y"); the no-fabricating-expectations rule lives in the Data Fabrication section
-- 🟡 Verify the tested build is the current one (clear cache/disable the Service Worker/check the hash); permission checks need a real login state = a session from the real login flow (UI login or API login exchange) — constructed/hardcoded tokens count as injection; each role logs in separately
-- 🟡 Verification evidence (screenshots/logs/output) comes from this run only — never fabricated, never reused from earlier runs
-- 🔴 Never generate UI component tests (render-smoke, snapshot, and mere-existence all count)
+- 🟡 Verification evidence comes from this run: the commands actually run and their output, never fabricated, never reused from earlier runs; first confirm the tested build is the current one (clear cache/disable the Service Worker/check the hash); permission checks need a real login state = a session from the real login flow (UI login or API login exchange) — constructed/hardcoded tokens count as injection; each role logs in separately
+- 🔴 Never generate UI component tests that assert no behavior: render-smoke, snapshot and mere-existence checks are out; behavior-level component tests follow this section's naming standard and are not excluded for "not being E2E"
 - 🔴 Screenshot alone does not pass — interactions must verify the result (state/navigation/render after click); assertions serve only as auxiliary evidence; style-only changes (no behavior change) verify the rendered screenshot and present it to the user
 - 🔴 Tests without assertion value are never written — naming by acceptance doesn't exempt them: pass-throughs, getters/boilerplate, type-system-guaranteed behavior, tautological assertions with expectations reverse-engineered from the implementation, asserting mock topology instead of observable behavior; cheapest check: change the values the test depends on to empty/null — if it still passes, it has no assertion value
 
