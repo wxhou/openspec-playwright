@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.110] - 2026-10-29
 - **fix(standards): 注释纪律改为「只写三类 + 一句判据」，不再坍缩成全部不写**. 原文只有「默认不写」与黑名单两条轴，缺「哪些符号的文档必须存在」——AI 取最强分支，Python 的 class/function 连 docstring 都不写。核对 PEP 257、Google Python/TS Style Guide、Go Code Review Comments、Rust API Guidelines、Linux 内核风格：公共接口的文档注释是硬要求，内容只写签名表达不了的契约，逐参数复述一律算噪音。重写为三类（接口注释必须有 / 实现注释只有 why / 机制标注豁免），黑名单合并为一条，并加一句可机械执行的判据「删掉这句，读者会不会调用错或改错？不会 → 删」；写法对齐 Anthropic 的「tell Claude what to do」与 OpenAI 的「pair prohibitions with the acceptable alternative」。790 → 630 字符（−20%），8 → 6 条。三副本同步，锚点短语全部保留。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 - **fix(standards): 捕获条补两条机械规则，默认动作改为「上抛」**. 原文 7 条 863 字符，且「准入」段提前枚举了后面三条出口再各自展开，形成循环引用（准入 → 按 catch-all 条 → 回到准入）。核对 Google Python §2.4.4（宽 catch 仅允许 re-raise 或隔离点；try 块最小化）、Go Code Review Comments（handle / return，或 truly exceptional 才 panic；不得用 `_` 丢弃）、Rust Book ch.9（可能失败默认返回 `Result`）、ESLint `no-useless-catch`、ruff BLE001（re-raised 或 `exc_info` 记录的不报）、Dave Cheney「Only handle errors once」：补 ①同一错误只处理一次（记录后又原样上抛=重复处理）②try 块只包可能失败的那一句；起点由「默认不捕获」改为「默认上抛」——真正的默认动作是传播，不是沉默。863 → 777 字符（净增 2 条规则，去掉准入段的重复枚举与循环引用；随后一轮去重：跳过动作、记录 + 行内原因、代码例子各重复两次）。三副本同步，catch 子项断言 6 → 7 项，锚点改 2 条。
