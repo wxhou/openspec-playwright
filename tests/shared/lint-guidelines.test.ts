@@ -64,9 +64,15 @@ describe("lint-guidelines checklist data ↔ template pairing", () => {
     expect(isChecklistUnmodified(crlf)).toBe(true);
   });
 
-  it("default-state contract: only B904 is off by default", () => {
+  it("default-state contract: B904 and the docstring presence rules are off by default", () => {
     const offByDefault = LINT_GUIDELINE_RULES.filter((r) => !r.defaultOn);
-    expect(offByDefault.map((r) => r.id)).toEqual(["B904"]);
+    expect(offByDefault.map((r) => r.id)).toEqual([
+      "B904",
+      "D100",
+      "D101",
+      "D103",
+      "jsdoc/require-jsdoc",
+    ]);
   });
 
   it("no-empty boundary (comment exemption) is stated in the template", () => {
@@ -76,7 +82,10 @@ describe("lint-guidelines checklist data ↔ template pairing", () => {
 });
 
 describe("lint-guidelines install / refresh (content-based ownership)", () => {
-  const staleBody = templateLf.replace("## Rules\n", "## Rules (old)\n");
+  const staleBody = templateLf.replace(
+    "## Swallowed errors\n",
+    "## Swallowed errors (old)\n",
+  );
 
   /** A checklist file whose checksum is valid for its (older) body = tool-owned. */
   function staleToolOwnedFixture(): string {
@@ -133,7 +142,10 @@ describe("lint-guidelines install / refresh (content-based ownership)", () => {
   it("user-modified file (checksum no longer matches body) → kept-modified, untouched", () => {
     const root = mkdtempSync(join(tmpdir(), "ospw-lintguidelines-"));
     try {
-      const handEdited = templateLf.replace("## Rules\n", "## My Rules\n");
+      const handEdited = templateLf.replace(
+        "## Swallowed errors\n",
+        "## My Rules\n",
+      );
       writeFileSync(join(root, LINT_GUIDELINES_RELPATH), handEdited);
       expect(isChecklistUnmodified(handEdited)).toBe(false);
       const disposition = installOrRefreshChecklist(root);
@@ -198,7 +210,10 @@ describe("lint-guidelines uninstall (content-based ownership)", () => {
   it("user-modified checklist → kept as-is (content preserved)", () => {
     const root = mkdtempSync(join(tmpdir(), "ospw-lintguidelines-rm-"));
     try {
-      const handEdited = templateLf.replace("## Rules\n", "## My Rules\n");
+      const handEdited = templateLf.replace(
+        "## Swallowed errors\n",
+        "## My Rules\n",
+      );
       writeFileSync(join(root, LINT_GUIDELINES_RELPATH), handEdited);
       expect(removeChecklist(root)).toBe("kept-modified");
       expect(readFileSync(join(root, LINT_GUIDELINES_RELPATH), "utf-8")).toBe(
