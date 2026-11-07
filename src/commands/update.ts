@@ -1,7 +1,5 @@
-import { execFile, execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { join, basename, sep } from "path";
-import type { CommonOptions } from "node:child_process";
 import {
   existsSync,
   readFileSync,
@@ -13,7 +11,6 @@ import {
   lstatSync,
 } from "fs";
 import { tmpdir } from "os";
-import { promisify } from "util";
 import chalk from "chalk";
 import * as tar from "tar";
 import {
@@ -36,7 +33,6 @@ import {
   ensureTestRunnerMcp,
   isTestRunnerMcpInstalled,
   hasFrontendSignal,
-  needsShell,
   detectCodeGraphStatus,
   codegraphHintLines,
   findUncoveredManagedPaths,
@@ -46,6 +42,7 @@ import {
   installOrRefreshChecklist,
   LINT_GUIDELINES_RELPATH,
 } from "../shared/index.js";
+import { execFileAsync, execFileSync } from "../shared/exec.js";
 import { compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
 import { pipelineGitignoreOmit } from "./pipeline.js";
 import { wrapperHasMarkers, hasRuleFileMarkers } from "./editors/project-rules.js";
@@ -56,25 +53,6 @@ const WRAPPER_EDITORS: Array<[EditorAdapter, (root: string) => void]> = [
   [claudeAdapter, installClaudeWrapper],
   [codebuddyAdapter, installCodebuddyWrapper],
 ];
-
-// `execFile` accepts stdio at runtime but the @types/node interface
-// doesn't expose it (the field lives on CommonSpawnOptions, which
-// `ExecFileOptions` doesn't extend). Cast to add it back.
-type ExecFileOpts = CommonOptions & {
-  encoding?: BufferEncoding | "buffer" | null;
-  shell?: boolean | string;
-  maxBuffer?: number;
-  killSignal?: NodeJS.Signals | number;
-  windowsVerbatimArguments?: boolean;
-  signal?: AbortSignal;
-  stdio?: "pipe" | "ignore" | "inherit" | Array<unknown>;
-};
-
-const execFileAsync = promisify(execFile) as (
-  file: string,
-  args: readonly string[],
-  options?: ExecFileOpts,
-) => Promise<{ stdout: string; stderr: string }>;
 
 export interface UpdateOptions {
   cli?: boolean;
@@ -112,7 +90,6 @@ export async function update(options: UpdateOptions) {
           timeout: 120000,
           cwd: projectRoot,
           stdio: "inherit",
-          shell: needsShell,
         },
       );
       console.log(chalk.green("  ✓ CLI updated via npm"));
@@ -143,7 +120,6 @@ export async function update(options: UpdateOptions) {
         execFileSync("openspec-pw", reExecArgs, {
           stdio: "inherit",
           cwd: projectRoot,
-          shell: needsShell,
         });
         console.log(
           chalk.green("  ✓ Post-update tasks completed with latest binary"),
@@ -189,7 +165,6 @@ export async function update(options: UpdateOptions) {
             timeout: 120000,
             cwd: projectRoot,
             stdio: "inherit",
-            shell: needsShell,
           },
         );
         console.log(chalk.green("  ✓ devDependency synced to latest"));
@@ -283,7 +258,6 @@ export async function update(options: UpdateOptions) {
             timeout: 120000,
             cwd: projectRoot,
             stdio: "inherit",
-            shell: needsShell,
           },
         );
         console.log(chalk.green("  ✓ Updated via npm install"));
@@ -511,7 +485,7 @@ async function checkVersionShadow(projectRoot: string): Promise<void> {
     const { stdout } = await execFileAsync(
       "npm",
       ["view", "openspec-playwright", "version"],
-      { timeout: 30000, shell: needsShell },
+      { timeout: 30000 },
     );
     publishedVersion = stdout.trim();
   } catch {
@@ -542,13 +516,12 @@ async function fetchLatestBundle(): Promise<string> {
   rmSync(tmpDir, { recursive: true, force: true });
   mkdirSync(tmpDir, { recursive: true });
 
-  // execFile with args array is safe with shell: true — Node quotes
-  // each argument, so paths with spaces (OneDrive, CJK user names)
-  // are passed verbatim to the shell.
+  // Cross-spawn passes argv verbatim without shell interpretation, so paths
+  // with spaces (OneDrive, CJK user names) reach npm unchanged.
   await execFileAsync(
     "npm",
     ["pack", "openspec-playwright", "--pack-destination", tmpDir],
-    { timeout: 30000, shell: needsShell },
+    { timeout: 30000 },
   );
 
   const tgzFiles = readdirSync(tmpDir)

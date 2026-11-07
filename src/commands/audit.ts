@@ -1,4 +1,3 @@
-import { execFileSync } from "child_process";
 import {
   existsSync,
   readdirSync,
@@ -6,7 +5,8 @@ import {
 } from "fs";
 import { join, sep as pathSep } from "path";
 import chalk from "chalk";
-import { SHARED_FILE_NAMES, TIMEOUT, needsShell, detectAppServer } from "../shared/index.js";
+import { SHARED_FILE_NAMES, TIMEOUT, detectAppServer } from "../shared/index.js";
+import { execFileSync } from "../shared/exec.js";
 
 interface AuditResult {
   fileName: string;
@@ -483,7 +483,7 @@ export async function getSitemapRoutes(projectRoot: string): Promise<{
 
 async function getChangeNames(projectRoot: string): Promise<string[]> {
   try {
-    const result = execFileSync("npx", ["openspec", "list", "--json"], { shell: needsShell,
+    const result = execFileSync("npx", ["openspec", "list", "--json"], {
       cwd: projectRoot,
       encoding: "utf-8",
       timeout: TIMEOUT.OPENSPEC_LIST,

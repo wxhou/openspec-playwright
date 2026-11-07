@@ -12,19 +12,17 @@ import { join } from "path";
 
 // init shells tool version probes during prerequisites — stub them so
 // hermetic runs don't depend on PATH (same pattern as tests/agents.test.ts).
-vi.mock("child_process", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("child_process")>();
-  return {
-    ...actual,
-    execFileSync: vi.fn((file: string, args: string[]) => {
-      if (file === "npx" && args[0] === "openspec") return "1.11.0";
-      if (file === "npx" && args[0] === "playwright") return "1.62.1";
-      if (file === "node") return "v22.0.0";
-      if (file === "npm") return "10.0.0";
-      throw new Error(`unexpected execFileSync: ${file}`);
-    }),
-  };
-});
+vi.mock("../../src/shared/exec.js", () => ({
+  execFileAsync: vi.fn(),
+  execFileSync: vi.fn((file: string, args: string[]) => {
+    if (file === "npx" && args[0] === "openspec") return "1.11.0";
+    if (file === "npx" && args[0] === "playwright") return "1.62.1";
+    if (file === "node") return "v22.0.0";
+    if (file === "npm") return "10.0.0";
+    throw new Error(`unexpected execFileSync: ${file}`);
+  }),
+  spawnSync: vi.fn(),
+}));
 
 import { init, lintConfigSnippet } from "../../src/commands/init.js";
 import { LINT_ESLINT_GENERATED_MARKER } from "../../src/shared/index.js";

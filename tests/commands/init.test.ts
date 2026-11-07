@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Mock child_process
-vi.mock("child_process", () => ({
+// Mock shared/exec command wrapper
+vi.mock("../../src/shared/exec.js", () => ({
+  execFileAsync: vi.fn(),
   execFileSync: vi.fn(),
+  spawnSync: vi.fn(),
 }));
 
 // Mock fs modules

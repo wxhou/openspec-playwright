@@ -1,4 +1,14 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+const fsMocks = vi.hoisted(() => ({
+  existsSync: vi.fn(),
+  readFileSync: vi.fn(),
+  writeFileSync: vi.fn(),
+}));
+
+vi.mock("fs", () => fsMocks);
+
+import { checkForUpdate } from "../../src/shared/version-check.js";
 
 // ─── compareVersions logic ─────────────────────────────────────────────────
 
@@ -36,5 +46,30 @@ describe("version comparison logic", () => {
   it("handles missing patch/minor", () => {
     expect(compareVersions("1.0", "1.0.0")).toBe(0);
     expect(compareVersions("2", "1.0.0")).toBe(1);
+  });
+});
+
+describe("shared/version-check", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    fsMocks.existsSync.mockReset();
+    fsMocks.readFileSync.mockReset();
+    fsMocks.writeFileSync.mockReset();
+  });
+
+  it("writes the update hint to stderr", async () => {
+    fsMocks.existsSync.mockReturnValue(true);
+    fsMocks.readFileSync.mockReturnValue(
+      JSON.stringify({ lastCheck: Date.now(), latestVersion: "9.9.9" }),
+    );
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await checkForUpdate("0.3.112");
+
+    expect(log).not.toHaveBeenCalled();
+    expect(error).toHaveBeenCalledWith(
+      expect.stringContaining("A new version of openspec-pw is available"),
+    );
   });
 });

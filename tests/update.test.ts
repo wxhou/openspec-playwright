@@ -296,14 +296,14 @@ users:
   });
 });
 
-// ─── execFile migration ────────────────────────────────────────────────────
-// Verifies the npm/install and npm/pack calls in update.ts use execFile
-// (no shell) and accept the exact same args used at runtime.
+// ─── command execution: shared/exec wrapper ───────────────────────────────
+// Verifies the npm calls in update.ts use the cross-spawn wrapper with an
+// explicit args array, never shell: true.
 
-describe("update.ts: npm spawn calls (execFile, no shell)", () => {
+describe("update.ts: npm calls use shared/exec wrapper", () => {
   it("calls npm with install -g openspec-playwright@latest (not a shell string)", async () => {
     // Read the source and confirm: no execSync string interpolation,
-    // execFile used with explicit args array.
+    // wrapper used with an explicit args array.
     const src = readFileSync(
       fileURLToPath(new URL("../src/commands/update.ts", import.meta.url)),
       "utf-8",
@@ -313,11 +313,11 @@ describe("update.ts: npm spawn calls (execFile, no shell)", () => {
     expect(src).not.toMatch(/execSync\(\s*["']npm install -g openspec/);
     // No `execAsync(` / `promisify(exec)` for npm commands
     expect(src).not.toMatch(/promisify\(exec\)/);
-    // Windows-safe form: execFileAsync("npm", ..., { shell: needsShell })
+    // Commands go through the cross-spawn wrapper
+    expect(src).toMatch(/from "\.\.\/shared\/exec\.js"/);
     expect(src).toMatch(/execFileAsync\s*\(\s*"npm"/);
-    // Every npm call includes shell: needsShell for Windows
-    const npmCallsWithShell = (src.match(/execFileAsync\s*\(\s*"npm"[\s\S]{0,300}shell: needsShell/g) || []).length;
-    expect(npmCallsWithShell).toBeGreaterThanOrEqual(3);
+    // No shell option remains
+    expect(src).not.toMatch(/shell:\s*needsShell/);
   });
 
   it("npm pack uses args array (safe for Windows paths with spaces)", async () => {

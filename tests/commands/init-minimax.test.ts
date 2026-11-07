@@ -10,20 +10,17 @@ import { tmpdir } from "os";
 import { join } from "path";
 
 // init shells `npx openspec --version`, `node --version`, `npm --version`
-// during prerequisites — stub execFileSync so hermetic runs don't depend on PATH.
-vi.mock("child_process", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("child_process")>();
-  return {
-    ...actual,
-    execFileSync: vi.fn((file: string, args: string[]) => {
-      if (file === "npx" && args[0] === "openspec") return "1.11.0";
-      if (file === "node") return "v22.0.0";
-      if (file === "npm") return "10.0.0";
-      throw new Error(`unexpected execFileSync: ${file}`);
-    }),
-  };
-});
+// during prerequisites — stub the command wrapper so hermetic runs don't depend on PATH.
+vi.mock("../../src/shared/exec.js", () => ({
+  execFileAsync: vi.fn(),
+  execFileSync: vi.fn((file: string, args: string[]) => {
+    if (file === "npx" && args[0] === "openspec") return "1.11.0";
+    if (file === "node") return "v22.0.0";
+    if (file === "npm") return "10.0.0";
+    throw new Error(`unexpected execFileSync: ${file}`);
+  }),
+  spawnSync: vi.fn(),
+}));
 
 import { init } from "../../src/commands/init.js";
 

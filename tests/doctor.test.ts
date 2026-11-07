@@ -138,11 +138,11 @@ describe("doctor check logic", () => {
   });
 });
 
-// ─── npx detection: execFile migration ────────────────────────────────────
-// Guards the Windows-safe form of `npx playwright --version`.
+// ─── command execution: shared/exec wrapper ───────────────────────────────
+// Guards that doctor uses the cross-spawn wrapper, never shell: true.
 
-describe("doctor.ts: all child_process calls use execFileSync with shell: needsShell", () => {
-  it("no execSync imports or calls remain", async () => {
+describe("doctor.ts: commands use shared/exec wrapper", () => {
+  it("imports the wrapper and no shell option remains", async () => {
     const { readFileSync } = await import("fs");
     const { fileURLToPath } = await import("url");
     const { join } = await import("path");
@@ -157,9 +157,9 @@ describe("doctor.ts: all child_process calls use execFileSync with shell: needsS
     expect(src).not.toMatch(/execSync/);
     // No shell string calls
     expect(src).not.toMatch(/execFileSync\([^)]*"[^"]* --/);
-    // All execFileSync calls use shell: needsShell
-    const callsWithShell = (src.match(/execFileSync\s*\(\s*"[^"]+",\s*\[[^\]]+\],\s*\{[^}]*shell: needsShell/g) || []).length;
-    expect(callsWithShell).toBeGreaterThanOrEqual(3);
+    // Commands go through the cross-spawn wrapper
+    expect(src).toMatch(/from "\.\.\/shared\/exec\.js"/);
+    expect(src).not.toMatch(/shell:\s*needsShell/);
   });
 });
 

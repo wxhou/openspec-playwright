@@ -1,8 +1,8 @@
-import { execFileSync } from "child_process";
 import { existsSync } from "fs";
 import { join } from "path";
 import { detectAdapters } from "../commands/editors.js";
 import { isMcpInstalled } from "./mcp.js";
+import { execFileSync } from "./exec.js";
 /** MCP server name codegraph registers into agents (`mcpServers` key). */
 const CODEGRAPH_MCP_SERVER = "codegraph";
 export function detectCodeGraphStatus(projectRoot, homeDir) {

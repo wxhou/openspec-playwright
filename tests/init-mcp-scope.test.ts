@@ -4,10 +4,12 @@ import { tmpdir } from "os";
 import { join } from "path";
 
 // Isolate the claude CLI so init runs MCP phase without a real `claude` binary.
-vi.mock("node:child_process", () => ({
+vi.mock("../src/shared/exec.js", () => ({
+  execFileAsync: vi.fn(),
   execFileSync: vi.fn(),
+  spawnSync: vi.fn(),
 }));
-import { execFileSync } from "node:child_process";
+import { execFileSync } from "../src/shared/exec.js";
 import { init } from "../src/commands/init.js";
 
 const mockedExecFileSync = vi.mocked(execFileSync);

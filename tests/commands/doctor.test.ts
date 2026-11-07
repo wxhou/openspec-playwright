@@ -7,9 +7,11 @@ const realFs = await vi.importActual<typeof import("node:fs")>("node:fs");
 const mkdtempSync = realFs.mkdtempSync;
 const rmSync = realFs.rmSync;
 
-// Mock child_process.execFileSync
-vi.mock("child_process", () => ({
+// Mock shared/exec command wrapper
+vi.mock("../../src/shared/exec.js", () => ({
+  execFileAsync: vi.fn(),
   execFileSync: vi.fn(),
+  spawnSync: vi.fn(),
 }));
 
 // Mock fs modules
@@ -51,7 +53,7 @@ vi.mock("../../src/shared/drift.js", async (importOriginal) => {
   };
 });
 
-import { execFileSync } from "child_process";
+import { execFileSync } from "../../src/shared/exec.js";
 import { readFileSync, existsSync, readdirSync, lstatSync } from "fs";
 import { claudeAdapter, detectAdapters, minimaxAdapter } from "../../src/commands/editors.js";
 import { detectCodeGraphStatus } from "../../src/shared/index.js";
@@ -274,7 +276,7 @@ describe("doctor check logic", () => {
 
 describe("doctor CodeGraph category", () => {
   const detectMock = vi.mocked(detectCodeGraphStatus);
-  const execMock = vi.mocked(execFileSync);
+  const execMock = vi.mocked(execFileSync) as unknown as ReturnType<typeof vi.fn>;
   const existsMock = vi.mocked(existsSync);
   const readdirMock = vi.mocked(readdirSync);
   const readFileMock = vi.mocked(readFileSync);
@@ -549,7 +551,7 @@ describe("doctor integration: test-runner + playwright-cli checks", () => {
 // ─── Tests: doctor storage-state integrity check (e2e-mcp-tool-routing) ─────
 
 describe("doctor storage-state check", () => {
-  const execMock = vi.mocked(execFileSync);
+  const execMock = vi.mocked(execFileSync) as unknown as ReturnType<typeof vi.fn>;
   const existsMock = vi.mocked(existsSync);
   const readdirMock = vi.mocked(readdirSync);
   const readFileMock = vi.mocked(readFileSync);
@@ -727,7 +729,7 @@ describe("doctor storage-state check", () => {
 // ─── doctor authorization tiers (scope-editor-writes) ───────────────────────
 
 describe("doctor authorization tiers", () => {
-  const execMock = vi.mocked(execFileSync);
+  const execMock = vi.mocked(execFileSync) as unknown as ReturnType<typeof vi.fn>;
   const existsMock = vi.mocked(existsSync);
   const readdirMock = vi.mocked(readdirSync);
   const readFileMock = vi.mocked(readFileSync);
@@ -986,7 +988,7 @@ describe("doctor authorization tiers", () => {
 // ─── doctor lint probes (lint-guidelines capability) ────────────────────────
 
 describe("doctor lint probes", () => {
-  const execLintMock = vi.mocked(execFileSync);
+  const execLintMock = vi.mocked(execFileSync) as unknown as ReturnType<typeof vi.fn>;
   const existsLintMock = vi.mocked(existsSync);
   const readFileLintMock = vi.mocked(readFileSync);
   const readdirLintMock = vi.mocked(readdirSync);
@@ -1281,7 +1283,7 @@ describe("doctor lint probes", () => {
 // ─── MiniMax Code: generic editor reporting only ──────────────────────────
 
 describe("doctor MiniMax Code reporting", () => {
-  const execMock = vi.mocked(execFileSync);
+  const execMock = vi.mocked(execFileSync) as unknown as ReturnType<typeof vi.fn>;
   const existsMock = vi.mocked(existsSync);
   const readdirMock = vi.mocked(readdirSync);
   const readFileMock = vi.mocked(readFileSync);

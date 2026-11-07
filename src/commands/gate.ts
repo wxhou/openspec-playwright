@@ -9,12 +9,12 @@
  * ambiguous change). Callers use that split to choose between "fix the code"
  * and "fix the environment".
  */
-import { spawnSync } from "child_process";
 import { createHash } from "crypto";
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, mkdirSync } from "fs";
 import { dirname, join, relative } from "path";
 import { fileURLToPath } from "url";
 import { parseTimeoutIncreases } from "./flake.js";
+import { spawnSync } from "../shared/exec.js";
 
 // ─── Types ───────────────────────────────────────────────────────────────
 
@@ -298,8 +298,6 @@ export const defaultExecutor: Executor = (cmd, args, opts) => {
     timeout: opts.timeoutMs,
     encoding: "utf-8",
     stdio: ["ignore", "pipe", "pipe"],
-    // Windows resolves npm/npx through .cmd shims, which need a shell.
-    shell: process.platform === "win32",
   });
   if (res.error) {
     const err = res.error as NodeJS.ErrnoException;

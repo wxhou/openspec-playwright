@@ -1,8 +1,8 @@
 import { readFileSync, existsSync } from "fs";
-import { spawnSync } from "child_process";
 import { join, relative } from "path";
 import chalk from "chalk";
 import { SHARED_FILE_NAMES } from "../shared/index.js";
+import { spawnSync } from "../shared/exec.js";
 import { collectSpecFiles } from "./coverage.js";
 
 // ─── Types ────────────────────────────────────────────────────────────

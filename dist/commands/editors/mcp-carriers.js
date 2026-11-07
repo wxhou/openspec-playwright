@@ -11,12 +11,11 @@
  *   - claude-cli        → read the project `.mcp.json`, write via the CLI
  *   - opencode-json     → exclusive `opencode.json(c)` (`mcp.<server>`)
  */
-import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { applyEdits, findNodeAtLocation, getNodeValue, modify, parseTree as parseJsonc, } from "jsonc-parser";
 import { TIMEOUT } from "../../shared/constants.js";
-import { needsShell } from "../../shared/platform.js";
+import { execFileSync } from "../../shared/exec.js";
 import { installMcpServerInFile, isMcpServerInFile, removeMcpServerFromFile, } from "./shared.js";
 const noop = () => { };
 export function buildMcpRuntime(spec) {
@@ -56,7 +55,6 @@ export function buildMcpRuntime(spec) {
                         encoding: "utf-8",
                         timeout: TIMEOUT.MCP_LIST,
                         stdio: ["pipe", "pipe", "pipe"],
-                        shell: needsShell,
                     });
                 },
                 removeMcp(_root, serverName) {
@@ -64,7 +62,6 @@ export function buildMcpRuntime(spec) {
                         encoding: "utf-8",
                         timeout: TIMEOUT.MCP_LIST,
                         stdio: ["pipe", "pipe", "pipe"],
-                        shell: needsShell,
                     });
                 },
             };

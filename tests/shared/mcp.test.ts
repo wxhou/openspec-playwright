@@ -3,12 +3,14 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync } from "fs"
 import { tmpdir } from "os";
 import { join } from "path";
 
-// Mock child_process.execFileSync so claude CLI calls never run for real.
-vi.mock("child_process", () => ({
+// Mock the command wrapper so claude CLI calls never run for real.
+vi.mock("../../src/shared/exec.js", () => ({
+  execFileAsync: vi.fn(),
   execFileSync: vi.fn(),
+  spawnSync: vi.fn(),
 }));
 
-import { execFileSync } from "child_process";
+import { execFileSync } from "../../src/shared/exec.js";
 import {
   claudeAdapter,
   clineAdapter,

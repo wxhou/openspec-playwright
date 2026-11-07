@@ -5,9 +5,11 @@ import { join } from "path";
 // importActual (vitest aliases node:fs onto the same mock).
 const realFs = await vi.importActual<typeof import("node:fs")>("node:fs");
 
-// Mock child_process.execFileSync
-vi.mock("child_process", () => ({
+// Mock shared/exec command wrapper
+vi.mock("../../src/shared/exec.js", () => ({
+  execFileAsync: vi.fn(),
   execFileSync: vi.fn(),
+  spawnSync: vi.fn(),
 }));
 
 // Mock fs modules
@@ -44,7 +46,7 @@ vi.mock("../../src/shared/drift.js", async (importOriginal) => {
   };
 });
 
-import { execFileSync } from "child_process";
+import { execFileSync } from "../../src/shared/exec.js";
 import { readFileSync, existsSync, readdirSync, lstatSync } from "fs";
 import { claudeAdapter, detectAdapters } from "../../src/commands/editors.js";
 import { detectCodeGraphStatus } from "../../src/shared/index.js";
@@ -54,7 +56,7 @@ import { doctor } from "../../src/commands/doctor.js";
 // doctor.test.ts stays under the CI 1500-line gate by hosting them here.
 
 describe("doctor lint semantic probes", () => {
-  const execLintMock = vi.mocked(execFileSync);
+  const execLintMock = vi.mocked(execFileSync) as unknown as ReturnType<typeof vi.fn>;
   const existsLintMock = vi.mocked(existsSync);
   const readFileLintMock = vi.mocked(readFileSync);
   const readdirLintMock = vi.mocked(readdirSync);

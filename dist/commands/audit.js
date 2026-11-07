@@ -1,8 +1,8 @@
-import { execFileSync } from "child_process";
 import { existsSync, readdirSync, readFileSync, } from "fs";
 import { join, sep as pathSep } from "path";
 import chalk from "chalk";
-import { SHARED_FILE_NAMES, TIMEOUT, needsShell, detectAppServer } from "../shared/index.js";
+import { SHARED_FILE_NAMES, TIMEOUT, detectAppServer } from "../shared/index.js";
+import { execFileSync } from "../shared/exec.js";
 export async function audit(opts) {
     const projectRoot = process.cwd();
     const testsDir = join(projectRoot, "tests", "playwright");
@@ -375,7 +375,7 @@ export async function getSitemapRoutes(projectRoot) {
 }
 async function getChangeNames(projectRoot) {
     try {
-        const result = execFileSync("npx", ["openspec", "list", "--json"], { shell: needsShell,
+        const result = execFileSync("npx", ["openspec", "list", "--json"], {
             cwd: projectRoot,
             encoding: "utf-8",
             timeout: TIMEOUT.OPENSPEC_LIST,
