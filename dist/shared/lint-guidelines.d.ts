@@ -3,7 +3,7 @@ export interface LintRuleEntry {
     id: string;
     /** Linter that owns the rule. */
     tool: "ESLint" | "ruff" | "pylint";
-    /** What shape of swallowed failure fires the rule. */
+    /** What shape the rule fires on. */
     semantics: string;
     /** Enabled by the linter's default rule set (no config needed). */
     defaultOn: boolean;

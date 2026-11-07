@@ -1,5 +1,7 @@
 /**
- * Swallow-error clause → lint rule checklist data (lint-guidelines capability).
+ * Employee-standards clauses → lint rule checklist data (lint-guidelines
+ * capability). Two clause families are covered: the swallow-error clause and
+ * the docstring-existence half of the comment clause.
  * Single source of truth for rule ids; templates/lint-guidelines.md is paired
  * with this data and pinned by a checksum test (docs-sync pattern: drift is a
  * CI failure, both sides update in the same commit).
@@ -22,7 +24,7 @@ export interface LintRuleEntry {
   id: string;
   /** Linter that owns the rule. */
   tool: "ESLint" | "ruff" | "pylint";
-  /** What shape of swallowed failure fires the rule. */
+  /** What shape the rule fires on. */
   semantics: string;
   /** Enabled by the linter's default rule set (no config needed). */
   defaultOn: boolean;
@@ -64,7 +66,7 @@ export const LINT_GUIDELINE_RULES: LintRuleEntry[] = [
     tool: "ruff",
     semantics: "blind `except Exception` / `except BaseException`",
     defaultOn: true,
-    scope: "not flagged when the handler logs with exc_info enabled (logged-exempt).",
+    scope: "re-raised exceptions and handlers logging with exc_info enabled are exempt (logged-exempt).",
   },
   {
     id: "B904",
@@ -91,6 +93,62 @@ export const LINT_GUIDELINE_RULES: LintRuleEntry[] = [
     id: "W0707",
     tool: "pylint",
     semantics: "raise-missing-from (dropped causality)",
+    defaultOn: true,
+    scope: "pylint's default rule set; disabled only by project config",
+  },
+  {
+    id: "D100",
+    tool: "ruff",
+    semantics: "public module without a docstring",
+    defaultOn: false,
+    scope: "opt-in via extend-select of the rule id (or the `D` pydocstyle category); the docstring's content is not checked",
+  },
+  {
+    id: "D101",
+    tool: "ruff",
+    semantics: "public class without a docstring",
+    defaultOn: false,
+    scope: "opt-in via extend-select of the rule id; the docstring's content is not checked",
+  },
+  {
+    id: "D102",
+    tool: "ruff",
+    semantics: "public method without a docstring",
+    defaultOn: false,
+    scope: "opt-in via extend-select of the rule id; underscore-prefixed names are exempt",
+  },
+  {
+    id: "D103",
+    tool: "ruff",
+    semantics: "public function without a docstring",
+    defaultOn: false,
+    scope: "opt-in via extend-select of the rule id; underscore-prefixed names are exempt",
+  },
+  {
+    id: "jsdoc/require-jsdoc",
+    tool: "ESLint",
+    semantics: "function declaration without a JSDoc block",
+    defaultOn: false,
+    scope: "needs eslint-plugin-jsdoc registered (not part of `@eslint/js`); default require checks FunctionDeclaration only; classes, methods and arrow functions are opt-in; use publicOnly/contexts to scope to exports; content rules are separate rules",
+  },
+  {
+    id: "C0114",
+    tool: "pylint",
+    semantics: "missing-module-docstring",
+    defaultOn: true,
+    scope: "pylint's default rule set; disabled only by project config",
+  },
+  {
+    id: "C0115",
+    tool: "pylint",
+    semantics: "missing-class-docstring",
+    defaultOn: true,
+    scope: "pylint's default rule set; disabled only by project config",
+  },
+  {
+    id: "C0116",
+    tool: "pylint",
+    semantics: "missing-function-docstring",
     defaultOn: true,
     scope: "pylint's default rule set; disabled only by project config",
   },

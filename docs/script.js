@@ -13,29 +13,22 @@ const CLAUDE_MD_ZH = `# 项目规范
 
 ## 代码质量
 - 🔴 **lint+typecheck 每次编辑后自动执行，通过才算成功**
-  - 按本次编辑涉及的扩展名逐一选 gate（可多语言并存）：\`.ts\`/\`.tsx\`→ESLint+tsc、\`.js\`/\`.jsx\`→ESLint、\`.py\`→ruff+mypy、\`.go\`→gofmt+vet；项目 lint 脚本未覆盖该路径时，直接对改动文件跑对应 linter
-  - lint 失败时对本次触及的文件运行对应 linter 的 auto-fix（如 \`npm run lint:fix\`、\`eslint --fix\`、\`ruff check --fix\`）；\`ruff format\`/\`gofmt\` 只解决格式、\`go vet\` 无 auto-fix，不充当 lint 修复；修复循环最多 2 轮，仍失败即停
+  - 按本次编辑涉及的文件类型选对应 linter 与 type checker（可多语言并存）；项目 lint 脚本未覆盖该路径时，直接对改动文件跑对应 linter
+  - lint 失败时对本次触及的文件运行对应 linter 的 auto-fix（如 \`npm run lint:fix\`、\`eslint --fix\`、\`ruff check --fix\`）；修复循环最多 2 轮，仍失败即停
 - 🟡 gate 异常不造假：linter/typechecker 不存在（如该栈适用）→ 告知用户并建议安装，装上之前每次编辑后对改动自查并在响应中注明结果，重点：import 顶置纪律见工具节；检查未运行 → 标注「未运行」；仍失败 → 完整输出错误日志并停止
-- 🟡 关键假设（外部数据源/接口、环境可运行、依赖版本、已装依赖能力）动手前逐条验证——断言现成依赖缺少某能力、或准备自行实现该能力前，先查其文档、类型定义或已装源码（按已装版本）；无法确认 → 不自行实现，先提问；其余理解不清或有可见风险 → 先提问再执行。多解释则全列，更简单方案提出并坚持——用户已否决 → 按用户方案执行，不再重提
-- 🟡 多步任务每步带验证（\`1. [Step] → verify: [check]\`），循环验证直到成功（同一验证连续 2 次未过 → 记录失败并停，停前用一句话写出两次尝试共同依赖的假设，改掉该假设之前不再重试）
-- 🟡 只写被要求的：不加用户未要求的扩展点（"灵活"/"可配置"之类，不限词面）、单次使用抽象，不主动为想象中的场景写防御；自己新写的 200 行能 50 行则重写
-- 🟡 怀疑竞态或信任边界上存在极端情况、但尚无复现、事故记录或项目内威胁模型时，先向用户说明并取得明确同意：
-  - 说明什么：具体失败模式（触发条件+后果+现有防护不足）、概率量级与依据（无数据时标明为估计）、复杂度代价（实现/运行时/运维/新依赖）
-  - 同意前不加：未取得同意或用户不可达 → 不添加并报告
-  - 必需（本就应存在，无须买断）：已有威胁模型/合规要求/复现证据或该栈基线安全实践（如参数化查询、输出编码、CSRF 防护）；例外与去留按「简化有边界」，架构方向按「大规模任务」节
+- 🟡 关键假设（外部数据源/接口、环境可运行、依赖版本、已装依赖能力）动手前逐条验证——断言现成依赖缺少某能力、或准备自行实现该能力前，先查其文档、类型定义或已装源码（按已装版本）；无法确认 → 不自行实现，先提问；其余理解不清或有可见风险 → 先提问再执行。更简单方案提出并坚持——用户已否决 → 按用户方案执行，不再重提
+- 🟡 多步任务每步带验证，循环验证直到成功（同一验证最多 2 轮修复，仍失败 → 记录失败并停，停前用一句话写出各次尝试共同依赖的假设，改掉该假设之前不再重试）
+- 🟡 只写被要求的：不加用户未要求的扩展点（"灵活"/"可配置"之类，不限词面）、单次使用抽象，不主动为想象中的场景写防御
+- 🟡 疑似竞态或信任边界的极端情况，若无复现、事故记录、项目威胁模型或合规要求 → 先说明再动手：给出失败模式、量级依据、复杂度代价；未获同意或用户不可达 → 不加并报告
+  - 基线安全实践（参数化查询、输出编码、CSRF 防护）本就应存在，无须买断；例外与去留按「简化有边界」，架构方向按「大规模任务」节
 - 新增或改写的界面不写冗余文案：只保留用户明确要求或信息/操作必需的部分——不写用户未要求的介绍性/营销性文案（次级标签、副标题、逐项说明、slogan 等）；改动范围内任何文案删后信息/操作仍完整即冗余，删（用户明确要求的除外）；能用既有布局/层级消解的不加文案，不为省文案新增或重排布局元素（信息/操作必需文本与无障碍基础除外）
 - 🟡 简化有边界，永不简化掉：信任边界的输入校验、防数据丢失的错误处理、安全措施、无障碍基础、用户明确要求的东西；刻意砍角且有已知天花板的简化（全局锁、O(n²) 扫描、朴素启发式）用 \`debt:\` 注释标明天花板和升级路径——debt 只属性能取舍，不豁免性能节已标 🔴 的无界类禁令与正确性/安全措施
 - 🔴 过时的直接删（过时=因本次改动而不再被引用或不再为真）：删除/修改时不留兼容层/迁移/fallback（仅限本次触及的范围）；与「保持既有测试通过」冲突时按测试红的分类分流
 - 🔴 方案选型按优先级链依次判断，停在第一个成立的：要不要存在（YAGNI）→ 代码库已有可复用 → 标准库 → 平台原生特性 → 已装依赖 → 成熟有人维护的库 → 自己实现——没有明确理由不从零发明；确需自实现，同类问题优先采用经成熟产品验证的既有模式
 - 🔴 引入新依赖前先实查该生态的包注册源——AI 会幻觉包名（抢注攻击）；该生态有安装期脚本时（如 npm postinstall）再检查：下载并执行外部内容、包名与惯用名高度相似 → 可疑即弃
-- 🟡 精准改动：只改必要的，每一行都应能直接追溯到用户的请求；不"改进"相邻的代码/注释/格式，不重构没坏的东西；改完清理自己造成的垃圾（未使用的 import/export/prop/console.log 等；清理与重构分开提交）。匹配现有风格
+- 🟡 精准改动：只改必要的，每一行都应能直接追溯到用户的请求；不"改进"相邻的代码/注释/格式，不重构没坏的东西；改完清理自己造成的垃圾（清理与重构分开提交）。匹配现有风格
 - 🟡 模块化与关注点分离：新增/改动的逻辑落在职责所属的模块——先复用承载同一职责的既有模块，没有才按现有目录约定新建；不因正在编辑就塞进当前文件，不塞进邻近的无关文件或万能工具（如 \`utils\`/\`helpers\`/\`common\`），不把无关职责塞进同一模块
-- 🟡 注释纪律：只写三类，其余不写
-  - 接口注释——公共接口的文档注释必须有：导出符号写一句用途，加签名表达不了的契约——单位、返回语义（None/空集合代表什么）、抛出的错误、副作用、前置条件；一行摘要为准，确有错误/单位/前置条件要列才补结构化段落。判定面用本语言惯例（Python docstring、TS 顶层导出的 JSDoc、Go 导出标识符、Rust pub 项）；私有与未导出不写
-  - 实现注释（只有 why）：约束、取舍、workaround、反直觉决策，确知原因才写，一行以内（好：\`// 上游 429 无 Retry-After，故固定重试 3 次\`；坏：\`// 重试次数\`）
-  - 机制标注不受本条约束：spec 锚、lint/类型抑制标记、来源与授权标注（见「数据编撰」节，含 \`// fake data（用户授权）\`）与 TODO(user)
-  - 一律不写：改动叙述、分步叙述、对已删代码的引用、注释掉的代码、实现注释里复述代码字面含义、文档注释里逐参数复述签名（用户明确要求的除外）；混合句删叙述留 why
-  - 判据与自检：删掉这句会不会让读者调用错？不会 → 删；交付前自检本次新增与所改的每条注释，失效的相邻注释一并删
+- 🟡 注释纪律：实现注释只写 why——约束、取舍、workaround、反直觉决策，一行以内。公共接口必须写一句用途，加签名表达不了的契约（单位、返回语义、抛出的错误、副作用、前置条件）；文档注释的存在性交给 lint（清单见 \`lint-guidelines.md\`；未安装或该语言无对应规则 → 跳过，按本语言惯例写）。不写改动叙述、分步叙述、已删代码的引用、注释掉的代码、复述代码字面含义（用户明确要求的除外）。匹配周围代码的注释密度与命名习惯。机制标注（lint/类型抑制、来源与授权、TODO(user)、spec 锚）不属此列。判据：删掉这句，读者会不会调用错或改错？不会 → 删。
 - 🟡 代码文件行数上限 1500：本次编辑推过 1500 即违例，按职责拆分；存量已超限的报告不动，不得继续堆叠（生成/vendored 产物除外）
 - 🟡 新建或改建数据结构时，把非法组合挡在构造处（联合类型、枚举、构造参数校验），而不是散落成各使用点的 if 兜底；动态语言在构造或解析入口一次拦截；未被本次改动触及的既有结构不动
 - 🟡 会被重试、或可能中途失败的写操作做成幂等：重跑一次终态不变（不重复插入、不重复扣减）；做不到的在调用处注明不可重试，而不是默认调用方只调一次
@@ -50,40 +43,44 @@ const CLAUDE_MD_ZH = `# 项目规范
   - 降级继续（仅窄类型 catch，记 debug/warning + 行内原因）只限可承受步骤（如清理、幂等二次释放）：失败结果不被下游消费且不留不一致状态，否则直接上抛；无类型 catch 按错误类别（instanceof/错误码）分流，枚举不出就直接上抛
   - try 块只包可能失败的那一句（块越大会吞掉无关异常）；清理放 finally / defer
   - 兜底返回不算出口：宽 catch 兜底（\`except Exception: return default\`、\`.catch(()=>null)\`）、空 catch / \`except: pass\` / \`_ = err\` / \`.catch(()=>{})\` 同判吞错（记录不构成豁免）；空 catch 里加注释不算处理，行为才算；行内原因不受注释纪律黑名单约束
+  - 异步路径同理：Promise 的错误必须处理或上抛——未 await、未 catch 的 Promise 视同吞错
   - 参考：捕获/吞错规则的机器清单见根目录 \`lint-guidelines.md\`（未安装 → 跳过）
-- 不写只适配样例输入的逻辑、魔法数字（入常量；有确切依据才注原因，否则取达义常量名）、具体值断言（无验收锚定的数值，用户明确要求的除外）；路径/换行用语言内建跨平台 API（\`path.sep\`/\`path.join\`），比较前归一化 EOL
+- 不写只适配样例输入的逻辑、魔法数字（入常量；有确切依据才注原因）；路径/换行用语言内建跨平台 API（\`path.sep\`/\`path.join\`），比较前归一化 EOL
 - mock 数据/fixture → 参见数据编撰禁令
 
 ## 工具限制
 - 🔴 发现自己正在重复生成相同调用 → 立即停止，重新评估
-- 🟡 长会话接近上下文上限时，复杂任务前先压缩上下文：先把任务状态落盘（tasks.md 的「## 状态」），压缩后先读状态再继续
-- 🟡 搜索分层：结构性问题（定义/调用/影响/流）优先用项目已有的代码索引工具（如 CodeGraph；无索引或不可用 → 直接降级全文搜索）；字面文本用全文搜索；文件名模式用文件名匹配。跳过依赖目录和缓存目录（调试依赖时除外），搜子目录时按需缩小
+- 🔴 等后台任务通知期间不发占位/空调用（\`true\`、查询该任务状态的轮询等）：无事结束回合等通知，有事做事
+- 🟡 会话被压缩后先读回落盘的任务状态（tasks.md 的「## 状态」）再继续
+- 🟡 搜索先结构后文本：定义/调用/影响/流优先用代码索引（如 CodeGraph；无索引或不可用 → 全文搜索）；跳过依赖与缓存目录（调试依赖时除外）。
 - 🟡 引用作依据的文件先通读再断言；未通读就下的结论显式标注低置信，不冒充已充分验证
-- 🟡 重命名/挪动覆盖：调用、类型、字符串、import（含 CJS require）、barrel file、测试 mock、文档与配置中的同名引用，不得假设一次覆盖；抽出/搬移到其他文件时其 import 随迁；静态模块级 import 一律置文件顶部，不在代码中部补挂——豁免仅限：循环依赖、可选依赖、按需加载、运行顺序依赖（如 django.setup()），例外须行内注明缘由
+- 🟡 重命名/挪动覆盖：调用、类型、字符串、import（含 CJS require）、barrel file、测试 mock、文档与配置中的同名引用，不得假设一次覆盖；抽出/搬移到其他文件时其 import 随迁；静态模块级 import 一律置文件顶部——豁免仅限：循环依赖、可选依赖、按需加载、运行顺序依赖（如 django.setup()），例外须行内注明缘由
 - 🟡 编辑 → 重新读取确认 → lint+typecheck（含 auto-fix 循环）→ 仍失败则回退到编辑前内容，输出失败日志并明示已回退
-- 🟡 变更完成告知用户可能遗漏并需人工复查的区域（仅基于实际触及的公共签名/类型/配置；不编造风险清单）
+- 🟡 变更完成只报已验证的盲点（实际触及却未验证的部分，如没跑过 gate 的改动），不报猜测的风险清单
 - 🔴 禁止用经 shell 就地或重定向改写已有文件的命令（\`sed -i\`/awk/\`node -e\`/python -c/\`perl -pi\`/重定向等；不改文件内容的纯管道查询不计）改写项目内已有文件——源码/文档/测试/配置同算；确需批量改写，先征得用户同意
 - 🔴 破坏性/不可逆命令（\`git clean -fdx\`、\`git reset --hard\`、\`rm -rf\` 等）执行前声明影响范围并取得明确同意；本任务自有临时产物清理除外；「清理/重置」等宽泛指令不构成授权
 - 🟡 不主动推送，除非用户明确要求
-- 可用不改语义的格式化工具（\`ruff format\`/\`prettier\`/\`gofmt\`），仅限本次编辑触及的文件；重排会触及未改动行时须用户同意并单独提交
+- 格式化工具（\`ruff format\`/\`prettier\`/\`gofmt\`）可用但不充当 lint 修复（\`go vet\` 无 auto-fix），仅限本次编辑触及的文件；重排会触及未改动行时须用户同意并单独提交
 - 🔴 密钥与 \`.env\`（含 .env.* 变体；\`.env.example\` 除外）不入版本控制。示例用占位符（如 \`YOUR_API_KEY\`）。调试日志不打印凭据
 
 ## 大规模任务
-- 🔴 300+ 行且跨多个文件的修改，或架构级变更（如新增服务/API 契约/数据模型重构，非穷举）必须走 OpenSpec 提案流程，禁止直接修改；命中 → 停下建议用户运行该流程（单文件修改不因行数单独触发）
-- 🟡 执行中发现走偏（方案不成立、前提变化、验证反复失败）或转场检查不通过（失败、需求歧义、写入超出声明范围、同一失败修复超 2 轮）→ 立即停下重新评估并汇报；同一会话的「继续」从停下阶段续跑，跨会话需重新表达完成意图；修复预算按同一失败计（不同失败分别计），e2e heal 用模板自身预算
+- 🔴 跨多个文件的代码修改（纯文档、注释、格式除外），或架构级变更（如新增服务/API 契约/数据模型重构，非穷举）必须走 OpenSpec 提案流程，禁止直接修改；命中 → 停下建议用户运行该流程（行数不作触发依据）
+- 🟡 执行中发现走偏（方案不成立、前提变化、验证反复失败）或转场检查不通过（失败、需求歧义、写入超出声明范围）→ 立即停下重新评估并汇报；同一会话的「继续」从停下阶段续跑，跨会话需重新表达完成意图；修复预算按同一失败最多 2 轮（不同失败分别计；连续 3 轮修复失败项未减少即停；e2e heal 用模板自身预算）
 
 ## 工作流参考
 - 🔴 提案范围须用户确认，AI 不得自行确认；commit/push/merge/release/archive 须用户授权，一次授权只覆盖明确指定的动作，未授权动作不得自行执行
-- 🟡 提案后自动审查两轮：第 1 轮对照目标/约束/specs 检查完整性、一致性、正确性与范围蔓延并修正；第 2 轮换独立视角复检（子代理 → 独立上下文；否则重读并输出「需求/场景 → 证据(file:line) → 结论」表，不复用上轮自评）；自修限已声明范围，不得增删需求，需增删时列入最终待确认
-- 🟡 两轮内不中途等确认；结束后逐条列出修正并请求范围确认——第 2 轮仍有阻断（目标不清/spec 冲突/不可测/范围失控）则停在提案阶段并列出，仅剩非阻断项则记录后进入确认，不加第三轮
+- 🟡 提案后审查按风险分级，总上限 2 轮：
+  - 第 1 轮（所有提案）：对抗审查——对照目标/约束/specs，检查完整性、一致性、正确性与范围蔓延并修正
+  - 第 2 轮：高风险或架构级提案换独立视角复检全部制品（子代理 → 独立上下文；否则重读并输出「需求/场景 → 证据(file:line) → 结论」表，不复用上轮自评）；普通提案在同一上下文复检修订后的制品
+  - 审查内不中途等确认；结束后列出修正并请求范围确认：仍有阻断则停在提案阶段，仅非阻断项记录后确认；自修不得增删需求，需增删时列入待确认
 - 🟡 自动链唯一触发：用户明确要求完成该变更（「实现/做到绿/走完这个变更」或 \`/opsx:apply\`）；仅确认范围不触发；无法判定是否为完成意图 → 按未触发处理，并一句话向用户确认
   - 收尾：最后一项任务勾完即在同一回合调用 \`/opsx:verify\`——跑测试或自查不等于 verify，\`opsx:apply\` 收尾的「review or verify as appropriate / 可归档」不构成跳过理由
   - 适用面：适用于任何经 \`/opsx:apply\` 的变更，不受规模门槛限制；e2e 不在自动链内，仅在用户显式调用时执行（「做到绿」不含 e2e）
   - 停止：只说「改这个」或单独调用 propose/verify/e2e 等单阶段命令 → 该阶段结束即停；不得以修改断言/期望值绕过失败
-- 🟡 verify 之后：CRITICAL → 按「同一失败最多 2 轮」的预算修复并复跑 verify；需增删范围或预算耗尽仍有 CRITICAL → 停下汇报；WARNING/SUGGESTION → 记录后交用户裁决
-- 🟡 高风险变更（公共 API/CLI 契约、数据模型/迁移、鉴权与安全、跨模块架构；不确定按高风险）在 apply 前汇报设计要点、影响面与回滚方式并等待确认
-- 🟡 仅当显式要求「自动归档」，且 tasks 全勾无 blocked、verify 无 CRITICAL、e2e（如运行）无 active App Bug 时自动；skipped 与 WARNING 列出交用户裁决；自动归档须 commit/merge 已授权完成，手动归档不受此限
-- 🟡 在 tasks.md 末尾维护「## 状态」：当前阶段、提案阶段两轮审查各记一行结论与修正项数（第 1 轮——完整性/一致性/正确性/范围蔓延；第 2 轮——独立视角复检）、最后停止原因、e2e 未运行或运行结果、待裁决项；每次停下或上下文压缩前更新
+- 🟡 verify 之后：CRITICAL → 按前述修复预算修复并复跑 verify；需增删范围或预算耗尽仍有 CRITICAL → 停下汇报；WARNING/SUGGESTION → 记录后交用户裁决
+- 🟡 高风险变更（公共 API/CLI 契约、数据模型/迁移、鉴权与安全、跨模块架构；不确定按高风险）在动手前（无论是否走提案流程）汇报设计要点、影响面与回滚方式并等待确认
+- 🟡 仅当用户明确要求「自动归档」，且 tasks 全勾无 blocked、verify 无 CRITICAL、e2e（如运行）无 active App Bug、commit/merge 已授权并完成时才自动执行；skipped 与 WARNING 列出交用户裁决；手动归档不受此限
+- 🟡 在 tasks.md 末尾维护「## 状态」：当前阶段、提案审查结论、最后停止原因、e2e 未运行或运行结果、待裁决项；每次停下或上下文压缩前更新
 - 🟡 本节优先于 OpenSpec skill 的阶段收尾建议：技能收尾语不改变本节的阶段边界；人工保留点（如高风险设计确认）与停止条件不变
 
 ## 数据编撰
@@ -99,28 +96,28 @@ const CLAUDE_MD_ZH = `# 项目规范
 ## 临时文件管理
 - 🟡 非源码临时文件（截图、日志、heapdump 等）放仓库根 \`tmp/\` 下（临时=本次验证/调试产生、任务结束即无用；测试数据按项目 fixtures 惯例存放），文件名含时间戳（如 \`screenshot-20260721T143000.png\`）
 - 🔴 禁止将临时文件提交到版本控制（确保 \`.gitignore\` 含 \`tmp/\`；已跟踪的历史文件先 \`git rm --cached\`）；用户名下或来历不明的可疑文件报告请示、不自行删
-- 超 24h 的临时文件在 commit 前删除——仅限 \`tmp/\` 下本次任务产生的临时产物
 
 ## 测试与验证策略
 - 🟡 测试只随验收存在：验收条款（规范 requirement / change 完成条 / 任务验收标准）或用户在会话中明确要求，点名才写；未点名的有价值场景（业务核心计算/状态转换、边界与错误路径、被多处复用的工具、修过 bug 的回归）→ 提议用户（收尾汇总一次提出），不静默略过；一个行为一组断言
 - 🔴 保持现有测试通过；红了先分类——行为本次有意变更（重构不算：重构只改结构，红即改坏）→ 更新断言；行为本次已删 → 专属测试随之删除并列明；范围外红测 → 报告不动；不得据本节 DO NOT 或「代码质量」节简化条款跳过/删除既有测试
 - 🟡 测试断言与实现的分歧先裁定谁错（spec 还是实现——矛盾本身是发现）；拿不准停下问用户，不单方面弱化断言把两边凑绿
 - 🟡 测试钉住行为，不钉实现：断言可观察结果（返回值、输出、状态变化、对外调用），不断言内部结构（私有方法与字段、调用顺序、内部状态名）；判据：重构实现而行为不变时，测试不该需要改动
-- 🟡 测试自足且确定：不依赖真实时钟、网络、执行顺序或共享可变状态；等待用条件轮询，不用固定 sleep；同一测试连跑两次结果一致，跑不了的报告里标明（需要真实依赖的验证按后端/服务条走）
+- 🟡 测试自足且确定：不依赖真实时钟、网络、执行顺序或共享可变状态；等待用条件轮询，不用固定 sleep，跑不了的报告里标明（需要真实依赖的验证按后端/服务条走）
 - 🔴 验收条款点名的行为必须被某层测试覆盖（单测或验收测试，一层即可）；点名项若落本节任一 DO NOT 条款（如纯透传、同义反复断言），停下向用户裁决——不静默写，也不静默不写
 - 🟡 后端/服务的验证对真实运行的服务发真实请求（真实数据/依赖，遵守数据编撰节；写操作限测试/预发环境，无隔离环境先问用户）；是否落成测试按本节第一条的点名标准判断
-- 🟡 按点名写测试时，点名行为在该层覆盖不到才抽 UI 可测客户端逻辑（自定义 hook / 组合式函数 / 纯函数）为独立单元测；改了用户可见可交互的东西 → 浏览器验证；纯逻辑 → 证据验证，不开浏览器
-- 🟡 修复类任务先复现后修复：复现先落成一个会失败的测试（可自动化的前提下；无法用测试表达时用截图或测量并说明），完成前后各重现 bug 一次（修前 = 证明它存在，且失败来自预期的那条断言；修后 = 证明它消失）；同法 ≥2 次未复现 → 以已试次数与现有证据回报并停下，等用户提供复现条件，或经用户明示授权后按分析修复；不宣称已验证
-- 🟡 验收期望锚定验收标准写「预期 X，实测 Y」（期望编造禁令见数据编撰节）
+- 🟡 按点名写测试时，该层覆盖不到才抽 UI 客户端逻辑（hook/组合式函数/纯函数）为独立单元测；用户可见交互 → 浏览器验证；纯逻辑 → 证据验证，不开浏览器
+- 🟡 修复类任务先复现后修复：复现先落成一个会失败的测试（可自动化的前提下；无法用测试表达时用截图或测量并说明），完成前后各重现 bug 一次（修前 = 证明它存在，且失败来自预期的那条断言；修后 = 证明它消失）；同法 ≥2 次未复现 → 以已试次数与现有证据回报并停下，等用户提供复现条件，或经用户明示授权后按分析修复
+- 🟡 验收期望锚定验收标准写「预期 X，实测 Y」，不得从实现反推（期望编造禁令见数据编撰节）
 - 🟡 验证证据取自本次运行：证据=实际跑的命令与输出，不编造、不复用旧证据；先核对加载的是本次产物（清缓存/停用 Service Worker/核 hash）；权限类必须真实登录态=以真实凭据过登录流程（UI 登录或 API 登录取回），构造/硬编码 token 一律算注入；多角色各角色单独登录
-- 🔴 禁止生成无行为断言的 UI 组件测试：渲染冒烟、快照、纯存在断言一律不写；行为级组件测试按本节点名标准判断，不因「不是 E2E」而排除
+- 🟡 验证不止于跑测试：另查跨组件共享状态与不变量、有无硬编码或预置输出绕过真实实现——单测全绿而组合行为崩掉是常见形态
 - 🔴 仅截图不算通过——交互必须验证结果（点击后的状态/跳转/渲染），断言只作辅助证据；样式类改动（无行为变化）核对渲染截图并呈现给用户即可
-- 🔴 无断言价值的测试一律不写，点名不豁免：纯透传、getter/样板、类型系统已保证的行为、期望从实现反推的同义反复断言、只断言 mock 拓扑而非可观察行为；最省事的检验：把该测试依赖的返回值改成空/null，测试仍过 → 判为无断言价值
+- 🔴 无断言价值的测试一律不写，点名不豁免：纯透传、getter/样板、类型系统已保证的行为、只断言 mock 拓扑而非可观察行为；检验：把该测试依赖的返回值改成空/null，测试仍过 → 判为无断言价值
+  - UI 渲染冒烟/快照/纯存在断言同判；行为级组件测试按本节点名标准判断，不因「不是 E2E」排除。
 
 ## 性能与资源边界
 - 🟡 写处理运行时数据的代码（查询、文件、网络、并发、大批量集合遍历——含测试造数与测试并发；造数能否写先过数据编撰节，本条只管规模）前先确认量级（预期行数/文件大小/并发度）：openspec/config.yaml 有记录则以它为准；未知且会改变实现结构（分页/分批/索引）→ 问用户，其余默认流式
-- 🟡 集合内查找用哈希结构（Map/Set/dict）；CPU 密集任务分片或移入后台（worker/子进程），不阻塞主线程/事件循环
 - 🔴 禁止无界读取进内存：整文件读入、无 LIMIT 全表查询、全量结果攒齐再处理——除非已有确认的上界（openspec/config.yaml 记录或用户确认）且单次驻留明显低于可用内存（仅知道当前大小不算确认，拿不准 → 流式）；大数据一律流式/分批（数据侧：流/游标/分页/chunk；展示侧：分页/虚拟列表），单批大小显式设定
+- 🔴 禁止无超时的外部调用：网络请求必须带明确超时，否则挂死等同无界等待
 - 🔴 禁止无界并发：大批量任务不限并发度地一次性发起、无上限开连接/进程/线程——并发池/信号量显式限流
 - 🟡 循环内 I/O 须批量化（N+1 查询、循环内发请求/写文件；流式分块写不算"攒齐"，错误日志保留、聚合输出）
 - 🟡 不写随输入增长的无界缓存（无上限、无淘汰的累积结构）`; // spec-embed:zh
@@ -139,29 +136,22 @@ const CLAUDE_MD_EN = `# Project Guidelines
 
 ## Code Quality
 - 🔴 **lint+typecheck runs after every edit, both must pass**
-  - Pick gates per extension touched by this edit (multiple may apply): \`.ts\`/\`.tsx\`→ESLint+tsc, \`.js\`/\`.jsx\`→ESLint, \`.py\`→ruff+mypy, \`.go\`→gofmt+vet; when the project's lint script doesn't cover that path, run the matching linter directly on the changed files
-  - On lint failure, run the linter's auto-fix on touched files only (e.g. \`npm run lint:fix\`, \`eslint --fix\`, \`ruff check --fix\`); \`ruff format\`/\`gofmt\` only handle formatting and \`go vet\` has no auto-fix, none of them counts as a lint fix; the fix loop runs at most 2 rounds — still failing, stop
+  - Pick the linter and type checker matching the file types touched by this edit (multiple may apply); when the project's lint script doesn't cover that path, run the matching linter directly on the changed files
+  - On lint failure, run the linter's auto-fix on touched files only (e.g. \`npm run lint:fix\`, \`eslint --fix\`, \`ruff check --fix\`); the fix loop runs at most 2 rounds — still failing, stop
 - 🟡 Gate anomalies are never faked: linter/typechecker missing (if applicable to the stack) → tell the user and suggest installing; until then, self-check the changes after every edit and note the result in the reply, focus: import discipline (see Tool Constraints); unexecuted checks are explicitly marked "not run"; still failing → output the full error log and stop
-- 🟡 Verify key assumptions before coding (external data sources & API fields, runnable environment, dependency availability, and whether an installed dependency provides a capability) — before asserting an installed dependency lacks a capability, or preparing to implement that capability yourself, check its documentation, type definitions, or installed source for the installed version; if you cannot confirm → do not hand-roll it, ask first; otherwise, if unclear or risks are visible → ask before acting. Present all interpretations; suggest simpler approaches and insist — if already rejected, follow the user's plan, don't re-raise
-- 🟡 Multi-step tasks: verify every step (\`1. [Step] → verify: [check]\`), loop until verified (same check failing twice in a row → record the failure and stop; before stopping, state in one sentence the assumption both attempts relied on — no further retry until that assumption changes)
-- 🟡 Write only what's requested: no un-requested extension points (flexibility/configurability — wording aside), no single-use abstractions, no proactive defensive code for imagined scenarios; rewrite your own new code if 200 lines can be 50
-- 🟡 When you suspect an extreme case on a race or trust boundary but have no reproduction, incident record, or in-project threat model, first explain to the user and get explicit consent:
-  - What to state: the concrete failure mode (trigger conditions + consequence + why existing protections fall short), the probability magnitude and its basis (state it as an estimate when no data exists), the complexity cost (implementation/runtime/operations/new dependencies)
-  - No consent, no add: without consent or if the user is unreachable → do not add it and report
-  - Required (already owed, no buy-in needed): an existing threat model, compliance requirement, or repro evidence, or the stack's baseline security practice, e.g. parameterized queries, output encoding, CSRF protection; exemptions and keep/remove decisions follow the simplification-boundaries rule, architecture direction by the Large-Scale Tasks section
+- 🟡 Verify key assumptions before coding (external data sources & API fields, runnable environment, dependency availability, and whether an installed dependency provides a capability) — before asserting an installed dependency lacks a capability, or preparing to implement that capability yourself, check its documentation, type definitions, or installed source for the installed version; if you cannot confirm → do not hand-roll it, ask first; otherwise, if unclear or risks are visible → ask before acting. Suggest simpler approaches and insist — if already rejected, follow the user's plan, don't re-raise
+- 🟡 Multi-step tasks: verify every step, loop until verified (same check gets at most 2 repair rounds; if it still fails → record the failure and stop; before stopping, state in one sentence the assumption every attempt relied on — no further retry until that assumption changes)
+- 🟡 Write only what's requested: no un-requested extension points (flexibility/configurability — wording aside), no single-use abstractions, no proactive defensive code for imagined scenarios
+- 🟡 When you suspect an extreme case on a race or trust boundary and have no reproduction, incident record, project threat model, or compliance requirement → explain it and get consent before acting: state the failure mode, its magnitude and basis, and the complexity cost; without consent or if the user is unreachable → do not add it and report
+  - Baseline security practice (parameterized queries, output encoding, CSRF protection) is already owed, no buy-in needed; exemptions and keep/remove decisions follow the simplification-boundaries rule, architecture direction by the Large-Scale Tasks section
 - New or rewritten interfaces carry no redundant secondary labels, subtitles, or item-by-item descriptions, and no un-requested slogans — keep only what the user explicitly requested or what information/actions require; within the scope of this change, any copy whose removal leaves information/actions intact is redundant, delete it unless the user explicitly requested that copy; resolve with existing layout/hierarchy instead of adding copy, and never add or rearrange layout elements just to save copy (text required for information/actions and accessibility basics are exempt)
 - 🟡 Simplification has boundaries, never simplify away: input validation at trust boundaries, error handling that prevents data loss, security measures, accessibility basics, anything the user explicitly asked for; deliberate corner-cutting with a known ceiling (global locks, O(n²) scans, naive heuristics) gets a \`debt:\` comment marking the ceiling and upgrade path — debt is a performance trade-off only, it never exempts the 🔴 unbounded-resource bans in the Performance section or correctness/security measures
 - 🔴 Delete obsolete code outright (obsolete = no longer referenced or no longer true because of this change): no compat layers, migrations, or fallbacks when removing/editing (within the scope of the current change only); when deadlocked with "keep existing tests passing", route through the red-test triage in the Testing section
 - 🔴 Solution selection walks the priority chain, stopping at the first that holds: should it exist at all (YAGNI) → reuse from the codebase → standard library → platform-native features → installed dependencies → mature maintained libraries → write it yourself — never invent from scratch without a clear reason; when self-implementation is required, solve similar problems with patterns proven in mature products
 - 🔴 Before adding any new dependency, verify it on that ecosystem's package registry first — LLMs hallucinate package names (squatting attacks); if that ecosystem has install-time scripts (e.g. npm postinstall), check them: lifecycle scripts that download and execute external content, or names closely imitating a common package → discard
-- 🟡 Surgical changes: touch only what's needed, every line traceable to the user's request; don't "improve" adjacent code/comments/formatting, don't refactor what isn't broken; clean up your own mess (unused imports/exports/props/console.log etc.; cleanup and refactor in separate commits). Match existing style
+- 🟡 Surgical changes: touch only what's needed, every line traceable to the user's request; don't "improve" adjacent code/comments/formatting, don't refactor what isn't broken; clean up your own mess (cleanup and refactor in separate commits). Match existing style
 - 🟡 Modularity and separation of concerns: new/changed logic belongs in the module that owns the responsibility — reuse an existing module that already carries the same responsibility first, and only create one following the existing directory conventions; never bolt it onto the current file just because you are editing it, an unrelated neighboring file, or a catch-all utility (e.g., utils/helpers/common), never pack unrelated responsibilities into the same module
-- 🟡 Comment discipline: write only three kinds, nothing else
-  - Interface comments — doc comments on the public interface are required: an exported symbol gets one purpose line plus any contract the signature cannot express — units, return semantics (what \`None\`/empty means), errors raised, side effects, preconditions; keep it to a one-line summary and add structured sections only when errors, units or preconditions genuinely need listing. Scope by language convention: docstrings on public Python modules/classes/functions/methods, JSDoc on top-level TS exports, doc comments on exported Go identifiers, \`///\` on Rust \`pub\` items; private and unexported symbols (\`_foo\`) get none
-  - Implementation comments (why only): constraints, tradeoffs, workarounds, counterintuitive decisions, only a known cause, one line max (good: \`// upstream 429s with no Retry-After header, so retry 3 times\`; bad: \`// retry count\`)
-  - Mechanism markings are exempt from this rule — spec anchors, lint/type suppression markers, source and authorization annotations (see the Data Fabrication section, including \`// fake data (user-approved)\`), and TODO(user)
-  - Never write: change narration (including differences across rounds), step narration, references to deleted code, commented-out code, literal-meaning restatements in implementation comments, and per-parameter restatements of the signature in doc comments such as \`@param x: x\` (unless the user explicitly asked); for mixed sentences strip the narration and keep the why — history belongs in git log
-  - Test and self-check: if deleting this line would not make a reader call or change the code wrongly, delete it; before delivery self-check every new or edited comment, and delete adjacent comments this change invalidated (invalidated = no longer true or no longer pointing at existing code)
+- 🟡 Comment discipline: implementation comments carry only the why — constraints, tradeoffs, workarounds, counterintuitive decisions, one line max. The public interface must carry one purpose line plus any contract the signature cannot express (units, return semantics, errors raised, side effects, preconditions); leave docstring existence to lint (checklist in \`lint-guidelines.md\`; if it is not installed, or the language has no matching rule, skip and follow that language's convention). Never write change narration, step narration, references to deleted code, commented-out code, or literal-meaning restatements (unless the user explicitly asked). Match the surrounding code's comment density and naming. Mechanism markings (lint/type suppression, source and authorization, TODO(user), spec anchors) are exempt. Test: if deleting this line would not make a reader call or change the code wrongly, delete it.
 - 🟡 Code file line limit 1500: this edit pushing a file past 1500 is a violation — split by responsibility, never extend; existing over-limit files are reported, not touched (generated/vendored artifacts exempt)
 - 🟡 When creating or reshaping data structures, make illegal combinations impossible at construction (unions, enums, constructor validation) instead of scattering if-guards across call sites. In dynamic languages, block once at the construction or parse entry point; leave existing structures untouched unless this change touches them
 - 🟡 Make write operations that may be retried or may fail midway idempotent: running twice leaves the same end state (no duplicate inserts, no double decrements). Where that is impossible, note "not retryable" at the call site instead of assuming a single call
@@ -176,40 +166,44 @@ const CLAUDE_MD_EN = `# Project Guidelines
   - Degrade and continue (narrow catch only, log at debug/warning by impact + inline reason) only for tolerable steps (e.g. cleanup, idempotent double-release): the failed result is not consumed downstream and leaves no inconsistent state, otherwise propagate; untyped catch branches on error class (instanceof/error code) — if the classes can't be enumerated, rethrow rather than guess a class or code
   - Try blocks contain only the line that can fail (a bigger block swallows unrelated exceptions); cleanup goes in finally / defer
   - Fallbacks outside those boundaries are not exits — broad-catch fallbacks (\`except Exception: return default\` / \`.catch(()=>null)\`), bare catch, \`except: pass\`, \`_ = err\`, \`.catch(()=>{})\` all count as swallowing, and logging does not exempt it; a comment inside an empty catch is not handling, the behavior is; inline reasons are exempt from the comment-discipline blacklist
+  - Async paths follow the same rule: a promise's errors must be handled or propagated — an unawaited or uncaught promise counts as swallowing
   - Reference: the machine checklist for catch/swallow rules lives in the root \`lint-guidelines.md\` (if not installed, skip this item)
-- No logic that only fits sample inputs, no magic numbers (constants; a reason comment only when grounded in fact, otherwise a meaningful name), no specific-value assertions (ones unanchored to acceptance — except values the user explicitly specifies); paths/newlines via the language's built-in cross-platform APIs (\`path.sep\`/\`path.join\`), normalize EOL before comparing
+- No logic that only fits sample inputs, no magic numbers (constants; a reason comment only when grounded in fact); paths/newlines via the language's built-in cross-platform APIs (\`path.sep\`/\`path.join\`), normalize EOL before comparing
 - Mock data / fixtures → see Data Fabrication section below
 
 ## Tool Constraints
 - 🔴 If you catch yourself generating the same call repeatedly → stop immediately, re-evaluate
-- 🟡 In long sessions near the context limit, compact context before complex tasks: persist task state first (the "## Status" section in tasks.md), re-read it after compaction, then continue
-- 🟡 Search in layers: structural queries (definitions/calls/impact/flow) prefer the project's existing code-index tool (e.g. CodeGraph; no index or unavailable → fall back to full-text search); literal text → full-text search; filename patterns → filename matching. Skip dependency and cache directories (except when debugging deps); narrow scope in subdirectories
+- 🔴 While waiting for a background task notification, send no placeholder/no-op calls (returning \`true\`, polling that task's status, etc.) — nothing to do: end the turn and wait for the notification; something to do: do it
+- 🟡 After the session is compacted, re-read the persisted task state (the "## Status" section in tasks.md) before continuing
+- 🟡 Search structure first, then text: use the code index for definitions/callers/impact/flow (e.g. CodeGraph; if absent or unavailable, fall back to full-text search); skip dependency and cache dirs (except when debugging deps).
 - 🟡 Read every file you cite as evidence end-to-end before asserting; conclusions drawn from partial reads are marked low-confidence explicitly, never presented as verified
-- 🟡 Renaming/moving must cover: calls, types, strings, imports (incl. CJS require), barrel files, test mocks, plus same-name references in docs/config — don't assume one pass covers everything; when code moves to another file its imports migrate with it; static module-level imports always sit at the file top, never added mid-file — exemptions only for: circular deps, optional deps, on-demand loading, runtime-order deps (e.g. django.setup()), annotated inline with its reason
+- 🟡 Renaming/moving must cover: calls, types, strings, imports (incl. CJS require), barrel files, test mocks, plus same-name references in docs/config — don't assume one pass covers everything; when code moves to another file its imports migrate with it; static module-level imports always sit at the file top — exemptions only for: circular deps, optional deps, on-demand loading, runtime-order deps (e.g. django.setup()), annotated inline with its reason
 - 🟡 Edit → re-read to confirm → lint+typecheck (incl. its auto-fix loop) → if still failing, roll back to pre-edit content, output the failure log, and state the rollback explicitly
-- 🟡 After changes, name areas that may be missed and need manual review — only ones actually touched (public signatures/types/config); never invent a risk list
+- 🟡 After changes, report only verified blind spots (parts actually touched but not verified, e.g. edits without a gate run), never a speculative risk list
 - 🔴 No shell in-place/redirect rewriting of existing files (\`sed -i\`, awk, \`node -e\`, python -c, \`perl -pi\`, output redirection; plain query pipelines that don't write are fine) — source, docs, tests, config all count; for bulk rewrites, get user consent first
 - 🔴 Destructive/irreversible commands (\`git clean -fdx\`, \`git reset --hard\`, \`rm -rf\`, etc.): state the blast radius and get explicit consent before running; cleanup of this task's own temp artifacts is exempt; a vague "clean up" or "reset" is not authorization
 - 🟡 No push unless explicitly requested
-- Non-semantic formatters allowed (\`ruff format\`/\`prettier\`/\`gofmt\`) on touched files only; reformatting that reaches untouched lines needs user consent and a separate commit
+- Formatters (\`ruff format\`/\`prettier\`/\`gofmt\`) are allowed but don't count as a lint fix (\`go vet\` has no auto-fix), on touched files only; reformatting that reaches untouched lines needs user consent and a separate commit
 - 🔴 Secrets & \`.env\` (including .env.* variants; \`.env.example\` exempt) out of version control. Use placeholders (e.g. \`YOUR_API_KEY\`). No credentials in debug logs
 
 ## Large-Scale Tasks
-- 🔴 Changes of 300+ lines across multiple files, or architecture changes (e.g. new services/API contracts/data model refactors — not exhaustive) must go through the OpenSpec proposal flow, no direct edits; on a hit, stop and suggest the user run that flow (single-file changes do not trigger on line count alone)
-- 🟡 If execution goes off track (plan untenable, premises changed, verification repeatedly failing) or a transition check fails (failure, ambiguity, out-of-scope writes, the same failure repaired more than 2 rounds), stop immediately, re-evaluate, and report; "continue" in the same session resumes from the stopped phase, while a new session requires renewed completion intent; count repair rounds per identical failure (different failures count separately) — e2e heals use the template's own budget
+- 🔴 Code changes across multiple files (docs, comments and formatting excepted), or architecture changes (e.g. new services/API contracts/data model refactors — not exhaustive) must go through the OpenSpec proposal flow, no direct edits; on a hit, stop and suggest the user run that flow (line count is not a trigger)
+- 🟡 If execution goes off track (plan untenable, premises changed, verification repeatedly failing) or a transition check fails (failure, ambiguity, out-of-scope writes), stop immediately, re-evaluate, and report; "continue" in the same session resumes from the stopped phase, while a new session requires renewed completion intent; repair budget is at most 2 rounds per identical failure (different failures count separately; stop after 3 consecutive rounds with no reduction in failing items; e2e heals use the template's own budget)
 
 ## Workflow Reference
 - 🔴 Proposal scope is confirmed by the user, never self-confirmed; commit/push/merge/release/archive require user authorization, and one authorization covers only the explicitly specified action; unauthorized actions must never be performed
-- 🟡 After proposal creation, run two automatic review rounds: round 1 checks goals/constraints/existing specs for completeness, consistency, correctness and scope creep, and fixes findings; round 2 re-checks all artifacts from an independent perspective (subagents → independent context; otherwise re-read and output a "requirement/scenario → evidence (file:line) → conclusion" table, never reuse the previous self-assessment). Fixes stay within the declared scope — never add or remove requirements; proposed scope changes are listed for final confirmation
-- 🟡 Do not pause between rounds; afterwards list every fix and request scope confirmation — blocking issues remaining after round 2 (unclear goals/spec conflicts/untestable/runaway scope) → stop at the proposal stage and list them; if only non-blocking items remain, record them and proceed to confirmation, with no third round
+- 🟡 Proposal review is risk-tiered, with at most 2 rounds:
+  - Round 1 (all proposals): adversarial review — check goals/constraints/existing specs for completeness, consistency, correctness and scope creep, and fix findings
+  - Round 2: high-risk or architecture-level proposals get an independent re-check of all artifacts (subagents → independent context; otherwise re-read and output a "requirement/scenario → evidence (file:line) → conclusion" table, never reuse the previous self-assessment); ordinary proposals re-check the revised artifacts in the same context
+  - Do not pause between rounds; afterwards list fixes and request scope confirmation: blocking issues → stop at the proposal stage; non-blocking items are recorded, then confirmation. Fixes never add or remove requirements; proposed scope changes are listed for final confirmation
 - 🟡 The auto-chain's only trigger is an explicit request to complete the change ("implement / make it green / run this change through" or invoking \`/opsx:apply\`); confirming scope alone does not trigger it; when completion intent is unclear, treat it as not triggered and confirm with the user in one line
   - Close-out: the moment the last task is checked, invoke \`/opsx:verify\` in the same turn — running tests or a self-check is not verify, and the \`opsx:apply\` closing line "review or verify as appropriate / you can archive" does not justify skipping it
   - Scope: applies to every change run through \`/opsx:apply\`, and is not gated by the size threshold; e2e is not part of the auto-chain and runs only when the user explicitly invokes it ("make it green" does not authorize e2e)
   - Stop: a bare "change this" or invoking propose/verify/e2e alone stops after that phase; never weaken assertions or expected values to force a green run — resolve spec/assertion conflicts per the Testing section
-- 🟡 After verify: CRITICAL → fix within a budget of at most 2 rounds per identical failure and re-run verify; if scope must change or CRITICAL remains after the budget → stop and report; WARNING/SUGGESTION → record and hand to the user
-- 🟡 High-risk changes (public API/CLI contracts, data models/migrations, auth & security, cross-module architecture; when unsure, treat as high-risk) report design essentials, impact and rollback before apply and wait for confirmation
-- 🟡 Auto-archive only when explicitly requested ("auto archive") and all tasks are checked with no blocked item, verify has no CRITICAL, and e2e (if run) has no active App Bug; list skipped tests and WARNINGs for the user to decide; auto-archive additionally requires commit/merge to be authorized and completed — manual archive is exempt
-- 🟡 Maintain a "## Status" section at the end of tasks.md: current phase, one line per proposal review round (round 1: completeness/consistency/correctness/scope creep; round 2: independent re-check) with the number of fixes, last stop reason, e2e not run or its result, pending decisions; update it before every stop or context compaction
+- 🟡 After verify: CRITICAL → fix within the repair budget above and re-run verify; if scope must change or CRITICAL remains after the budget → stop and report; WARNING/SUGGESTION → record and hand to the user
+- 🟡 High-risk changes (public API/CLI contracts, data models/migrations, auth & security, cross-module architecture; when unsure, treat as high-risk) report design essentials, impact and rollback before implementation (even outside the proposal flow) and wait for confirmation
+- 🟡 Auto-archive only when explicitly requested ("auto archive") and all tasks are checked with no blocked item, verify has no CRITICAL, e2e (if run) has no active App Bug, and commit/merge are authorized and completed; list skipped tests and WARNINGs for the user to decide — manual archive is exempt
+- 🟡 Maintain a "## Status" section at the end of tasks.md: current phase, proposal review conclusion, last stop reason, e2e not run or its result, pending decisions; update it before every stop or context compaction
 - 🟡 This section overrides OpenSpec skill end-of-phase suggestions: a skill's closing line does not move this section's phase boundary; human gates (e.g. high-risk design confirmation) and stop conditions stay unchanged
 
 ## Data Fabrication
@@ -225,28 +219,28 @@ const CLAUDE_MD_EN = `# Project Guidelines
 ## Temp File Management
 - 🟡 Non-source temp files (screenshots, logs, heapdumps, etc.) go in \`tmp/\` at the repo root (temp = produced for this round of verification/debugging; test data follows the project's fixtures convention), filenames include timestamp (e.g. \`screenshot-20260721T143000.png\`)
 - 🔴 Never commit temp files to version control (ensure \`.gitignore\` has \`tmp/\`, already-tracked ones get \`git rm --cached\` first); user-owned or unclear-origin suspicious files get reported, not deleted
-- Delete temp files older than 24h before commit — only those under \`tmp/\` produced by this task
 
 ## Testing & Verification Strategy
 - 🟡 Tests exist only where acceptance demands them: write tests only for cases named by acceptance clauses (spec requirements / change acceptance criteria / task acceptance standards) or explicitly requested by the user in the session; for valuable un-named scenarios (core business computation/state transitions, boundary & error paths, widely reused utilities, bug-fix regressions) → propose to the user (bundled, raised once at wrap-up), never skip silently; one behavior one assertion set
 - 🔴 Keep existing tests passing; triage reds first — the tested behavior changed intentionally this round (a refactor doesn't count: it changes structure only, so red means the structure broke, not a stale assertion) → update assertions; behavior deleted this round → its tests go with it, itemized; pre-existing reds outside scope → report, don't touch; never cite this section's DO NOT rules or the Code Quality section's simplification clauses to skip/delete existing tests
 - 🟡 When a test assertion disagrees with the implementation, first rule on who is wrong (the spec or the code — the contradiction itself is a finding); unsure → stop and ask the user; never unilaterally weaken assertions to make both green
 - 🟡 Tests pin behavior, not implementation: assert observable results (return values, output, state changes, outbound calls), never internal structure (private methods and fields, call order, internal state names); criterion: a refactor that preserves behavior should require no test changes
-- 🟡 Tests are self-contained and deterministic: no dependence on the real clock, network, execution order or shared mutable state; poll for a condition instead of a fixed sleep; the same test run twice gives the same result, and anything that can't is flagged in the report (verification needing real dependencies follows the backend/service rule)
+- 🟡 Tests are self-contained and deterministic: no dependence on the real clock, network, execution order or shared mutable state; poll for a condition instead of a fixed sleep, and anything that can't is flagged in the report (verification needing real dependencies follows the backend/service rule)
 - 🔴 Behaviors named by acceptance clauses must be covered by some test layer (unit OR acceptance — one is enough); when a named item falls into any DO NOT rule of this section (pure passthrough, tautological assertions), stop and let the user decide — never silently write it, never silently skip it
 - 🟡 Verify backend/service behavior with real requests against a real running service (real data/dependencies, per the Data Fabrication section; write operations only against test/staging environments — ask first when no isolated environment exists); whether it lands as a test follows the naming standard in this section's first rule
-- 🟡 When writing named tests, extract testable client-side logic (custom hooks / composables / pure functions) into independent unit tests only when the named behavior isn't coverable at that layer; user-visible/interactive changes → browser-verify; pure logic → evidence verification, no browser
-- 🟡 Fix tasks: express the reproduction as a test that fails before the fix (when it can be automated; otherwise use screenshots or measurements and say so), reproduce before and after completion (before = prove it exists, with the failure coming from the expected assertion; after = prove it's gone); same-method ≥2 failed reproductions → report attempts and existing evidence and stop — wait for repro conditions from the user, or proceed with analysis-driven fixes only after explicit user authorization; never claim verified
-- 🟡 All acceptance expectations anchor to acceptance criteria ("expected X, got Y"); the no-fabricating-expectations rule lives in the Data Fabrication section
+- 🟡 When writing named tests, extract client-side logic (hooks/composables/pure functions) into independent unit tests only when that layer can't cover it; user-visible interaction → browser-verify; pure logic → evidence verification, no browser
+- 🟡 Fix tasks: express the reproduction as a test that fails before the fix (when it can be automated; otherwise use screenshots or measurements and say so), reproduce before and after completion (before = prove it exists, with the failure coming from the expected assertion; after = prove it's gone); same-method ≥2 failed reproductions → report attempts and existing evidence and stop — wait for repro conditions from the user, or proceed with analysis-driven fixes only after explicit user authorization
+- 🟡 All acceptance expectations anchor to acceptance criteria ("expected X, got Y") and must never be reverse-engineered from the implementation; the no-fabricating-expectations rule lives in the Data Fabrication section
 - 🟡 Verification evidence comes from this run: the commands actually run and their output, never fabricated, never reused from earlier runs; first confirm the tested build is the current one (clear cache/disable the Service Worker/check the hash); permission checks need a real login state = a session from the real login flow (UI login or API login exchange) — constructed/hardcoded tokens count as injection; each role logs in separately
-- 🔴 Never generate UI component tests that assert no behavior: render-smoke, snapshot and mere-existence checks are out; behavior-level component tests follow this section's naming standard and are not excluded for "not being E2E"
+- 🟡 Verification goes beyond running tests: also check cross-component shared state and invariants, and whether anything hardcodes or precomputes outputs instead of implementing the behavior — all unit tests green while composition breaks is a common shape
 - 🔴 Screenshot alone does not pass — interactions must verify the result (state/navigation/render after click); assertions serve only as auxiliary evidence; style-only changes (no behavior change) verify the rendered screenshot and present it to the user
-- 🔴 Tests without assertion value are never written — naming by acceptance doesn't exempt them: pass-throughs, getters/boilerplate, type-system-guaranteed behavior, tautological assertions with expectations reverse-engineered from the implementation, asserting mock topology instead of observable behavior; cheapest check: change the values the test depends on to empty/null — if it still passes, it has no assertion value
+- 🔴 Tests without assertion value are never written — naming by acceptance doesn't exempt them: pass-throughs, getters/boilerplate, type-system-guaranteed behavior, asserting mock topology instead of observable behavior; cheapest check: change the values the test depends on to empty/null — if it still passes, it has no assertion value
+  - UI render-smoke/snapshot/existence assertions are judged the same; behavior-level component tests follow this section's naming standard and are not excluded for "not being E2E".
 
 ## Performance & Resource Bounds
 - 🟡 Confirm data scale (expected rows / file size / concurrency) before writing code that processes runtime data (queries, files, network, concurrency, bulk collection iteration — incl. test fixtures & test parallelism; whether fixtures may be written goes through the Data Fabrication section first, this rule only covers scale): openspec/config.yaml records take precedence; unknown and it would change the implementation shape (pagination/batching/indexing) → ask the user, otherwise stream by default
-- 🟡 Use hash structures for in-collection lookups (Map/Set/dict); shard CPU-heavy work or move it to a worker/subprocess — never block the main thread/event loop
 - 🔴 Never read unbounded data into memory: whole-file reads, queries without LIMIT, accumulate-then-process — unless a confirmed upper bound exists (\`openspec/config.yaml\` record or user confirmation) and the single resident footprint is clearly below available memory (knowing only the current size doesn't count as confirmed; unsure → stream). Stream/batch by default (data side: streams/cursors/pagination/chunks; display side: pagination/virtual lists) with an explicit batch size
+- 🔴 Never make external calls without a timeout: network requests must carry an explicit timeout, otherwise a hung request is an unbounded wait
 - 🔴 Never fan out unbounded concurrency: launching a large batch of tasks all at once without a concurrency cap, or opening connections/processes/threads without a limit — bound them with an explicit pool/semaphore
 - 🟡 Per-item I/O inside loops (N+1 queries, per-row requests/file writes) must be batched (streamed chunked writes aren't "accumulate-then-process"; error logs stay, aggregate the rest)
 - 🟡 No unbounded caches growing with input (accumulating structures without a cap or eviction)`; // spec-embed:en
