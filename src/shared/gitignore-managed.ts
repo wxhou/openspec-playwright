@@ -15,10 +15,9 @@
  */
 import { existsSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
-import { execFileSync } from "child_process";
 import ignore from "ignore";
 import { normalizeEol } from "../commands/editors/agents.js";
-import { needsShell } from "./platform.js";
+import { execFileSync } from "./exec.js";
 
 /** Managed paths (user-decided artifacts/config + credentials + regenerable local data). */
 export const MANAGED_GITIGNORE_PATHS = [
@@ -368,7 +367,6 @@ export function detectTrackedFiles(
       encoding: "utf-8",
       timeout: 5000,
       stdio: ["pipe", "pipe", "pipe"],
-      shell: needsShell,
       maxBuffer: 1024 * 1024,
     }) as string) ?? "";
   } catch {

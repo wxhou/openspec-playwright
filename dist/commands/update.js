@@ -1,13 +1,12 @@
-import { execFile, execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { join, basename, sep } from "path";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync, statSync, lstatSync, } from "fs";
 import { tmpdir } from "os";
-import { promisify } from "util";
 import chalk from "chalk";
 import * as tar from "tar";
 import { buildCommandMeta, getAllAdapters, hasCommandArtifacts, installCommand, installOpenSpecBlock, installClaudeWrapper, installCodebuddyWrapper, migrateLegacyMarkers, claudeAdapter, codebuddyAdapter, claudeWrapperStandardsContent, opencodeAdapter, syncVendoredAgents, normalizeEol, } from "./editors.js";
-import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, hasFrontendSignal, needsShell, detectCodeGraphStatus, codegraphHintLines, findUncoveredManagedPaths, managedBlockAdvisoryHint, ensureGitignoreEntries, readManagedSkips, installOrRefreshChecklist, LINT_GUIDELINES_RELPATH, } from "../shared/index.js";
+import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, hasFrontendSignal, detectCodeGraphStatus, codegraphHintLines, findUncoveredManagedPaths, managedBlockAdvisoryHint, ensureGitignoreEntries, readManagedSkips, installOrRefreshChecklist, LINT_GUIDELINES_RELPATH, } from "../shared/index.js";
+import { execFileAsync, execFileSync } from "../shared/exec.js";
 import { compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
 import { pipelineGitignoreOmit } from "./pipeline.js";
 import { wrapperHasMarkers, hasRuleFileMarkers } from "./editors/project-rules.js";
@@ -16,7 +15,6 @@ const WRAPPER_EDITORS = [
     [claudeAdapter, installClaudeWrapper],
     [codebuddyAdapter, installCodebuddyWrapper],
 ];
-const execFileAsync = promisify(execFile);
 export async function update(options) {
     console.log(chalk.blue("\n🔄 Updating OpenSpec + Playwright E2E\n"));
     const projectRoot = process.cwd();
@@ -37,7 +35,6 @@ export async function update(options) {
                 timeout: 120000,
                 cwd: projectRoot,
                 stdio: "inherit",
-                shell: needsShell,
             });
             console.log(chalk.green("  ✓ CLI updated via npm"));
             cliUpdated = true;
@@ -65,7 +62,6 @@ export async function update(options) {
                 execFileSync("openspec-pw", reExecArgs, {
                     stdio: "inherit",
                     cwd: projectRoot,
-                    shell: needsShell,
                 });
                 console.log(chalk.green("  ✓ Post-update tasks completed with latest binary"));
                 return;
@@ -97,7 +93,6 @@ export async function update(options) {
                     timeout: 120000,
                     cwd: projectRoot,
                     stdio: "inherit",
-                    shell: needsShell,
                 });
                 console.log(chalk.green("  ✓ devDependency synced to latest"));
             }
@@ -162,7 +157,6 @@ export async function update(options) {
                     timeout: 120000,
                     cwd: projectRoot,
                     stdio: "inherit",
-                    shell: needsShell,
                 });
                 console.log(chalk.green("  ✓ Updated via npm install"));
             }
@@ -323,7 +317,7 @@ async function checkVersionShadow(projectRoot) {
         return;
     let publishedVersion;
     try {
-        const { stdout } = await execFileAsync("npm", ["view", "openspec-playwright", "version"], { timeout: 30000, shell: needsShell });
+        const { stdout } = await execFileAsync("npm", ["view", "openspec-playwright", "version"], { timeout: 30000 });
         publishedVersion = stdout.trim();
     }
     catch {
@@ -347,10 +341,9 @@ async function fetchLatestBundle() {
     const tmpDir = join(tmpdir(), "openspec-e2e-update");
     rmSync(tmpDir, { recursive: true, force: true });
     mkdirSync(tmpDir, { recursive: true });
-    // execFile with args array is safe with shell: true — Node quotes
-    // each argument, so paths with spaces (OneDrive, CJK user names)
-    // are passed verbatim to the shell.
-    await execFileAsync("npm", ["pack", "openspec-playwright", "--pack-destination", tmpDir], { timeout: 30000, shell: needsShell });
+    // Cross-spawn passes argv verbatim without shell interpretation, so paths
+    // with spaces (OneDrive, CJK user names) reach npm unchanged.
+    await execFileAsync("npm", ["pack", "openspec-playwright", "--pack-destination", tmpDir], { timeout: 30000 });
     const tgzFiles = readdirSync(tmpDir)
         .filter((f) => f.startsWith("openspec-playwright-") && f.endsWith(".tgz"))
         .map((f) => ({ name: f, mtime: statSync(join(tmpDir, f)).mtimeMs }))

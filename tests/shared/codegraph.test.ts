@@ -3,10 +3,12 @@ import { mkdirSync, mkdtempSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 
-// Mock child_process.execFileSync so the `which/where codegraph` probe never
+// Mock the command wrapper so the `which/where codegraph` probe never
 // runs for real in tests.
-vi.mock("child_process", () => ({
+vi.mock("../../src/shared/exec.js", () => ({
+  execFileAsync: vi.fn(),
   execFileSync: vi.fn(),
+  spawnSync: vi.fn(),
 }));
 
 // Replace detectAdapters with a controllable stub; keep the real adapter
@@ -24,7 +26,7 @@ vi.mock("../../src/shared/mcp.js", () => ({
   isMcpInstalled: vi.fn(),
 }));
 
-import { execFileSync } from "child_process";
+import { execFileSync } from "../../src/shared/exec.js";
 import {
   detectAdapters,
   claudeAdapter,
@@ -37,7 +39,9 @@ import {
   type CodeGraphStatus,
 } from "../../src/shared/codegraph.js";
 
-const mockedExecFileSync = vi.mocked(execFileSync);
+const mockedExecFileSync = vi.mocked(execFileSync) as unknown as ReturnType<
+  typeof vi.fn
+>;
 const mockedDetectAdapters = vi.mocked(detectAdapters);
 const mockedIsMcpInstalled = vi.mocked(isMcpInstalled);
 

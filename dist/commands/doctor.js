@@ -2,10 +2,10 @@ import { existsSync, lstatSync, readdirSync, readFileSync } from "fs";
 import { homedir } from "os";
 import { createRequire } from "node:module";
 import { join, basename } from "path";
-import { execFileSync } from "child_process";
 import chalk from "chalk";
+import { execFileSync } from "../shared/exec.js";
 import { detectAdapters, getAllAdapters, hasCommandArtifacts, slashCommandForAdapter, claudeAdapter, codebuddyAdapter, claudeWrapperStandardsContent, enumerateVendoredAgents, installedAgentsSnapshotDir, } from "../commands/editors.js";
-import { detectAppServer, isTestRunnerMcpInstalled, needsShell, detectCodeGraphStatus, findEslintConfig, findRuffConfig, findSourceFile, } from "../shared/index.js";
+import { detectAppServer, isTestRunnerMcpInstalled, detectCodeGraphStatus, findEslintConfig, findRuffConfig, findSourceFile, } from "../shared/index.js";
 import { bundledStandardsPath, compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
 import { hasRuleFileMarkers, wrapperRulesFile, wrapperHasMarkers } from "./editors/project-rules.js";
 /** Editors whose project rules file is a thin wrapper (not AGENTS.md). */
@@ -44,7 +44,6 @@ function probeOnPath(tool) {
     try {
         execFileSync(process.platform === "win32" ? "where" : "which", [tool], {
             stdio: "ignore",
-            shell: needsShell,
         });
         return { onPath: true, note: null };
     }
@@ -109,7 +108,6 @@ function probeEslintNoEmpty(projectRoot) {
             cwd: projectRoot,
             encoding: "utf-8",
             timeout: SEMANTIC_PROBE_TIMEOUT_MS,
-            shell: needsShell,
             stdio: ["ignore", "pipe", "pipe"],
         });
         // ESLint exits 0 and prints the literal "undefined" when no config
@@ -162,7 +160,6 @@ function probeRuffB904(projectRoot) {
             cwd: projectRoot,
             encoding: "utf-8",
             timeout: SEMANTIC_PROBE_TIMEOUT_MS,
-            shell: needsShell,
             stdio: ["ignore", "pipe", "pipe"],
         });
         const section = ruffEnabledRulesSection(output);
@@ -215,7 +212,6 @@ export async function doctor(options = {}) {
     try {
         const node = execFileSync("node", ["--version"], {
             encoding: "utf-8",
-            shell: needsShell,
         }).trim();
         const majorMatch = node.match(/v?(\d+)\./);
         nodeMajor = majorMatch ? parseInt(majorMatch[1], 10) : 0;
@@ -269,7 +265,6 @@ export async function doctor(options = {}) {
     try {
         const npm = execFileSync("npm", ["--version"], {
             encoding: "utf-8",
-            shell: needsShell,
         }).trim();
         checks.push({
             category: "npm",
@@ -338,7 +333,6 @@ export async function doctor(options = {}) {
         try {
             const pw = execFileSync("npx", ["playwright", "--version"], {
                 encoding: "utf-8",
-                shell: needsShell,
             }).trim();
             checks.push({
                 category: "Playwright Browsers",
@@ -374,7 +368,6 @@ export async function doctor(options = {}) {
         try {
             execFileSync("node", ["-e", "const {chromium} = require('playwright'); chromium.executablePath()"], {
                 encoding: "utf-8",
-                shell: needsShell,
                 stdio: "pipe",
                 timeout: 5000,
             });
@@ -576,7 +569,7 @@ export async function doctor(options = {}) {
     if (hasPlaywrightScaffold) {
         let cliAvailable = false;
         try {
-            execFileSync(process.platform === "win32" ? "where" : "which", ["playwright-cli"], { stdio: "ignore", shell: needsShell });
+            execFileSync(process.platform === "win32" ? "where" : "which", ["playwright-cli"], { stdio: "ignore" });
             cliAvailable = true;
         }
         catch {
@@ -955,7 +948,6 @@ export async function doctor(options = {}) {
         try {
             cgVersion = execFileSync("codegraph", ["--version"], {
                 encoding: "utf-8",
-                shell: needsShell,
             }).trim();
         }
         catch {

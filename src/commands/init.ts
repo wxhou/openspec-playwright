@@ -1,4 +1,3 @@
-import { execFileSync } from "child_process";
 import {
   existsSync,
   readFileSync,
@@ -11,6 +10,7 @@ import { join, basename, relative } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { readFile } from "fs/promises";
+import { execFileSync } from "../shared/exec.js";
 import { installStopHook, isHookTier, uninstallStopHook } from "./hooks.js";
 import {
   BRANCH_PROTECTION_HINT,
@@ -54,7 +54,6 @@ import {
   ensureTestRunnerMcp,
   isTestRunnerMcpInstalled,
   TEST_RUNNER_MCP_SERVER,
-  needsShell,
   hasFrontendSignal,
   explainFrontendSignal,
   detectCodeGraphStatus,
@@ -379,7 +378,7 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   // are passed verbatim and `2>/dev/null` / `||` bash-isms don't reach cmd.exe.
   // Equivalent of: `npx openspec --version || echo "not found"`
   try {
-    execFileSync("npx", ["openspec", "--version"], { encoding: "utf-8", stdio: "pipe", shell: needsShell });
+    execFileSync("npx", ["openspec", "--version"], { encoding: "utf-8", stdio: "pipe" });
     console.log(chalk.green("  ✓ OpenSpec found"));
   } catch {
     console.log(chalk.gray("  - OpenSpec not found (run: npm install -g @fission-ai/openspec@latest)"));
@@ -1368,7 +1367,7 @@ function suggestPlaywrightConfigPatch(configPath: string) {
 
 function hasCmd(bin: string, args: string[], name: string, silent = false): boolean {
   try {
-    execFileSync(bin, args, { stdio: "pipe", shell: needsShell });
+    execFileSync(bin, args, { stdio: "pipe" });
     if (!silent) console.log(chalk.green(`  ✓ ${name} found`));
     return true;
   } catch {

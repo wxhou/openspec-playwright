@@ -4,10 +4,12 @@ import { tmpdir } from "os";
 import { join } from "path";
 
 // Capture claude CLI invocations without running them.
-vi.mock("node:child_process", () => ({
+vi.mock("../src/shared/exec.js", () => ({
+  execFileAsync: vi.fn(),
   execFileSync: vi.fn(),
+  spawnSync: vi.fn(),
 }));
-import { execFileSync } from "node:child_process";
+import { execFileSync } from "../src/shared/exec.js";
 import { claudeAdapter } from "../src/commands/editors.js";
 import { TIMEOUT } from "../src/shared/constants.js";
 

@@ -6,7 +6,6 @@ export {
   ensureTestRunnerMcp,
   removeTestRunnerMcp,
 } from "./mcp.js";
-export { needsShell } from "./platform.js";
 export {
   LINT_GUIDELINE_RULES,
   LINT_GUIDELINES_RELPATH,

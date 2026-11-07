@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Mock child_process
-vi.mock("child_process", () => ({
+// Mock the command wrapper
+vi.mock("../../src/shared/exec.js", () => ({
+  execFileAsync: vi.fn(),
   execFileSync: vi.fn(),
+  spawnSync: vi.fn(),
 }));
 
 // Mock fs modules
@@ -15,7 +17,7 @@ vi.mock("fs", () => ({
   rmdirSync: vi.fn(),
 }));
 
-import { execFileSync } from "child_process";
+import { execFileSync } from "../../src/shared/exec.js";
 import { existsSync, readFileSync } from "fs";
 import { claudeAdapter } from "../../src/commands/editors.js";
 import { removePlaywrightMcp } from "../../src/shared/mcp.js";
@@ -64,7 +66,7 @@ describe("removePlaywrightMcp", () => {
     readFileSyncMock.mockReturnValue(
       JSON.stringify({ mcpServers: { playwright: { command: "npx" } } }),
     );
-    vi.mocked(execFileSync).mockImplementation(() => {
+    (vi.mocked(execFileSync) as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => {
       throw new Error("Removal failed");
     });
 
@@ -87,7 +89,7 @@ describe("removeTestRunnerMcp", () => {
     vi.mocked(existsSync).mockReturnValue(true);
     // clearAllMocks keeps implementations — reset the CLI mock fully so an
     // earlier failing-removal mockImplementation doesn't leak into here.
-    vi.mocked(execFileSync).mockReset();
+    (vi.mocked(execFileSync) as unknown as ReturnType<typeof vi.fn>).mockReset();
   });
 
   it("removes the playwright-test entry when installed", () => {

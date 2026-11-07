@@ -221,11 +221,11 @@ describe("generateGithubWorkflow", () => {
   });
 });
 
-// ─── npx detection: execFile migration ────────────────────────────────────
-// Guards the Windows-safe form of `npx openspec --version`.
+// ─── command execution: shared/exec wrapper ───────────────────────────────
+// Guards that init uses the cross-spawn wrapper, never shell: true.
 
-describe("init.ts: npx detection uses execFile (no shell)", () => {
-  it("uses execFileSync with shell: needsShell for cross-platform support", async () => {
+describe("init.ts: commands use shared/exec wrapper", () => {
+  it("imports the wrapper and no shell option remains", async () => {
     const { readFileSync } = await import("fs");
     const { fileURLToPath } = await import("url");
     const { join } = await import("path");
@@ -238,8 +238,10 @@ describe("init.ts: npx detection uses execFile (no shell)", () => {
     );
     // Old form: `npx openspec --version 2>/dev/null || echo "not found"`
     expect(src).not.toMatch(/npx openspec --version 2>\/dev\/null \|\| echo/);
-    // Windows-safe form: execFileSync("npx", ["openspec", "--version"], { shell: needsShell })
-    expect(src).toMatch(/execFileSync\("npx",\s*\["openspec",\s*"--version"\],\s*\{[^}]*shell: needsShell/);
+    // Commands go through the cross-spawn wrapper
+    expect(src).toMatch(/from "\.\.\/shared\/exec\.js"/);
+    expect(src).toMatch(/execFileSync\("npx",\s*\["openspec",\s*"--version"\]/);
+    expect(src).not.toMatch(/shell:\s*needsShell/);
   });
 });
 

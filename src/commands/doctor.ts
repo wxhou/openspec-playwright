@@ -2,8 +2,8 @@ import { existsSync, lstatSync, readdirSync, readFileSync } from "fs";
 import { homedir } from "os";
 import { createRequire } from "node:module";
 import { join, basename } from "path";
-import { execFileSync } from "child_process";
 import chalk from "chalk";
+import { execFileSync } from "../shared/exec.js";
 import {
   detectAdapters,
   getAllAdapters,
@@ -18,7 +18,6 @@ import {
 import {
   detectAppServer,
   isTestRunnerMcpInstalled,
-  needsShell,
   detectCodeGraphStatus,
   findEslintConfig,
   findRuffConfig,
@@ -70,7 +69,6 @@ function probeOnPath(tool: string): { onPath: boolean; note: string | null } {
   try {
     execFileSync(process.platform === "win32" ? "where" : "which", [tool], {
       stdio: "ignore",
-      shell: needsShell,
     });
     return { onPath: true, note: null };
   } catch (err) {
@@ -141,7 +139,6 @@ function probeEslintNoEmpty(projectRoot: string): SemanticProbe {
       cwd: projectRoot,
       encoding: "utf-8",
       timeout: SEMANTIC_PROBE_TIMEOUT_MS,
-      shell: needsShell,
       stdio: ["ignore", "pipe", "pipe"],
     });
     // ESLint exits 0 and prints the literal "undefined" when no config
@@ -193,7 +190,6 @@ function probeRuffB904(projectRoot: string): SemanticProbe {
       cwd: projectRoot,
       encoding: "utf-8",
       timeout: SEMANTIC_PROBE_TIMEOUT_MS,
-      shell: needsShell,
       stdio: ["ignore", "pipe", "pipe"],
     });
     const section = ruffEnabledRulesSection(output);
@@ -257,7 +253,6 @@ export async function doctor(options: DoctorOptions = {}) {
   try {
     const node = execFileSync("node", ["--version"], {
       encoding: "utf-8",
-      shell: needsShell,
     }).trim();
     const majorMatch = node.match(/v?(\d+)\./);
     nodeMajor = majorMatch ? parseInt(majorMatch[1], 10) : 0;
@@ -311,7 +306,6 @@ export async function doctor(options: DoctorOptions = {}) {
   try {
     const npm = execFileSync("npm", ["--version"], {
       encoding: "utf-8",
-      shell: needsShell,
     }).trim();
     checks.push({
       category: "npm",
@@ -385,8 +379,7 @@ export async function doctor(options: DoctorOptions = {}) {
     try {
       const pw = execFileSync("npx", ["playwright", "--version"], {
         encoding: "utf-8",
-        shell: needsShell,
-      }).trim();
+        }).trim();
       checks.push({
         category: "Playwright Browsers",
         name: "cli",
@@ -421,8 +414,7 @@ export async function doctor(options: DoctorOptions = {}) {
     try {
       execFileSync("node", ["-e", "const {chromium} = require('playwright'); chromium.executablePath()"], {
         encoding: "utf-8",
-        shell: needsShell,
-        stdio: "pipe",
+          stdio: "pipe",
         timeout: 5000,
       });
       hasBrowsers = true;
@@ -637,7 +629,7 @@ export async function doctor(options: DoctorOptions = {}) {
       execFileSync(
         process.platform === "win32" ? "where" : "which",
         ["playwright-cli"],
-        { stdio: "ignore", shell: needsShell },
+        { stdio: "ignore" },
       );
       cliAvailable = true;
     } catch {
@@ -1045,8 +1037,7 @@ export async function doctor(options: DoctorOptions = {}) {
     try {
       cgVersion = execFileSync("codegraph", ["--version"], {
         encoding: "utf-8",
-        shell: needsShell,
-      }).trim();
+        }).trim();
     } catch {
       cgVersion = "not found";
     }

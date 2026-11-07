@@ -8,19 +8,23 @@ vi.mock("fs", () => ({
   readdirSync: vi.fn(),
   readFileSync: vi.fn(),
 }));
-vi.mock("child_process", () => ({
+vi.mock("../../src/shared/exec.js", () => ({
+  execFileAsync: vi.fn(),
   execFileSync: vi.fn(),
+  spawnSync: vi.fn(),
 }));
 
 import { existsSync, readdirSync, readFileSync } from "fs";
-import { execFileSync } from "child_process";
+import { execFileSync } from "../../src/shared/exec.js";
 import { join } from "path";
 import { audit } from "../../src/commands/audit.js";
 
 const existsSyncMock = vi.mocked(existsSync);
 const readdirSyncMock = vi.mocked(readdirSync);
 const readFileSyncMock = vi.mocked(readFileSync);
-const execFileSyncMock = vi.mocked(execFileSync);
+const execFileSyncMock = vi.mocked(execFileSync) as unknown as ReturnType<
+  typeof vi.fn
+>;
 
 /** Minimal Dirent stand-in for collectSpecFiles (name + isDirectory only). */
 function dirent(name: string, isDirectory: boolean) {

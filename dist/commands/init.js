@@ -1,14 +1,14 @@
-import { execFileSync } from "child_process";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync, rmdirSync, } from "fs";
 import { join, basename, relative } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { readFile } from "fs/promises";
+import { execFileSync } from "../shared/exec.js";
 import { installStopHook, isHookTier, uninstallStopHook } from "./hooks.js";
 import { BRANCH_PROTECTION_HINT, generateAutoPipeline, pipelineGitignoreOmit, PIPELINE_TRACKED_PATHS, } from "./pipeline.js";
 import { buildCommandMeta, detectAdapters, detectProjectAdapters, preselectAdapters, getAdapter, getAllAdapters, installCommand, installOptionalArtifacts, installProjectRules, migrateLegacyMarkers, readEmployeeStandards, resolveToolsArg, slashCommandForAdapter, enumerateAdapterArtifacts, enumerateVendoredAgents, installedAgentsSnapshotDir, isInventoryEmpty, removeAdapterMcp, retainedMcpConfigFiles, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, removeLegacyArtifact, removeWrapper, removeMarkersFromFile, normalizeEol, } from "./editors.js";
 import { isEditorConfigured, agentsFileHasMarkers, } from "./editors/configured.js";
-import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, TEST_RUNNER_MCP_SERVER, needsShell, hasFrontendSignal, explainFrontendSignal, detectCodeGraphStatus, codegraphHintLines, ensureGitignoreEntries, findUncoveredManagedPaths, skippableManagedPaths, readManagedSkips, detectTrackedFiles, isIgnoredPath, managedBlockAdvisoryHint, installOrRefreshChecklist, installLintConfig, LINT_ESLINT_SNIPPET, LINT_GUIDELINES_RELPATH, } from "../shared/index.js";
+import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, TEST_RUNNER_MCP_SERVER, hasFrontendSignal, explainFrontendSignal, detectCodeGraphStatus, codegraphHintLines, ensureGitignoreEntries, findUncoveredManagedPaths, skippableManagedPaths, readManagedSkips, detectTrackedFiles, isIgnoredPath, managedBlockAdvisoryHint, installOrRefreshChecklist, installLintConfig, LINT_ESLINT_SNIPPET, LINT_GUIDELINES_RELPATH, } from "../shared/index.js";
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
 const E2E_COMMAND_SRC = fileURLToPath(new URL("../../templates/e2e-command.md", import.meta.url));
 const EMPLOYEE_STANDARDS_SRC = fileURLToPath(new URL("../../employee-standards.md", import.meta.url));
@@ -206,7 +206,7 @@ export async function init(options, deps = {}) {
     // are passed verbatim and `2>/dev/null` / `||` bash-isms don't reach cmd.exe.
     // Equivalent of: `npx openspec --version || echo "not found"`
     try {
-        execFileSync("npx", ["openspec", "--version"], { encoding: "utf-8", stdio: "pipe", shell: needsShell });
+        execFileSync("npx", ["openspec", "--version"], { encoding: "utf-8", stdio: "pipe" });
         console.log(chalk.green("  ✓ OpenSpec found"));
     }
     catch {
@@ -948,7 +948,7 @@ function suggestPlaywrightConfigPatch(configPath) {
 }
 function hasCmd(bin, args, name, silent = false) {
     try {
-        execFileSync(bin, args, { stdio: "pipe", shell: needsShell });
+        execFileSync(bin, args, { stdio: "pipe" });
         if (!silent)
             console.log(chalk.green(`  ✓ ${name} found`));
         return true;

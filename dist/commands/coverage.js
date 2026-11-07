@@ -1,8 +1,8 @@
-import { execFileSync } from "child_process";
 import { existsSync, readFileSync, readdirSync } from "fs";
 import { join, isAbsolute } from "path";
 import chalk from "chalk";
-import { TIMEOUT, needsShell } from "../shared/index.js";
+import { TIMEOUT } from "../shared/index.js";
+import { execFileSync } from "../shared/exec.js";
 // ─── Main Entry Point ─────────────────────────────────────────────────
 export async function coverage(changeName, opts) {
     const projectRoot = process.cwd();
@@ -386,7 +386,6 @@ function collectMarkdownFiles(dir, collected = []) {
 async function getChangeNames(projectRoot) {
     try {
         const result = execFileSync("npx", ["openspec", "list", "--json"], {
-            shell: needsShell,
             cwd: projectRoot,
             encoding: "utf-8",
             timeout: TIMEOUT.OPENSPEC_LIST,

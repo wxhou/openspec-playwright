@@ -10,11 +10,8 @@
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
-import { execFile } from "node:child_process";
-import { promisify } from "util";
 import chalk from "chalk";
-import { needsShell } from "./platform.js";
-const execFileAsync = promisify(execFile);
+import { execFileAsync } from "./exec.js";
 const CACHE_FILE = join(homedir(), ".openspec-pw-version.json");
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 function readCache() {
@@ -37,7 +34,7 @@ function writeCache(cache) {
 }
 async function fetchLatestVersion() {
     try {
-        const { stdout } = await execFileAsync("npm", ["view", "openspec-playwright", "version"], { timeout: 10_000, shell: needsShell });
+        const { stdout } = await execFileAsync("npm", ["view", "openspec-playwright", "version"], { timeout: 10_000 });
         return stdout.trim() || null;
     }
     catch {

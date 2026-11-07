@@ -4,8 +4,10 @@ import { join } from "path";
 import { tmpdir } from "os";
 
 // audit() shells `npx openspec list` — stub it so runs stay hermetic.
-vi.mock("child_process", () => ({
+vi.mock("../../src/shared/exec.js", () => ({
+  execFileAsync: vi.fn(),
   execFileSync: vi.fn(() => "[]"),
+  spawnSync: vi.fn(),
 }));
 
 import { audit } from "../../src/commands/audit.js";

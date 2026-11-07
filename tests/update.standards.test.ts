@@ -4,8 +4,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 // The sibling update.test.ts uses REAL os.tmpdir() fixtures — vi.mock is
 // hoisted file-wide, so these cases live in their own file.
 //
-// update.ts imports fs from plain "fs" and child_process from
-// "node:child_process" — both factories must list every named import the
+// update.ts imports fs from plain "fs" and the command wrapper from
+// "../shared/exec.js" — both factories must list every named import the
 // module graph pulls from them.
 vi.mock("fs", () => ({
   existsSync: vi.fn(),
@@ -17,9 +17,10 @@ vi.mock("fs", () => ({
   statSync: vi.fn(),
   lstatSync: vi.fn(),
 }));
-vi.mock("node:child_process", () => ({
-  execFile: vi.fn(),
+vi.mock("../src/shared/exec.js", () => ({
+  execFileAsync: vi.fn(),
   execFileSync: vi.fn(),
+  spawnSync: vi.fn(),
 }));
 vi.mock("node:module", () => ({
   createRequire: vi.fn(() => ({ resolve: vi.fn() })),
@@ -43,7 +44,7 @@ import {
   writeFileSync,
   lstatSync,
 } from "fs";
-import { execFile } from "node:child_process";
+import { execFileAsync } from "../src/shared/exec.js";
 import { join } from "path";
 import { update, syncEmployeeStandards } from "../src/commands/update.js";
 import {
@@ -55,7 +56,7 @@ import { OPENSPEC_START, OPENSPEC_END } from "../src/shared/drift.js";
 const existsSyncMock = vi.mocked(existsSync);
 const readFileSyncMock = vi.mocked(readFileSync);
 const lstatSyncMock = vi.mocked(lstatSync);
-const execFileMock = vi.mocked(execFile);
+const execFileMock = vi.mocked(execFileAsync);
 const installOpenSpecBlockMock = vi.mocked(installOpenSpecBlock);
 const installClaudeWrapperMock = vi.mocked(installClaudeWrapper);
 

@@ -194,6 +194,7 @@ const distExists = existsSync(distDir);
 const CRITICAL_PACKAGE_FILES = [
   "bin/openspec-pw.js",
   "dist/index.js",
+  "dist/shared/exec.js",
   "dist/commands/init.js",
   "dist/commands/coverage.js",
   "dist/commands/doctor.js",
