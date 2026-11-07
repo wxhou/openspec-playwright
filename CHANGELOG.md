@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.111] - 2026-11-07
 - **fix(lint-guidelines): 校正 E722/BLE001 边界与 jsdoc 默认说明**. E722 改为 bare handlers；BLE001 补 re-raised 豁免；jsdoc 标注 ESLint core 默认关闭、插件 recommended 会开启。
   - `templates/lint-guidelines.md`、`src/shared/lint-guidelines.ts`、`CHANGELOG.md`
 - **fix(standards): 修正 lint 清单与注释规则**. `jsdoc/require-jsdoc` 默认范围改准并补插件注册示例；补 `D102`；注释规则补 lint 跳过条件；三副本与测试锚点同步。
