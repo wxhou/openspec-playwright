@@ -1,11 +1,16 @@
-export interface ExecOptions {
+export interface BaseExecOptions {
     cwd?: string;
     env?: NodeJS.ProcessEnv;
     encoding?: BufferEncoding;
     timeout?: number;
     maxBuffer?: number;
-    stdio?: "pipe" | "ignore" | "inherit" | ReadonlyArray<"pipe" | "ignore" | "inherit" | "ipc" | null>;
     windowsHide?: boolean;
+}
+export interface ExecOptions extends BaseExecOptions {
+    stdio?: "pipe" | "ignore" | "inherit";
+}
+export interface ExecSyncOptions extends BaseExecOptions {
+    stdio?: "pipe" | "ignore" | "inherit" | ReadonlyArray<"pipe" | "ignore" | "inherit" | "ipc" | null>;
 }
 export interface ExecResult {
     stdout: string;
@@ -25,11 +30,11 @@ export interface SpawnSyncResult<T = Buffer> {
  * through `cmd.exe` with its own escaping, so argument arrays stay safe.
  */
 export declare function execFileAsync(file: string, args: readonly string[], options?: ExecOptions): Promise<ExecResult>;
-export declare function execFileSync(file: string, args: readonly string[], options: ExecOptions & {
+export declare function execFileSync(file: string, args: readonly string[], options: ExecSyncOptions & {
     encoding: BufferEncoding;
 }): string;
-export declare function execFileSync(file: string, args: readonly string[], options?: ExecOptions): Buffer | null;
-export declare function spawnSync(file: string, args: readonly string[], options: ExecOptions & {
+export declare function execFileSync(file: string, args: readonly string[], options?: ExecSyncOptions): Buffer | null;
+export declare function spawnSync(file: string, args: readonly string[], options: ExecSyncOptions & {
     encoding: BufferEncoding;
 }): SpawnSyncResult<string>;
-export declare function spawnSync(file: string, args: readonly string[], options?: ExecOptions): SpawnSyncResult<Buffer>;
+export declare function spawnSync(file: string, args: readonly string[], options?: ExecSyncOptions): SpawnSyncResult<Buffer>;

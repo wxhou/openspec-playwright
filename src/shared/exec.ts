@@ -1,18 +1,25 @@
 import crossSpawn from "cross-spawn";
 import type { SpawnOptions, SpawnSyncOptions } from "node:child_process";
 
-export interface ExecOptions {
+export interface BaseExecOptions {
   cwd?: string;
   env?: NodeJS.ProcessEnv;
   encoding?: BufferEncoding;
   timeout?: number;
   maxBuffer?: number;
+  windowsHide?: boolean;
+}
+
+export interface ExecOptions extends BaseExecOptions {
+  stdio?: "pipe" | "ignore" | "inherit";
+}
+
+export interface ExecSyncOptions extends BaseExecOptions {
   stdio?:
     | "pipe"
     | "ignore"
     | "inherit"
     | ReadonlyArray<"pipe" | "ignore" | "inherit" | "ipc" | null>;
-  windowsHide?: boolean;
 }
 
 export interface ExecResult {
@@ -76,13 +83,13 @@ export async function execFileAsync(
     windowsHide = true,
   } = options;
 
-  const capture = stdio !== "inherit" && stdio !== "ignore";
+  const capture = stdio === "pipe";
   const child = crossSpawn(file, args, {
     cwd,
     env,
     timeout,
     windowsHide,
-    stdio: capture ? ["ignore", "pipe", "pipe"] : stdio,
+    stdio,
   } as unknown as SpawnOptions);
 
   let stdout = "";
@@ -142,17 +149,17 @@ export async function execFileAsync(
 export function execFileSync(
   file: string,
   args: readonly string[],
-  options: ExecOptions & { encoding: BufferEncoding },
+  options: ExecSyncOptions & { encoding: BufferEncoding },
 ): string;
 export function execFileSync(
   file: string,
   args: readonly string[],
-  options?: ExecOptions,
+  options?: ExecSyncOptions,
 ): Buffer | null;
 export function execFileSync(
   file: string,
   args: readonly string[],
-  options: ExecOptions = {},
+  options: ExecSyncOptions = {},
 ): string | Buffer | null {
   const result = crossSpawn.sync(file, args, {
     maxBuffer: DEFAULT_MAX_BUFFER,
@@ -171,23 +178,25 @@ export function execFileSync(
       String(result.stderr ?? ""),
     );
   }
-  return (result.stdout ?? null) as string | Buffer | null;
+  const stdout = result.stdout ?? null;
+  if (options.encoding && stdout == null) return "";
+  return stdout as string | Buffer | null;
 }
 
 export function spawnSync(
   file: string,
   args: readonly string[],
-  options: ExecOptions & { encoding: BufferEncoding },
+  options: ExecSyncOptions & { encoding: BufferEncoding },
 ): SpawnSyncResult<string>;
 export function spawnSync(
   file: string,
   args: readonly string[],
-  options?: ExecOptions,
+  options?: ExecSyncOptions,
 ): SpawnSyncResult<Buffer>;
 export function spawnSync(
   file: string,
   args: readonly string[],
-  options: ExecOptions = {},
+  options: ExecSyncOptions = {},
 ): SpawnSyncResult<string | Buffer> {
   return crossSpawn.sync(file, args, {
     maxBuffer: DEFAULT_MAX_BUFFER,

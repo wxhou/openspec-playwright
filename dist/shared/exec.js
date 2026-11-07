@@ -20,13 +20,13 @@ function makeExecError(file, args, status, signal, stdout, stderr) {
  */
 export async function execFileAsync(file, args, options = {}) {
     const { cwd, env, encoding = "utf8", timeout, maxBuffer = DEFAULT_MAX_BUFFER, stdio = "pipe", windowsHide = true, } = options;
-    const capture = stdio !== "inherit" && stdio !== "ignore";
+    const capture = stdio === "pipe";
     const child = crossSpawn(file, args, {
         cwd,
         env,
         timeout,
         windowsHide,
-        stdio: capture ? ["ignore", "pipe", "pipe"] : stdio,
+        stdio,
     });
     let stdout = "";
     let stderr = "";
@@ -89,7 +89,10 @@ export function execFileSync(file, args, options = {}) {
     if (result.status !== 0) {
         throw makeExecError(file, args, result.status, result.signal, String(result.stdout ?? ""), String(result.stderr ?? ""));
     }
-    return (result.stdout ?? null);
+    const stdout = result.stdout ?? null;
+    if (options.encoding && stdout == null)
+        return "";
+    return stdout;
 }
 export function spawnSync(file, args, options = {}) {
     return crossSpawn.sync(file, args, {

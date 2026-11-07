@@ -45,15 +45,41 @@ describe("shared/exec", () => {
       signal: null,
     });
 
-    const out = execFileSync("npm", ["--version"], { encoding: "utf-8" });
+    const out = execFileSync("npm", ["--version"], {
+      encoding: "utf-8",
+      cwd: "/tmp/work",
+      timeout: 1234,
+      env: { OSPW_TEST: "1" },
+    });
 
     expect(out).toBe("1.2.3");
     expect(mocks.sync).toHaveBeenCalledWith(
       "npm",
       ["--version"],
-      expect.objectContaining({ windowsHide: true }),
+      expect.objectContaining({
+        windowsHide: true,
+        cwd: "/tmp/work",
+        timeout: 1234,
+        env: { OSPW_TEST: "1" },
+      }),
     );
     expect(mocks.sync.mock.calls[0][2]).not.toHaveProperty("shell", true);
+  });
+
+  it("execFileSync returns an empty string when encoding has no piped stdout", () => {
+    mocks.sync.mockReturnValue({
+      status: 0,
+      stdout: null,
+      stderr: "",
+      signal: null,
+    });
+
+    const out = execFileSync("claude", ["mcp", "list"], {
+      encoding: "utf-8",
+      stdio: "ignore",
+    });
+
+    expect(out).toBe("");
   });
 
   it("execFileSync throws on a non-zero status", () => {
@@ -77,17 +103,30 @@ describe("shared/exec", () => {
       signal: null,
     });
 
-    const result = spawnSync("git", ["status"], { encoding: "utf-8" });
+    const result = spawnSync("git", ["status"], {
+      encoding: "utf-8",
+      cwd: "/tmp/work",
+      timeout: 1234,
+    });
 
     expect(result.status).toBe(0);
     expect(result.stdout).toBe("ok");
+    expect(mocks.sync).toHaveBeenCalledWith(
+      "git",
+      ["status"],
+      expect.objectContaining({ cwd: "/tmp/work", timeout: 1234 }),
+    );
   });
 
   it("execFileAsync collects stdout and stderr", async () => {
     const child = fakeChild();
     mocks.spawn.mockReturnValue(child);
 
-    const promise = execFileAsync("npm", ["--version"]);
+    const promise = execFileAsync("npm", ["--version"], {
+      cwd: "/tmp/work",
+      timeout: 1234,
+      env: { OSPW_TEST: "1" },
+    });
     child.stdout.emit("data", "1.2.3");
     child.stderr.emit("data", "warn");
     child.emit("close", 0, null);
@@ -99,7 +138,12 @@ describe("shared/exec", () => {
     expect(mocks.spawn).toHaveBeenCalledWith(
       "npm",
       ["--version"],
-      expect.objectContaining({ windowsHide: true }),
+      expect.objectContaining({
+        windowsHide: true,
+        cwd: "/tmp/work",
+        timeout: 1234,
+        env: { OSPW_TEST: "1" },
+      }),
     );
     expect(mocks.spawn.mock.calls[0][2]).not.toHaveProperty("shell", true);
   });
