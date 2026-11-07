@@ -6,424 +6,425 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-- **feat(standards): 补三条规则（异步错误处理 / 网络请求超时 / 架构层审查）**. 依据 state-of-ai-code-2026 的 424 项目扫描与 DORA 2026 gen-AI 报告补齐三处空缺：①§1 捕获条原本只覆盖同步 try/catch，异步路径的吞错（fire-and-forget、未 await、`.catch(()=>{})`）完全不在射程内——补子项「异步路径同理：Promise 的错误必须处理或上抛——未 await、未 catch 的 Promise 视同吞错」，与同条「兜底返回不算出口」同判，catch 子项断言 7 → 8 项②§7 与「禁止无界读取 / 无界并发」同族但漏了挂死——补 🔴「禁止无超时的外部调用：网络请求必须带明确超时，否则挂死等同无界等待」③§6 只要求「跑测试」，单测全绿而组合行为崩掉查不出来——补 🟡「验证不止于跑测试：另查跨组件共享状态与不变量、有无硬编码或预置输出绕过真实实现」。SSOT 10760 → 11066 字符、193 → 196 行。三副本同步，锚点新增 ZH/EN 各 4 条（§6 验证证据条尾句另补 ZH/EN 各 1 条——本轮 EN 内嵌副本的 §6 证据条被新条截断、尾句错接到新条末尾，无锚点覆盖时测试照绿）。
+- **refactor(standards): §3 任务审查与停止规则**. 审查按风险分级（2 轮，高风险独立）；门槛改多文件/架构；修复预算 2 轮、连续 3 轮无进展即停。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
-- **fix(standards): §2 变更完成只报已验证的盲点**. 原措辞「告知用户可能遗漏并需人工复查的区域（仅基于实际触及的公共签名/类型/配置；不编造风险清单）」在实操中产出的是臆测式清单——「可能遗漏 X 请复查」既不可操作也不可证伪；改为只报本次实际触及却未验证的部分（如没跑过 gate 的改动），不报猜测的风险清单。三副本同步，锚点新增 1 条（原「可能遗漏」无锚点覆盖）。
+- **fix(standards): §1 验证与注释纪律收口**. 验证重试改为「最多 2 轮修复」；注释纪律压缩为一段；恢复 `spec 锚` 豁免；删除悬空的「失效定义」引用。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
-- **feat(lint-guidelines): 清单扩到文档注释一族，规范里的注释「存在性」下沉 lint**. 随包清单原本只覆盖吞错一族（9 条规则），§1 注释纪律却要求「公共接口的文档注释必须有」——存在性是机械可查的，却留在提示层。清单扩为两族：吞错 9 条 + 文档注释 7 条（ruff `D100`/`D101`/`D103`、ESLint `jsdoc/require-jsdoc`、pylint `C0114`/`C0115`/`C0116`），各条标注默认开关与边界（文档注释类只查存在与形状，内容契约仍归规范）。§1 注释纪律相应改为「公共接口的文档注释（存在性尽量交给 lint：ruff D / eslint-plugin-jsdoc，清单见 `lint-guidelines.md`）」——规范只留签名表达不了的契约（单位 / 返回语义 / 抛出的错误 / 副作用 / 前置条件）。清单 3121 → 5002 字符，校验值 6957d228 → 17bb1022；默认关闭规则契约由「仅 B904」改为「B904 + 文档注释四族」。§1 注释条锚点改 1 条（`公共接口的文档注释必须有` → `公共接口的文档注释`）。
+- **feat(lint-guidelines): 清单扩到文档注释，注释「存在性」下沉 lint**. 清单由 9 条扩到 16 条，§1 只保留签名外的契约；三副本同步。
   - `templates/lint-guidelines.md`、`src/shared/lint-guidelines.ts`、`employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/shared/lint-guidelines.test.ts`、`tests/docs-sync.test.ts`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
-- **feat(standards): §2 补「等后台任务通知期间不发占位调用」**. §2 原本只禁「重复生成相同调用」，没覆盖等待期：后台任务的完成通知由 harness 主动回调送达，等待期间发占位/空调用（返回 `true` 的空命令、查询该任务状态的轮询）不推进任何事，只烧上下文，还可能让回合悬着不收。补一条 🔴（与同节「重复调用」同档）：等通知期间不发占位/空调用，无事结束回合等通知，有事做事。轮询一项限定为「查询该任务状态」，与 §6「等待用条件轮询」不冲突。§2 工具使用 1120 → 1177 字符。三副本同步，锚点新增 ZH/EN 各 1 条。
+- **fix(standards): §2 工具规则收口**. 搜索规则补回代码索引降级路径；变更完成只报已验证盲点；等待后台任务时不发空调用。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
-- **refactor(standards): 按 2026 年大厂现行指南精简 4 处**. 对照 Anthropic《Claude Code Best Practices》的「What you can stop doing」、OpenAI《Codex AGENTS.md 指南》、DORA《Impact of Generative AI in Software Development》、Anthropic 40 万会话研究逐条比对后精简：①§2「长会话接近上下文上限时先压缩上下文」——1M token 窗口 + 自动压缩已是默认，触发条件过时；只留「会话被压缩后先读回落盘的任务状态」，与 §3 的 tasks.md「## 状态」配对②§1「具体值断言（无验收锚定的数值）」——同一条规则 §4、§6 已各表述一次，三处并作两处③§1「多解释则全列」——与同节「关键假设…先提问再执行」重复，删前半，保留独有的「更简单方案则提出并坚持 / 已否决不再重提」④§1 竞态买断条 247 → 150 字——四要素（证据门槛、说明内容、未获同意不加、基线安全实践无须买断）全留，把三个标签与铺陈压成一句 + 一条子项。§2「不主动推送」保留：与 §3 授权条是「通用工具规则 vs 大任务流程规则」的分工，两处符合「同一意思 ≤2 处保留」的准则。10967 → 10814 字符、195 → 193 行。三副本同步，锚点改 2 条（ZH `尚无复现` → `若无复现`；EN `in-project threat model` → `project threat model, or compliance requirement`）。
-  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`CHANGELOG.md`
-- **refactor(standards): 删 1 处多余条款、压 2 处措辞**. 第二轮调研（GitHub Copilot 自定义指令文档 2026-10、Cursor《Best practices for coding with agents》2026-01、MSR《Beyond the Prompt: An Empirical Study of Cursor Rules》2026-01、FSE '26 arXiv 2603.20847）后精简：①删 §1 gate 选型表——同条后半句已把 gate 选择交回模型（「项目 lint 脚本未覆盖该路径时，直接对改动文件跑对应 linter」），表属重复②压缩「格式化工具不充当 lint 修复、`go vet` 无 auto-fix」③压缩注释纪律「判定面」的语言惯例列举。初稿曾把②③判为「工具冷知识、模型已知」并删除，复查撤回：无证据支撑（FSE '26 论文未统计模型层命令语义错误，仅 10% 归因于 AI 逻辑与行为），且把 Cursor「agent knows common tools」（针对罗列项目命令）套到工具语义属过度延伸；`ruff format` 与 `ruff check --fix` 的区别连人类都常混淆（ruff #9048），「TS 顶层导出才写 JSDoc」更是我们的约定、模型推不出来。另核实随包 lint checklist（src/shared/lint-guidelines.ts）只覆盖吞错类规则，与 §1 风格类条款并不重复。本文实测词面完全重复 0/118 行、近重复对 0（MSR 语料基线 28.7%）。10967 → 10760 字符。三副本同步，无新增锚点。
-  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`CHANGELOG.md`
+- **refactor(standards): 测试规则收口**. UI 测试禁令并入无断言价值条；验收期望不得从实现反推；补异步吞错与网络超时。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
+- **refactor(standards): 压缩 WHY 行与重复子句**. 删 §5 超 24 小时条；补规模门槛例外与「不同失败分别计」。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 
 ## [0.3.110] - 2026-10-29
-- **fix(standards): 注释纪律改为「只写三类 + 一句判据」，不再坍缩成全部不写**. 原文只有「默认不写」与黑名单两条轴，缺「哪些符号的文档必须存在」——AI 取最强分支，Python 的 class/function 连 docstring 都不写。核对 PEP 257、Google Python/TS Style Guide、Go Code Review Comments、Rust API Guidelines、Linux 内核风格：公共接口的文档注释是硬要求，内容只写签名表达不了的契约，逐参数复述一律算噪音。重写为三类（接口注释必须有 / 实现注释只有 why / 机制标注豁免），黑名单合并为一条，并加一句可机械执行的判据「删掉这句，读者会不会调用错或改错？不会 → 删」；写法对齐 Anthropic 的「tell Claude what to do」与 OpenAI 的「pair prohibitions with the acceptable alternative」。790 → 630 字符（−20%），8 → 6 条。三副本同步，锚点短语全部保留。
+- **fix(standards): 注释纪律改为「只写三类 + 一句判据」**. 三类：接口注释、实现 why、机制标注豁免；一句判据收口。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
-- **fix(standards): 捕获条补两条机械规则，默认动作改为「上抛」**. 原文 7 条 863 字符，且「准入」段提前枚举了后面三条出口再各自展开，形成循环引用（准入 → 按 catch-all 条 → 回到准入）。核对 Google Python §2.4.4（宽 catch 仅允许 re-raise 或隔离点；try 块最小化）、Go Code Review Comments（handle / return，或 truly exceptional 才 panic；不得用 `_` 丢弃）、Rust Book ch.9（可能失败默认返回 `Result`）、ESLint `no-useless-catch`、ruff BLE001（re-raised 或 `exc_info` 记录的不报）、Dave Cheney「Only handle errors once」：补 ①同一错误只处理一次（记录后又原样上抛=重复处理）②try 块只包可能失败的那一句；起点由「默认不捕获」改为「默认上抛」——真正的默认动作是传播，不是沉默。863 → 777 字符（净增 2 条规则，去掉准入段的重复枚举与循环引用；随后一轮去重：跳过动作、记录 + 行内原因、代码例子各重复两次）。三副本同步，catch 子项断言 6 → 7 项，锚点改 2 条。
+- **fix(standards): 捕获条补两条机械规则，默认「上抛」**. 补「同一错误只处理一次」与「try 块只包可能失败的那一句」。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
-- **feat(standards): §6 补两条底层原则，合并重复的证据规则**. 核对 Google《Software Engineering at Google》ch.11（保持行为的重构不应改测试；测试应尽量 hermetic）与 Kent C. Dodds（实现细节=使用者看不到的东西，测它会双向失效——重构报假红、真坏仍绿）：补「测试钉住行为，不钉实现」，判据是重构实现而行为不变时测试不该改；补「测试自足且确定」，不依赖真实时钟/网络/顺序/共享状态，等待用条件轮询而非固定 sleep。同时把「验证前核对本次产物」与「验证证据取自本次运行」并成一条。§6 1367 → 1551 字符（+13.5%，两条新规则的正文成本）。三副本同步，锚点新增 ZH/EN 各 2 条。
+- **feat(standards): §6 补两条底层原则**. 补「测试钉住行为，不钉实现」与「测试自足且确定」；合并两条重复的证据规则。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
-- **refactor(standards): 两个超长条目拆成决策子项，§1 加分组标题**. 无措辞与语义改动，纯结构：① §3「自动链唯一触发」358 字符里串了触发 / 收尾 / 适用面 / 停止四件事，拆为子项，结尾「不得改断言凑绿」不再有被前半段淹没的风险；② §4「数据位处理」215 字符串了四个分支，改为「按回答分四种走」的列表；③ §1 的 41 条平铺加 6 个分组标题（校验与执行 / 选型与设计 / 注释纪律 / 规模与状态 / 输入与错误处理 / 代码与界面写法），条款一字未改。中英内嵌副本同步前两项，锚点全部保留。
+- **refactor(standards): 两个超长条目拆成决策子项，§1 加分组标题**. §3 自动链与 §4 数据分支拆为子项，§1 加 6 个分组标题；纯结构，措辞未改。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`CHANGELOG.md`
 
-- **fix(standards): 组件测试禁令收窄到「无行为断言」**. §6 的 🔴 与同节「测试钉住行为，不钉实现」自相矛盾——行为级组件测试正是该原则的教科书例子，却被一并禁掉；改为「禁止无行为断言的 UI 组件测试（渲染冒烟 / 快照 / 纯存在断言），行为级按点名标准判断，不因「不是 E2E」排除」。三副本同步，锚点改 1 条。同批评估的「安全原语不走选型链」最终撤回：选型链的「标准库优先」在口令哈希上确实指错，但大厂规范正文普遍不写安全清单（SDL 只要求「用经过验证的实现」，Anthropic 的安全代理明言 practical risks 优先于 compliance checklists），且 §1 的「不假设外部输入可信」与依赖条已覆盖大半，单列一条边际收益不足。三副本同步，锚点改 1 条、新增 ZH/EN 各 1 条。
+- **fix(standards): 组件测试禁令收窄到「无行为断言」**. 行为级组件测试改按点名标准判断，不再一并禁止；三副本同步。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 
 ## [0.3.109] - 2026-10-28
-- **fix(init): 已装 auto-pipeline 的项目重跑 init 不再重新忽略 `openspec/`**. `init` 只按本次 `--auto-pipeline` 计算 omission，于是已有 workflow 的项目跑一次普通 init 就会把 `openspec/` 写回受管块——CI 检出后拿不到新变更，且没有提示（那条「被忽略」的警告只在带 flag 时打印）。改为 flag 与磁盘上的 workflow 取并集：首次带 flag 运行时 workflow 尚未写入，只看文件会漏。补回归测试。
+- **fix(init): 已装 auto-pipeline 的项目重跑 init 不再忽略 `openspec/`**. 受管忽略按 flag 与已有 workflow 取并集；补回归测试。
   - `src/commands/init.ts`、`tests/auto-pipeline.test.ts`、`CHANGELOG.md`
-- **feat(init): 受管 .gitignore 路径改为初始化时可勾选**. 交互式 init 在编辑器选择后多选受管路径，默认全选（回车即维持原行为）；取消勾选的路径不写进块，并以块首 `# openspec-pw: skip=…` 记录，后续 update 与非交互 init 都不再补回，重新勾选即恢复。`AGENTS.md` / `CLAUDE.md` / `CODEBUDDY.md` 每次 init 都会注入受管块，固定忽略、不进候选集。非交互运行（含 stdin 非 TTY）不询问，沿用块中已记录的 skip。顺带修正 `cli/init` spec 中受管集合「11 条…可达 14 项」与实际 24 条的偏差。
+- **feat(init): 受管 .gitignore 路径改为初始化时可勾选**. init 增加受管路径多选，取消项以 `# openspec-pw: skip=…` 记录，后续不再补回。
   - `src/shared/gitignore-managed.ts`、`src/commands/init.ts`、`src/commands/update.ts`、`tests/gitignore-managed.test.ts`、`tests/init.test.ts`、`README.md`、`openspec/specs/cli/init/spec.md`、`CHANGELOG.md`
-- **fix(standards): 堵住 §6「测试红 → 更新断言」对重构的放行**. 原分类写「被测行为仍在 → 更新断言至新行为」：重构把行为改掉后该条件仍为真，于是「重构」被读成改断言的许可，且同节的「分歧先裁定谁错」允许裁定「实现对」。改为「行为本次有意变更」，重构并进该分支的条件（「重构不算：重构只改结构，红即改坏，非断言过期」），顺带消掉「仍在」的歧义；整条同步收紧（152 → 125 字）。单列一条重构规则（钉住 → 改结构 → 复跑）经评估未采纳：「保持测试通过」将成第 3 处，且定义离决策点太远。三副本同步，锚点新增 ZH/EN 各 1 条。
+- **fix(standards): 堵住 §6「测试红 → 更新断言」对重构的放行**. 条件改为「行为本次有意变更」，并写明重构只改结构、红即改坏；三副本同步。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
-- **fix(standards): 补 3 处规则内部的漏口，拆开 2 处合写条**. ① 捕获准入的「重试」出口未受幂等约束——重试是重复写入最常见的来源，改为「重试——写操作须先满足幂等条」。② `§5` 的 🔴 条同时装着「禁提交」（不可协商）与「超 24h 清理」（可调整），🔴 只留前者，「可疑文件不自行删」归回该条，24h 清理单列为未标注条。③ `§3` 提案两轮审查把「审查内容/方法」与「节奏与阻断判定」写进同一条，拆成两条 🟡。三副本同步，无新增锚点。
+- **fix(standards): 补 3 处规则内部的漏口，拆开 2 处合写条**. 重试出口补幂等前提，§5 的 🔴 只保留禁提交，§3 两轮审查拆成两条；三副本同步。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`CHANGELOG.md`
-- **fix(standards): 修掉 4 处执行不了的规则 + 3 处按判据精简**. ① `§3`「按 §1 修复预算」指向不存在的术语（`修复预算` 只在 §3 自己定义），副本早已自行改写——改为自含的「同一失败最多 2 轮」。② 依赖条按 npm 语汇写（registry / install scripts），而 `§1` 声明覆盖 .py/.go——改为「该生态的包注册源」，安装期脚本降为条件分支（如 npm postinstall）。③ 自动链触发靠对用户措辞分类，没有判不准的兜底——补「按未触发处理并一句话确认」。④ `lint-guidelines.md` 由 `init` 安装，未 init 的项目根内没有——补「未安装 → 跳过本条」。精简：删「模块化」条尾句（与「精准改动」同义，第 3 次出现）、删 UI 文案条的冗余 🟡（未标注即 🟡）、删选型链的两个前端示例（精简副本早已删掉且语义无损）。三副本同步，无新增锚点。
+- **fix(standards): 修掉 4 处执行不了的规则 + 3 处按判据精简**. 修正失效指向与生态措辞，补自动链兜底与 lint 清单缺失出口，删 3 处重复；三副本同步。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`CHANGELOG.md`
-- **fix(standards): 守卫条按「失败是否可见」重写**. 原尾部写的是「守卫须让失败不发生」——判别轴取「失败是否发生」，既无法区分「在调用点拦住这一例」与「边界显式拒绝」，与后半句的根因要求也自相矛盾。改为「守卫只能把失败变成显式的拒绝或默认值，不能让它静默消失；根因在别处时修根因，不在调用点拦住这一例」：轴换成可见性，并接上同条款前半句推荐的 `dict.get` / `next(it, None)` 这类默认值——默认值合法，条件是它在该处语义正确，否则退化为掩盖。三副本同步，锚点改 2 条（`不能让它静默消失` / `根因在别处时修根因`）。
+- **fix(standards): 守卫条按「失败是否可见」重写**. 守卫只能把失败变成显式拒绝或默认值，不能静默消失；根因在别处时修根因；三副本同步。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
-- **feat(standards): 补三条设计律（非法组合挡在构造处 / 写操作幂等 / 可变状态单写入口）**. 此前规范重流程、轻设计，设计侧只靠「模块化」与「精准改动」间接表达。三条均挂 🟡 且各自限定作用域：① 只在「新建或改建数据结构」时要求，并写明「未被本次改动触及的既有结构不动」，让位 YAGNI 优先链——否则会诱发小任务里的类型体操；② 限定「会被重试、或可能中途失败」的写，避免把自增插入、追加写日志这类天生不幂等的操作一网打尽，并给出可执行出口（在调用处注明不可重试）；③ 给出实现形态（单线程 / 队列 / 锁）而非抽象要求，且用「串行化」而非易被读成 JSON 序列化的「序列化」。措辞据 ub-mode 的思想重写（该仓库无 LICENSE，未复制原文）。三副本同步，锚点新增 ZH/EN 各 3 条。
+- **feat(standards): 补三条设计律（非法组合挡在构造处 / 写操作幂等 / 可变状态单写入口）**. 三条均限定作用域并让位 YAGNI 优先链；三副本同步。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
-- **fix(standards): 给「停下」补执行内容，要求失败来自预期断言**. ① `§1` 的「同一验证连续 2 次未过 → 停」只说了停、没说停下来做什么：补「停前用一句话写出两次尝试共同依赖的假设，改掉该假设之前不再重试」——连续失败后换着花样再试是默认失效模式，连共同假设都写不出来通常说明方向本身错了。② `§6` 修复流程补「失败须来自预期的那条断言」：测试红在别处等于没复现。两处三副本同步，锚点新增 ZH/EN 各 2 条；思想参考 ub-mode（该仓库无 LICENSE，措辞全部重写，未复制原文）。
+- **fix(standards): 给「停下」补执行内容**. 停下前须写出各次尝试共同依赖的假设；复现的失败须来自预期的那条断言。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
-- **fix(standards): 把四条工程纪律收进既有条款的最小落点**. ① `§1`「不假设外部输入可信」的「预判守卫」补半句：守卫须让失败不发生，而不是让它静默消失——原文读起来像兜底也算对，而 catch 条款只管事后吞错、不管事前守卫。② `§6`「无断言价值的测试」补可机械检验：把该测试依赖的返回值改成空/null，测试仍过 → 判为无断言价值；措辞取「最省事的检验」而非定义，因为空变异对「断言 null 输入报错信息」的测试会误判。③ `§6` 修复流程把复现的中介收紧为「复现先落成一个会失败的测试」（可自动化的前提下；无法用测试表达时用截图或测量并说明）——与「测试只随验收存在」的冲突由该条款自身消解（它即该测试的点名来源），不再另加指针条款。第四条纪律「最小编辑」已由 `§1` 精准改动覆盖，无需新增条款：本轮新增条款数为 0。三处副本同步（SSOT / `AGENTS.md` / `docs/script.js` ZH+EN），锚点新增 ZH/EN 各 3 条（守卫句、空变异判据、失败测试先行），原有锚点短语全部保留未改。
+- **fix(standards): 四条工程纪律并入既有条款**. 守卫不得静默、空变异判据、失败测试先行并入条款；第四条由「精准改动」覆盖。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 
 ## [0.3.108] - 2026-10-26
-- **fix(docs): 内嵌规范改用哨兵收尾，补 §3 提案入口锚点**. `docs/script.js` 的两份内嵌副本原先靠正文末尾的「反引号+分号」定位结尾，正文中出现该组合时抽取会在中途截断——上一轮改 Standards 时触发过一次，27 项断言因副本被截断而假红。改为在闭引号后加 `// spec-embed:zh|en` 哨兵（各出现 1 次），抽取按哨兵定位，正文再出现该组合也不受影响；当前两份副本的抽取结果与旧正则逐字相同。`tests/docs-sync.test.ts` 同时补 §3 提案入口的 ZH/EN 锚点各 1 条：`§3 规模门槛` 的锚点只覆盖「300+ 行且跨多个文件」，改动提案措辞时锚点仍会照绿。
+- **fix(docs): 内嵌规范改用哨兵收尾**. 改用 `// spec-embed:zh|en` 哨兵抽取，正文含反引号+分号不再截断；补 §3 提案入口锚点。
   - `docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
-- **fix(standards): 审阅驱动的一轮语义修正 + 措辞收敛**. `Prompt 工程师` 复审 SSOT，11 条逐条落地。① `§0` 的 🔴 定义改为「不可协商的硬性约束」，后果补「不可逆损失 / 绕过用户授权」，并把「停下确认」限定在**无法同时满足**时——原文按后果描述、标记实际按决策点使用（`密钥不入库`、`既有测试保持通过`、`无界读写` 等 🔴 从不触发询问），两者分叉让最高风险的信任边界条款反停在 🟡。② 同一轮给「不假设外部输入可信」挂 🔴。③ `经验沉淀` 改为不指名载体、只禁工具托管块：原文点名的 CLAUDE.md / AGENTS.md 都会被 `update` / `standards:sync` 整块重写（对没有 wrapper 的编辑器 Cursor/Cline/OpenCode/Pi/omp/MiniMax 是确定性丢失），而本文件随包发往任意项目，仓库专有路径不该随发。④ `§3` 规模门槛去掉编辑器分派，只留「走 OpenSpec 提案流程」与「建议用户运行该流程」——命令名按编辑器取值且随生态漂移，不进随包规范。⑤ 措辞批：lint gate 补 `.js/.jsx`，并规定项目脚本未覆盖该路径时直跑 linter（`docs/script.js` 即此类）；`lint-guidelines.md` 引用由其真实覆盖面（吞错一族）替代「各语言」；搜索分层主工具中立化；删 shell 改写条的无主语括号；`## 状态` 的两轮审查改为可填写格式；UI 组件禁令的冒号改包含式括号。三处副本同步（SSOT / `AGENTS.md` / `docs/script.js` ZH+EN），锚点与 catch 六子项全存活；`CLAUDE.md` 的 Code×Docs 表补 `employee-standards.md` 行——该文件此前不在表内。本轮撞见的盲区：`docs-sync` 锚点没覆盖 §0 经验沉淀与 §3 提案入口——SSOT 改完而副本仍是旧表述、测试照绿；已补 ZH/EN 各 1 条锚点（`非工具托管的载体` / `carrier the tooling does not own`）。已知脆弱点：`docs/script.js` 的提取正则 `\`([\s\S]*?)\`;` 会被正文里的「反引号+分号」提前截断（本轮触发过一次，27 项断言假红），下次再遇到应改正则，不要靠绕措辞。
+- **fix(standards): 审阅驱动的一轮语义修正 + 措辞收敛**. 经验沉淀改为不指名载体；§3 门槛去掉编辑器分派；措辞收敛。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`CLAUDE.md`、`CHANGELOG.md`
-- **feat(editors): 恢复 DeepSeek Harness（dsh）适配器**. 2026-08 的 `remove-dsh-support` 把它退役，理由是官方 OpenSpec 当时不向 dsh 分发工作流命令；同一条记录写下的加回条件是「官方 OpenSpec 支持 dsh 后恢复 adapter」。条件已满足：OpenSpec 1.15.0 的 `--tools` 列表含 `dsh`，`openspec init --tools dsh` 生成 10 个 `.dsh/skills/openspec-*/SKILL.md`。① 适配器从 `c15a477^` 取回并移植到 declarative 契约，装 `.dsh/skills/opsx-e2e/SKILL.md`（dsh 的 rank 100 项目级根，优先于 rank 200 的 `.agents/skills`）；检测为项目 `.dsh/` 或全局 `~/.dsh/`，**不设 artifactRoots**——`.dsh/skills` 在 `.dsh/` 之内，标记目录必然先命中。② 无 MCP：`mcp: { kind: "none" }`，dsh 的 MCP 服务器在 `$DSH_HOME` 的 profile patch 层且默认关闭。③ `uninstall` 的「Removing Retired dsh Skill」段及其专属测试一并删除，否则会出现「支持 dsh 的同时卸载报告 Retired」。④ 受管 gitignore 只加 `.dsh/skills/opsx-e2e/`，不吞 `.dsh/` 下 OpenSpec 生成的 `openspec-*`。⑤ `doctor` / `update` 判断「这个项目跑过 init 吗」的 `hasCommand` 原先是逐编辑器硬编码路径，已漂移两次（缺 `.codebuddy/`、`.agents/skills/`、`.dsh/`）；改用既有的 `getAllAdapters().some(hasCommandArtifacts)`，新增适配器不再需要手工补这一步。⑥ `doctor` 的无 MCP 文案由「has no MCP client」改为「has no project-level MCP config」——dsh 有 MCP，只是配置在 `$DSH_HOME` 的 profile patch 层，原措辞对它不成立。迁移：曾用 `--tools minimax` 绕过的项目里 rank 200 的 `.agents/skills/opsx-e2e` 会被遮蔽且不再更新，跑一次 `openspec-pw init --tools dsh` 即落到 rank 100。
+- **feat(editors): 恢复 DeepSeek Harness（dsh）适配器**. 恢复 dsh 适配器，装 `.dsh/skills/opsx-e2e/SKILL.md`；旧 `--tools minimax` 项目需重跑 init 落到 rank 100。
   - 新增 `src/commands/editors/adapters/dsh.ts`、`tests/editors-dsh.test.ts`；修改 `src/commands/editors/{types,registry}.ts`、`src/commands/editors.ts`、`src/commands/{init,doctor,uninstall,update}.ts`、`src/index.ts`、`src/shared/gitignore-managed.ts`、`tests/{editors-contract,editors-tools,editors-cursor,init,gitignore-managed,doctor}.test.ts`、`tests/commands/{doctor,uninstall-command}.test.ts`、`README.md`、`README.zh-CN.md`、`docs/index.html`、`CHANGELOG.md`
 
-- **fix(templates): 移除指向已删除命令与不存在命令名的两处说明**. ① `app-exploration.md` 的 Visual Anomalies 段写着「Auto-populated by `openspec-pw vision-check`，layout issues detected via Ollama VLM」——该命令早已从 `src/index.ts` 删除，`src/` 内也无任何 Ollama 引用，等于每个已装项目都附带一条指向空命令的指令；改为「review 时填写，没有检测器，空表属正常」。② `test-plan.md` 的 CAPTCHA 策略标题 `Skip with /handoff`——`/handoff` 全仓库仅此一处，Claude Code 与 openspec 均未定义该命令；改为 `Skip and hand off to a human reviewer`，策略内容不变。已装项目下次 `openspec-pw update` 刷新模板，无需迁移。
+- **fix(templates): 移除指向已删除命令与不存在命令名的两处说明**. 删除指向已删 `vision-check` 与不存在的 `/handoff` 的说明，改为人工填写与人工交接。
   - `templates/app-exploration.md`、`templates/test-plan.md`、`CHANGELOG.md`
-- **docs(claude-md): 文档同步表去掉已删除路径，模板产物描述区分命令与 skill**. ① Code × Docs Sync 表的 `.claude/skills/openspec-e2e/SKILL.md` 行指向 `306329f refactor: remove SKILL-based openspec-e2e command` 删除的目录，无法再被「touch」；同一产物由 `templates/*` 行覆盖，故删行。② Project Structure 把 `templates/e2e-command.md` 描述为「每个编辑器的命令」，与 `init.ts` 的实际分发不符——MiniMax Code 与 DeepSeek Harness 拿到的是 `opsx-e2e` skill。
+- **docs(claude-md): 文档同步表去掉已删除路径，模板产物描述区分命令与 skill**. 删除失效同步表行，并把模板产物描述改为命令与 skill 两种形态。
   - `CLAUDE.md`、`CHANGELOG.md`
 
 ## [0.3.107] - 2026-10-26
-- **feat(cli): `flake` 与 `gate` 覆盖「调大超时掩盖竞态」，修正 OpenSpec 命令的调用方式**. ① `flake` 新增 `timeout-increase` 检测器：`timeout: N` / `test.setTimeout(N)` 在 diff 中被调大即报 medium finding（基线取自 `git diff -U0 HEAD`，同一 hunk 内按位置配对，跨文件不配对）——调研记录里「AI 只会加大超时掩盖 bug」这条已知失败模式，此前四个检测器都不覆盖。② `gate` 复用同一解析器把发现并入 `flags`（`GateFlag` 增加可选 `reason`，`gate --json` 的向后兼容加法），流水线模板的 PR 正文新增 flags 段落——`gate.json` 与 PR 都能看到，但不判失败，延长超时有时正当。`flake` 带变更名运行时按该变更的测试文件过滤，不串到别的变更。新发现为 medium 严重度：默认无 `--gate` 与 `gate` 使用的 `--gate HIGH` 都不受影响，`--gate MEDIUM` / `--gate ALL` 会因此判红。③ `playwright.config.ts` 本就在 `CHECK_CONFIG_PATTERNS` 内，配置级调整早已可见，本次补的是测试文件内的情况。④ §0 的 OpenSpec 命令改为 `openspec --help`、`npx openspec --help` 作「不在 PATH」兜底：`npx` 按包名解析，npm 上的 `openspec` 是 0.0.0 占位包，只有 OpenSpec 以 npm 安装时 npx 才找得到，官方独立二进制安装下会报 `could not determine executable to run`。
+- **feat(cli): `flake` 与 `gate` 覆盖「调大超时掩盖竞态」**. 新增 `timeout-increase` 检测器并接入 `gate`；§0 命令改为 `openspec --help`。
   - `src/commands/flake.ts`、`src/commands/gate.ts`、`src/index.ts`、`templates/auto-pipeline.yml`、`tests/commands/flake.test.ts`、`tests/gate.test.ts`、`tests/auto-pipeline.test.ts`、`employee-standards.md`、`docs/script.js`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
-- **fix(standards): 封住「记日志 + 宽 catch 兜底返回」的逃生口，补错误类枚举的口子**. ① 末条禁令原写作「兜底**静默**不算出口」，限定词落在「是否记录」上——`except Exception: { logger.error(e); return default; }` 于是同时满足准入（留了记录）与窄类型条（失败结果未被下游消费），却绕开末条（记了日志就不算静默），而它正是末条例句里写着要禁的形状。现改为按**形状**禁：宽 catch 的兜底返回同判吞错，记录不构成豁免；句首「上述边界之外」保留，catch-all 边界内「记录后继续」的合法用法不受影响。② 「无类型 catch 按错误类别分流」缺逃生口，模型会凭印象写 `e.code === 'ENOENT'` 或引用不存在的错误类，与 §4 不编造字段名冲突；补「枚举不出就直接上抛，不凭印象写错误类或错误码」。③ EN 镜像的节标题是 `## No Non-Generic Changes`，与 ZH 的「代码质量 · 禁止项与要求」不对应，异常处理整块挂在一个不描述「禁止项」的标题下，按标题检索的模型不会预期这里有禁令——改为 `## Code Quality · Prohibitions and Requirements`。④ docs-sync 原有单短语锚点测不出子项漂移（0.3.106 的 EN 误译就是这样发出去的），新增结构断言：三份副本的 catch 条必须保持 6 个子项、顺序与首词一一对应；另补 2 ZH / 2 EN 限定词锚点。三处副本同步。
+- **fix(standards): 封住「记日志 + 宽 catch 兜底返回」的逃生口**. 兜底返回按形状判吞错；无类型 catch 枚举不出即上抛。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
-- **fix(standards): 「## 状态」补记提案阶段两轮审查的完成情况**. §3 要求提案后自动审查两轮且两轮内不中途等确认，但 `tasks.md` 状态项里没有这一状态——会话在第 1 轮与第 2 轮之间中断或压缩时，下一个会话无法判断复审进行到哪，容易整轮重做或漏掉第 2 轮的独立视角复检。状态项现为：当前阶段、提案阶段两轮审查的完成情况、最后停止原因、e2e 未运行或运行结果、待裁决项。三处副本同步。
+- **fix(standards): 「## 状态」补记提案阶段两轮审查的完成情况**. tasks.md 状态项补记两轮审查完成情况，避免会话中断后重做或漏检；三副本同步。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`CHANGELOG.md`
 - 未采纳的复审建议（记录取舍）：「`debug` 与必须可见」若改成固定 warning 会破坏「按影响」分级；审计日志例外已由 §1「简化有边界」覆盖；「带因包装不泄给外部」与同子弹「不带因=丢因果」互斥且属输出边界问题，另案处理；`finally`/`defer` 属语言机制不属准入与出口语义。已知未修：准入第三形态「失败本会就此丢失」需知道调用方行为，单文件编辑下判定不可本地化，存在「加/删日志」的方向性方差——修它要第三次改动准入语义且无实测支撑。
 
 ## [0.3.106] - 2026-10-25
-- **fix(standards): 异常处理条款改为「默认不捕获」，补 catch 准入判据**. 原条款标题是「**捕获的**异常不许无声消失」——它把捕获当既定动作、只在事后管出口，等于给了模型一个比 system prompt 更强的反向信号：Claude Code 的 system prompt 已内置「不为不可能发生的场景加防御、只在系统边界校验」，而项目规范每次都在上下文里且带 🔴，模型会优先服从后者，于是「必须处理失败」的最省力满足方式就是包一层 catch。现改为「默认不捕获——只在能改变结果的地方 catch；准入后失败仍必须可见」，并新增准入判据（catch 必须在失败的去向或内容上留下可见变化，只有三种：改变控制流＝重试/边界隔离、给同一目的地更多信息＝带因包装、失败本会丢失时留记录；降级继续不在准入之列，交由窄类型条的可承受条件判定），把「该不该捕获」与「捕获后怎么办」拆成两问——判据两次返工：初版「能否做一件调用方做不到的事」对重试给出错答（重试正是调用方做得到的事），二版「到达一个原本到不了的地方」又让两个分支能被兜空（「降级」无定义、「包装」的目的地其实没变，而后者同时被出口条要求），终版改为封闭三形态并把降级判定权交回可检查的窄类型条件。出口三条去掉 ①②③ 编号（本就是无序列表），并顺带吸收「catch 后原样再抛=噪音」、标题的「只在能改变结果的地方」删除（它与准入判据是两个不同的问题）、上抛标为默认出口、catch-all 的位置限制与「隔离」对齐。二轮复审还修掉两处：删编号把「②③行内原因」的指代弄丢，「后两类」落到被禁形状上（`.catch(()=>{})` 配注释即可豁免，正是 `no-empty` 的逃生口），改回点名「窄类型与 catch-all」；EN 副本 `would otherwise lose it` 使观测者限定恒真，改为对目的地的平铺断言。三处副本同步，+1 ZH / +1 EN 锚点。
+- **fix(standards): 异常处理条款改为「默认不捕获」**. 只在能改变结果的地方捕获，并补三形态准入判据。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
-- **feat(cli): 新增 `openspec-pw gate` 组合门禁**. 单一命令、单一裁决、三值退出码（`0` 通过 / `1` 不达标 / `2` 无法判定）；按 validate → lint → typecheck → test → flake → e2e 顺序执行，默认首败即停，`--keep-going` 跑完，`--only`/`--skip` 选子集，`--json` 输出可直接用于 CI 断言与 PR 评论。两条确定性假绿护栏：delta spec 有 scenario 但变更目录下无测试文件（仅在有 Playwright 配置时）判失败；本次 diff 新增 `test.fixme(` 判失败并列出行号。检查配置（lint / `tsconfig*.json` / Playwright / Vitest）被改动时进入 `flags`——只报告不判失败。
+- **feat(cli): 新增 `openspec-pw gate` 组合门禁**. 按 validate → lint → typecheck → test → flake → e2e 执行，三值退出码，含两条假绿护栏。
   - `src/commands/gate.ts`、`src/index.ts`、`tests/gate.test.ts`、`README.md`、`README.zh-CN.md`
-- **feat(cli): `coverage` 与 `audit` 补齐判定退出码**. `coverage --fail-under <pct>` 低于阈值退 1；`audit --gate` 有任一问题退 1。两者默认行为不变（仍恒为 0，只作报告），因此可安全地加入 `gate --only` 子集。
+- **feat(cli): `coverage` 与 `audit` 补齐判定退出码**. `coverage --fail-under` 与 `audit --gate` 低于阈值或有问题时退 1，默认行为不变。
   - `src/commands/coverage.ts`、`src/commands/audit.ts`、`src/index.ts`、`tests/check-exit-codes.test.ts`、`README.md`、`README.zh-CN.md`
-- **feat(cli): 新增 Claude Code Stop hook（`init --hook`）**. 把 `gate` 装成回合结束钩子：门禁红则 `exit 2` + stderr 回传失败项，agent 无法带着红灯收尾。`static`（默认：validate/lint/typecheck/test）与 `full`（额外含 flake/e2e）两档；读取 `stop_hook_active` 每回合只阻断一次，按工作树指纹缓存结论；对 `.claude/settings.json` 做合并式写入并保留用户自己的钩子，JSON 损坏时中止而非覆盖；`--no-hook` 与 `uninstall` 移除。
+- **feat(cli): 新增 Claude Code Stop hook（`init --hook`）**. `init --hook` 把 gate 装成 Stop hook，门禁红则阻断收尾；static/full 两档，合并写入并保留用户钩子。
   - `src/commands/hooks.ts`、`src/commands/gate.ts`、`src/commands/init.ts`、`src/commands/uninstall.ts`、`src/index.ts`、`tests/hooks.test.ts`、`tests/gate.test.ts`、`README.md`、`README.zh-CN.md`
-- **feat(cli): 新增全自动流水线模板（`init --auto-pipeline`）**. 生成 `.github/workflows/openspec-auto.yml`：PR 只跑 `gate`（供分支保护 require），`openspec:auto` 标签或手动触发才起无头 agent，跑 apply → e2e → gate 并开 PR。固定 Claude Code 版本并在启动自检（防 `--bare` 未来默认化让 `/opsx:apply` 静默失效）；`--allowedTools` 用权限规则语法并配合 `--tools` 收窄；`--max-turns`/`--max-budget-usd`/`timeout-minutes` 三重上限；`CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0` 防后台服务挂住 run；apply 以任务计数判定，自证循环与作业侧复跑并存；标签触发的 agent 作业限定同仓库分支。文件已存在时不覆盖，并打印分支保护配置提示。
+- **feat(cli): 新增全自动流水线模板（`init --auto-pipeline`）**. 生成 `.github/workflows/openspec-auto.yml`，PR 跑 gate，标签或手动作业跑 apply → e2e → gate 并开 PR。
   - `templates/auto-pipeline.yml`、`src/commands/pipeline.ts`、`src/commands/init.ts`、`src/index.ts`、`tests/auto-pipeline.test.ts`、`README.md`、`README.zh-CN.md`
-- **feat(cli): E2E 命令支持无头运行（`/opsx:e2e <name> --auto`）**. 流水线的无人值守路径需要 E2E 不自带人工检查点：Step 5 的「用户确认测试计划」改为确定性门禁 `openspec-pw coverage <name> --plan <test-plan.md>`（新增 `--plan` 模式，按 `#### Scenario:` 标题比对测试计划，忽略大小写/空白/标点，中英文皆可，缺条即退出 1 并逐条列出）；Phase 3 升级与全部 HARD STOP 改为结构化中止（`E2E ABORTED: <reason>` + 非零退出），Healer 护栏原文不变——不得放宽断言、改期望值或删检查换取绿灯。交互模式文案与流程未动。
+- **feat(cli): E2E 命令支持无头运行（`/opsx:e2e <name> --auto`）**. 无头模式用 `coverage --plan` 替代人工确认，HARD STOP 改为结构化中止；交互流程不变。
   - `templates/e2e-command.md`、`src/commands/coverage.ts`、`src/index.ts`、`tests/check-exit-codes.test.ts`、`tests/e2e-template-auto.test.ts`、`README.md`、`README.zh-CN.md`
-- **fix(ci): 流水线补齐 verify 阶段与 PR 正文契约，修掉无法满足的预检**. ① 阶段 ⑤ 此前缺失：agent 作业在 `gate` 之后新增 advisory 的 `/opsx:verify`（`continue-on-error: true`、`--tools "Bash,Read"` 只读），不拦截流程；② PR 正文此前只有 gate verdict 与 apply 成本，现补齐 gate 逐项结果、各阶段 `total_cost_usd` 与 verify 报告（`--body-file`，避免多行内容的引号陷阱）；③ 预检原先要求 `.claude/commands/opsx/apply.md` 已提交，而 `.claude/` 位于 init 维护的受管 gitignore 块内——该断言永远不可能通过，改为先 `openspec init --tools claude` 生成命令文件再断言（`openspec update` 不够：它只刷新全局配置里已登记的工具，全新 runner 上没有）；④ 预检 profile 由 `core` 改为 `custom`——`core` 只装 6 个命令、不含 `/opsx:verify`，第五阶段会静默失效；⑤ verify 的 `--allowedTools` 由前缀规则改为 `Bash`：`Bash(npm *)` 匹配不了 `cd x && git diff` 这类复合命令，在 `--permission-prompts none` 下直接被拒，实测导致 agent 无法运行任何检查。④⑤ 由本地真跑无头 verify 发现。
+- **fix(ci): 流水线补齐 verify 阶段与 PR 正文契约**. 补 verify 与 PR 正文明细；修正预检：先生成命令、profile 改 custom、allowedTools 改 Bash。
   - `templates/auto-pipeline.yml`、`tests/auto-pipeline.test.ts`、`README.md`、`README.zh-CN.md`
-- **feat(e2e): 补上无浏览器 MCP 时的第三条探索路径**. 模板的浏览器路由表原本只有 playwright-test MCP → chrome-devtools 两级，而 headless/CI 里两者都不存在——实测 agent 自行发明「写 Playwright 脚本探索」才跑通，还在报告里写成「工具被拒绝」。现补第三级：自己写一次性脚本、用 `npx playwright test <file>` 或 `node <file>` 驱动，截图与 DOM 落 `tmp/`，Step 4 结束时删除、绝不留在 `tests/` 下；同时把路由明确为**一条链而非菜单**——只有上一级不可用或失败才降级，且须在 `app-exploration.md` 注明实际使用的工具。
+- **feat(e2e): 补上无浏览器 MCP 时的第三条探索路径**. 补一次性脚本探索路径，并明确工具路由是一条链而非菜单。
   - `templates/e2e-command.md`、`tests/e2e-template-auto.test.ts`、`CHANGELOG.md`
-- **fix(gate): 无需变更名的检查不再因「多个活跃变更」判红**. `gate` 此前无条件先解析变更，于是 `--only lint,typecheck,test,flake`（四项都不读变更）在同时开着两个 change 时会以 `2` 结束——而模板里 PR 作业正是这么调的，注释还写着「PR 作业绝不能因为同时开着两个变更而失败」。现改为按所选检查判断：只有 `validate`/`e2e`/`coverage` 需要变更名，其余检查直接在当前工作树上运行，`report.change` 记 `null`。`flake` 与 `audit` 的变更名本就是可选参数，缺省时 `flake` 扫全部测试文件。真实仓库里同时开两个 PR 时才暴露。
+- **fix(gate): 无需变更名的检查不再因「多个活跃变更」判红**. 只有 validate / e2e / coverage 需要变更名，其余检查直接在当前工作树运行。
   - `src/commands/gate.ts`、`tests/gate.test.ts`、`CHANGELOG.md`
-- **fix(ci): 流水线阶段改为「便宜的在前」，修掉 apply 自证不可能通过的死锁**. ① apply 阶段的提示词原本要求 `gate $CHANGE` 退出 0，而全量 gate 含 e2e——此时该变更的测试文件尚未由 E2E 阶段生成，「有 scenario 无测试」护栏必然判红（实测退出码 1，`--skip e2e` 则为 0），agent 只能空转 60 轮 / $8，且不可满足的检查会诱导它写 stub 测试骗过护栏（护栏只数文件、不看内容）；现改为 `gate --skip e2e` 并在提示词里声明「E2E 测试由后续阶段生成，不要自己写」。② 新增 `Gate (static)` 步骤：apply 与 E2E 之间插入零 token 的静态闸门，半成品不再进入需要浏览器的最贵阶段。③ 末尾 `Gate` 步骤补 `set -o pipefail`——此前 `gate … | tee gate.json` 的退出码取自 `tee`，红门禁照样能开出 PR。④ `e2e: false` 时末尾 gate 增加 `--skip e2e`，否则关闭 E2E 的变更会因测试不存在而假红。⑤ 文档补 `--hook=full` 的适用时机：该档含 e2e，须等变更的 E2E 测试已存在后再用，否则「有 scenario 无测试」会让每回合都判红（默认 `static` 不受影响）。
+- **fix(ci): 流水线阶段改为「便宜的在前」**. apply 阶段改 `gate --skip e2e`，新增静态闸门，并补 pipefail 与关闭 e2e 时的 skip。
   - `templates/auto-pipeline.yml`、`tests/auto-pipeline.test.ts`、`README.md`、`README.zh-CN.md`
-- **fix(ci): 流水线项目不再把 `openspec/` 写进受管 gitignore 块**. CI 是 checkout 仓库跑的——`openspec/` 被忽略时 runner 上没有规格与变更，agent 无变更可应用、gate 也无从校验；而受管块恰好默认忽略 `openspec/`，等于该功能对任何 init 过的项目都不可用（真仓库里手工把 `openspec/` 从受管块删掉才跑通）。现 `--auto-pipeline` 项目把 `openspec/` 排除出受管块，已存在的块内条目一并移除，块外用户自己写的忽略规则只提示、不改写；`update` 检测到已安装的流水线工作流时同样不再重新忽略。
+- **fix(ci): 流水线项目不再把 `openspec/` 写进受管 gitignore 块**. `--auto-pipeline` 项目把 `openspec/` 排除出受管块，update 检测到工作流时同步不再忽略。
   - `src/shared/gitignore-managed.ts`、`src/commands/init.ts`、`src/commands/update.ts`、`src/commands/pipeline.ts`、`tests/gitignore-managed.test.ts`、`tests/auto-pipeline.test.ts`、`README.md`、`README.zh-CN.md`
-- **docs(site): 修正 MiniMax Code 的官方链接并明确 CLI 集成目标**. ① 「适用于」链接原指向 npm 包 `@minimax-ai/code`，与同排其他编辑器的官方产品站不一致；改为官方仓库声明的 homepage `https://agent.minimax.io/download`（该页同时提供桌面端与 CLI 安装）；② 本工具实际适配的是 `mcode` CLI——装的是 `.agents/skills/` 技能、检测的是 CLI 安装目录 `~/.minimax-code/`，而 README 只写「MiniMax Code」，与「CodeBuddy CLI」的标注不一致；在支持列表、使用表、差异说明与前置条件中补 `mcode` CLI 标注，避免只装桌面端的用户误以为可用。无代码与版本变动。
+- **docs(site): 修正 MiniMax Code 的官方链接并明确 CLI 集成目标**. 官方链接改指 homepage，并补 `mcode` CLI 标注，避免只装桌面端的用户误判。
   - `docs/index.html`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
 
 ## [0.3.105] - 2026-10-25
-- **fix(standards): 自动链真正落到 verify——补规模豁免、点名收尾语、修好标准镜像脚本**. ① §3 自动链位于「大规模任务」节，继承 300+ 行门槛，小改动可据此主张本节不适用——补「本条适用于任何经 `/opsx:apply` 的变更，不受本节规模门槛限制」；② 「verify」是裸动词，与 §1 的日常验证同名，「连续执行 apply → verify」可被跑测试/自查冒充——改为「最后一项任务勾完即在同一回合调用 `/opsx:verify`」，并点名 `opsx:apply` 收尾的「review or verify as appropriate / 可归档」不构成跳过理由；③ 补 verify 之后的裁决边界（CRITICAL 按 §1 修复预算修复并复跑；需增删范围或预算耗尽仍有 CRITICAL 停下汇报；WARNING/SUGGESTION 记录交用户）；④ 优先级条删掉「机械」这一逃生口；⑤ `scripts/sync-standards.mjs` 的 CLI 此前静默失败——`if (check)` 引用未定义变量抛 ReferenceError，run-guard 的裸 `catch` 又把它吞掉，`--check` 永远 exit 0；现改为导出 `main` 返回退出码、改用 `parsed.check`、只吞 ENOENT，并补 4 条 CLI 级测试。中英副本同步，+2 ZH / +2 EN 锚点。
+- **fix(standards): 自动链真正落到 verify**. 补「不受规模门槛限制」，收尾要求同回合调用 `/opsx:verify`，并修复 `sync-standards.mjs` 的静默失败。
   - `employee-standards.md`、`docs/script.js`（ZH/EN 副本）、`tests/docs-sync.test.ts`、`scripts/sync-standards.mjs`、`tests/standards-sync.test.ts`、`CHANGELOG.md`
-- **refactor(editors): 适配器契约收敛为四个维度，删除单点扩展点**. ① 旧声明面 `EditorAdapterInit` 的 7 个可选扩展点里 4 个只服务单个适配器（`registerInstructions`→opencode、`extraArtifacts`→cursor、`optionalArtifacts`→claude、`supportsMcp`→pi）——契约建模的单位是「编辑器」，而真正变化的是产物形态 × 位置约定 × 配置载体。现改为 `AdapterDeclaration`：`artifacts[]`（路径 + 命名约定 + frontmatter 数据，替代 `commandFilePath`/`commandForm`/`formatCommand`/`extraArtifacts`）、`detection`（intent/project/global 三层路径 + 产物命名空间，替代 `detect`/`projectSignal`/`preselect.ts` 的 id 表）、`mcp`（none / mcpServers 文件 / claude CLI / opencode JSON 四种载体，替代三个 MCP 方法）、`rules`（规则路径 + 配置注册）。② 派生规则收敛：命令形式与正文改写由产物命名唯一决定（namespace-dir → 冒号且不改写；hyphen-prefix → 连字符且改写）；MiniMax 的 `hasMinimaxSkill` 命名空间扫描进入 `detection.artifactRoots`；claude 遗留目录改为 `legacyArtifacts` 声明，删除 `removal.ts` 的 `adapter.id === "claude"` 分支；`installProjectRules` 的 claude/codebuddy 分支改为遍历 `wrapperRulesFile`，opencode 的 instructions 注册改为按 `rules.registerInConfig` 分派。③ 运行时 `EditorAdapter` 表面不变，判定集合与产物零变化（唯一可观察差异：交互预选的「Detected」列表内部改按注册顺序排列，集合不变）；8 个编辑器的产物逐字节一致（新增 characterization 测试锁定格式化、检测矩阵、MCP 与移除清单）。④ 去掉 `types.ts` / `shared.ts` 各存一份的 `CommandMeta` 与 `buildCommandMeta`。⑤ 审查修正：`formatArtifact` 保证 frontmatter 位于文件首行（`header` 移到其后）、`argument-hint` 强制引号转义、`projectSignal` 改为必填并更新注释、uninstall 复用 `CLAUDE_LEGACY_SKILL_REL` 并删除已无生产调用的 `removeClaudeLegacySkill`。无版本变动。
+- **refactor(editors): 适配器契约收敛为四维**. 契约收敛为 artifacts / detection / mcp / rules 四维；删除单点扩展点。
   - `src/commands/editors/{types,declaration,shared,registry,mcp-carriers,removal,preselect,project-rules}.ts`、`src/commands/editors/adapters/*.ts`、`src/commands/editors.ts`、`src/commands/init.ts`、`tests/editors-contract.test.ts`、`tests/format-artifact.test.ts`、`tests/mcp-carriers.test.ts`、`tests/editors-removal.test.ts`、`CHANGELOG.md`
-- **fix(editors): 命令形式随适配器声明，受管 gitignore 收窄到工具自有目录，取消勾选清单分列保留项**. ① `slashCommandForAdapter` 此前在 registry 内硬编码 id 白名单（claude/codebuddy → 冒号，其余连字符）——doctor 的兜底提示虽已改为按 registry 分组生成，但**命令形式**本身仍会随新适配器漂移：现把形式提到适配器的 `commandForm` 字段（默认 `hyphen`），registry 只读该字段，Claude Code / CodeBuddy CLI 显式声明 `colon`；② 受管 `.gitignore` 块新增的 `.agents/` 整目录过宽——`.agents/` 是跨工具通用目录，整目录忽略会让用户自己写在下面的内容静默变成未跟踪，收窄为工具自有的 `.agents/skills/opsx-e2e/`（README 中英文同步）；③ 取消勾选确认清单的标题是「将被移除」，却把「保留（共享配置文件仍被选中的编辑器使用）」的条目混在同一列表里，语义自相矛盾，现单列为「Kept」小节；④ MiniMax 适配器的 skill 产物检测此前硬编码命令 id `e2e`，将来新增第二个命令会漏检，现改为扫描 `.agents/skills/` 下任意 `opsx-*` 技能目录（`opsx-` 是本工具的技能命名空间，用户自有技能不受影响）。新增 4 条单测（命令形式契约、受管 gitignore 窄路径、跨命令 id 的产物检测、命名空间边界）。
+- **fix(editors): 命令形式随适配器声明**. 命令形式移入适配器声明，受管忽略收窄到 `.agents/skills/opsx-e2e/`。
   - `src/commands/editors/{types,registry}.ts`、`src/commands/editors/adapters/{claude,codebuddy,minimax}.ts`、`src/commands/init.ts`、`src/shared/gitignore-managed.ts`、`tests/editors-command-form.test.ts`、`tests/editors-minimax.test.ts`、`tests/gitignore-managed.test.ts`、`tests/commands/init-deselect.test.ts`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
-- **fix(cli): doctor 兜底命令提示按各编辑器的实际命令形式分组**. ① 无编辑器被探测时的兜底提示此前把全部八个编辑器一律写成冒号形式 `/opsx:e2e`，而 OpenCode / Cline / Cursor / Pi / Oh My Pi / MiniMax Code 实际接受的是连字符形式 `/opsx-e2e`——这是唯一一处直接告诉用户「该敲哪条命令」的位置，现改为从 registry 按 `slashCommandForAdapter` 分组生成，后续新增适配器不会再漏改；② 共享 `.mcp.json` 的取消勾选移除语义补进 README：条目按**配置文件**判定，仍有被选中的编辑器读取该文件即保留（该文件是这几个编辑器运行时直接读取的，删掉会连带切断仍被选中编辑器的 Playwright MCP），三者全部取消勾选时条目照常移除；③ `mcpConfigPath` 的契约注释改为与实现一致（opencode 的 `opencode.json(c)` 为其独占文件，不声明该字段），Cline 适配器抽取共享 skill 格式化函数后遗留的孤立 JSDoc 块并入函数注释。新增 3 条单测：doctor 兜底提示分组、minimal 模式（不跑 MCP 安装阶段）下共享条目的保留。
+- **fix(cli): doctor 兜底命令提示按各编辑器的实际命令形式分组**. 兜底提示按适配器实际命令形式分组生成，并补齐共享 `.mcp.json` 的保留语义。
   - `src/commands/doctor.ts`、`src/commands/editors/adapters/cline.ts`、`src/commands/editors/types.ts`、`tests/doctor.test.ts`、`tests/commands/init-deselect.test.ts`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
-- **feat(editors): 新增 MiniMax Code 适配器（命令以 Skill 形态交付）**. ① MiniMax Code（`mcode`）不加载任何用户自定义命令文件——`.mcode/commands` 在其运行时里只出现在文件搜索的忽略清单中——唯一可扩展的命令机制是 **Skill**，故本适配器把 E2E 工作流装成 `.agents/skills/opsx-e2e/SKILL.md`（`name` + `description` frontmatter，正文按 `/opsx:` → `/opsx-` 改写），调用形式 `/opsx-e2e`；② 检测口径三路：项目 `.minimax/` 目录、全局 CLI 安装根 `~/.minimax-code/`（仅作预选提示，永不授权写入）、以及已安装的 skill 产物本身——产物信号是必需的，否则只装了 skill 的项目会在 `detectAdapters()` 中隐身，进而从 doctor 的命令提示、交互预选与非 TTY 兜底里一并消失（Cline 的 `.cline/` 目录**包含**其 skill 路径，MiniMax 的 `.agents/` 不包含 `.minimax/`，这个巧合断了）；③ Playwright MCP 写入项目根 `.mcp.json`（MiniMax Code 自动加载该文件），项目规则沿用 `AGENTS.md` 单一事实源，不建包装文件；④ 修复共享 `.mcp.json` 的取消勾选移除缺陷——Claude Code / CodeBuddy CLI / MiniMax Code 三者共用项目根 `.mcp.json`，取消勾选其一原先会删掉仍被选中编辑器依赖的 `playwright-test` 条目，现按 `mcpConfigPath` 逐文件比对后保留，并在确认清单中标注为「保留（共享配置文件仍被选中的编辑器使用）」；`update` 与 `uninstall` 语义不变（update 只安装不卸载，uninstall 全量清除）。
+- **feat(editors): 新增 MiniMax Code 适配器**. 以 `.agents/skills/opsx-e2e/SKILL.md` 交付；共享 `.mcp.json` 按文件比对保留。
   - `src/commands/editors/adapters/minimax.ts`、`src/commands/editors/{types,shared,removal,tool-selection}.ts`、`src/commands/{init,update,doctor,uninstall}.ts`、`src/shared/gitignore-managed.ts`、`src/index.ts`、`tests/editors-minimax.test.ts`、`tests/commands/{init-deselect,doctor,uninstall-minimax}.test.ts`、`README.md`、`README.zh-CN.md`、`docs/index.html`、`CHANGELOG.md`
-- **fix(cli): `update` 强制刷新 npm 缓存，版本不一致提示按来源分流**. ① 两处 `npm install …@latest`（全局与 devDependency）加 `--prefer-online`——刚发布后 npm 的 packument 缓存仍指向旧版本，`@latest` 会解析成同版本、退出码 0，`update` 误判为已更新并继续用旧二进制；② 版本不一致提示此前无条件断言"devDependency 影子"，而解析路径在全局前缀下时该结论不成立（实测 `/Users/…/.npm-global/lib/node_modules/…` 且项目无该依赖），现按解析路径是否落在 `<project>/node_modules/` 分流，全局分支给出 `npm install -g openspec-playwright@latest --prefer-online`。新增 4 条单测覆盖两个分支与路径前缀边界。
+- **fix(cli): `update` 强制刷新 npm 缓存，版本不一致提示按来源分流**. `npm install` 加 `--prefer-online`，版本不一致提示按解析路径落在项目内还是全局分流。
   - `src/commands/update.ts`、`tests/update.version-shadow.test.ts`、`CHANGELOG.md`
 
 ## [0.3.104] - 2026-10-24
-- **docs(standards): 补齐不可逆命令授权，收口两处判定冲突**. ① §2 新增 🔴：破坏性/不可逆命令（`git clean -fdx`/`git reset --hard`/`rm -rf`）执行前声明影响范围并取得明确同意，「清理/重置」等宽泛指令不构成授权，§5 允许的自有临时产物清理除外（否则与「超 24 小时临时文件须删」冲突）——此前全文只对 commit/push/merge/release/archive 设授权，本地不可逆操作无拦截；② §7 量级未知时「问用户」与「无界读取条默认流式」两条对立，收窄为「会改变实现结构（分页/分批/索引）才问，其余默认流式」；③ §1 异常出口②的「影响更重直接上抛」无判据，换成可观察项（失败结果是否被下游消费、是否留下不一致状态）；④ §3 skill 优先级条点名「人工保留点」含高风险设计确认，消除与自动链「连续执行」的误读。中英副本同步，+2 锚点。
+- **docs(standards): 补齐不可逆命令授权**. §2 新增破坏性命令授权；§7 询问条件收窄；§1 异常出口改用可观察判据。
   - `employee-standards.md`、`docs/script.js`（ZH/EN 副本）、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 
-- **docs(standards): 归档授权收敛到一处**. §3 授权清单由 `commit/push/merge/release` 扩为 `commit/push/merge/release/archive`——归档此前只在归档条目里设边界、授权清单里没有，模型在 verify 之后照 skill 收尾建议顺手归档时无条款可依；归档条目的「归档默认人工；」随之下线（默认不归档已由授权清单承担），该条目只保留自动归档模式与四个条件（tasks 全勾无 blocked、verify 无 CRITICAL、e2e 无 active App Bug、commit/merge 已授权完成），触发词收窄为「自动归档」——「一路归档」描述的是整条链跑完，不构成归档授权。中英副本同步；净字数 −5（授权清单 +8、删「归档默认人工；」−7、触发词收窄 −6），收敛的是规则出处而非篇幅。锚点调整：ZH「归档默认人工」→「自动归档」，EN「Archive stays manual」→ auto-archive 条件，另加归档授权锚点。
+- **docs(standards): 归档授权收敛到一处**. 授权清单补 `archive`，删归档条目的「默认人工」表述，触发词收窄为「自动归档」。
   - `employee-standards.md`、`docs/script.js`（ZH/EN 副本）、`tests/docs-sync.test.ts`（锚点 −1 ZH / −1 EN / +2）、`CHANGELOG.md`
 
-- **docs(standards): 自动链条目去重——e2e 排除合并、凑绿禁令改为指路**. ① 同一条内「e2e 不在自动链内」与「「做到绿」…不含 e2e」是同一事实的两遍，合并为一句（括号收在 e2e 排除句后，诱惑点仍贴着「做到绿」）；② 「不得以修改断言/期望值绕过失败」是 §6 断言分歧条款（"不单方面弱化断言把两边凑绿"）的复述，按「规范只声明自动化边界」改为一句边界 + 指路。SSOT 226 → 200 字，ZH 副本 212 → 194，EN 副本 628 → 604。规则语义未变；e2e 在 §3 的 4 处提及仍全为边界句。
+- **docs(standards): 自动链条目去重——e2e 排除合并、凑绿禁令改为指路**. 合并 e2e 排除的重复表述，凑绿禁令改为指向 §6 断言分歧条款；语义未变。
   - `employee-standards.md`、`docs/script.js`（ZH/EN 副本）、`CHANGELOG.md`
 
-- **docs(standards): 密集规则改为嵌套列表，落地页渲染器支持缩进嵌套**. §0 的优先级决策规则（原为一行内塞三档定义 + 冲突裁决 + 用户指令优先）拆成逐档条目；§1 的 gate 生命周期、推测性买断、注释纪律、异常出口四条由单行长句拆成「父项（判据）+ 子项（条件）」，父项保留 🔴/🟡 档位，子项不再重复结论（中英副本同步）；落地页 `renderMarkdown` 新增按缩进（2 空格一级，最多三级）生成嵌套 `<ul>` 的支持，嵌套 `<ul>` 置于父 `<li>` 内，样式上子项用 `–` 标记；新增 3 条测试锁住嵌套渲染与副本确实使用嵌套列表。规则语义未变，字数略增——结构换可判定性。
+- **docs(standards): 密集规则改为嵌套列表**. §0 与 §1 四条规则拆成父项 + 子项；落地页渲染器支持缩进嵌套并补 3 条测试。
   - `employee-standards.md`、`docs/script.js`（渲染器 + ZH/EN 副本）、`docs/style.css`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 
-- **docs(standards): 合并碎片条款（规则与条件不变）**. ① gate 异常处理（工具缺失 / 检查未运行 / 仍失败）由两条并为一条；② §4 数据流程（询问 → 拒绝 / 占位 / 给数据 / 授权）由三条并为一条；③ §0「用户指令优先」并入优先级裁决条；④ §2 去掉只挂一条条目的冗余标题；⑤ §1 推测性买断的例外清单与「简化有边界」重复的部分删除（该清单由「简化有边界」承担，未用 import 的清理由「精准改动」承担）；⑥ 异常出口条目补一句指向随包分发的 `lint-guidelines.md`（各语言吞错 lint 规则）。全文 9,272 → 9,246 字，条目 70 → 67；中英副本同步。
+- **docs(standards): 合并碎片条款（规则与条件不变）**. 合并 5 组碎片条款，条目 70 → 67；规则与条件不变。
   - `employee-standards.md`、`docs/script.js`（ZH/EN 副本）、`CHANGELOG.md`
 
-- **docs(standards): e2e 移出自动链——自动链止于 verify**. §3 的自动链由「apply → verify →（条件触发）e2e」改为「apply → verify 即止」；e2e 改为仅在用户显式调用时运行（浏览器流程成本高，不再由链条自动承担），其内部 HARD STOP 由 e2e 命令模板自身强制，规范不再复述；「做到绿」只授权 apply → verify，不含 e2e；tasks.md「## 状态」的 e2e 字段改为「未运行或运行结果」。同批精简 §3：「停下后续跑 / 跨会话需重新表达完成意图」从 e2e 条目移入走偏与转场检查条目（它描述的是链条停止语义）；门槛、授权、两轮审查三处压缩措辞，规则不变。CLI 行为不变，已安装项目下次 `update` 生效。
+- **docs(standards): e2e 移出自动链——自动链止于 verify**. 自动链改为 apply → verify 即止，e2e 仅在用户显式调用时运行；任务状态字段同步。
   - `employee-standards.md`、`docs/script.js`（ZH/EN 副本）、`tests/docs-sync.test.ts`（+1 ZH / +1 EN 锚点）、`CHANGELOG.md`
 
 ## [0.3.103] - 2026-10-24
-- **docs(standards): 「点名」术语归位——只保留验收语义**. 该词此前兼指「用户指定动作」（§3 授权范围）与「用户明确要求」（§1 注释、具体值豁免），与 §6 的验收定义相互干扰。三处非验收语义改为「明确要求 / 明确指定」，§6 定义与用法不变；中英副本同步。
+- **docs(standards): 「点名」术语归位——只保留验收语义**. 「点名」只保留 §6 验收语义，另三处改为「明确要求 / 明确指定」。
   - `employee-standards.md`、`docs/script.js`（ZH/EN 副本）、`CHANGELOG.md`
 
-- **fix(standards): 两处标记档位归位，WHY 去重**. §6「无断言价值的测试一律不写」由 🟡 升 🔴，与同节「验收点名行为必须被覆盖」的硬禁令对齐；§4「不编造 URL/路径/字段名」补 🔴，与相邻编撰禁令同档；§6 WHY 删去与首条规则重复的「测试只随验收存在」，只保留意图与验收判据。中英副本同步。
+- **fix(standards): 两处标记档位归位，WHY 去重**. 「无断言价值的测试」与「不编造 URL/路径/字段名」升 🔴，§6 WHY 删去重复句。
   - `employee-standards.md`、`docs/script.js`（ZH/EN 副本）、`CHANGELOG.md`
 
-- **docs(standards): 规范减法第一轮——合并重复表述（不改变语义）**. 六处压缩：🟡 IMPORTANT 定义内的同义重复合并；gate 条尾「工具不存在」并入 REQUIRE 的告知义务；注释纪律把「多轮间叙述」并入「改动叙述」定义并删去单列句；§2 回退与 §3 停止条件不再各写一遍「2 轮预算」，统一由 §1 gate 定义；§3 收尾条删去与 e2e HARD STOP 条重复的短语；URL/字段名与循环内 I/O 两条改为单句义务式（🟡 档位不变）。
+- **docs(standards): 规范减法第一轮——合并重复表述（不改变语义）**. 六处重复表述合并，规则语义不变。
   - `employee-standards.md`、`docs/script.js`（ZH/EN 副本）、`CHANGELOG.md`
 
-- **fix(standards): 跨章节矛盾与副本漂移修正（`standards-consistency-fixes`）**. ① §0 冲突裁决补全 🔴 > 🟡 > ⚪；同级冲突先执行已有明确处置的条款（如 gate 的 auto-fix 循环），无规定才停问，解开与 lint gate 的死锁；② `// fake data（用户授权）` 与来源标注并入 §1 注释豁免清单；③ 规模门槛改为 **300+ 行且跨多个文件** 或架构级变更，单文件不因行数单独触发；④ §7 无界读取例外要求「已有确认的上界」（config 记录或用户确认），仅当前大小不算；⑤ §4 用户拒绝时裸 `return null` 不再算显式失败，改用 `throw` / 显式错误类型 / stub；⑥ 中英副本改用语义节名（消除悬空 `§N`）、补 `.tsx`、区分 linter auto-fix 与 `ruff format`/`gofmt`（`go vet` 无 auto-fix），并修正错配标题、推送标记、上下文压缩步骤与「点名」措辞。CLI 行为不变。
+- **fix(standards): 跨章节矛盾与副本漂移修正（`standards-consistency-fixes`）**. 修 6 处：冲突裁决、规模门槛、上界确认、裸 `return null`。
   - `employee-standards.md`、`docs/script.js`（ZH/EN 副本）、`tests/docs-sync.test.ts`（+4 ZH / +4 EN 锚点）、`CHANGELOG.md`
 
-- **docs(standards): OpenSpec 阶段自动串联——两端人工 + 中间自动**. §3 的「各阶段由用户手动触发」替换为：提案范围与 commit/push/merge/release 须人工（一次授权只覆盖点名动作）；提案后自动审查两轮（第二轮用独立视角，verify 直接执行），自修不得增删范围；自动链仅由显式完成意图或 `/opsx:apply` 触发，连续执行 apply → verify →（用户可见交互时）e2e，e2e 内部 HARD STOP 照旧；修复预算按同一失败计 2 轮；高风险变更 apply 前追加设计确认；归档默认人工，自动归档要求 tasks 无 blocked、verify 无 CRITICAL、e2e 无 active App Bug 且 commit/merge 已完成；状态写入 tasks.md。不新增技能或命令，CLI 行为不变。
+- **docs(standards): OpenSpec 阶段自动串联——两端人工 + 中间自动**. 新增阶段自动串联规则：两端人工、中间自动，含两轮审查、高风险确认与归档条件。
   - `employee-standards.md`、`docs/script.js`（ZH/EN 内嵌副本）、`tests/docs-sync.test.ts`（+5 ZH / +5 EN 锚点）、`CHANGELOG.md`
 
 ## [0.3.102] - 2026-10-23
-- **refactor(standards): CLAUDE.md / CODEBUDDY.md wrapper 只保留 `@AGENTS.md` 导入**. init/update 写入的 thin wrapper 移除 CodeGraph 块与 OpenSpec 工作流提示，现在只含 `@AGENTS.md`（外加 OPENSPEC-PW 标记）；完整规范继续由 AGENTS.md 承载，裸 `@AGENTS.md` 不再提示。已初始化项目下次 `update` 自动重写 wrapper；本仓库 `CLAUDE.md` / `CODEBUDDY.md` 同步。
+- **refactor(standards): wrapper 只保留 `@AGENTS.md` 导入**. 移除 CodeGraph 块与工作流提示；已装项目 update 自动重写。
   - `src/commands/editors/project-rules.ts`、`src/commands/update.ts`、`tests/editors.test.ts`、`tests/editors-codebuddy.test.ts`、`tests/update.standards.test.ts`、`README.md`、`README.zh-CN.md`、`CLAUDE.md`、`CHANGELOG.md`
 
-- **fix(standards): UI 文案删除测试补用户要求豁免（`ui-copy-restraint` 修订）**. code review 发现：同句首段「只保留用户明确要求或信息/操作必需的部分」与删除测试「改动范围内任何文案……删」冲突——用户明确要求的副标题/slogan 会同时命中保留与删除，并与 §1「永不简化掉……用户明确要求的东西」矛盾。删除测试改为「删（用户明确要求的除外）」，中英嵌入同步；锚不变。
+- **fix(standards): UI 文案删除测试补用户要求豁免（`ui-copy-restraint` 修订）**. 删除测试补「用户明确要求的除外」，消除与保留段的冲突；中英同步。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 1 处、EN 1 处）、`CHANGELOG.md`
 
-- **docs(standards): 通篇审阅修三处范围边界（`speculative-robustness-buy-in` / `modularity-and-capability-check` / `ui-copy-restraint` 修订）**. ① 模块化「不塞进当前文件」与同句「落在职责所属的模块」自相矛盾——改为「不因正在编辑就塞进当前文件」，当前文件即正确模块时不再被误禁；② UI 删除测试缺范围限定，可能借「改写」删掉未触及的既有文案——限定「改动范围内」；③ 买断条款「概率量级与依据」补「无数据时标明为估计」，堵住编造具体百分比。锚不变。
+- **docs(standards): 通篇审阅修三处范围边界**. 修模块化、UI 删除测试范围、买断条款概率依据三处边界。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 3 处、EN 3 处）、`CHANGELOG.md`
 
-- **docs(standards): 推测性边界条款按二审加固（`speculative-robustness-buy-in` 修订）**. 修四处高危 + 三处中危：① 与「只写被要求的」绝对禁令冲突——该条改为「不主动为想象中的场景写防御」，新条成为经同意的升级路径；② 「推测性/极低概率」换成证据缺口（尚无复现、事故记录或项目内威胁模型），失败模式要求触发条件+后果+现有防护不足，概率只要求量级与依据（防编造具体数值），代价列实现/运行时/运维/新依赖；③ 「安全边界」统一为「信任边界」，豁免限基础校验，并给「必需」证据定义（威胁模型/合规/复现证据/基线实践），既有防护去留路由回「简化有边界」；④ 补「未取得同意或用户不可达 → 不添加并报告」默认；⑤ 删掉与「只写被要求的」「精准改动」重复的「不扩大范围」句（第三次出现）；⑥ 末尾「架构方向按 §3」划清与「架构决策往长了做」的边界。锚换 2。
+- **docs(standards): 推测性边界条款按二审加固**. 买断条款改用证据缺口、统一「信任边界」、补默认不加并去重。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 2 处、EN 2 处）、`tests/docs-sync.test.ts`（锚换 2）、`CHANGELOG.md`
 
-- **docs(standards): §1 新增推测性边界扩展买断条款（`speculative-robustness-buy-in`）**. 覆盖审计发现：既有「不为想象中的场景写防御」只覆盖禁止面，缺少「怀疑边界真实存在时怎么办」的流程——为推测性或极低概率的竞态/安全边界增加复杂度前，须说明具体失败模式、发生概率与复杂度代价并取得用户同意，不得为理论健壮性静默扩大范围；括注与「简化有边界」划界（必需的安全措施与信任边界校验照旧不可简化）。五件套同步，锚 +2。
+- **docs(standards): §1 新增推测性边界买断条款**. 为推测性竞态/安全边界增加复杂度前，须说明失败模式、概率与代价并取得同意。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 1 处、EN 1 处）、`tests/docs-sync.test.ts`（锚 +2）、`CHANGELOG.md`
 
-- **docs(standards): §1 新增条款按 Prompt 工程师审阅加固（`ui-copy-restraint` / `modularity-and-capability-check` 修订）**. 五处高危全修：① UI 条用户豁免覆盖全部类别（原先只覆盖 slogan），「冗余」改为可执行删除测试（删后信息/操作仍完整即冗余），无障碍措辞对齐既有「无障碍基础」，并禁止为省文案新增/重排布局；② 库能力条触发从「断言」扩到「准备自行实现」（堵住不声明、直接手写的绕过），补「已装源码」证据与「无法确认 → 先提问」兜底，并并入「关键假设」条（净减 1 行）；③ 模块化条主语从「组件」改为「模块化与关注点分离」，把「职责所属/邻近」换成「先复用既有同职责模块，没有才按目录约定新建」的查找程序，并显式让位于「不重构没坏的东西」。锚换 2 处。
+- **docs(standards): §1 新增条款按审阅加固**. UI 文案、库能力、模块化三条按审阅加固，合并重复并要求先查证据。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 3 处、EN 3 处）、`tests/docs-sync.test.ts`（锚换 2）、`CHANGELOG.md`
 
-- **docs(standards): §1 补模块化与库能力假设条款（`modularity-and-capability-check`）**. 对照外部 AGENTS.md 清单做覆盖审计，两处缺口补齐：① 组件模块化/关注点分离此前只有 1500 行触发的「按职责拆分」，无一般性条款——新增 🟡 DO：新增逻辑落在职责所属的模块，不塞进邻近文件或万能工具，不把无关职责耦合到同一处；② 选型链隐含「先用已装依赖」，但「不查文档/types 就断言库缺能力并手写」这一典型 AI 失败模式未明写——新增 🟡 DO：断言现成依赖缺少某能力前先查其文档与类型定义（按已装版本），查不到证据不据此手写替代实现。五件套同步，锚 +4。
+- **docs(standards): §1 补模块化与库能力假设条款（`modularity-and-capability-check`）**. 补模块化与「先查文档/类型再断言库缺能力」两条。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 2 处、EN 2 处）、`tests/docs-sync.test.ts`（锚 +4）、`CHANGELOG.md`
 
-- **docs(standards): §1 新增界面文案克制条款（`ui-copy-restraint`）**. 起因：UI 生成中模型倾向用文案解释界面歧义，产出冗余次级标签、副标题与 slogan，界面容易变成说明书——这类说明多数本可由布局/层级消解。条款（§1 DO NOT，未标注按 🟡）：生成的用户界面不写冗余次级标签、副标题与逐项说明，无用户要求的 slogan 同禁——让布局与层级承担解释；能用设计消解的不用文案补（承载信息/操作必需的文本与无障碍标签除外）。五件套同步：SSOT → `npm run standards:sync` 再生 AGENTS.md → docs/script.js 中英嵌入 → docs-sync 锚 +2 → CHANGELOG。
+- **docs(standards): §1 新增界面文案克制条款**. 不写冗余次级标签、副标题与 slogan，能用布局/层级消解的不加文案。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 1 处、EN 1 处）、`tests/docs-sync.test.ts`（锚 +2）、`CHANGELOG.md`
 
 ## [0.3.101] - 2026-10-20
-- **fix(lint): 配置代写与语义探测 review 轮修复——ruff 优先级/TOML 表形态、片段形态、TS parser 与静默失败**. 八项 review 发现全修：① ruff 目标文件优先级反了——`.ruff.toml` 优先于 `ruff.toml`（ruff 0.17.1 实测行为），追加目标与检测顺序随之修正，两份同时存在时不再写错文件；② pyproject / ruff.toml 里的点号键（`[tool.ruff]` 下 `lint.select =`、`"lint".select =`）与内联表（`lint = { … }`）此前漏判，追加同名表会触发 `duplicate key` 解析错误——存在性检测覆盖全部等价形态，命中即只打印片段、文件保持字节不变；③ legacy ESLint 片段按配置形态分派（flat config / `.eslintrc.js|.cjs` 对象字面量 / `.eslintrc.json|.yaml|.yml` 与裸 `.eslintrc` 的引号形式），此前一律给 flat 片段，贴进 JSON 直接解析失败；④ TS 生成配置补 parser import 与 `files` 作用域（flat config 默认只匹配 js/mjs/cjs，`.ts` 此前根本不被 lint），仅有 `@typescript-eslint/eslint-plugin`（无 parser）改判为跳过；`eslint --print-config` 输出的字面量 `undefined`（无匹配配置）按「未生效」确定结论处理，不再误走字面量回退把真实缺口吞掉；⑤ `findSourceFile` 不可读目录与 ⑥ doctor 读取 pyproject.toml 失败改为可见记录（stderr / info 行），不再用注释兜底；⑦ 拆分测试文件的注释去掉改动叙述；⑧ 补记 `d35289a` 的 CRLF 修复（另列）。文档同步：design/spec/proposal 按上述行为回写。
+- **fix(lint): 配置代写与语义探测 review 轮修复**. 修 8 项：ruff 配置优先级、ESLint 片段分派、TS parser 作用域、静默失败改为可见记录。
   - `src/shared/lint-guidelines.ts`、`src/commands/init.ts`、`src/commands/doctor.ts`、`tests/shared/lint-guidelines.test.ts`、`tests/commands/init-lint-config.test.ts`、`tests/commands/doctor-lint-semantic.test.ts`、`openspec/changes/lint-config-bootstrap/{design,proposal,specs/lint-guidelines/spec}.md`、`CHANGELOG.md`
 
-- **fix(lint): 清单 checksum 归一化 EOL，CRLF checkout 不再误判手改**. Windows / `core.autocrlf` 下模板读作 CRLF，而 checksum 按 LF 计算——工具自有清单被判成用户手改、不再刷新。`computeChecklistChecksum` 先归一化 EOL 再 hash（checksum 行自身仍排除），`isChecklistUnmodified` 同口径；CRLF fixture 断言与 LF 同 checksum。
+- **fix(lint): 清单 checksum 归一化 EOL，CRLF checkout 不再误判手改**. checksum 先归一化 EOL 再 hash，CRLF checkout 不再误判用户手改。
   - `src/shared/lint-guidelines.ts`、`tests/shared/lint-guidelines.test.ts`、`CHANGELOG.md`
 
-- **feat(lint): `init --lint-config` 配置代写 + doctor 语义探测（`lint-config-bootstrap`）**. 上一批只交付「清单 + 字面量探测」：用户仍要手工改配置，字面量也分不清「继承 recommended」与「显式关闭」；成熟产品的做法是用生成器落地规则、用官方解析器诊断。① `init --lint-config`（显式 opt-in，默认关闭）：项目声明 eslint 9+、项目及祖先目录（至 git 根）无 ESLint 配置、且非「TS 无 typescript-eslint」→ 生成自包含的最小 flat config（直接启用 `no-empty`，不 import 额外包——实测 eslint 10 已不再依赖 `@eslint/js`）；ruff 按 `ruff.toml` > `.ruff.toml` > `pyproject.toml` > 新建 的优先级创建或追加受管 `[tool.ruff.lint]` / `[lint]` 块（begin/end 标记；重复运行幂等；手改块保留并提示）；已有配置/表一律不编辑、只打印可粘贴片段，祖先配置只作存在信号、不写项目外文件；追加沿用文件 EOL。② doctor Lint 探测语义优先：`eslint --print-config` 读 `no-empty` 生效严重度、`ruff check --show-settings` 匹配 `(B904)`；工具缺失/配置加载失败/无代表文件/超时一律回退字面量（stderr 记录，不污染 `--json` stdout），档位与退出码不变。已知边界：ESLint 语义结果以代表文件为准；ruff 语义探测需项目内 `.py` 文件；PnP/项目 venv 工具解析不到时回退字面量。
+- **feat(lint): `init --lint-config` 配置代写 + doctor 语义探测**. 生成或追加最小配置（opt-in、幂等、手改块保留）；doctor 用官方解析器探测规则生效。
   - `src/shared/lint-guidelines.ts`、`src/shared/index.ts`、`src/commands/init.ts`、`src/commands/doctor.ts`、`src/index.ts`、`tests/shared/lint-guidelines.test.ts`、`tests/commands/init-lint-config.test.ts`（新）、`tests/commands/doctor.test.ts`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
 
-- **fix(lint): review 轮修复——doctor 探测健壮性、清单刷新来源与模板片段**. 九项 review 发现全修：① doctor 配置读取加守卫（不可读 → info 行，不再 EISDIR/EACCES 崩溃，spec 降级要求兑现）；② update 清单刷新改用刚拉取的 tarball 模板（此前用运行中旧包，可静默降级；`installOrRefreshChecklist` 增可选模板源，fetch 失败才回退 bundled）；③ ruff/pylint 配置探测支持点号子表（`[tool.ruff.lint]`/`[tool.pylint.main]`，pylint 探测脱离 ruff 门控）；④ ESLint 配置文件名补齐 `eslint.config.mts/.cts` 与无扩展 `.eslintrc`；⑤ `no-empty` 探测改规则号边界（`no-empty-function`/`no-empty-pattern` 不再误判为覆盖）；⑥ which/where 探测空 catch 改为按错误类别分流（非「未安装」失败进 info 行）；⑦ 模板拆分 pyproject.toml / ruff.toml 两种 B904 启用片段（ruff.toml 用 `[tool.ruff.lint]` 会 TOML 解析失败）；⑧ 补 pylint PATH 有/无与 ruff-present 断言；⑨ 删除类型系统已保证的同义反复断言。测试 777→787。
+- **fix(lint): review 轮修复——doctor 探测与模板片段**. 修 9 项：配置读取守卫、清单刷新、模板片段拆分、删同义反复断言。
   - `src/commands/doctor.ts`、`src/commands/update.ts`、`src/shared/lint-guidelines.ts`、`templates/lint-guidelines.md`、`tests/commands/doctor.test.ts`、`tests/shared/lint-guidelines.test.ts`、`tests/update.test.ts`、`CHANGELOG.md`
 
-- **feat(lint): 吞错清单 + doctor 覆盖探测 + init/update/uninstall 分发（`lint-guidelines`）**. 起因：吞错条款 v3 是语义判据，遵从随会话内每函数 -5.6% 衰减——词面禁令需 lint 承接（成熟实践：Evil Martians「能用脚本就别写进文档指令」、Notion ratchet「lint 只许 error」、ctxlint「样式规则不属于上下文文件」）。用户裁决：不做 hook 装配（不通用——Cline/Aider 等无 hook 机制，通用执行=lint+CI+pre-commit）、清单不进 SSOT 正文、形态为 doctor 检测 + init 装清单（TS/JS + Python，markdown）。落地实测：ruff 0.17.1 默认集已覆盖宽吞五形（E722/S110/S112/BLE001 probe 实证；S112 只对宽吞触发、窄 catch 不误伤；BLE001 官方文档自带 logged-with-`exc_info` 豁免，与条款②出口同构）；唯一非默认缺口 B904（丢链）；pylint W0702/W0718/W0707 自上游源码实证；`no-empty` 属 `@eslint/js` recommended（官方文档实证）——doctor 探测据此全部字面量 + 保守措辞（「未发现，请对照清单」），不解析 TOML、不猜结论；单面缺配置该面静默，两面全无单行 info，全部 info 级不影响 ok/退出码。分发走 content-based ownership（先例 vendored agents）：内嵌 checksum（hash 排除 checksum 行自身防自引用）→ 未手改刷新 / 手改保留提示；uninstall 为非 adapter 独立段（removal.ts 枚举是 per-adapter 的）。三轮 review 15 发现全修（判据误报含 recommended/类目 B、e2e-command 无 marker 的先例纠错、uninstall 载体、checksum 自引用、组合态、proposal 回写等）。已知局限留档：lint 封不住带注释黑洞（本仓 BasePage.ts 活证据）、`.catch(()=>null)` 族无内置规则（自定义 rule 未来批）。
+- **feat(lint): 吞错清单 + doctor 覆盖 + 安装分发**. 新增吞错 lint 清单；doctor 探测覆盖；init/update/uninstall 按内容所有权分发。
   - `src/shared/lint-guidelines.ts`（新）、`templates/lint-guidelines.md`（新）、`src/commands/init.ts`、`src/commands/update.ts`、`src/commands/uninstall.ts`、`src/commands/doctor.ts`、`src/shared/index.ts`、`tests/shared/lint-guidelines.test.ts`（新）、`tests/commands/doctor.test.ts`（+6 用例）、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
 
-- **fix(lint): 本仓开启 no-empty 并修复 audit.ts 空 catch（词面层自证）**. `eslint.config.mjs` 加 `no-empty: error`（此前 flat config 未 extends `eslint:recommended`，空 catch 无人拦）；唯一真阳性 `audit.ts:460` 的 `catch {}` 按条款②出口修（`instanceof TypeError` 窄化 + 非 TypeError 上抛 + debug 记录 + 行内原因）。带注释空块（`BasePage.ts`）被 ESLint 豁免——实证「lint 封不住带注释黑洞」，记录义务唯有人审。
+- **fix(lint): 本仓开启 no-empty 并修复 audit.ts 空 catch（词面层自证）**. 本仓启用 `no-empty` 并修掉 `audit.ts` 唯一空 catch，实证「lint 封不住带注释黑洞」。
   - `eslint.config.mjs`、`src/commands/audit.ts`、`dist/commands/audit.js`(+map)、`CHANGELOG.md`
 
 ## [0.3.100] - 2026-10-19
-- **docs(standards): 吞错条款重写为出口白名单 + guard-first 折叠（`error-exit-whitelist`）**. 起因：用户实测模型仍频繁产出吞错代码（捕获后不记日志、跳过、宽 catch 返回默认值）。九源调研：Seeker（2147 脆弱段中 41.2% 是无效/有害处理——空吞、记录后带病跑、危险 fallback）、KPC（incomplete/incorrect/**abuse of try-catch** 三分类）、SBES 2026（LLM 生成 handler 的 pylint 违规比人写多 104.2%，大头 W0718 宽 catch + W0707 丢链，裸 bare-except 仅 27 例——模型词面合规语义照吞）、pylint #9010 判例（`except Exception: return default` 吞掉实现内部 ZeroDivisionError）、Protean ADR-0045（三出口实战清洗）、遵从衰减因子研究（1,650 会话：文件结构与遵从无关、会话内每函数 -5.6%——文本规则需 lint 分工兜底）+ flash 档版图（V4.1-Flash-1017 高速档/GLM-5.3-Flash 10 倍速产出放大衰减）。条款重写：出口白名单（①上抛带因转换 ②窄类型+记录后继续——继续=跳过或替代值、不得使用失败结果本身、仅可承受步骤+影响分级、无类型语言按 instanceof/错误码分流 ③ catch-all 仅限就地隔离边界+记录+行内原因、边界外一律改①②）内嵌 #9010 误例、「注释不是出口，出口是行为」、②③行内原因入注释纪律黑名单豁免族；WHY 锚定「失败可见性」不变量（每个出口=同一不变量的投影）。配套折叠：信任边界条尾加禁令式 guard-first「可预判的失败不裹 try 当控制流——预判守卫或取默认 API 先行」。Prompt 工程师对抗审计 9 发现全收（F1🔴 重写曾丢「不得带病继续」最利句→并入出口②继续定义、F2🔴 出口③行尾近因重开第四出口谓词化关闭、F3 可承受补锚 cleanup/幂等二次释放、F4 JS 无类型 catch 分流、F5 EAFP 替代值继续补语、F6 noqa 类比错位换锚、F7 地名 list-priming 双向降为例证、F8 挂靠点实为 DO NOT 改禁令式、F9/F10 WHY 与 #9010 判例保留）；复审终审轮再收 5 处：①重抛通道按「上行对象是否原样」切（原样上行——裸 raise/`throw e`/Go `return err` 合法；catch 内新建错误不带因=丢因果同判缺失——对象级可判定封死 W0707 丢链通道，跨语言零冲突；转换通道并入上抛后出口枚举从初稿四出口收缩为终态三出口）、②行内原因显式化（豁免悬空三义关闭）、②跳过作用域闭合（依赖的后续步骤一并跳过——本仓 doctor.ts 旧 catch 即实证）、黑洞族补 `.catch(()=>null)` 静默替代值、debug/warning 枚举加固「影响更重直接上抛」。条款形按用户裁定从「必须走其一」软化为「失败必须可见·出口任选」原则前置（判据谓词全保留，三语言例证收纳进对象同性切）。§6 新增反断言弱化条（ScenarioBench 6/6 测试生成工具在 buggy 代码面前单方面改判 spec 错、把断言降到 buggy/correct 两边都绿——生成期「出生即绿」不受测试红分类覆盖，「验收期望锚定」只管证据格式，独立触发面）。lint 棘轮等下一批顺带立 change；已知局限留档：lint 封不住带注释黑洞，记录义务唯有人审。
+- **docs(standards): 吞错条款重写为出口白名单**. 包含上抛带因、窄类型记录后继续、catch-all 隔离点；§6 新增反断言弱化条。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 3 处、EN 3 处）、`CHANGELOG.md`
 
-- **fix(doctor): config 不可读时记录 skip 而非静默吞掉（`doctor-unreadable-config-skip`）**. 狗粮演示：§1 出口白名单条款落地后自检已合入代码，读 config 的 catch（有注释、无记录、非隔离边界）在新条款下违规——改为往 checks 推 info 行「config unreadable — storage-state check skipped」（程序自身报告通道即"记录"，不计入 ok 结论），配套第六态测试（readFileSync 抛 EACCES → info 行可达且 ok 不变）。
+- **fix(doctor): config 不可读时记录 skip 而非静默吞掉（`doctor-unreadable-config-skip`）**. config 不可读时推 info 行而非静默吞掉，配套第六态测试。
   - `src/commands/doctor.ts`、`tests/commands/doctor.test.ts`（+1 用例）、`CHANGELOG.md`
 
-- **feat(e2e): 浏览器工具角色路由 + 会话状态语义 + doctor storageState 诊断（`e2e-mcp-tool-routing`）**. 起因：会话同时挂着 `playwright-test`（test-runner MCP）与用户自装的 `chrome-devtools-mcp` 两套浏览器工具时，e2e 模板原句 "Browser exploration is tool-agnostic" 对选择只字未提——模型按表面相似度随机选；且两套工具会话语义相反（chrome-devtools attach 真实 Chrome persistent profile、登录态跨会话记住；test-runner 的 browser_* 中继进 paused test 的 fixture context、每次 launch 全新），用户把后者的"失忆"误判为配置缺陷。模板侧：路由句改为角色路由——test_*/planner_*/generator_* 只在 playwright-test（生成/执行/修复不换轨）、交互探索优先可回退（编辑器未装或需 CDP 独有能力如 Performance trace 时用 chrome-devtools）、真并行走 `openspec-pw explore --parallel N`，就近声明「persistent profile 登录态不可当 E2E 前提」；Step 4 增补 Session state 小节：fresh context = E2E 隔离设计而非缺陷、登录态唯一恢复路径 = auth.setup → playwright.config storageState 依赖链、明确警示 `browser_storage_state` 类工具在工具清单里但 paused-test 会话不收（storage capability 未启用）防按清单误选。doctor 侧：新增可选检查 `storage-state`——config 声明 storageState 而 auth state 文件缺失 → 黄 ⚠ + `npx playwright test --project=setup` 修复命令（不阻断、不影响 ok 与退出码）；路径提取判则防误报：字面量（`.auth`/`user.json` 特征，含 `join(...)` 拼接片段）优先，未命中时仅当 auth.setup.ts 存在（模板布局）才按默认路径判断，config 未声明或判则都不达 → 不输出。工具事实经实测落地（playwright 1.63.0）：89 工具、storage 类 capability 为 "storage" 被内层 `capabilities: ["testing"]` 硬编码过滤器排除、双进程跨 launch localStorage 不留存——断言只写实测证实的行为。已合入 main（PR #45，review 5 发现全修：doctor 字面量提取判则修正 + 测试自足 beforeEach + config 读 try/catch + commit body 压 4 行 + 分隔注释找回）。
+- **feat(e2e): 浏览器工具角色路由 + doctor storageState 诊断**. e2e 模板改为角色路由并补会话状态语义，doctor 新增 `storage-state` 检查。
   - `templates/e2e-command.md`、`src/commands/doctor.ts`、`tests/commands/doctor.test.ts`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
 
 ## [0.3.99] - 2026-10-10
 
-- **feat(gitignore): 受管块新增探索截图目录（`managed-screenshots-local`）**. `tests/playwright/screenshots/` 入受管 .gitignore 清单（21→22 项）。依据：探索截图本性时效（随开发过时，与 §6「截图证明像素，不证明行为」同判），且其同层证据——消费文档 `app-exploration.md` 与 `openspec/reports/`——早已是本地文件（受管忽略），截图是探索证据层里唯一还在入 git 的错位项（活路由截图靠同 slug 覆盖自愈，死路由截图永久沉积）。转本地后三层一致：本地证据本地存、耐久资产（specs 等）才进库。存量已提交截图走既有「已追踪检测」advisory（`git rm --cached`）。双 README 段落同步，测试 +1 用例。
+- **feat(gitignore): 受管块新增探索截图目录（`managed-screenshots-local`）**. `tests/playwright/screenshots/` 入受管忽略（21→22 项），截图改为本地证据。
   - `src/shared/gitignore-managed.ts`、`tests/gitignore-managed.test.ts`（+1 用例）、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
 
-- **docs(standards): 用户校准 6 处 + 复审去重 1 处 + 嵌入同步（`user-calibration-round`）**. 用户直接微调：①经验沉淀简化——删路径锚/🟡标记/重大判据（统一「经用户确认后合入」，重大判据随之退役——全部修订都过确认，判据失业；🟡 删除由 §0「未标注按 🟡」接住）；②防循环还原简形——「仅参数微变」与「有界重试豁免」一并删除（**已知留档**：e2e 模板 Healer ≤3 轮重跑与防循环的字面冲突未消）；③§3 门加「多文件」对齐 PR 门 tiering（单文件 200+ 行不再触发 OpenSpec；**留档**：L76 WHY 行「200+ 行」未随动、「不代跑」被删改由 L82 手工触发条款兜）；④检索询问句扁平化（「按上条询问」→「询问用户」）；⑤§4 证据指向行删除 + §6「（接 §4）」尾注删除——两端一并撤、本体 §6 唯一留存，真去重；⑥复审剪「或用户要求时」（用户要求是「需要」的实例，a fortiori）；⑦§7 WHY 行校准——「10 万行数据把 CPU/内存打满卡死」（补「数据」消歧、量级取现实值）。双语嵌入 4 处×2 同步，镜像 sync 再生，锚全存活（59/59）。
+- **docs(standards): 用户校准 6 处 + 复审去重 1 处**. 经验沉淀、防循环、PR 门、询问句、证据指向、WHY；双语嵌入同步。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 4 处、EN 4 处）、`CHANGELOG.md`
 
-- **docs(standards): 落地审计延后三处 🟡 中的两处（`standards-deferred-landing`）**. §1 选型链尾句按复核改法落地：尾句「同类问题先用成熟产品验证过的模式解决」换层重挂——原行尾近因位置可被弱模型读作凌驾链条的最高优先级（跳过复用/标准库/平台原生三层直奔"抄模式"），并入终端层「自己实现——没有明确理由不从零发明；确需自实现，同类问题优先采用经成熟产品验证的既有模式」（破折号承载——括号会被 Flash 跳读，「确需自实现」是模式指令的条件触发器，「成熟」限定保住）；复核指出的初稿错层挂载（挂到成熟库层会让手写限流器类场景裸奔）被拦截后换层。§6 复现条款补分支：「同法 ≥2 次未复现 → 以已试次数与现有证据回报并停下，等用户提供复现条件，或经用户明示授权后按分析修复；不宣称已验证」——ask→wait→branch 三段式对齐全规范先例（初稿只有 ask、「或授权」会被读成自授权→编因果软复活被拦截）、阈值复用本规范常量 2（§3 同一问题 2 轮同族）、与证据条款互补（本句管验证状态声明、证据条管来源真伪）。第三处（§2 压缩上下文 fallback：无法压缩→落盘任务状态）经用户裁定撤销不修——现代 harness 自动压缩可靠、压缩失败场景理论化，原条款维持原文。锚全存活（「完成前后各重现 bug 一次」原位不动）。
+- **docs(standards): 落地审计延后三处 🟡 中的两处**. 选型链尾句改挂自实现层，§6 复现条款补「≥2 次未复现」分支。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 2 处、EN 2 处）、`CHANGELOG.md`
 
-- **docs(standards): 审计后措辞精简——11 候选经 Prompt 工程师零损核对收 4（`standards-slim-post-audit`）**. 审计补丁语再过一遍零损筛：✅ 收 3 原案——坚持行删「记录分歧后」（无落点动词，「按用户方案执行+不再重提」才是出口载荷）、具体值断言括注名词化（「无验收锚定的数值，点名即豁免」——与 §6 锚定词汇族对齐）、§3 反复失败删「与 §1 口径一致」跨引（「2 轮」即口径本体）；✅ 收 1 改法——§4 禁令与示例两句并一句（枚举 ~80% 重合），但**绑定序修正**：「同类情形与改写措辞同判」紧贴枚举（先行词=禁令实例，禁令扩展器向）、豁免句置行尾（防「豁免，同类同判」被读成豁免扩展器）。❌ 驳回 6 处留档，每处带失败场景：§0 压试「不自行放行」（同意才执行之外的负向反合理化件；替换案曾静默删「按用户指示执行」三槽之二——藏刀暗删）；gate 删「可多语言并存」（「逐一」不锁合取，漏跑侧 gate=静默漏检）；多步验证括号化（丢量词「同一验证」→ 阈值变跨验证聚合误停）；1500 存量删「不得继续堆叠」（报告不动=文件级 vs 不堆叠=行级，两者各半辖域、增长侧唯一裁决载句）；改写禁令删「纯管道查询不计」（list-priming 下 awk 取列/node -e 解析等只读高频用法会被误禁——回滚审计已付价收口件）；§3 删「git 视角」+「非穷举」（计量基准 vs 心估偏小绕门 / 闭表反向抠字开低触发通道）；询问行删尾「不静默编造」（行尾近因留执照，且 ZH/EN 压缩副本均保留或升格该句——三本相悖）。代理补扫确认 L24/L44/L59 三处 ≤2 一致重复为强化保留。净 −49 字；锚全存活 docs-sync 不动；镜像 sync 再生。
+- **docs(standards): 审计后措辞精简收 4 处**. 11 个候选收 4 个，驳回 6 个并留档失败场景。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（ZH 嵌入 3 处、EN 嵌入 2 处）、`CHANGELOG.md`
 
-- **docs(standards): 全规范弱模型解析审计——§0-§7 系统收敛（`standards-weak-model-audit`）**. 注释纪律审计方法镜照全规范：三切面并行（§0-§2 运行层 / §3-§7 过程层 / 跨条款一致性），原始 69 条 → 去重 ≈50 条（🔴8/🟡38/⚪4），按三层收敛修复——【层1 §0 地基】新增「用户指令优先」总则（用户显式指令 > 🟡/⚪ 即刻生效；与 🔴 冲突先复述风险由用户终裁——收编 坚持/fallback 保留/跳流程/假数据授权/快照点名 五族无出口案例）、未标注条款默认 🟡 档（激活 14 处悬档的裁决可达性）、🔴 确认三槽展开（向谁同意按谁执行、不可达则中止不自行放行）、config.yaml 「无内容则忽略」收窄为文件不存在/为空只跳本条、openspec --help 补触发条件、经验沉淀路径锚定 employee-standards.md、重大修订判据落地（改动 🔴/🟡 定级或增删整条）；【层2 八桥】L29×L113 双 🔴 死锁——测试红四分支（行为仍在→更新断言至新行为 / 行为已删→专属测试随删并列明报告 / 范围外既有红→报告不动 / 落 DO NOT→停拆），「不以本条为由」自指消除；§5 24h 删除执照收窄至 tmp/ 本次任务产物（用户 `env.bak` 数据丢失场景封口）+ `git rm --cached` 前置；§4 红线域化——「严禁主动编撰任何数据填充代码」升格为模拟现实实体/外部系统形态域 + 算法演示字面量豁免 + 用户明示假数据授权态（`// fake data（用户授权）`）+ 检索由前提改为义务；§7 造数许可通道关闭（能否写先过 §4、本条只管规模）；「除非量级有界」补内存维度（仅知道大小不算确认）；真实请求写操作限测试/预发环境；密钥条款升 🔴 + `.env` 指称定为 .env.* 家族（.env.example 豁免）；【层3 高频批】gate 按触及扩展名多语言并跑、auto-fix 限本次触及文件、坚持有出口（用户否决后不再重提）、循环验证连续 2 次失败出口、「过时/可疑」判据落地、1500 触发点改为本次编辑推过 + 存量报告不动 + 生成产物豁免、校验限定信任边界 + 精度归位、吞错记录后不得带病继续、魔法数字无依据取达义名、具体值断言锚定验收、覆盖清单补文档/配置同名引用、回退链排序 + 明示已回退、遗漏区域禁编造风险清单、改写禁令类收窄（sed -i/perl -pi/重定向，纯管道查询豁免）、格式化触及域 + 重排须同意、§3 触发双读关闭（含新建文件、架构变更标「如...非穷举」）+ 命中不代跑 propose、反复失败判据、「所有阶段」→「OpenSpec 流程各阶段」、debt 与「临时方案」仲裁抽屉、fixtures 与临时文件分界、抽测辖域收紧、真实登录态正向定义（真实凭据过登录流程，UI 或 API 登录取回——修正审计代理的纯 UI 定义为与本仓 auth.setup.ts 的 API 快速路径一致）、批量化≠攒齐 + 错误日志划出循环禁令、SW 展开为 Service Worker；【跨切】§2/§5 补 WHY 行（跨条款审计实证两节无 WHY 支撑豁免外推）。代理基线两处失实经复核驳回（AGENTS.md 状态误报/嵌入档位误判为漂移）。机械兜底：受管 .gitignore 块 20→21 项补 `tmp/`（本仓 .gitignore:68 既有、用户项目从无义务化入口）。延后留档三处 🟡（选型尾句歧义/压缩上下文不可判/不可复现分支——有 §0 新总则与判据兜底，边际递减）。五件套同 commit，锚换 1 加 4。
+- **docs(standards): 全规范弱模型解析审计（`standards-weak-model-audit`）**. §0-§7 收敛：新增用户指令优先、未标注默认 🟡、冲突出口；受管忽略补 `tmp/`。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（双语嵌入全量同步）、`tests/docs-sync.test.ts`（锚 +4 换 1）、`src/shared/gitignore-managed.ts`（受管块 20→21 项）、`CHANGELOG.md`
 
-- **docs(standards): §1 注释纪律按弱模型证据升级（`comment-discipline-weak-models`）**. 起因：用户报告 MiniMax M3.1-Flash 遵本规范产注释不精简，五路深度调研（arXiv 对照实验、厂商出厂形态、MiniMax 官方与 issue #102 金丝雀、弱模型遵循性专项）后升级条款：①「默认不写」头条 +「一行以内」亮线（2609.09242：全注释禁令把 12/14 模型注释 token 压至 10% 以下、含全部小模型——干净形状禁令对弱模型有效）；②正误示例对（Bohr 2511.13972 重算：规则+示例是唯一把 34/40 归零的配置 1.52→0.17，示例单独反使 docstring +46%）；③黑名单补三具名（分步叙述、复述代码字面含义、复述签名/参数的 docstring——Anthropic-5 出厂三具名封闭尾 + Bohr 病理集扩充）；④交付前自检门「非 why 内容或命中名单 → 删」（SaliTrap 2607.28478 识别≠执行 + issue #102「推理记得、输出丢弃」）；⑤迭代钩子「迭代时同理」（Bohr 迭代轮是膨胀时刻；SlopCodeBench 长程侵蚀如实不豁免提示词层——归 CI 棘轮 backlog）。自检判据与生成规则同一对偶，刻意不用更宽的「删了会误解才留」（弱模型合理化通道）。升级措辞路线（EXTREMELY_IMPORTANT 包裹）已被 issue #102 证伪不取。落地前 Prompt 工程师逐字弱模型解析审计九处全收：🔴 自检辖域定死「本次新增与所改」（防解成全文件既存注释的清库执照——删除面恰是弱模型过度执行方向）、🔴 豁免类别化作主语「机制标注」（原两专名漏掉 §4 来源标注与 noqa/@ts-ignore 抑制标记——自检会删 §4 强制标注再卡死 lint 门）；🟡×7：用户点名豁免口、「合并即噪音→入库即噪音」（EN 像证本义，防 git-merge 滑解）、改动叙述括注谓词化（词面匹配双向漏判：此前类漏、现在的类误杀）、同理自足化、why 须确知原因（堵幻觉注释通道）、失效因果定义 + 与「不改进相邻注释」仲裁、混合句删叙述留 why（防整删陪葬真约束）。五件套同步，锚 +2。顺手修 CHANGELOG 重复的 [0.3.98] 头（PR #42/#43 合并残留）。
+- **docs(standards): §1 注释纪律按弱模型证据升级**. 默认不写 + 正误示例 + 黑名单 + 自检门，锚 +2。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（双语嵌入各 1 行）、`tests/docs-sync.test.ts`（锚 +2）、`CHANGELOG.md`
 
 ## [0.3.98] - 2026-10-09
-- **fix(audit): 锚的 capability 段误用 change 名时给精确诊断，不再误报「retired capability」（`anchor-change-name-diagnosis`）**. 起因：生成端把提案/change 名写进 spec 锚第一段（模板只定义了第二段 requirement title，第一段无定义无示例）——audit 对这类锚跑 `readMainSpec` 必报「Anchored to retired capability」，把活测试标成退役候选，误导删除。修复分两层：①audit 层（机器契约升级为代码强制）——`auditAnchorsCore` 注入 change 目录枚举（active + archive），capability 不存在时先查是否 change 名，是则报「Anchor uses a change name, not a capability + 修锚指引」并明示 test 本身无需 review，不再是退役信号；②模板层（降发生率）——e2e-command Step 6 spec-anchor 规则补第一段定义 + 正误示例（`user-auth#✓` / `add-dark-mode#✗`）。审计语义不变：capability 真退役仍走原「retired capability」分支。
+- **fix(audit): 锚的 capability 段误用 change 名时给精确诊断（`anchor-change-name-diagnosis`）**. 不再误报「retired capability」；模板补定义与正误示例。
   - `src/commands/audit.ts`、`tests/commands/audit.anchors.test.ts`（+2 用例：active/archive change 名各一）、`templates/e2e-command.md`、`CHANGELOG.md`
-- **docs(standards): §6 测试取向反转——点名叫写、证据验收、提议义务（`test-orientation-reversal`）**. 用户原始诉求「不自主写新测试」落地为三个组件：①**门**：「测试只随验收存在」——验收条款（spec requirement / change 完成条 / 任务验收标准）点名才写，替换旧行为（值得单测清单 + 模糊地带默认测 + 业务核心自动覆盖义务三处翻转/收窄）；②**提议义务**：未点名但高价值（修过 bug 的回归、边界/错误路径）→ 提议用户不静默略过——用户指出门的第一版缺陷（点名认知负担在用户侧，用户不知何时点名）后引入第三态，与 §1「提出并坚持」同族、与 e2e test-plan 人工 gate 同构；③**证据验收**：修复类任务完成前后各复现 bug 一次（修前证明存在/修后证明消失）+ 截图/测量——设计保险 = 解绑「写测试」与「做验证」（测试可缺席、验证不缺席）。同时恢复压缩版质量滤网「无断言价值的测试一律不写，点名不豁免」（裁并原长清单时误判两道滤网互替——点名质量方差实证存在，双层退单层已被推演证伪）。已知代价如实记录：散活回归无 CI 哨兵（提议义务缓解）；滤网降为单层兜底靠 §0 停下问用户。e2e-command 零改动（它本就是点名门的产品级形态）。五件套同步，锚 2 处标签修正 + 2 处新增。
+- **docs(standards): §6 测试取向反转**. 测试只随验收存在，未点名高价值场景须提议；修复类任务完成前后各复现一次。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（双语嵌入）、`tests/docs-sync.test.ts`（锚更新）、`CHANGELOG.md`
-- **feat(editors): CodeBuddy CLI 编辑器适配（`codebuddy-adapter`）**. 第七款编辑器：`.codebuddy/commands/opsx/<id>.md` 子目录冒号命名（`/opsx:e2e`，同 Claude Code；官方 openspec CLI 对 codebuddy 同为冒号命名，工件共存无忧），frontmatter 仅 description + argument-hint（官方字段集无 `name`，多余键被忽略）；项目规则走 thin CODEBUDDY.md wrapper（CodeBuddy 双文件并存时优先读 CODEBUDDY.md，同 Claude 的 CLAUDE.md 机制）；Playwright MCP 直写项目根 `.mcp.json`——不经 `codebuddy mcp` CLI（它会启动端口占用服务，与运行中的会话冲突）。实现侧把 claude 特判泛化为 adapter 循环：`wrapperRulesFile` / `wrapperHasMarkers` / `installThinWrapper` / `removeWrapper`，doctor/update/init/uninstall/removal 六处集成全部跟上；preselect 意图文件加根 `CODEBUDDY.md`；受管 `.gitignore` 块加 `.codebuddy/` 与 `CODEBUDDY.md`（18→20 项）。dogfood 实证：本仓库 init --tools codebuddy 装出 CODEBUDDY.md + 受管块续行，临时前端项目装出 `.codebuddy/commands/opsx/e2e.md` + `/opsx:e2e` 提示行。
+- **feat(editors): CodeBuddy CLI 编辑器适配（`codebuddy-adapter`）**. 新增第七款编辑器 CodeBuddy CLI：冒号命名 + CODEBUDDY.md wrapper + `.mcp.json`，受管忽略 18→20 项。
   - `src/commands/editors/adapters/codebuddy.ts`、`src/shared/gitignore-managed.ts`（+2 项）、`doctor/update/init/uninstall/editors/editors/*`（wrapper 泛化）、`tests/editors-codebuddy.test.ts`（+25 用例）及既有六套测试更新、双语 README（编辑器矩阵/使用表/首配清单/架构树/gitignore 注记等全量同位补齐；EN 侧顺带补齐既缺的 omp/Pi MCP 条目）、`docs/index.html`（meta description）、`CHANGELOG.md`
-- **docs(standards): §1/§2 融合补 import 随迁与归位纪律（`import-relocation-discipline`）**. 候选条款三段各归其位：①「挪动/抽出代码时 import 随迁」并入 §2 重命名覆盖条款（同一义务的两个场景——rename 管引用物改名、挪动管引用物变址；注释/字符串里的软引用恰是 typecheck 兜不住的部分），扩成「重命名/挪动覆盖」：抽出/搬移到其他文件时其 import 随迁；静态模块级 import 一律置顶部 import 区、不在代码中部补挂——「一律」限定在**静态** import，动态/函数内 import 明示正当事由豁免（循环依赖、可选依赖、按需加载）；自审发现未豁免版会把 Python 函数内 import（循环依赖的标准解法）、`TYPE_CHECKING` 块、TS `await import()` 全误判成违规（把风格默认写成 🔴 硬禁令的类别错误；ESLint `import/first` 本身也豁免动态 import）。②顶部纪律在有 linter 的环境由 PEP8 E402 / ESLint import/first 兜住，真正缺口是无 linter 第三态 → §1 REQUIRE 补半句「装上之前按该语言风格规范自查（如 PEP8 E402）」。③不新开独立条款——净增一句话 + 半句。五件套同步，锚 +4。
+- **docs(standards): §1/§2 融合补 import 随迁与归位纪律（`import-relocation-discipline`）**. 补 import 随迁与静态 import 置顶，动态/函数内 import 豁免；锚 +4。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（双语嵌入各 2 行）、`tests/docs-sync.test.ts`（锚 +4）、`CHANGELOG.md`
-- **docs(standards): Prompt 工程师审计驱动的四处措辞加固（`standards-audit-hardening`）**. 审计结论零 🔴，5 条 🟡 全收（其中一条「镜像落后」指控经 grep 驳回——代理误读）：①§2 豁免清单补第四类「模块级运行顺序依赖」（`django.setup()`/`sys.path` 调整——最常见合法中部 import，原豁免只挂在动态/函数内 import 上给不了入口，E402 亦不可 auto-fix）；②豁免须行内注明缘由（「按需加载」的隐形逃生门 → 变成可抽查产物，与 §1 why-注释纪律同向零负担）；③§1 无 linter 自查半句操作化：对齐「每次编辑后」节奏 + 给重点清单（import 顶置 / 未用变量）+ 在响应中注明结果——原句「按该语言风格规范自查」三处未定义（时机/查什么/结果呈现），是唯一兜底处最不该死的条款，锚随之更换；④§6 🔴 覆盖义务开裁决口——「点名项落 DO NOT 滤网 → 停下向用户裁决，不静默写也不静默不写」，消解 440ba56 自引入的 🔴×「点名不豁免」正面冲突（§0 会裁 🔴 胜 → 复活滤网要杀的测试，违背滤网立法意图）；⑤§6 点名源补「用户在会话中明确要求」（防 Flash 档拿规范文本挡用户直接指令）+ 提议默认收尾汇总一次提出；⑥（⚪ 顺手）typechecker 建议加「如该栈适用」。五件套同步，锚 +4 换 3。
+- **docs(standards): 审计驱动的四处措辞加固**. 豁免补运行顺序依赖、豁免须注明缘由、无 linter 自查操作化、覆盖义务开裁决口。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（双语嵌入各 4 行）、`tests/docs-sync.test.ts`（锚 +4 换 3）、`CHANGELOG.md`
-- **docs(standards): 最少语言修剪——新增条款九处减字（`standards-wordiness-slim`）**. 目标对齐「用最少语言制定最优可遵循规范」：①§1 gate 行删「，不继续」「，不暗示已通过」（与「并停止」「标注「未运行」」各自同义反复）；②§1 REQUIRE 删「必须」「（PEP8 E402）」——REQUIRE 组固有义务强度、规则本体已内联，E402 只是 Python 侧 linter 名而规则定义处 = §2（EN 锚随之换稳短语）；③§2 删「（无既有 import 区则置文件头）」（「一律置文件顶部」a fortiori 覆盖）、「正当事由」（「仅限」已表闭集）、「模块级」（全句已限静态模块级）、「、sys.path 调整」（例子是意义锚，django.setup() 单例足够）、「且」；④§6 删「边界与错误『处理』路径」中「处理」（「错误路径」为节内既定简称）。评审抓出一处后恢复：初版连「多处」（被『多处』复用的工具）一并删——十处中唯一改变阈值的剪裁（单文件内复用 ≠ 多处复用），恢复；其余九处逐句语义核验确为冗余，零损失成立。刻意不剪（记录在案）：点名三来源括号（「点名」唯一操作化定义）、四类有价值场景（提议义务判定依据）、「不静默写，也不静默不写」对偶（仲裁核心语义）、django.setup()/CJS require（弱模型意义锚）、🔴 截图行「断言只作辅助证据」尾缀（用户裁定保留——删则过度读成截图无用）。五件套同步，锚换 1，含前批「锚 +4 换 3」计数勘误。
+- **docs(standards): 最少语言修剪——新增条款九处减字（`standards-wordiness-slim`）**. 九处减字，一处「多处」误删已恢复；语义零损失。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（双语嵌入各 4 行）、`tests/docs-sync.test.ts`（锚换 1）、`CHANGELOG.md`
-- **chore(scripts): AGENTS.md 镜像收敛为 SSOT 生成物（`standards-mirror-generator`）**. 同一份规范手写维护 4 处（SSOT / AGENTS.md 镜像 / script.js 双语嵌入 / 锚表）且镜像出过真实漂移（0.3.93 批次缺失事故）；`npm run standards:sync` 从 employee-standards.md 再生 AGENTS.md 的 OPENSPEC-PW 块。评审实证抓出首版 8 处缺陷，全部修复入库后才交付：块内 EOL 归一（CRLF checkout 的 autocrlf 不再泄漏/翻倍 \r）；未知 flag 与位置参数一律拒绝（首版 `--dry-run` 曾静默走写模式）；realpath 运行守卫（symlink 与祖先 symlink 调用曾静默 no-op exit 0）；END 自 BEGIN 之后搜索 + 后续重复块整对清除（防 SSOT 引用 marker 字样时拼接逐次累积——marker 破损仅「BEGIN 无配对 END」拒写，孤儿 END 视用户内容保留，与受管块 F3 同策）；块-only/空白/空文件再生 title（首版曾以 `already in sync` 掩盖丢失）；尾接 F5 精确保持（无尾换行文件不再被补 \n、CRLF 尾接不再残留孤儿 \r）。script.js 双语嵌入维持手写不生成（浓缩文案是编辑性产物，机械不可推导，docs-sync 锚仍守）。手工同步面 4→3。
+- **chore(scripts): AGENTS.md 镜像收敛为 SSOT 生成物（`standards-mirror-generator`）**. 新增 `npm run standards:sync`，AGENTS.md 镜像由 SSOT 再生；手工同步面 4→3。
   - `scripts/sync-standards.mjs`（新增）、`package.json`（`standards:sync`）、`tests/standards-sync.test.ts`（+14 用例，tempdir 全隔离——CI 安全）、`CHANGELOG.md`
 
 ## [0.3.97] - 2026-10-08
-- **docs(standards): §1 DO NOT 新增 🔴 静默吞错禁令 + §2 新增分析断言证据纪律**. 两条同属用量报告驱动的诚实家族扩充：①吞错条款补全错误处理链路后半程——v1 起规范只有「不假设成功 → 先校验」前半程，「错误发生 → 别静默藏起来」从第一天就是空白（`except: pass` 恰好从缝里漏过：不违反假设成功，只是把失败藏了）；🔴 级依据 §0 定义（吞异常 = 制造静默 bug 的机制），多语言按形态抽象不穷举（空 catch / `except: pass` / `_ = err` / `.ok()` 四族代表），豁免口 = 确可安全忽略 + 注释原因（保住合法 best-effort cleanup）；②通读断言条款起因 Claude Code 用量报告（2026-08-10→09-29）——分析声明基于部分阅读的文件，被质询后才承认不准确，未被质询的同类不进统计（幸存者偏差下界）；措辞双分支同构 §1 gate 条，「冒充」沿用 §6 WHY 先例；规则对象限定「引用作依据的文件」，略读探索不受限。五件套同步。
+- **docs(standards): §1 新增 🔴 静默吞错禁令 + §2 断言证据纪律**. 补空 catch 等四族禁令；§2 补「引用作依据的文件先通读」。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（双语嵌入各 2 行）、`CHANGELOG.md`
 
 ## [0.3.96] - 2026-09-29
-- **chore(scripts): 字体子集化工具链固化为 `npm run fonts:subset`（`subset-fonts`）**. 2026-09-28 的一次性手工流程（npm pack @fontsource/noto-serif-sc → 按页面字符集选切片 → fontTools 切片合并 → 子集化 1.4MB→113KB）固化为可重跑脚本：landing 文案改动引入新中文字符后重跑即可，不再依赖临时目录里的手工产物。fonts.css CJK 段确定性重写（实测逐字节一致）；woff2 因切片合并顺序不同二进制有差、字形覆盖等价，本地截图渲染一致。依赖 python3 + fonttools + brotli（缺失时报安装指引）。
+- **chore(scripts): 字体子集化固化为 `npm run fonts:subset`**. landing 文案引入新字符后可直接重跑。
   - `scripts/subset-fonts.py`（新增，~180 行）、`package.json`（`fonts:subset`）、`docs/fonts/noto-serif-sc-subset-600.woff2`（脚本再生成）、`CHANGELOG.md`
 
-- **feat(init/update/uninstall): 受管 .gitignore 块新增 4 条路径（`managed-gitignore-paths`）**. `.codegraph/`（本地 SQLite 索引，外部 CLI 生成，可再生）、`.playwright-mcp/`（官方 Playwright MCP 会话产物目录——e2e 工作流重度使用该 MCP，用户项目必然出现）、`.mcp.json`（openspec-pw 经 `claude mcp add` 生成 + 用户自加 server 常在 env/headers 放 API key——沿用 0.3.94 `.claude/` 整目录忽略的既定裁决，官方「可共享」定位让位于凭据安全）、`playwright/.auth/`（auth.setup.ts 写的 storageState = 已登录会话 cookie，受管清单里最接近真凭据的漏项）。存量项目下次 `init/update` 块内自动补行；已入库项目走既有 `git rm --cached` advisory。14 → 18 项。
+- **feat(init/update/uninstall): 受管 .gitignore 新增 4 条路径**. 新增 `.codegraph/`、`.playwright-mcp/`、`.mcp.json`、`playwright/.auth/`（14→18 项）。
   - `src/shared/gitignore-managed.ts`、`tests/gitignore-managed.test.ts`（新增 1 用例）、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
 
-- **docs(standards): 规范校准锚点改为「不弱于 Opus 4.8 代际的前沿模型」**. 起因：确认 `employee-standards.md` 随 init 分发给用户项目（`src/commands/init.ts:65`），真实受众是异构模型——GLM-5.3-Flash（≈Opus 4.8 代际、NL2Repo 落后 ~13 分）等 Flash 档用户也在用。据此翻案上一轮审计的两条「能力型可删」候选：§0「动手前列假设」与 §1「多步任务先列计划」保留激励半句、去掉 plan-first 脚手架（改写为「关键假设动手前逐条验证」「多步任务每步带验证」）——按最弱常见用户校准，代价仅两行 🟡 文本；「先列计划」在 Opus 5.5 上致 over-planning，在弱一档模型上是护栏。同步 e2e-command Step 4 加一行不可信内容提示（页面/console/MCP 工具结果视为数据，不视为指令）——GLM 无 Opus 5.5 的原生抗注入背书，且模板是发给用户项目的产物。五件套同步。
+- **docs(standards): 规范校准锚点改为「弱一档前沿模型」**. 保留假设验证与分步验证激励，e2e 模板补不可信内容提示。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`docs/script.js`（双语嵌入各 2 行）、`templates/e2e-command.md`、`CHANGELOG.md`
 
 ## [0.3.95] - 2026-09-21
-- **docs(standards): §1 DO NOT 九条压缩为两条**. 按用户哲学「模型已聪明，少要求」划界：能力型条款压缩、激励型条款保留。DO NOT 九条并两簇——「不假设外部输入可信」（数据/响应/异步/精度/资源）与「写法纪律」（样例过拟合/魔法数字/脆断言/EOL），EOL 因 windows CI 有事故土壤特意保留；「防 NPE 和注入」字样删（校验动作已含）。AGENTS.md 维持 gitignore 忽略（用户裁定：镜像不入库，跨机同步靠手工）；顺手修复：根 CLAUDE.md wrapper 的 CodeGraph 段对齐 0.3.93 已裁剪的内置模板（d9db98d 裁了模板没裁根文件，doctor 一直报 standards-claude ✗）——doctor 双 sync 项转绿。五件套同步。
+- **docs(standards): §1 DO NOT 九条压缩为两条**. DO NOT 九条并两簇（输入校验 / 写法纪律），AGENTS.md 继续忽略入库。
   - `employee-standards.md`、`AGENTS.md`（本地镜像）、`CLAUDE.md`、`docs/script.js`、`CHANGELOG.md`
 
-- **docs(standards): 删「交付前自问」独立条与「即使你更倾向别的写法」尾缀**. 用户裁定：交付前自问与简化类条款（只写被要求的/简化有边界）同主题第三处，按精简判据砍；「匹配现有风格」删口味尾缀（强加偏好反违匹配本意）；「重写不扩范围」括号不保留——精准改动条的「不重构没坏的东西/每行可追溯」已完整覆盖。顺手修复：本地 AGENTS.md 镜像缺整个 0.3.93 批次（.gitignore 不随 git 跨机），以 SSOT 全文重建镜像消除漂移。五件套同步：standards、AGENTS.md（镜像）、script.js 双语嵌入（各删 1 行）。
+- **docs(standards): 删「交付前自问」独立条与「即使你更倾向别的写法」尾缀**. 删重复的交付前自问与口味尾缀，并以 SSOT 重建镜像消除漂移。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`CHANGELOG.md`
 ## [0.3.94] - 2026-09-21
-- **feat(init/update/uninstall): .gitignore 受管标记块——生成的敏感/运行时文件自动忽略（`managed-gitignore-block`）**. 对 v0.3.86 "绝不改写用户 .gitignore" 承诺的正式修订：凭据泄漏是团队级安全事故，advisory 黄字警告用户可以完全不看；改为受管标记块模式——init/update 在 `.gitignore` 尾部维护 `# openspec-pw: begin/end managed block` 标记块（只增删块内行，块外一字节不动），受管路径 14 项：第一层名 `.claude/` `.cursor/` `.opencode/` `.cline/` `.pi/` `.omp/` `openspec/` `AGENTS.md` `CLAUDE.md` `app-exploration.md` `opencode.json`（用户知情拍板：产物留本地的策略）+ tests 精确三条 `tests/playwright/test-results/` `tests/playwright/credentials.yaml` `.bak`（`tests/` 整目录不忽略——保住测试代码进库与 CI 可用，用户否决整目录方案）。要点：① 判定**与磁盘存在性无关**（gitignore 是前瞻性声明——首次 init 时 test-results 尚不存在也必须写入；复用 findUnignoredFiles 会因 existsSync 门控漏写最关键路径，故新增 `findUncoveredManagedPaths`，规则加载逻辑与 ignore-check 共享）；② 幂等 + 块内补行 + CRLF 容错（Windows 编辑器行尾不产生重复块）+ 多块/孤儿标记安全策略 + 尾换行不翻倍；③ `.git/info/exclude` 已覆盖的路径不重复写入（尊重本地策略）；④ 写入失败降级为受管通用 advisory（`managedBlockAdvisoryHint`），现有凭据 advisory 收编为降级分支专用（消除双黄字）；⑤ **已追踪检测**（`git ls-files` best-effort）：ignore 对已追踪文件无效，凭据曾提交过的项目会得到 `git rm --cached` 指引（按目录聚合计数封顶 5 条，不自动执行）；⑥ uninstall 反向清理标记块（块外保留、空文件删除、凭据文件保留+安全提示）；⑦ minimal mode 同样维护块。`.github/` 明确排除。
+- **feat(init/update/uninstall): .gitignore 受管标记块**. 14 项敏感/运行时文件自动忽略，块外不动；含幂等、CRLF 容错与反向清理。
   - 新增 `src/shared/gitignore-managed.ts`；修改 `src/commands/{init,update,uninstall}.ts`、`src/shared/index.ts`（barrel）
   - 新增 `tests/gitignore-managed.test.ts`（16 用例）；`tests/init.test.ts`（advisory→受管块断言更新）
   - `README.md`、`README.zh-CN.md`
 
 ## [0.3.93] - 2026-09-20
-- **refactor(standards): CLAUDE.md wrapper 的 CodeGraph 块精简至核心指令**. `CODE_GRAPH_FIRST_BLOCK` 删除"grep/read 仅作补充（字面文本、已打开文件、结果不足）"与"不派子 agent 重建索引"两句后果说明——AGENTS.md SSOT 的 §2 搜索分层条款完整覆盖 grep/read 分工，"不派子 agent"由 §0 自主边界条款承接；wrapper 内属重复表述。保留核心四要素：触发条件（结构性任务）→ 首选工具（`codegraph_explore`）→ 使用方式（直接用结果回答）→ 跳过条件（无 `.codegraph/`）。⚠ 已安装项目下次 `openspec-pw update` 会因块内容漂移自动重写 wrapper（一次性变更，update 正常职责）。所有测试仅锚 `"CodeGraph 优先"` 标题，无断言依赖被删文本。
+- **refactor(standards): CLAUDE.md wrapper 的 CodeGraph 块精简至核心指令**. wrapper 的 CodeGraph 块只留核心四要素，删两句重复后果说明；已装项目 update 重写。
   - `src/commands/editors/project-rules.ts`
 
-- **docs(standards): §0 自主边界/经验沉淀 + 选型链扩展 + debt 机制 + §3/§6 补强**. 四组语义修改与一轮去重收拢：① §0 新增「询问与自主的边界」（有明确正确答案才自主推进；影响接口/数据/架构的取舍才停；自主不延伸到 OpenSpec 阶段切换）与「经验沉淀」（被纠正后防再犯规则回沉淀，工具中立）；② §1 方案选型链扩为七级（YAGNI → 代码库复用 → 标准库 → 平台原生 → 已装依赖 → 成熟库 → 自实现）并新增「简化有边界」条款——debt: 注释机制标明性能取舍的天花板与升级路径，显式不豁免 §7 🔴 无界禁令与正确性/安全措施；③ §3 新增执行中止条款（走偏即停，不硬推到结尾）；④ §6 新增验证证据条（截图/日志/输出取自本次实际运行，不编造不复用——接住 §4 的引用落空）。去重收拢：gate 不谎报条合并（原两条）、§4 内嵌豁免下游化（询问流程即唯一合法通道）、UI 组件豁免 3 处表述削为 2 处、§0 两条精简；按用户决定回撤"跨 3+ 文件"OpenSpec 触发点（只看行数）。landing page 的 CLAUDE.md 预览模板（CLAUDE_MD_ZH/EN）全量同步。另：`.workbuddy/` 入 .gitignore。
+- **docs(standards): §0 自主边界/经验沉淀 + 选型链 + debt**. 补七级选型链与 debt 机制，§3 中止条款与 §6 证据条；同步嵌入。
   - `employee-standards.md`、`docs/script.js`、`.gitignore`、`CHANGELOG.md`
 
 ## [0.3.92] - 2026-09-18
-- **docs(standards): 新增 §7 性能与资源边界**. 用户痛点：AI 编码不考虑数据规模，处理大批量数据时 CPU/内存占满卡死。六章结构（§0-§6）扩为七章，新节覆盖：量级确认先行（openspec/config.yaml 记录优先、未知问用户，测试造数/并发同算）、哈希查找与 CPU 密集分片、🔴 无界读取进内存禁令（整文件读入/无 LIMIT 全表/攒齐再处理；流式/分批兜底）、🔴 无界并发禁令（并发池/信号量显式限流）、循环内逐条 I/O 与无界缓存。五件套同一 commit：employee-standards.md（SSOT）、AGENTS.md（本地镜像）、docs/script.js 双语嵌入（CLAUDE_MD_ZH/EN 各加 condensed 节）、tests/docs-sync.test.ts（+6 锚，section count 守卫 §0..§7）。
+- **docs(standards): 新增 §7 性能与资源边界**. 新增 §7（量级确认、无界读取/并发禁令、循环 I/O 与无界缓存），六章扩为七章。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 
-- **docs(standards): §1 补依赖幻觉禁令与有界修复循环**. Exa 调研大厂规范（Anthropic 官方 CLAUDE.md 守则/Shopify AI-first playbook/Stripe Minions/Tenable AI 安全政策）后对齐的两条：🔴 引入新依赖前实查 registry（AI 幻觉包名，slopsquatting 抢注是真实供应链攻击；装前看 install scripts 可疑即弃）——补选型链的存在性验证真空；修复循环显式上限 2 轮（Stripe 纪律：本地修完即止——两轮后仍失败意味着理解错了而非没修够，继续盲修会"修"出削断言/删测试）折进既有 lint gate 条，零新条。+4 docs-sync 锚。
+- **docs(standards): §1 补依赖幻觉禁令与有界修复循环**. 补依赖幻觉禁令与修复循环 2 轮上限，折进既有 lint gate 条。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 
 ## [0.3.91] - 2026-09-16
-- **docs(landing): 全页居中构图 + 终端命令序修正 + 浏览器安装命令收窄**. 用户逐轮裁定的打磨批：Hero（标题/描述/CTA/facts 条）、快速开始、支持的工具、Footer 全部走中轴居中；hero 新增三格 facts 条压住下半区留白；CLAUDE.md 预览卡的 🔴🟡⚪ emoji 圆点转单色 glyph（renderMarkdown 加 prio span，复制 payload 保留原始 emoji 不受影响）；编辑器行直链各官网（claude.com/opencode.ai/cline.bot/cursor.com/pi.dev/omp.sh，逐个实测 200，Pi/Oh My Pi 经 npm registry + GitHub 双重溯源）；终端命令按依赖链重排（openspec 安装/初始化提前，`openspec-pw init` 不再先于 `openspec init`）；`npx playwright install --with-deps` 收窄为 `install chromium`（--with-deps 无浏览器参数时会连 firefox/webkit 一起下载 ~500MB，管线只用 chromium；init Next steps 与 README Note 同步收窄）。补 og:url/twitter:card meta、复制按钮 aria/title、renderMarkdown 标题降级消除双 h1。改 init 输出文案 → dist 同步。
+- **docs(landing): 全页居中 + 命令序修正**. 落地页改中轴居中；终端命令按依赖链重排，浏览器安装收窄为 `install chromium`。
   - `docs/index.html`、`docs/style.css`、`docs/script.js`、`src/commands/init.ts`、`README.md`、`dist/`
 
-- **fix(agents): 退役角色 historicalHashes 判定链补通——旧项目干净副本恢复 tool-owned**. code-review 抓到的实现缺陷：`VENDORED_AGENT_ROLES` 缩为 planner 后，`roleForRelPath` 对 generator/healer 返 null → `classifyAgentFile` 提前返回 "modified"，且 `loadAgentSnapshots` 不枚举退役文件 → `enumerateVendoredAgents` 的 inventory 根本不含它们——historicalHashes 里的退役 hash 成死数据，旧项目干净副本 uninstall/init 反选清不掉、doctor 不报告，与 SOURCE.md 承诺的 "refreshable/removable" 矛盾。修复：新增 `RETIRED_AGENT_ROLES` + `retiredAgentRelPath`，`roleForRelPath` 认退役路径、`classifyAgentFile` 空快照走历史链判定（干净副本 owned / 改过 modified）、`enumerateVendoredAgents` 扫描退役文件；`syncVendoredAgents` 对 owned 退役文件打印一次性退役提示（uninstall 可清）；README 归宿描述改为两态准确口径。+2 判定测试、652/652。
+- **fix(agents): 退役角色 historicalHashes 判定链补通——旧项目干净副本恢复 tool-owned**. 补退役角色判定链：旧项目干净副本恢复 tool-owned，可卸载可报告。
   - `src/commands/editors/agents.ts`、`README.md`、`tests/agents.test.ts`、`CHANGELOG.md`
-- **feat(agents)!: --agents 缩为单件 planner（generator、healer 全部退役）**. 两轮用户裁定的终态：`--agents` 只装 `playwright-test-planner.md`（/opsx:e2e Step 5 探索→计划的上下文隔离委托目标）——generator 退役（recording flow 覆盖生成，委托需随 prompt 携带 5 条规则、边际价值低）；healer 退役（官方 healer 被指示改断言/期望值强制跑绿，与管线诚实失败出口相反，装了还要警告别用——不如不装）。退役机制统一：两角色 hash 移入 manifest `historicalHashes`，旧项目已装干净副本仍判 tool-owned（uninstall 可清），用户改过的判 modified 永不触碰；e2e-command 模板的 healer 禁令三锚与守卫测试**原样保留**（守的是工作流行为，防手动 `init-agents` 把它带回来）。"Healer" 作为产品能力继续活着——工作流 Step 9 的 3-Phase 修复阶段（主对话 + test-run MCP 工具），landing/README 叙事不变。确认语/init flag 说明/README/SOURCE.md 同步单件套口径；tests 改单件断言 + 退役回归。650/650。
+- **feat(agents)!: --agents 缩为单件 planner（generator、healer 全部退役）**. `--agents` 只装 planner，generator / healer 退役；模板 healer 禁令原样保留。
   - `src/commands/editors/agents.ts`、`src/commands/init.ts`、`src/index.ts`、`templates/agents/`（manifest.json、SOURCE.md、删 healer 快照）、`README.md`、`tests/agents.test.ts`、`tests/init.test.ts`、`CHANGELOG.md`
-- **feat(agents): --agents 缩为 planner + healer 两件套（退役 generator）；docs(landing) 删过时 MCP 手装说明**. 用户裁定：①landing「支持的工具」节删除「可选装 Playwright MCP」段——该句抄自旧页且是错误事实（写的是 `@playwright/mcp` 旧包手装命令；init 实装官方 test-runner server 且全自动，用户无需手敲）；②`--agents` 不再 vendor `playwright-test-generator.md`——e2e 管线的 recording flow 覆盖生成场景，委托 generator 需随 prompt 携带 5 条工作流规则、边际价值低（架构评审口径）。退役机制：generator hash 移入 manifest `historicalHashes`，旧项目已装的干净副本仍判 tool-owned（uninstall 可清）；用户改过的副本判 modified 永不触碰；e2e-command 模板 generator 委托段本为 conditional（文件存在才委托），无需改动。`VENDORED_AGENT_ROLES` / manifest / SOURCE.md / README / init 确认语同步；tests 改按角色取名（HEALER_REL）+ 动态数量断言，新增 generator 退役回归测试。650/650。
+- **feat(agents): --agents 缩为 planner + healer（退役 generator）**. `--agents` 缩为 planner + healer，并删落地页过时的 MCP 手装说明。
   - `src/commands/editors/agents.ts`、`src/commands/init.ts`、`templates/agents/`（manifest.json、SOURCE.md、删 generator 快照）、`README.md`、`docs/index.html`、`tests/agents.test.ts`、`tests/init.test.ts`、`CHANGELOG.md`
-- **docs(landing): 首页 11→4 section 极简化 + 暗色单色 token 重构（未上线，本地验收）**. 用户裁决"只是工具主页/只有怎么安装也行"：Hero / Quickstart（终端 + CLAUDE.md 复制卡）/ 支持的工具一行 / Footer，删除 story/features/workflow 9 步/feedback/stack/comparison/证言/closing（README 均有承接）；视觉换 X 式暗色单色——12 token（7 灰阶 + 橙 accent + ok + 白），4 个旧 CSS 合并为 style.css，删噪点/aurora/轨道装饰；升维：Bricolage Grotesque + Instrument Serif/Noto Serif SC 衬线强调行（CJK 真衬线直立，禁假斜体）、终端打字机动画（/opsx:e2e 行唯一橙）、卡片顶缘 catch-light、nav 边框滚动浮现。DOM 契约零破坏：hero-card-badge（bump-docs 正则）、script.js 全部挂钩、双语翻转机制原样；counters 随 sidebar 删除。顺带修预存在 bug：CF beacon integrity hash 与 CDN 现版失配（删过时属性）。本地浏览器验收 19 项全过（双语/两种复制/锚点/断点/reduced-motion/console）；未触发 pages 部署。
+- **docs(landing): 首页 11→4 section + 暗色 token 重构**. 首页由 11 节压到 4 节，换暗色单色 token；本地验收 19 项通过。
   - `docs/index.html`（1072→155 行）、`docs/style.css`（新增）、`docs/style-{base,sections,extra,storytelling}.css`（删除）、`docs/script.js`（467→487 行，删 counters 增打字机）
-- **chore(agents): healer 价值错位知情提示 + e2e 模板 healer 禁令测试锁守卫**. 架构评审结论：三件套 vendored agents 保留 opt-in 现状（拆分会与官方 `init-agents` 布局分叉，manifest/snapshot/historicalHashes 机制全按三角色建，为默认关闭的功能支付永久分叉成本不值）。①`init --agents` 交互确认语与 README agents 清单各加一行知情提示——官方 healer 被允许改断言/期望值跑到绿，`/opsx:e2e` 管线绝不委托修复给它（诚实失败出口红线），让安装者知情；②新增 `tests/e2e-template-healer-ban.test.ts`（3 断言）锁 `templates/e2e-command.md` 的「No subagent delegation for repair」「Honest failure exit」「Planner/Generator 委托允许（禁令仅限 healer）」三锚，防模板重写时红线被静默丢掉。基线重录 1.63.0 降级待触发（drift 提示非阻断，无用户可见影响）；不往 healer 文件加注释（会变 modified 触发 doctor drift 噪音）。
+- **chore(agents): healer 价值错位知情提示 + e2e 模板 healer 禁令测试锁守卫**. 安装确认与 README 补 healer 知情提示，新增模板禁令守卫测试。
   - `src/commands/init.ts`、`README.md`、`tests/e2e-template-healer-ban.test.ts`（新增）、`CHANGELOG.md`
 
 ## [0.3.90] - 2026-09-14
-- **docs(standards): §6 单测生成禁令化——新增 UI 组件禁测试条款 + 3 项 AI 测试反模式**. 用户裁定对网页 UI 单测生成从严：缺口是"模糊地带默认测"兜底对 UI 反向激励（漏测代价低——浏览器双层兜底；多测代价高——mock DOM 维护/与 Playwright 交互测试冗余）。新增 🔴「UI 组件：禁止生成组件测试」——渲染冒烟、快照、纯存在断言类一律禁止，值得测的客户端逻辑（hook/组合式函数/纯函数）优先抽为独立单元；单测"不值得"清单升级为**禁止生成**并追加 3 项 AI 实证反模式（arXiv 2602.00409 mock 过用 36% vs 26%、2412.14137 oracle 从实现反推、VibeCheck 弱断言）：同义反复断言、mock 调用拓扑断言、无有效断言纯执行。措辞来源：Fowler Assertion-Free、Coulman Tautological Tests。
+- **docs(standards): §6 单测生成禁令化**. §6 单测清单升级为禁止生成，新增 UI 组件禁测与 3 项 AI 反模式；锚 +2。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`（ZH/EN 同步）、`tests/docs-sync.test.ts`（+2 锚）、`CHANGELOG.md`
-- **docs(standards): §2 两处微修**. 「压缩上下文」从防循环纪律组移入 DO（上下文管理非防循环主题）；REQUIRE 格式化工具句改可读措辞「可用不改语义的格式化工具（ruff fmt/prettier）」。全篇逐章扫尾：其余章节无新冗余，🔴 密度全篇 ~22% 健康。
+- **docs(standards): §2 两处微修**. 「压缩上下文」移入 DO，格式化工具句改可读措辞。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`（ZH/EN 同步）、`CHANGELOG.md`
-- **docs(standards): §6 结构统一为 DO / DO NOT**. 用户指出 §6 用自定义小节（触发/单测/验收/自检）与其他章节的 DO/DO NOT 结构不一致。纯结构重排语义零变化：正向行为（触发路由、值得单测、覆盖义务、真实请求验收、期望锚定、UI 逻辑抽取、产物/登录态核对）归 DO，禁令（UI 组件测试禁令、仅截图不算通过、单测生成禁令）归 DO NOT；场景词内化到条目文本。§6 无 REQUIRE 类条目，不设该组。重排后按精简判据复查削 2 处：「交互必须验证结果」（DO）与「仅截图不算通过」（DO NOT）正反双说合一为单条禁令句；UI 条尾「归浏览器验证」与 UI 禁令尾「UI 行为只归浏览器验证」跨条重复删前者。
+- **docs(standards): §6 结构统一为 DO / DO NOT**. §6 改为 DO / DO NOT 结构，语义不变，并合并两处正反双说。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`（ZH/EN 同步）、`CHANGELOG.md`
 
 ## [0.3.89] - 2026-09-11
-- **fix(init): pre-existing `tests/README.md` 时 Summary 契约指引按所有权分叉**. E2E 复查发现的良性边界：用户已有自己的 tests/README.md 时最小模式 skip 生成，Summary 仍指向它（指向用户的文件，信息错位）。`generateTestsReadme` 返回三态（生成/已是我们的/用户的）：幂等重跑时"已是我们的"仍链接契约文档；仅用户拥有的文件指向员工规范，skip 行明示 "your file is kept"。
+- **fix(init): pre-existing `tests/README.md` 时 Summary 契约指引按所有权分叉**. `tests/README.md` 按所有权三态处理，用户文件不被误伤。
   - `src/commands/init.ts`、`tests/init.test.ts`、`CHANGELOG.md`
 
-- **feat(init): minimal-mode-init——无前端项目最小初始化，判定依据透明化 + `--frontend/--no-frontend` 覆盖**. 纯后端 / API-only 项目（含无 package.json 的 Python/Go）不再拿跑不通的浏览器脚手架：前端信号 false/null → 最小模式，仅交付 `tests/README.md`（验收落脚点契约 + 升级提示）与员工规范块；不装 e2e 命令、Playwright 脚手架、MCP、agents、CI workflow（MCP/agents 门统一为 mode，`--frontend` 覆盖后照常）。Summary 打印模式与命中信号归因（`Mode: frontend (signal: vite.config.ts)`），误判当场可见、flag 一票纠正。最小模式项目成为同步一等公民：`update` 的 wrapper 门控与块消失告警扩展为「命令工件 OR 我方标记块」（`hasRuleFileMarkers`），doctor 的 browsers/playwright-test 检查按脚手架存在 gate、领土检查/Sync 认最小模式项目，`uninstall` 清理工具拥有的 README 并兜底清仅标记块项目的规范块。升级路径：信号出现后重跑 init 增量补装全量并按内容所有权移除 README（修改过的保留）。前端模式（signal === true）行为零变化。检测信号集不扩（单体+子目录、vite 兼职 vitest 两个实测盲区靠透明化 + 覆盖 flag 补偿）；tests/README 为无状态资产（update 漂移提示不自动覆盖，用户自带 README 不被误伤）。
+- **feat(init): minimal-mode-init——无前端项目最小初始化**. 无前端信号的项目只生成 README + 规范块，`--frontend/--no-frontend` 可覆盖。
   - `src/commands/init.ts`、`src/index.ts`、`src/shared/app-detect.ts`、`src/shared/index.ts`、`src/commands/update.ts`、`src/commands/doctor.ts`、`src/commands/uninstall.ts`、`src/commands/editors.ts`、`src/commands/editors/project-rules.ts`、`templates/tests-readme.md`、`tests/`（init/update/doctor/uninstall/app-detect 扩展）、`README.md`、`CHANGELOG.md`
 
 ## [0.3.88] - 2026-09-10
-- **docs(standards): §1 补平台假设 DO NOT + 两处清理**. 平台假设条款有本周两次真实事故背书：0.3.84 git autocrlf 把快照转 CRLF 致哈希比对挂（换行符假设）、锚报告字面 `"/"` 切路径致 Windows 输出绝对路径（路径分隔符假设）——新增「不假设平台路径分隔符与换行格式 → 用语言内建跨平台 API（path.sep/path.join），比较前归一化 EOL」，对齐全系「禁令 → 对策」格式。清理两处：验收主条尾悬空「；」（删前端尾段的标点残留）、§4「无论前后端一体还是纯前端」枚举前缀删除（漏纯后端，语义反而更全）。
+- **docs(standards): §1 补平台假设 DO NOT + 两处清理**. 补平台路径分隔符与换行格式假设禁令，并清理两处标点/枚举残句。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`（ZH/EN 同步）、`CHANGELOG.md`
 
-- **docs(standards): §6 删除 B. 交付节——E2E 交付完全归 `/opsx:e2e` 工作流管**. 用户裁决：标准层不再承担「有价值的浏览器路径转正为持久测试」的义务（模板 Phase/Generator 规则更细，且仅在显式跑工作流时生效）。删除后 §6 净语义：日常用户可见改动 → 浏览器自检（自检节）+ 真实请求验收，回归资产只在显式跑 e2e 工作流时产生。一并移除：临时脚本转正 lifecycle、skip/fixme 披露、稳定选择器、Healer 卫生（模板均有更细版本）；自检节标题随之去掉「不留测试代码」对举限定。用户手改统一小节标题样式（「——」→「：」、去 A. 编号）后同步镜像。docs-sync 移除两个锚（「转正为对应层级的测试」/「Temporary scripts with assertions」——语义已删非改写）。影响面：已装项目 standards 随下次 `openspec-pw update` 刷新；下游 AI 不再自发创建 Playwright 测试，产品行为回归「显式工作流触发」。
+- **docs(standards): §6 删除 B. 交付节——E2E 交付完全归 `/opsx:e2e` 工作流管**. 删 §6 交付节，E2E 回归资产只由显式工作流产生；移除两个锚。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 
 ## [0.3.87] - 2026-09-10
-- **docs(standards): 全篇精简——§1–§5 同尺清理（含上轮 §6 句内压缩），employee-standards.md 5.9K→3.9K**. 三轮后用户确认继续：§6 句内三处（「不以全 mock 的单测链冒充验收」正反双说、「——跑旧包验证作废」后果重申、「，不拆场景凑数」正反双说，docs-sync「§6 验收定义」锚换为语义等价新锚「对真实运行的服务发真实请求」）；§1 五处（同句重复「有不清再提问」、「未要求功能」同义复述、DO NOT 五个纯理由句——删后全系列统一为「禁令 → 对策」格式、跨节重复「涉及 API 定义」行（§4 为 SSOT 且带格式示例））；§4 一处（「勿凭印象编造」正反双说）。对照社区流传 CLAUDE.md 行为准则查漏后补一句：§1「不为想象中的场景写防御」（投机性防御禁令，唯一真缺口，挂「只写被要求的」句尾）。docs/script.js ZH/EN 内嵌副本同步（EN 副本的「express confusion」「breaks across environments」等浓缩措辞同尺压缩）。CLAUDE.md CodeGraph 优先段经评估**不删**——产品功能（CODE_GRAPH_FIRST_BLOCK，codegraph-integration spec 钉住），wrapper 头部高权重放置有源码注释载明的设计理由（@AGENTS.md 导入内容权重低）。所有删除零语义损失（正说完整、理由自明、对策保留）。
+- **docs(standards): 全篇精简——§1–§5 同尺清理**. 补「不为想象中的场景写防御」，规范 5.9K→3.9K。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`（锚句等价替换）、`CHANGELOG.md`
 
-- **docs(standards): §1 新增注释纪律条款（🟡）**. 用户观察到的 AI 失败模式：编码留旁白注释、改删代码留「以后用不上」的叙述注释。调研三方交叉（Comment Stinky 六支柱 smell 目录、Anthropic 官方 issue #61305 实证 zero-comment 规则 1-3 轮回归、Clean Code/kernel 传统「历史归 git log」）后落一条：只写代码无法表达的 why；改动叙述/对已删代码的引用/注释掉的代码一律不留；改动时顺手删失效相邻注释（自检动作，对回归问题的已知最佳回应）。think 对抗自查修正两处：①补豁免句——spec 锚与 TODO(user) 属机制标注不在其列（否则与 §6 锚体系、§4 TODO(user) REQUIRE 打架）；②枚举开放化（「等」）防钻字面空子。位置 §1「精准改动」之后（同属改动产物卫生）。
+- **docs(standards): §1 新增注释纪律条款（🟡）**. 新增注释纪律条款：只写 why，不留改动叙述与失效注释；含机制标注豁免。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`（ZH/EN 同步）、`CHANGELOG.md`
 
 ## [0.3.86] - 2026-09-04
-- **feat(audit): spec 锚 + 锚差集审计——静默过时测试的确定性检测（`spec-anchors-audit`）**. 「测试测的是已删除的 spec requirement 却一直绿」此前零检测手段（audit 只查根级旧文件/sitemap；coverage 测量集只含活跃 change）。本变更建立追溯链：①e2e 命令模板 Generator 段（Spec idempotency 内）要求每条 test() 上方一行 `// spec: <capability>#<requirement 标题原文>` 锚——标题原文不 slug 化，差集匹配是纯文本 includes，零转换层；MCP 录制流 review 清单补锚（录制产物按步骤切、天然无锚）；锚句寄住 idempotency 段，随既有 subagent 委托清单自动携带（委托清单零改动）。②`audit` 新增检查 4c 四态报告：锚指向已删 requirement → ⚠ 引证删除它的归档 change（grep archive/*/specs REMOVED）；capability 目录缺失 → ⚠ 单独类别（改名误报供人工辨别）；目录级无锚测试 → 一行 info（不计入 issue 数，把漏写锚从永久静默变为周期可见）；`test.fixme` 跳过（挂账即声明，报告是噪音且会把用户推向删锚逃避）。audit 只报告不删除——退役永远人工决策；存量无锚测试不迁移，自然退役。四态经 thinking 评估修正：缺锚 info、标题原文格式、fixme 豁免、录制流补锚均为漏洞修补而非范围膨胀。
+- **feat(audit): spec 锚 + 锚差集审计**. 新增四态报告，只报告不删除；模板补锚规则。
   - `templates/e2e-command.md`（Spec idempotency 锚句 + MCP recording flow review 补锚）、`src/commands/audit.ts`（`extractSpecAnchors`/`extractFixmeLines`/`auditAnchorsCore` 纯函数层 + 检查 4c）、`tests/commands/audit.anchors.test.ts`（新，8 用例四态）、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
 
-- **docs(standards): §6 深度精简——条目 15→9，🔴 密度 46.7%→44.4%（B. 交付子节 60%→50%）**. 多轮精简（措辞压缩 + 语义裁剪 + 用户手删对齐），依据 Claude 官方 CLAUDE.md 指南（「删掉这行会导致犯错吗？不会就删」「强调标记只挂单行，标记多了等于没有」+ Exclude 框架内建行为/标准实践）与 standards-section6-slim 判据：①触发条 🔴→🟡（路由条不占 🔴）；②「集成测试用真实数据/依赖（seed/fixture，遵守 §4）」并入验收主路由条；③临时浏览器/临时脚本 lifecycle 合并单条；④「`toBeVisible` 只作辅助」并入自检截图禁令条；⑤删除「分层反馈：秒级/分钟级」（被单测取舍+提交前实跑隐含）与「异步等待稳定/控制台网络检查」（Playwright web-first 断言 auto-wait 内建，操作细则由 e2e-command 模板承担）；⑥核产物核对与权限真实登录态合并、B. 交付两条 🟡 合并；⑦用户手删三处后同步全套载体——验收主路由条删「前端→浏览器 A/B」尾段（语义由触发条+B. 交付承接，同节第三次重复）、「`toBeVisible` 等存在性断言」→「断言」（举例语境已覆盖）；⑧按同一删除尺再删三处——「不重复堆」（「一层即可」的反说，同句正反双说）、「（守卫未执行，验证作废）」（理由括号，禁令自明）、「提交前实跑且通过才算完成」（B 节标题已含，节内重复）、「不自定期望」（§4 编造禁令已覆盖）。所有 4 条 🔴 义务与 WHY 锚点保留；已删除措辞均有语境承接。`docs/script.js` 双语内嵌副本同步，docs-sync 锚点全部存活。已装项目下次 `openspec-pw update` 按 drift 自动刷新。
+- **docs(standards): §6 深度精简——条目 15→9，🔴 密度 46.7%→44.4%（B. 交付子节 60%→50%）**. §6 条目 15→9，删重复与框架内建行为，🔴 义务全部保留。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`CHANGELOG.md`
 
 ## [0.3.85] - 2026-09-04
-- **BREAKING fix(init): 首跑预选只看项目自身信号（`first-run-preselect-project-scope`）**. 0.3.82 引入的首跑预选混入机器域：home 里有 `~/.pi/agent/` / `~/.omp/agent/` 就预勾 Pi / Oh My Pi——实测场景（项目仅 `.claude/`，预勾 claude+pi+omp 三项）暴露「机器状态 ≠ 项目意图」。①首跑预选源改为**预选专用信号集**（marker 目录 ∪ 根意图文件），与非 TTY 回退严格分层——意图文件是 pre-select-only 信号，`projectSignal`/`detectProjectAdapters` 一字不动，仅根 `CLAUDE.md` 的项目在非 TTY 下零写入（架构师评审 C1 裁决：初稿「与非 TTY 同范围」为假命题）；②项目级信号补强（官方文档查证）：根 `CLAUDE.md` → claude、根 `.cursorrules`（legacy）→ cursor、根 `opencode.json(c)` → opencode——只建了根 CLAUDE.md 的项目首跑也能正确预勾（残余误报如实记录：Pi 也读根 CLAUDE.md）；③`Detected (pre-select):` 行改打预选集；全局安装未预选的编辑器打一行灰字提示（**仅首跑层**，清单层零噪音）。已初始化项目走清单层完全不受影响。
+- **BREAKING fix(init): 首跑预选只看项目自身信号（`first-run-preselect-project-scope`）**. 首跑预选改用项目信号集，不再混入机器全局安装；非 TTY 行为不变。
   - 新增 `src/commands/editors/preselect.ts`；修改 `src/commands/init.ts`、`src/commands/editors.ts`；`tests/commands/init-preselect.test.ts`（+3 翻转/新增、:246 补无灰字断言）；`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
 
 ## [0.3.84] - 2026-09-03
 
-- **fix(templates): 修 `reuseExistingServer` 假绿风险（真实 E2E 冒烟实测发现）**. 临时项目实测时端口撞上机器上另一个项目的 vite preview（4173），seed 因生成 config 的 `reuseExistingServer: true` 复用了**外来服务器**而「通过」——正是 AGENTS.md §6 A-2「验证前核对加载的是本次产物」警告的假绿场景，任何端口冲突的真实用户都会踩。①生成 config 改 `reuseExistingServer: !process.env.CI`（Playwright 官方推荐：本地保留复用便利，CI 严格自启）；②e2e-command Step 4.1 加反假绿守卫：探索前核实页面属于你的应用（已知元素/title），不是同端口外来服务。本次冒烟同时完成深水验证：seed 4/4、explore 5/5、按模板规则手写 spec（Page Object + getByTestId + UI-first + fresh-context auth guard）3/3。
+- **fix(templates): 修 `reuseExistingServer` 假绿风险（真实 E2E 冒烟实测发现）**. 生成 config 改 `reuseExistingServer: !process.env.CI`，模板加反假绿守卫。
   - `templates/playwright.config.ts`、`templates/e2e-command.md`、`CHANGELOG.md`
 
-- **fix(templates): 通用工具视角两处加固（seed 去 project 名耦合 + npm 安装渠道声明）**. ①Step 3 seed 命令去掉 `--project=chromium`——init 保留用户已有 config 不覆盖，自建 config 的 project 名不同会让 seed 直接失败在 HARD STOP 门上；改为全 project 运行并在模板中注明不假设 project 名。②README（EN/ZH）安装节显式声明 npm 为唯一受支持的安装渠道：`openspec-pw update` 经 `npm install -g` 自更新，pnpm/bun/yarn 全局安装会装出第二份冲突副本（checkVersionShadow 仅覆盖 devDependency 遮蔽）。
+- **fix(templates): 通用工具视角两处加固（seed 去 project 名耦合 + npm 安装渠道声明）**. seed 去掉 project 名耦合，README 声明 npm 为唯一受支持安装渠道。
   - `templates/e2e-command.md`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
 
-- **feat(templates): `/opsx:e2e` 与 vendored agents 的调用层结合（Planner/Generator 可委托，Healer 显式禁委托）**. 装了 `--agents` 的 claude 项目里，主 agent 可能自作主张在修复阶段召唤官方 healer 子 agent（其 prompt 允许不问用户改断言），绕过 Phase 3 人工门——此前模板对此无规定。结合三层：①Step 5/6 各加条件注记——子 agent 文件存在且编辑器支持委托时可委托（Planner 委托换 context 隔离；Generator 委托的提示词必须随身携带 Generation scope/幂等/per-assertion/selector SSOT/write scope——子 agent 不继承模板规则）；②Healer 护栏加显式禁令：修复阶段永不委托给 `playwright-test-healer`，管道内只走 Phase 1-3；③总则「委托出去不等于责任出去」：子 agent 产物回来后主 agent 仍须对照规则核验，Planner 的人工门不因委托豁免。README 双语分工段同步。委托条件式（文件存在才生效），非 claude 编辑器行为零变化。
+- **feat(templates): `/opsx:e2e` 与 vendored agents 结合**. 允许条件委托 Planner / Generator，显式禁止委托 Healer。
   - `templates/e2e-command.md`（Step 5/6 注记 + Healer 护栏禁令）、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
 
-- **fix(templates): Prompt 工程评审 16 项 findings 全量落地（e2e-command + 产物模板 + claude frontmatter）**. ①护栏自冲突（F1）：Phase 2-1「confirmed spec drift 可自主修」与 guardrails「禁改期望值」打架（agent 可自我说服绕过 Phase 3），收窄为仅 selector 级可自主修、requirement drift 一律 Phase 3；②受保护路由顺序死结（F2）：Step 6 生成在 Step 7 鉴权前无已验证 selector，加 Generation scope（推迟到 post-auth 补探索后生成）+ Step 7 闭环指引；③STOP 一词三义（F4）：顶部加 HARD STOP vs SELF-HEAL 全局语义，seed 失败改 HARD STOP（环境修复有副作用须用户同意）、Step 5 前置改 SELF-HEAL、降级表补人工门行；④all 模式步骤空洞（F3）：Architecture 加模式×步骤矩阵（Step 5 打印即续、Step 9 仅 seed smoke、Step 10 免 Healer 节）；⑤console error 误停（F8）：区分 break-the-page（STOP）与噪音（continue + 记录）；⑥250 行 Special-Element 剧本运行时不可达（F5）：init/update 新增复制 `templates/test-plan.md` → 用户项目 `tests/playwright/test-plan.template.md`（与 BasePage 同生命周期），app-exploration 引用改指新路径；⑦selector 阶梯统一为 SSOT（F7）：exploration > data-testid > role > label > text > CSS > positional，四处阶梯归一；⑧主产物幂等（F9）：spec 按 requirement 增改、禁整体重生成，杜绝需求变更后旧 spec 假全绿；⑨few-shot 假验证（F10）：waitForResponse 示例补 status 断言、删 <200ms 坏启发式；⑩重定向循环判据（F11）：URL 交替 ≥3 次才算 loop，SPA 单次跳转不算；⑪report.md 对齐（F12）：示例行 skip→fixme、补 App Bug Summary section、Final Status 四态；⑫app-knowledge 补 Exploration State（F13）、枚举统一 otp-email|otp-sms|totp+polling、截图路径归一 tests/playwright/screenshots/（F14）；⑬storageState 落盘路径 playwright/.auth/ 入 write scope（F6）；⑭seed.spec 命令字面量 editor 中性化 + 测试名与断言一致；⑮claude frontmatter 去 name/category/tags 噪音键、补 argument-hint（F15，update 漂移自愈）；⑯ambiguous 判定收紧、Medium 置信方向、planner_save_plan 单一产物（F16）。终审补刀：降级表 STOP/SELF-HEAL 与 Step 5 对齐、数据编造引用 §6→§4、Step 9/10 all-mode 指针。已装项目下次 `openspec-pw update` 刷新命令/模板（test-plan.template.md 补装）。
+- **fix(templates): 评审 16 项 findings 全量落地**. 修复护栏冲突、STOP 语义、selector 阶梯、主产物幂等、report 对齐。
   - `templates/e2e-command.md`、`templates/app-exploration.md`、`templates/test-plan.md`、`templates/report.md`、`templates/app-knowledge.md`、`templates/seed.spec.ts`、`src/commands/init.ts`（`generateTestPlanTemplate`）、`src/commands/update.ts`（同步相位）、`src/commands/editors/adapters/claude.ts`、`tests/init.test.ts`（+2）、`tests/update.test.ts`（+1）、`tests/editors.test.ts`（frontmatter 断言翻转）、`CHANGELOG.md`
 
-- **fix(templates): e2e-command.md 三处修正 + 官方 MCP 工具条件注记**. ①删内部矛盾：全局规则「`--only-changed` 仅限用户明确要求」（L24）与 Post-heal 指示直接跑 `--only-changed`（L273）打架，Post-heal 改为重跑被修复的测试文件；②删不可移植引用：`AskUserQuestion` 是 Claude Code 专属工具，该 body 会原装进 OpenCode/Cline/Cursor/Pi/omp，改为通用「ask the user and wait」；③skip→fixme 统一：App Bug（网络/JS 运行时错误）与 RAFT 原用 `test.skip()`（报告里静默消失），与 honest failure exit 的 `test.fixme()` 双标记并存，统一为 `test.fixme()` + 原因注释（与环境性 skip 的 CAPTCHA 行区分），对齐 test-runner-mcp spec 的 fixme 语义；④补已裁决未落地的 3-lite 注记：Planner（`planner_setup_page`/`planner_save_plan`）、Generator（`generator_setup_page`/`generator_write_test`/`generator_read_log` 录制-落盘流）、Phase 2-5 选择器修复（`browser_generate_locator`）——均条件式（工具存在才用），与 vendored 单兵 agents 互补。附带：仓库 CLAUDE.md Project Structure 的 `.claude/skills/openspec-e2e/` 腐化行（legacy 退役路径）改为现役 `templates/e2e-command.md`。已装项目下次 `openspec-pw update` 自动刷新。
+- **fix(templates): e2e-command.md 三处修正 + 官方 MCP 工具条件注记**. 修三处内部矛盾与不可移植引用，补官方 MCP 工具的条件注记。
   - `templates/e2e-command.md`、`CLAUDE.md`、`CHANGELOG.md`
 
-- **feat(init): `--agents` opt-in 安装官方 Playwright agents 逐字快照（`vendor-playwright-agents`）**. 用户想用官方 `playwright init-agents`（claude loop）的 planner/generator/healer 三个 subagent，但该命令是清场重写型（fixture 实证整文件重写 `.mcp.json` 销毁用户自有条目、`opencode.jsonc` 旁另立 `opencode.json`）。本变更把三个 agent 定义**逐字快照**（playwright 1.62.1，字节一致，`templates/agents/SOURCE.md` 载明上游版本/Apache-2.0/刷新 SOP）vendor 进模板，`init --agents`（默认关；交互路径追加默认 No 确认项；`--tools none --agents` 报错；纯 API 项目随 MCP 同门控跳过）装到 `.claude/agents/`——其 `tools:` frontmatter 引用的正是本工具装的 `playwright-test` MCP 条目（逐字节同）。**归属按内容判定**（`templates/agents/manifest.json` 当前 + 历史基线哈希）：与快照一致 = 工具所有（`update` 快照升级时刷新、反选移除/卸载删除）；有 diff = 用户所有（永不覆盖/删除，黄字/中性提示）。agents 不参与 configured 判定与写授权（`optionalArtifacts` 与 `extraArtifacts` 分离、不进 `listCommandArtifactPaths`）。`doctor` 新增 Vendored Agents 类目（存在/归属/`playwright-test` MCP 依赖 ⚠，全部不阻断）。文档新增「与官方 init-agents 的关系」小节（顺序建议 + 清场警告 + `/opsx:e2e` 管道 vs 单兵 agents 分工 + 官方 healer「可自行改断言」vs 我方 §6 人工升级红线对照）。Non-goals：opencode（官方 agent 注册在 `opencode.json` 顶层 `agent` 块 + 全局 `tools.playwright*: false` 副作用，需独立配置合并设计，探针证据留存）、cline/cursor/pi/omp（宿主无 subagent 格式）、任何代跑 init-agents。
+- **feat(init): `--agents` opt-in 安装官方 Playwright agents 快照**. 逐字安装 planner / generator / healer，归属按内容判定；doctor 新增 Vendored Agents 类目。
   - 新增 `templates/agents/`（3 快照 + SOURCE.md + manifest.json）、`src/commands/editors/agents.ts`；修改 `types.ts`（`optionalArtifacts(install)`）、`adapters/claude.ts`、`registry.ts`（`listOptionalArtifactPaths`/`installOptionalArtifacts`）、`removal.ts`（`removeOwnedVendoredAgents`）、`init.ts`、`uninstall.ts`、`update.ts`（`syncVendoredAgents`）、`doctor.ts`、`src/index.ts`
   - 新增 `tests/agents.test.ts`（25 用例）；`README.md`、`README.zh-CN.md`、`CLAUDE.md`（release checklist 打包校验）
 
-- **docs: 澄清 `playwright-test` server 名来历（官方 init-agents 产物名，非自编）**. 用户搜索「Playwright MCP」先看到的是官方 `@playwright/mcp` 独立包（注册名 `playwright`，约 67 个 `browser_*` 工具），与 openspec-pw 安装的 test-runner server（注册名 `playwright-test`，`playwright` 包内置 `run-test-mcp-server` 子命令，约 80 工具含 `test_run`/`test_debug`/`test_list`）产生混淆。经架构师评审（三方案对比：改名 `playwright` 会撞 namespace 且 `removePlaywrightMcp` legacy 清理会误删自家条目；换装 `@playwright/mcp` 会丢 Healer 依赖的 `test_*` 工具），裁定**保持 `playwright-test` 不动**——它与 Playwright 官方 `playwright init-agents` CLI 产物同名同 transport，用户可无缝切换。文档补丁三处：README/README.zh-CN MCP 段落身份声明、`init` MCP 安装相位尾部灰字提示行。零行为变更、零迁移。
+- **docs: 澄清 `playwright-test` server 名来历（官方 init-agents 产物名，非自编）**. README 与 init 提示澄清 `playwright-test` 名为官方产物名，行为不变。
   - `README.md`、`README.zh-CN.md`、`src/commands/init.ts`（+1 提示行）、`CHANGELOG.md`
 
 ## [0.3.83] - 2026-09-01
 
-- **docs(specs): 主 spec 追认 v0.3.81/0.3.82 行为（`sync-init-selection-spec`）**. 主 spec `init-tool-selection` 停留在 v0.3.80 语义，与已发布实现直接矛盾（spec 说预选读「检测到的编辑器」+ `Detected (pre-select):`，实现已是两级预选 + `Configured (pre-select):` 分叉；deselect=移除语义零 spec 覆盖）。delta：2 MODIFIED（两级预选 + 输出行分叉）+ 1 ADDED（Interactive deselection removes openspec-pw artifacts，7 场景覆盖确认流/领土边界）；纯 spec 追认，零代码改动，+2 条验证性输出行断言（评审核实 Configured 输出行此前零断言）。0.3.81/0.3.82 的原始 change 档案在另一会话无法补建，design 映射表（行为→spec→锚点→测试）充当替代档案。归档时 delta sync 并入主 spec。
+- **docs(specs): 主 spec 追认 v0.3.81/0.3.82 行为（`sync-init-selection-spec`）**. 主 spec 追认两级预选与取消勾选移除语义，纯 spec 改动无代码变更。
   - `openspec/specs/init-tool-selection/spec.md`（归档时）、`tests/commands/init-preselect.test.ts`（+2）、`CHANGELOG.md`
 
-- **docs(standards): §6 精简（1256→1183 字符，🔴 8→7）+ §2 两条互斥 🔴 删除（`standards-section6-slim`）**. §6 按 Prompt 工程师「档 1 强化版」重写：18→15 bullet，期望锚定上移为验收块通用规则（A-4 删除）、验收后端/前端合并为双分支路由（唯一纯路由条不再占 🔴）、B 交付两条合并（正反两说压为「实跑且通过才算完成」）、分层反馈压缩；WHY/五块结构/全部 🟡 逃逸通道条目原样保留，§6 零语义损失。§2「一次只发一个工具调用」与「单条消息并行只用于真正独立的调用」两条 🔴 字面互斥（全文件评审发现），经用户裁决整体删除（唯一语义修改，与 §6 压缩分开记录）。同步：根 AGENTS.md 标记块、docs/script.js 中英内嵌副本（docs-sync 锚点零断言修改，24/24 绿）、仓库 CLAUDE.md 新增「Standards 精简判据」维护约定。⚠ 已装项目标记块保持旧文本，下次 `openspec-pw update` 自动重写。
+- **docs(standards): §6 精简 + §2 两条互斥 🔴 删除**. §6 重写为 15 bullet（路由与交付合并）；§2 两条互斥 🔴 经裁决删除。
   - `employee-standards.md`、`AGENTS.md`、`CLAUDE.md`、`docs/script.js`、`tests/update.standards.test.ts`（+1 replace 分支用例）
 
 ## [0.3.82] - 2026-09-01
 
-- **feat(init): 交互多选预选信号改用 openspec-pw 产物清单（`init-preselect-artifact-manifest`）**. v0.3.81 用户实测（personal-resume）暴露的收敛缺口：预选读"目录存在"（`detect()`），而目录被官方 `openspec` CLI 自己的 `opsx-*` 文件、用户自有配置、pi/omp 全局 `~/.pi/agent/`+`~/.omp/agent/` 撑着——被取消勾选或从未配置的 editor 永远预勾选，每次 init 需手动全关。修复：两段式预选——有 openspec-pw 状态的项目预选 = `isEditorConfigured` 命中项（command/extraArtifacts 产物 ∪ openspec-pw MCP 条目 ∪ claude legacy skill 目录，文案 `(configured)`）；零状态项目（首次运行）旁路回退全检测预选（新用户体验不倒退）。预选从此与 update/doctor 的授权门控（hasCommandArtifacts）同源——全系统"磁盘产物"单一事实。**行为翻转**：v0.3.81 记录的两类预选不收敛已知行为（mcp.json 残留、pi/omp 全局信号）自本变更起失效（MODIFIED 覆写）；全部取消并确认删除后项目磁盘零痕迹，与从未配置不可区分 → 下次 init 回到首次运行预选语义（诚实记录，避免状态文件）；手工删产物但 AGENTS.md marker 还在 → 预选空集不回勾（marker 计入状态）。移除候选同步收窄到已配置 editor（空枚举消失）。
+- **feat(init): 交互多选预选改用产物清单**. 按 `(configured)` 判定，零状态项目回退全检测；与 update/doctor 授权门控同源。
   - 新增 `src/commands/editors/configured.ts`（`isEditorConfigured`/`anyEditorConfigured`/`agentsFileHasMarkers`）；修改 `src/commands/init.ts`（两段式预选 + `Configured (pre-select):` 输出行）
   - 新增 `tests/commands/init-preselect.test.ts`（11 用例）；`tests/commands/init-deselect.test.ts`（mcp.json 残留场景翻转断言）
   - `README.md`、`README.zh-CN.md`
 
 ## [0.3.81] - 2026-08-31
 
-- **BREAKING feat(init): 交互式取消勾选的编辑器其 openspec-pw 产物被移除（`init-deselect-removes-config`）**. 旧行为：取消勾选仅"本次跳过写入"，旧产物原地保留 → `detect()` 持续命中 → 下次 init 预选数量永不变化，`update` 还按 artifacts-are-the-manifest 继续刷新已被"关掉"的编辑器。新行为：交互式多选完成后，探测到但未选中的编辑器——其 openspec-pw 命令/技能文件（含 extraArtifacts、claude 的 legacy 技能目录 `.claude/skills/openspec-e2e/`）、openspec-pw MCP 条目（`playwright-test` + legacy `playwright`，条目级删除不碰用户自有 server）、CLAUDE.md wrapper 块——前置一次列出全部待移除项的整体确认后移除；拒绝则回退旧语义（仅跳过写入）。边界：AGENTS.md 共享块 run 级判定（仅无任何编辑器保留且确认后才清，作为一行条目进同一次确认清单；空文件删除与 uninstall 同语义）；symlink 的 CLAUDE.md 永不穿透（防剥掉 AGENTS.md 共享块）；`--mcp=false` 仅限安装/检查阶段，确认后的 MCP 移除不受影响；`--tools` / 非 TTY 路径零移除（显式授权清单语义）。预选收敛如实标注：产物拆除立即让 `update`/`doctor` 停止刷新；预选不再勾选仅当 marker 目录清理后为空——mcp.json 只改写不删除、目录常含用户自有内容、pi/omp 全局信号三种情况预选不收敛（目录存在性探测的已知行为）。openspec change: `init-deselect-removes-config`。
+- **BREAKING feat(init): 取消勾选的编辑器产物被移除**. 经整体确认移除该编辑器的命令/MCP/wrapper 产物；拒绝则仅跳过写入。
   - 新增 `src/commands/editors/removal.ts`（dry 枚举 `enumerateAdapterArtifacts` + 分部分删除小函数 `removeAdapterMcp`/`removeAdapterCommandArtifacts`/`removeClaudeLegacySkill`/`removeClaudeWrapper` + `cleanupEmptyDirs`）；修改 `src/commands/{init,uninstall}.ts`（init 新增 deselected-removal 阶段 + `InitDeps.confirm` 注入点；uninstall 按 section 复用原语，输出顺序不变）、`src/commands/editors/{project-rules,}.ts`（导出 `removeMarkersFromFile`）
   - 新增 `tests/editors-removal.test.ts`（13 用例）、`tests/commands/init-deselect.test.ts`（10 用例：确认/拒绝/run 级共享块/symlink/--tools/收敛与不收敛/pi 全局残留）；`tests/commands/uninstall-command.test.ts`（+characterization 保护网）
   - `README.md`、`README.zh-CN.md`
 
 ## [0.3.80] - 2026-08-31
 
-- **feat: 测试凭据 git 忽略状态检测 + advisory 提示（`credentials-gitignore-guard`）**. 泄漏面：脚手架引导用户往 `tests/playwright/credentials.yaml` 填真实测试凭据，但工具链零 gitignore 指引；update 的 `syncCredentials` 还写 `credentials.yaml.bak`——两份含真实密码的文件可无感知进 git 历史。修复分三层：① 共享检测函数 `findUnignoredFiles`（`src/shared/ignore-check.ts`，读项目根 `.gitignore` + `.git/info/exclude`，用 `ignore` 包按 git 语义匹配——**exclude 先、.gitignore 后**复现 git 优先级；不依赖 git 二进制、纯读取零写入）；② init scaffold 段与 update 的 syncCredentials 两条写路径（新建/备份合并）在凭据文件未被忽略时打印黄色 advisory 行（点名具体路径 + 建议条目；已忽略零输出；不改 exit code；**绝不改写用户 `.gitignore`**——标记即领土原则）；③ 模板头部注释补忽略建议与环境变量替代。⚠ 已装项目下次 update 会因模板变更触发 credentials 合并 + `.bak` 生成（合并保留用户数据）。openspec change: `credentials-gitignore-guard`。
+- **feat: 测试凭据 git 忽略检测 + advisory 提示**. 未忽略时打印 advisory，不改写 `.gitignore`；`ignore` 升为直接依赖。
   - 新增 `src/shared/ignore-check.ts`、`tests/shared/ignore-check.test.ts`（10 用例：含 git 优先级顺序与「被排除目录内 negation 无效」两条 git 语义回归）；修改 `src/commands/{init,update}.ts`、`templates/credentials.yaml`、`tests/{init,update}.test.ts`（+7）；`dependencies` + `ignore@^7.0.7`（自 devDependencies 传递链升级为直接依赖——不升级则发布包运行时 `Cannot find module 'ignore'`）
   - `README.md`、`README.zh-CN.md`
 
-- **fix(update): Summary 零授权行措辞纠正——「No configured editors」替代「No supported editor detected」**. 该行数据源是授权集（`hasCommandArtifacts` 过滤），却用 "detected" 措辞——手建 `.claude/` 等标记目录在但命令工件不在时，update 报「未检测到编辑器」与事实相反（与 init 的 Detected/Selected 混淆同类，`init-tool-count-signal` 审计发现的残留）。纯文案修正，行为零改动。
+- **fix(update): Summary 零授权行改为「No configured editors」**. 纯文案修正，替代「No supported editor detected」。
   - `src/commands/update.ts`、`tests/update.test.ts`（+1 源码守卫）
 
-- **fix(init): Detected 输出门控为 TTY pre-select 信号，新增 `Selected editors:` 行明示实际 install 集**. 用户场景：`.claude/` + `.opencode/` 并存的项目跑 `openspec-pw init --tools claude`，启动行 `Detected: claude, opencode` 报 2 个，被误读为装了 2 个（实际只装 1 个）。修复：① `Detected` 行仅在 `--tools` 未传时打印（其唯一角色 = TTY multi-select 预选提示；any-scope 检测 = 项目目录 + `~/.pi/agent/`、`~/.omp/agent/`），文案带 `(pre-select)` 标签；② 新增灰字 `Selected editors: ...` 行，位于 `editors` 计算后、首个 installCommand 前，内容 = 实际 install 集（与 Summary 末尾 `Restart ...` 一致；空集打印 `none`，且在无检测报错前打印使错误输出自解释）。init 的 install 决策零改动（仅输出信号语义澄清）。openspec change: `init-tool-count-signal`。
+- **fix(init): Detected 仅作 TTY 预选信号，新增 `Selected editors:` 行**. `Selected editors:` 明示实际安装集。
   - `src/commands/init.ts`、`tests/init.test.ts`（+6 用例：--tools 抑制 Detected / 非 TTY fallback 双行 / TTY 覆盖预选 / `--tools none` / 无检测双 none 行 / --tools 扩展未检测编辑器）
   - `README.md`、`README.zh-CN.md`
 
 ## [0.3.79] - 2026-08-28
 
-- **移除 DeepSeek Harness（dsh）编辑器支持**. 官方 OpenSpec CLI 的工作流命令分发不覆盖 dsh（deepseek-harness 实测：官方 `openspec update` 只覆盖 Claude Code / Oh My Pi / OpenCode / Pi）——dsh 里只有 openspec-pw 装的 `opsx-e2e` 技能，OpenSpec 核心工作流（propose→apply→verify→archive）无入口，体验半截。编辑器支持收窄为 6 个：`claude`、`opencode`、`cline`、`cursor`、`pi`、`omp`。**退役清理**：`uninstall` 新增无条件退役段——探测精确路径 `.dsh/skills/opsx-e2e/`（openspec-pw 在 `.dsh` 下拥有过的全部领土）并删除，dsh-only 项目（零其他编辑器）连带清理 AGENTS.md 规范块；用户自装的 `.dsh/skills/` 下其他 skill 不受影响。**加回条件**：官方 OpenSpec 支持 dsh 后恢复 adapter（git 历史可完整找回；届时需连带还原 init-tool-selection spec 的「Retired editor id fails」场景）。dsh-only 项目跑 `update` 的 AGENTS.md 规范块维护不受影响（领土语义按标记判断）。`--tools dsh` 报 unknown id 错误。openspec change: `remove-dsh-support`。
+- **移除 DeepSeek Harness（dsh）编辑器支持**. 移除 dsh 支持（编辑器收窄为 6 个），保留退役清理与加回条件。
   - 删除：`src/commands/editors/adapters/dsh.ts`；修改：`src/commands/editors/{types,registry}.ts`、`src/commands/editors.ts`、`src/commands/{doctor,update,init,uninstall,index}.ts`
   - `tests/editors-cursor.test.ts`（自 editors-dsh-cursor 更名 + 退役清理 3 用例）、`tests/{editors,editors-tools,init}.test.ts`
   - `README.md`、`README.zh-CN.md`、`docs/index.html`
 
 ## [0.3.78] - 2026-08-28
 
-- **专属标记命名空间 `OPENSPEC-PW:` + 存量自动迁移（防官方 openspec CLI 误删）**. 事故：官方 `@fission-ai/openspec` v1.11.0 的 `openspec update` 内置 legacy 清理，按标记字符串把根 AGENTS.md/CLAUDE.md 中任何 `OPENSPEC:START/END` 块当「旧版官方遗留」交互确认（default yes）后整块移除——两工具共用标记导致员工规范块被误杀（2026-08-28 code-review-tool 实测）。修复分三层：① **根因消除**——openspec-pw 领土块迁移到专属 `OPENSPEC-PW:START/END` 命名空间（不含官方匹配的 `OPENSPEC:` 子串，已对官方 v1.11.0 全部 6 条匹配路径核验失配，`--force` 清理实测新标记块幸存、旧标记对照组被清）；② **存量自动迁移**——update/init 先行调用 `migrateLegacyMarkers`：授权工件 + 块内我方签名（`Employee-Grade Standards` / `@AGENTS.md`）双门槛下，原地替换标记字符串（内容逐字不动，单次写入无半迁态；仅剩旧 END 不迁移落入告警路径；纯官方遗迹不碰），未跑过官方 update 的存量项目直接 `openspec-pw update` 即自动迁移；CLAUDE.md 迁移签名兼容双历史形态——现行 wrapper（`@AGENTS.md`）与 2026-04 v0.1.38–v0.3.2 直接写入的全量规范块（`Employee-Grade Standards`），后者若不迁移 update 会 append 新 wrapper 而非 replace（review 发现的永久重复回归，已修）；③ **检测层**——块消失时 update 黄色多行警告（谓词 = 授权工件在 && 无新标记 && 无旧 START，纯官方项目不误报；附 init 恢复与 uninstall 退出路径），doctor `standards-agents` 翻转：「有授权工件 && 无任何标记」从 `ok:true` 改为 `ok:false`（消息指向 init——append 分支可修，环闭合，不回归 0.3.76 的 doctor→update 死循环；有旧标记未迁移为 `ok:true` 信息行）。⚠ `doctor --json` 行为变更：该检查项可翻转并影响 exit code（CI 中跑 doctor 的项目会变红——特性）。`uninstall` 双标记清理（新旧都删）；旧标记字符串收敛在 drift.ts（`LEGACY_*` 常量 + `hasLegacyTerritoryStart/End` 共享谓词），直接引用仅限迁移/卸载/测试，旧标记识别带退役计划（未来版本移除）。标记即领土语义不变（检测≠授权、零新状态、共享文件不自动重写——恢复必须显式 init）。openspec change: `marker-namespace`。
+- **专属标记命名空间 `OPENSPEC-PW:` + 存量自动迁移**. 防官方 openspec CLI 误删；doctor 检测块消失。
   - `src/shared/drift.ts`、`src/commands/editors/project-rules.ts`、`src/commands/update.ts`、`src/commands/doctor.ts`、`src/commands/init.ts`、`src/commands/editors.ts`
   - `tests/migrate-markers.test.ts`（新）、`tests/{editors,editors-dsh-cursor,update.standards,update,drift}.test.ts`、`tests/commands/doctor.test.ts`
   - `README.md`、`README.zh-CN.md`（共存注意事项）、根 `CLAUDE.md`/`AGENTS.md`（自吃狗粮迁移）
 
 ## [0.3.77] - 2026-08-28
 
-- **前端信号分层检测 + monorepo workspace 感知**. 修复 monorepo 前端信号盲区：根 package.json 无前端依赖的 pnpm/npm workspace（前端在 `apps/*`，根有可运行 script 把 `findNpmRoot` 钉在根）此前被误判「无前端」→ update 静默跳过 playwright-test MCP 安装（atlasai 实测）。`hasFrontendSignal` 升级为分层信号、specific first、命中即停：① 框架配置文件（最强信号——vite/next/nuxt/svelte/astro/vue/remix config、angular.json，位于项目根或 findNpmRoot 命中目录）；② 前端框架依赖（既有清单）；③ dev script 关键词（既有）；④ workspace 成员扫描——识别 pnpm-workspace.yaml / `workspaces` 字段（数组与 `{packages}` 对象形态）/ turbo / nx / lerna / rush，成员发现优先解析 globs 简单形态（`apps/*`、`packages/**`、精确路径），复杂形态回退限深扫描（深度 ≤3、成员 ≤50、命中即停，跳过 node_modules 与点开头目录）。误报方向刻意选「宁报前端」（误判 → 多装一个 MCP，`--no-mcp` 可跳；漏报 → 静默跳过——正是本次修复的）。`null`（无可读 package.json = 检测跳过）语义保留；`detectAppServer` 端口/baseUrl 逻辑零改动；init/update/doctor 三个消费方零改动自动受益。openspec change: `monorepo-frontend-signal`。
+- **前端信号分层检测 + monorepo workspace 感知**. 前端信号改分层检测并支持 workspace 成员扫描，修复 monorepo 漏装 MCP。
   - `src/shared/app-detect.ts`、`tests/shared/app-detect.test.ts`（+13 用例）、`README.md`、`README.zh-CN.md`
 
 ## [0.3.76] - 2026-08-28
 ### Changed
 
-- **规范 review 修复（架构师二轮）**. ① §2 管道命令禁令堵措辞漏洞：对象从「源码文件」扩为「项目内已有文件——源码/文档/测试/配置同算」，批量改写须先征得用户同意（新文件豁免自动成立，不误伤生成类操作）；② §6 补后端验收「交付」缺口：含断言临时脚本转正为对应层级测试（浏览器→Playwright、服务→API 集成测试），后端验收落成集成测试提交前实跑——堵住「curl 看着对」逃逸通道；③ docs 内嵌副本补回「不重复堆」（防核心逻辑已被验收覆盖还堆单测，锚点测不到的 drift）；④ docs-sync 锚点标签错位修正 2 处。
+- **规范 review 修复（架构师二轮）**. 修 4 处：管道禁令扩到项目内已有文件、§6 补后端交付、内嵌补回「不重复堆」、锚标签纠错。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`
 
-- **新增 §6 测试与验证策略（合并原浏览器验证证据链 + 测试策略；单测命中才测，验收重心在集成层）**. 动机：AI 用琐碎单测堆数量冒充完成度（test theater）——生成烧 token、套件拖慢反馈，验收结果才决定能否交付。值得单测正向清单（核心计算/状态转换/含分支纯函数/边界错误路径/复用工具/回归）+ 排除清单（纯透传/getter/样板/类型系统已保证的行为）；🔴 覆盖义务「验收标准点名的行为必须被某层测试覆盖（单测或验收测试，一层即可）」——核心逻辑已被 API 验收覆盖时不要求补单测；分层反馈预期（单测秒级、验收分钟级，量级锚点不设硬门槛）；验收统一定义「对照 spec 验收标准的真实行为验证，层级由被验对象决定」——后端验收走 API 真实请求（不以全 mock 单测链冒充），前端验收走 §6 浏览器 + Playwright。§6 触发块衔接「纯逻辑 → 按单测取舍，不开浏览器」；🔴 方案选型优先级链（已有依赖 > 成熟库 > 自写）由 🟡 提级并补入 docs 内嵌副本。同步 docs/script.js 中英内嵌副本、AGENTS.md、docs-sync 锚点（章节数保持 7，标题更名「测试与验证策略」）。
+- **新增 §6 测试与验证策略**. 单测命中才测、验收重心在集成层，覆盖义务与验收定义落地。
   - `employee-standards.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`AGENTS.md`
 
-- **精简 employee-standards（−20% token，零约束损失）**. 163 行 → 130 行（9.4KB → 8.0KB）：删除机器特定内容（`agent-reach` / `frontend-design` / `ui-ux-pro-max` skill 引用、「用中文回复用户」全局语言强制——装入任意项目不再突袭改语言）、§1 四组合并（保留依赖优先级链「已有依赖 > 新包 > 自写」与「清理与重构分开提交」）、§3 工作流表压成一行（保留「AI 不自动进入下一阶段」🔴）、§5 三段式压 2 行、§2/§5 WHY 删（§4/§6 WHY 保留——立法意图）。诚实性条「未执行检查标注『未运行』」⚪ 升 🟡。已装项目 AGENTS.md 标记内内容会 drift，下次 update 自动重写；标记外手动复制的副本不随 update（既有语义）。同步 `docs/script.js` 中英内嵌副本与本仓库根 `AGENTS.md`。
+- **精简 employee-standards（−20% token，零约束损失）**. 规范精简 163→130 行：删机器特定内容、合并小节、压缩工作流表；「未运行」升 🟡。
   - `employee-standards.md`、`docs/script.js`、`AGENTS.md`
 
-- **编辑器写入授权收窄（领土语义）**. `update` 从「检测到就写」改为「只维护已授权编辑器」：授权判据 = 项目内已有 openspec-pw 命令工件（零新状态，删除即撤回授权），全局配置目录（`~/.pi/agent`、`~/.omp/agent`、`~/.dsh`）或手建的编辑器标记目录（如手建 `.cursor/`）不再触发写入——此前 `openspec init --tools claude` 的项目跑一次 `update` 会为机器上装了的 omp/pi/dsh 凭空新建命令文件与 MCP 配置并写回 AGENTS.md。`update` 不再新增编辑器：未授权编辑器打印信息行提示 `openspec-pw init --tools <id>`（幂等，扩展入口）；MCP 缺失但命令工件在 = 部分安装漂移，照常自愈。standards 相位同步改「标记即领土」：AGENTS.md 无 OPENSPEC 标记/缺失 ⇒ 跳过不写回（`--tools none` 项目 update 零写入）；CLAUDE.md wrapper 门控改为 claude 命令工件授权。`init` 非 TTY fallback 从 any-scope 检测收窄为仅项目内信号（TTY 交互预选保留全局信号）；fallback 无编辑器报错文案移除已失效的全局目录指引。`doctor` 分档：未授权编辑器的 MCP / Cursor E2E 检查降为 `ok: true` 信息行（提示 init，不再误导 run update）；AGENTS.md 无标记恒 `ok: true`（消除 doctor 报错 → update 修不了的死循环）；`--json` 编辑器相关检查新增 `authorized` 字段（⚠ `--json` checks 数组构成有变化，消费方需注意）。`uninstall` 不变（宽检测 + 存在性守卫）。openspec change: `scope-editor-writes`。
+- **编辑器写入授权收窄（领土语义）**. update 只维护已授权编辑器（命令工件为判据），未授权只提示 init；doctor 分档。
   - `src/commands/editors/types.ts`、`src/commands/editors/registry.ts`（`detectProjectAdapters` / `hasCommandArtifacts`）、`src/commands/editors/adapters/{pi,omp,dsh}.ts`、`src/commands/update.ts`、`src/commands/init.ts`、`src/commands/doctor.ts`
   - MCP 安装范围同步改「已授权编辑器」（原「检测到的编辑器」）；update 的前端 gate 静默跳过改为打印跳过说明行（对齐 init——修复「update 后 MCP 没装也没有任何解释」的排查黑洞）
   - `tests/update.test.ts`、`tests/update.standards.test.ts`（重写为新签名 + 标记即领土用例）、`tests/init.test.ts`、`tests/editors-tools.test.ts`、`tests/commands/doctor.test.ts`
@@ -432,7 +433,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.75] - 2026-08-27
 ### Added
 
-- **MCP 收敛为官方 test-runner server（playwright-test）**. `init`/`update` 的 MCP 相位在前端信号 gate 下安装**单个**项目级 server：官方 `playwright-test`（`npx playwright run-test-mcp-server`，playwright 包自带子命令，零新增依赖），与 Playwright 官方 `playwright init-agents` 布局一致。实测该 server 是 @playwright/mcp 的**超集**（87 工具：78 browser_* + 3 test_* + 6 generator/planner）——单 server 免去双装的 78 个重复 browser 工具（估 20-40K token/会话）。`uninstall` 移除 test-runner 条目并清理历史 `playwright` 条目；已装项目重跑 update 幂等补齐。`doctor` 的 per-adapter MCP 检查改为 `test-runner-mcp-<editor>`（可选，缺失黄 ⚠ 提示 update），新增 `playwright-cli` PATH 感知（与编辑器无关，0.x 仅探测）。`templates/e2e-command.md` Healer 段接入结构化工具语义（`test_list → test_debug`（id 来自 test_list）`→ 修 → test_run`（locations 定向单测），shell 回退）+ guardrails 出口（单错误循环；测试正确但持续失败 → `test.fixme()` + 注释说明 ACTUAL vs EXPECTED；自主修复路径内禁止放宽断言——Phase 3 人工决策合法）。openspec change: `add-test-runner-mcp`。
+- **MCP 收敛为官方 test-runner server（playwright-test）**. MCP 收敛为单个官方 `playwright-test` server，uninstall 清历史条目，doctor 检查更新。
   - `src/shared/mcp.ts`、`src/shared/index.ts`、`src/commands/init.ts`、`src/commands/update.ts`、`src/commands/uninstall.ts`、`src/commands/doctor.ts`
   - `templates/e2e-command.md`
   - `tests/shared/mcp.test.ts`（+4）、`tests/init-mcp-scope.test.ts`（单 server 收敛 2 用例）、`tests/update.test.ts`（+1 源码守卫）、`tests/commands/uninstall.test.ts`（+2）、`tests/commands/doctor.test.ts`（镜像同步 +4）
@@ -440,126 +441,126 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **清理死代码（review 修复）**. 单 server 收敛后 `isPlaywrightMcpInstalled` / `ensurePlaywrightMcp` / `PLAYWRIGHT_MCP_COMMAND` 已无生产调用者，按 AGENTS.md §1「过时的直接删」清除；`removePlaywrightMcp` 保留供 `uninstall` 清理历史 `playwright` 条目。同步移除 `src/shared/index.ts` re-export 与 `tests/shared/mcp.test.ts` 中相应测试块。
+- **清理死代码（review 修复）**. 删除无调用者的 MCP helper 与测试块。
   - `src/shared/mcp.ts`、`src/shared/index.ts`、`tests/shared/mcp.test.ts`
 
-- **CLAUDE.md CodeGraph 优先块措辞再优化**. `CODE_GRAPH_FIRST_BLOCK` 去条件前置（「有 \`.codegraph/\` 时：」）改为祈使主句，否定式「别先 grep/read」改正向限定「grep/read 仅作补充」，8 个语义点（触发/任务类型/默认动作/直接用结果/grep 例外/禁子 agent/无索引跳过）全部保留。已初始化项目 CLAUDE.md 会 drift，下次 `update` 自动重写。
+- **CLAUDE.md CodeGraph 优先块措辞再优化**. CodeGraph 块改祈使句，8 个语义点保留。
   - `src/commands/editors/project-rules.ts`
 
-- **employee-standards §0 约定下新增 OpenSpec 命令帮助行**. 「约定」后加一行：**OpenSpec 命令**跑 `npx openspec --help` 查看可用命令（无条件祈使）。同步 `AGENTS.md`（git 忽略，磁盘生效）与 `docs/script.js` 内嵌标准（ZH + EN），docs-sync 新增 2 个锚点用例。
+- **employee-standards §0 约定下新增 OpenSpec 命令帮助行**. §0 补 OpenSpec 帮助命令行，锚 +2。
   - `employee-standards.md`、`docs/script.js`、`tests/docs-sync.test.ts`
 
 ## [0.3.74] - 2026-08-24
 ### Changed
 
-- **`editors.ts` 拆分为 `editors/` 目录（纯重构，行为不变）**. 1279 行单文件逼近 CI 1500 行门禁（余量仅 221），实现下沉为职责单一的子模块：`types.ts`（类型+defineAdapter 工厂）、`shared.ts`（YAML/mcpServers helpers）、`tool-selection.ts`（--tools 解析）、`project-rules.ts`（规则块管理）、`registry.ts`（注册表+安装 helper）、`adapters/<editor>.ts` ×7（每编辑器的 format/path/detect 函数与 adapter 实例合体）。**`editors.ts` 保留为薄门面**（~119 行纯 re-export）：实验证实 Node ESM / TS nodenext 不支持目录 index 自动解析，删除单文件会让现有 `"./editors.js"` 导入 TS2307，故门面保留以维持调用方 import 零改动；re-export 顺序即 adapter 自注册顺序（claude→opencode→cline→cursor→pi→omp→dsh），由 editors-tools ALL 断言守护。`registerAdapter` 从模块私有改为 registry 导出（内部 API）。
+- **`editors.ts` 拆分为 `editors/` 目录（纯重构，行为不变）**. `editors.ts` 拆为 `editors/` 目录，保留薄门面使 import 零改动。
   - `src/commands/editors.ts` — 1279 行 → 119 行门面
   - `src/commands/editors/` — 新增 12 个文件，最大 project-rules.ts 313 行
   - 第 N 个编辑器的新增模式定型：新增 adapters/<editor>.ts + registry 注册顺序一处
 
 
-- **CI verify 矩阵扩展至三平台**. `ubuntu(20,22) + macos@22 + windows@22` 共 4 jobs，全局 CLI 的平台路径（`needsShell`、`where`/`which`）首次被 CI 验证；文件行数检查步骤显式 `shell: bash`（windows runner 默认 pwsh 解析不了 heredoc bash）。首跑暴露 27 个 Windows 失败全部为测试侧路径可移植性问题（src 零改动）：`new URL().pathname` 在 win32 产生 `D:\D:\` 前缀 → `fileURLToPath()`；正则断言假设 `/` 分隔符 vs `join()` 反斜杠；bsdtar CRLF 输出 → `split(/\r?\n/)`；mock fixture 硬编码前向斜杠路径 vs `join()` 产出；migrate 测试字符串拼接改 `join()` 构造。
+- **CI verify 矩阵扩展至三平台**. CI verify 扩到三平台 4 jobs，修 27 个 Windows 测试可移植性问题。
   - `.github/workflows/ci.yml`、8 个测试文件
-- **依赖刷新 + build 脚本可移植化**. in-range 全量升级（71 packages：playwright 1.62 / eslint 10.9 / vitest 4.1.11 / prettier / @inquirer 等）；commander **12→15** 零改动全绿（用面仅核心 API：47 处 name/version/command/option/action/parse）；build 脚本 `rm -rf dist/ && tsc` → `node -e fs.rmSync(...) && tsc`（Windows cmd.exe 下 POSIX 命令必炸）。**刻意不升**：chalk 6（engines node>=22 超 engines 下限 20，与 Node 20 矩阵腿冲突）、typescript 7（新一代编译器生态未稳，待 @typescript-eslint 明确支持后单独跟进）、@types/node 26（types 高于 engines 下限会引入运行时不存在的 API）。
+- **依赖刷新 + build 脚本可移植化**. 依赖全量 in-range 升级，build 脚本改 Node 实现以兼容 Windows。
   - `package.json`、`package-lock.json`
 
 ### Added
 
-- **`audit` / `update` 测试盲点清剿**. 覆盖率实测 audit.ts 15% / update.ts 23%（总体 63%）后补齐最大缺口。新增 mock-heavy 测试文件两个：`tests/commands/audit.main.test.ts`（9 用例覆盖 `audit()` 主函数 7 相位——无 tests/playwright 早退、sitemap 失败 note、orphaned spec 含空列表守卫、URL 不在 sitemap、prefix 豁免不误报、缺 auth.setup、old-style 位置、healthy + shared 跳过；fs/child_process/fetch 全 mock，readdirSync 按 `withFileTypes` 分发 Dirent/string 两形态）与 `tests/update.standards.test.ts`（7 用例——`update()` not-initialized 早退零副作用，`syncEmployeeStandards` 无编辑器跳过 / 模板缺失静默 / symlink CLAUDE.md 经 AGENTS.md 追踪 / stale 重写调 installProjectRules / in-sync 短路 / 裸 `@AGENTS.md` 导入警告）。现有真实文件系统测试文件不动语义：`tests/commands/audit.test.ts` 仅追加 2 个 `getSitemapRoutes` 边缘用例（malformed `<loc>` 静默跳过、50 条截断）。
-- **`syncEmployeeStandards` 导出**（一行可见性变更）. update.ts 私有函数加 `export` 以便直测（项目 export-for-testability 惯例）；经 `update()` 间接测试不可行——该函数在 CLI 更新网络 phase 之后才可达。无行为影响。
+- **`audit` / `update` 测试盲点清剿**. 补 audit / update 主函数测试，覆盖率缺口收窄。
+- **`syncEmployeeStandards` 导出**（一行可见性变更）. 导出 `syncEmployeeStandards` 以便直测，无行为影响。
   - `src/commands/update.ts` — `function syncEmployeeStandards` → `export function syncEmployeeStandards`
   - `tests/commands/audit.main.test.ts`（新增）、`tests/commands/audit.test.ts`（+2）、`tests/update.standards.test.ts`（新增）
 
 ## [0.3.73] - 2026-08-19
 ### Added
 
-- **`init` / `update` 末尾新增 CodeGraph 索引同步提示**. 检测到项目存在 `.codegraph/` 目录时，在命令末尾提示 `codegraph sync` 与 `codegraph install --target=auto --location=local`（代码变更后保持索引与 hook 同步）；`init` 原有「CLI 已装但未索引 → `codegraph init`」提示保留，与刷新提示构成互斥分支，共用 Next steps 第 6 步位置。纯提示，不影响生成行为与 exit code。
+- **`init` / `update` 末尾新增 CodeGraph 索引同步提示**. init/update 末尾按缺口提示 `codegraph sync` / `install`。
   - `src/commands/init.ts` — codegraph 提示块扩展 `else if` 分支
   - `src/commands/update.ts` — Summary 末尾（Restart 提示后）追加 codegraph 提示
 
-- **`doctor` 新增 CodeGraph 检查项 + `init`/`update` 提示缺口化 + `uninstall` 清理提示**. 共享检测模块 `detectCodeGraphStatus`（CLI 可用性 / `.codegraph/` 索引 / codegraph MCP 是否装入 agents）统一驱动四个命令：`doctor` 新增 `─── CodeGraph ───` 类别（`codegraph-cli` / `codegraph-index` / `codegraph-mcp`，全为可选检查，失败黄 ⚠ 不改变 `--json` 退出码，缺失时给出 `codegraph init` / `codegraph install --target=auto --location=local` 修复命令）；`init`/`update` 提示改为缺口感知（MCP 已装只提示 `codegraph sync`，MCP 缺失才提示 install，无索引但有 CLI 提示 `codegraph init`）；`uninstall` 检测到 codegraph MCP 已装时提示 `codegraph uninstall`（不删 `.codegraph/`，那是 codegraph 资产）。
+- **`doctor` 新增 CodeGraph 检查项 + `init`/`update` 提示缺口化 + `uninstall` 清理提示**. doctor 新增 CodeGraph 三项检查，四个命令共用检测模块。
   - `src/shared/codegraph.ts`（新增）、`src/shared/index.ts`
   - `src/commands/doctor.ts`、`src/commands/init.ts`、`src/commands/update.ts`、`src/commands/uninstall.ts`
   - `tests/shared/codegraph.test.ts`（新增）、`tests/commands/doctor.test.ts`、`tests/init.test.ts`、`tests/update.test.ts`、`tests/commands/uninstall.test.ts`
 
-- **CLAUDE.md 工作流提示**. `claudeWrapperStandardsContent` 在 OPENSPEC 块中新增「**工作流**：优先使用 OpenSpec 工作流（/opsx 命令），而非 plan mode」提示，`init`/`update` 写入 CLAUDE.md 时自动带上（仅 CLAUDE.md，AGENTS.md 不受影响）。
+- **CLAUDE.md 工作流提示**. CLAUDE.md wrapper 补「优先用 OpenSpec 工作流」提示。
   - `src/commands/editors.ts`
 
-- **CLAUDE.md CodeGraph 优先块文案精简**. `CODE_GRAPH_FIRST_BLOCK` 从 ~130 字压缩到 ~100 字：拆短句、去冗余词（存在→有、定位定义→定义、不要→别、分号→括号），8 个语义点（触发条件/任务类型/默认动作/直接用结果/禁止 grep/grep 例外/禁止子 agent/兜底）全部保留。已初始化项目的 CLAUDE.md 会 drift，下次 `update` 自动重写。
+- **CLAUDE.md CodeGraph 优先块文案精简**. CodeGraph 块压到约 100 字，语义点不变。
   - `src/commands/editors.ts`
 
 ## [0.3.72] - 2026-08-18
 ### Changed
 
-- **employee-standards 删除 §2 上下文管理**. 章节整体移除（500 行分次读取、压缩恢复协议、跨 change 改动禁令等 6 条规则），后续章节重编号（3→2、4→3、5→4、6→5、7→6），§5→§4 / §7→§6 交叉引用同步更新。同步 `AGENTS.md`（git 忽略，磁盘生效）与 `docs/script.js` 内嵌标准（ZH + EN），docs-sync 测试章节计数 8→7。
+- **employee-standards 删除 §2 上下文管理**. 删除 §2 上下文管理整节，后续章节重编号并同步交叉引用；章节计数 8→7。
   - `employee-standards.md`、`docs/script.js`、`tests/docs-sync.test.ts`
 
-- **`editors.ts` 引入 `defineAdapter` 工厂**. 7 个适配器对象字面量改用 `defineAdapter({...})` 构造：默认 `supportsMcp: true`、`projectRulesPath` 默认 `<root>/AGENTS.md`、`isMcpInstalled/installMcp/removeMcp` 默认 no-op。`claudeAdapter` 显式声明 `CLAUDE.md` 覆盖默认；`piAdapter` / `dshAdapter` 设 `supportsMcp: false` 后删三处 no-op；其余适配器省略冗余 `projectRulesPath`。**行为完全不变**，全部 181 个 editors 测试通过；新增 `EditorAdapterInit` 接口明示 required vs optional 字段。文件 1236 → 1279 行（+43：factory 注释 + JSDoc 抵消了去重收益，可读性提升为主要价值）。
+- **`editors.ts` 引入 `defineAdapter` 工厂**. 7 个适配器改用 `defineAdapter` 工厂，行为不变，可读性提升。
   - `src/commands/editors.ts` — 新增 `EditorAdapterInit` interface + `defineAdapter` 函数；7 个适配器重写
 
-- **`coverage` 末尾补 `checkForUpdate`**. 与 `init` / `doctor` / `audit` / `explore` / `migrate` / `uninstall` 对齐（`flake` 故意不加 —— `flake --gate HIGH` 是 CI 主用例，每次 PR 多 0–10s `npm view` 延迟无收益，CI runner 通过 `npm install` 更新）。`checkForUpdate` 已有 24h 缓存 + never-throws + 非阻塞执行，加到交互式命令不影响 CI 性能（首次最多多 10s 网络）。
+- **`coverage` 末尾补 `checkForUpdate`**. `coverage` 末尾补 `checkForUpdate`，与其余交互命令对齐；`flake` 故意不加。
   - `src/index.ts` — `coverage` action 末尾追加 `await checkForUpdate(pkg.version);`；`flake` 注释说明跳过原因
 
 ### Added
 
-- **`migrate.ts` 单测补全**. 132 行的迁移函数原本零测试，现新增 7 个用例覆盖全部分支：无 `tests/playwright/` 目录 → yellow message；0 old 文件 → "Nothing to migrate"；正常迁移 → 调 `mkdirSync({ recursive: true })` + `renameSync`；`--dry-run` → 不调 `renameSync`；目标存在无 `--force` → skip + warning；`--force` 覆盖 → 调 `renameSync` 一次；**TOCTOU**（`readdirSync` 返回文件名但 `existsSync(oldPath)` 返 false）→ "not found, skipping"。用 `vi.mock("fs", ...)` + `vi.spyOn(process, "cwd")` 隔离，不依赖真实文件系统。
+- **`migrate.ts` 单测补全**. 132 行迁移函数补 7 个用例覆盖全部分支。
   - `tests/commands/migrate.test.ts`（新增 7 用例）
 
 ### Fixed
 
-- **`docs/index.html` quickstart 第 03 步命令漂移修复**. 命令串补 `--scope project`（与 `README.md` line 173 对齐），避免用户安装到 global scope；该步骤标为"可选"，并新增小字注释说明新版 `openspec-pw init` **在检测到前端项目时**自动安装 MCP（详见 0.3.70 `feat(init): gate Playwright MCP install on frontend signal`）—— 纯 API 项目跳过 MCP，用 Playwright `request` fixture；保留该步骤仅服务老用户迁移。
+- **`docs/index.html` quickstart 第 03 步命令漂移修复**. quickstart 命令补 `--scope project` 并标为可选。
   - `docs/index.html` — quickstart 第 03 步命令 + label 改"可选" + 小字注释
 
 ## [0.3.71] - 2026-08-18
 ### Added
 
-- **`openspec-pw init` 无前端项目引导提示**. 生成测试文件前轻量检测前端信号：读 `findNpmRoot` 定位的 `package.json`（与 `detectAppServer` 同源，monorepo 下探一致），deps/devDeps **精确键名匹配**前端框架关键词（react/next/vue/nuxt/svelte/sveltekit/astro/angular/solid/preact/remix/vite/@angular/core——substring 会误命中 vitest/nextra），`scripts.dev` substring 匹配 vite/next/nuxt/svelte-kit/astro。无前端信号时在 Summary Next steps 打印两行"如果…"并列建议（monorepo 子目录 → 在应用目录运行 init；纯 API → Playwright `request` fixture + `BASE_URL` 指向 API），不影响生成行为与 exit code；无 package.json 时跳过检测不提示（webServer fallback 行为不变）。
+- **`openspec-pw init` 无前端项目引导提示**. 无前端信号时打印两行引导建议，不影响生成行为。
   - `src/shared/app-detect.ts` — 新增 `hasFrontendSignal`（`boolean | null`：null = 无 package.json 跳过检测），框架关键词常量与 `frameworkDefaultPort` 同模块并注释关系
   - `src/commands/init.ts` — 生成前检测 + Summary 提示（灰色，与 Next steps 同格式）
   - `tests/shared/app-detect.test.ts` / `tests/init.test.ts` — 信号匹配（含 vitest 不误命中、monorepo 下探）与提示输出用例
   - `README.md` / `README.zh-CN.md` — init 行为说明补充一行
 
-- **`audit` / `explore` 的 BASE_URL 解析统一走 `detectAppServer` 检测链**. 此前两命令在无 `BASE_URL` 时硬编码回退 `localhost:3000`（与 `doctor` 的完整检测结论不一致——vite/astro 等项目 audit 拿错 sitemap、explore 打不开页面）。现统一为 env `BASE_URL` →（explore）探索文件记录的 `BASE_URL:` → 检测链（scripts `--port` / vite.config / .env / 框架默认端口 / seed）→ `localhost:3000` 兜底；CLI 侧 `3000` 字面量从 3 处收敛到 1 处（`detectAppServer` 链尾）。`parseExplorationFile` 保持纯函数（无 `BASE_URL:` 行返回 `undefined`），命令级决议提取为可测的 `resolveExploreBaseUrl`；audit 失败消息改报真实来源（`fell back to X (source)`）。行为向后兼容：设了 `BASE_URL` 结果不变；模板（auth.setup/teardown/playwright.config/e2e-test）的独立 `|| 3000` 不动（测试时运行的独立文件，用户契约）。
+- **`audit` / `explore` 的 BASE_URL 解析统一走 `detectAppServer` 检测链**. 两个命令统一走 `detectAppServer` 检测链，CLI 兜底字面量收敛到一处。
   - `src/commands/audit.ts` — `getSitemapRoutes(projectRoot)` 改用 `detectAppServer`（导出以便测试）
   - `src/commands/explore.ts` — `parseExplorationFile` 导出 + `baseUrl?: string`；新增导出 `resolveExploreBaseUrl`
   - `tests/commands/audit.test.ts`（新增 4 用例）、`tests/commands/explore.test.ts`（新增 6 用例）——两命令首次测试覆盖
   - `openspec/specs/cli/base-url/spec.md` — 新增 capability 契约（env > 文件 > 检测 > 兜底）
 
-- **Playwright MCP 仅在有前端信号时自动安装**. `init` 第 4 步由无条件安装改为 `hasFrontendSignal === true` 才装（纯 API / 无 package.json 项目跳过并打印灰色说明——API 测试走 `request` fixture，不需要浏览器 MCP），与无前端引导提示语义对齐。检测计算上移（MCP gate 与 Summary 提示共用一处）。**非破坏性**：已安装的 MCP 不被移除，`--mcp=false` 覆盖不变；E2E 命令安装不受影响（API 项目仍装命令）。
+- **Playwright MCP 仅在有前端信号时自动安装**. MCP 仅在前端信号为真时自动安装，纯 API 项目跳过并说明。
   - `src/commands/init.ts` — `frontendSignal` 上移 + MCP 步骤 gate + 跳过说明
   - `tests/init-mcp-scope.test.ts` — fixtures 补前端信号 package.json；新增 gating 用例 3 个（纯 API 跳过 / 无 package.json 跳过 / 前端照装）
   - `README.md` / `README.zh-CN.md` — MCP 段落补充"检测到前端信号时自动安装"
 
-- **Deploy Docs 工作流双站部署**. `pages.yml` 在 GitHub Pages 部署后追加 Cloudflare Pages 直传步骤（`wrangler pages deploy`），配置 `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` 两个 repo secret 后，一次 push 自动更新 GitHub Pages 与 Cloudflare 两个站点；secrets 未配置时步骤自动跳过（不报错）。
+- **Deploy Docs 工作流双站部署**. Pages 部署后追加 Cloudflare Pages 直传，secrets 未配置时跳过。
   - `.github/workflows/pages.yml`
 
 ### Fixed
 
-- **release 脚本 badge commit message 版本号取旧值**. `npm_package_version` 环境变量在脚本启动时快照，`npm version patch` 改版本后不刷新，导致 commit message 显示旧版本号（如 v0.3.68）。改为 `$(node -p "require('./package.json').version")` 动态读取。
-- **新增 `deploy:docs` 脚本固定 wrangler 版本**. wrangler 4.123+ 在非交互环境要求 `CLOUDFLARE_API_TOKEN`（OAuth 被拒），固定 `wrangler@4.119.0` 恢复 OAuth 部署。`npm run deploy:docs` 一键部署 Cloudflare 站。
+- **release 脚本 badge commit message 版本号取旧值**. 版本号改为动态读取，commit message 不再显示旧版本。
+- **新增 `deploy:docs` 脚本固定 wrangler 版本**. 固定 `wrangler@4.119.0` 恢复 OAuth 部署。
   - `package.json`
 
-- **CLAUDE.md 为 symlink 时 init/update 覆盖 AGENTS.md 标准**. 项目用官方 symlink 方式复用 AGENTS.md（`CLAUDE.md -> AGENTS.md`，如 deepseek-harness）时，`installClaudeWrapper` 写 CLAUDE.md 会**跟随 symlink 覆盖 AGENTS.md**：init 先正确写入完整标准，随后 wrapper 又把它替换成 CodeGraph 优先段（还产生 `@AGENTS.md` 自引用）；update 每次重复「写入→覆盖」循环，永远无法收敛。修复：`installClaudeWrapper` 用 `lstatSync` 检测 symlink 直接跳过（标准已在 AGENTS.md，无需 wrapper）；update 漂移检查对 symlink 的 CLAUDE.md 视为非 stale（AGENTS.md 检查已覆盖）；doctor 的 `standards-claude` 对 symlink 记 `ok:true`（covered by standards-agents），不再误报。
+- **CLAUDE.md 为 symlink 时 init/update 覆盖 AGENTS.md 标准**. CLAUDE.md 为 symlink 时跳过写入，避免覆盖 AGENTS.md。
   - `src/commands/editors.ts`、`src/commands/update.ts`、`src/commands/doctor.ts`
   - `tests/editors.test.ts` — symlink 场景 2 用例（skip on win32）+ update/doctor 源码守卫 2 用例
 
-- **`--no-skill` 不再静默跳过标准漂移检查**. 原 `update --no-skill` 跳过整个命令+标准相位，AGENTS.md/CLAUDE.md 漂移被无声忽略。现标准同步独立执行（提取 `fetchLatestBundle`/`syncEmployeeStandards`），`--no-skill` 只跳过命令/模板安装并明确提示。
+- **`--no-skill` 不再静默跳过标准漂移检查**. `--no-skill` 只跳过命令/模板安装，标准同步照常执行。
   - `src/commands/update.ts`
 
-- **docs/script.js 内嵌标准一致性测试**. 新增 `tests/docs-sync.test.ts` 16 个锚点用例（ZH/EN），`employee-standards.md` 变更忘同步 docs 网页内嵌副本时测试失败——0.3.65 的漂移不再复发（编写时即抓到两处真实措辞漂移）。
+- **docs/script.js 内嵌标准一致性测试**. 新增 16 个锚点用例，内嵌副本漂移即失败。
   - `tests/docs-sync.test.ts`
 
-- **release 自动归档 CHANGELOG**. `scripts/bump-docs.js` 顺带把 `[Unreleased]` 归档为 `vX.Y.Z - 今日`（无 Unreleased 则跳过），release 脚本同步 `git add CHANGELOG.md`——0.3.64 的漏归档不再可能。
+- **release 自动归档 CHANGELOG**. release 自动把 `[Unreleased]` 归档为版本段。
   - `scripts/bump-docs.js`、`package.json`
 
-- **doctor 检出旧版全局 playwright MCP 残留**. Claude Code MCP 改项目级（0.3.69）后，旧版 user-scope 残留（`~/.claude.json`）对项目级检查不可见。doctor 在项目级已装时读取全局配置，发现残留记提示性 `ok:true` 并给出 `claude mcp remove playwright` 清理命令。
+- **doctor 检出旧版全局 playwright MCP 残留**. doctor 检出全局残留并给出清理命令。
   - `src/commands/doctor.ts`
 
 ## [0.3.69] - 2026-08-17
 
 ### Added
 
-- **`openspec-pw init --tools` 编辑器选择**（补回：该功能已实现提交，本条目在 rebase 合并时被 0.3.67/0.3.68 归档段落吞掉，现恢复）。对齐 `openspec init --tools`：`all` / `none` / 逗号分隔 id 列表非交互式选择要配置的编辑器；无 `--tools` + TTY 弹 `@inquirer/prompts` 多选（预选已检测编辑器，可全不选 = `--tools none`）；非 TTY 回退到检测结果，零检测时报错退出并提示 `--tools`。选择列表驱动 MCP / 命令 / 规则各阶段，`--tools none` 仍生成测试脚手架；未知 id 或 `all`/`none` 与具体 id 混用报错非零退出，重复 id 去重保序，`oh-my-pi` 映射 `omp`，`dsh` 自动并入全量。
+- **`openspec-pw init --tools` 编辑器选择（补回）**. `--tools` 编辑器选择恢复：all / none / 列表与 TTY 多选，非 TTY 回退检测。
   - `src/index.ts` — `init` 命令注册 `--tools`；action 捕获 init 抛错打印并 `exit(1)`
   - `src/commands/editors.ts` — `resolveToolsArg` 纯函数与 `getAllAdapters()`；`installCommand` 自动建目录使未检测编辑器可装
   - `src/commands/init.ts` — `InitOptions.tools`、`InitDeps`（prompt/isTTY/homeDir 注入）、`promptSelectEditors`；移除 `detected.length === 0` 提前 return
@@ -567,7 +568,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `tests/editors-tools.test.ts`、`tests/init.test.ts` — `resolveToolsArg` 13 个用例 + `--tools` 分支/交互注入共 10 个用例
   - `README.md` / `README.zh-CN.md` —「Selecting Editors on Init / 初始化时选择编辑器」一节
 
-- **Claude Code 的 Playwright MCP 改为 project scope**. `claude mcp add/remove` 全部加 `--scope project`，写入项目根 `.mcp.json`（可随版本控制共享），不再碰全局 `~/.claude.json`；已安装检查改为直读 `.mcp.json`（不再调用 `claude mcp list`，零 CLI 依赖且天然不混淆全局残留）。与其余编辑器（OpenCode/Cline/Cursor/Oh My Pi 本就项目级）保持一致。**行为变更**：旧版全局残留需手动 `claude mcp remove playwright` 清理；项目级 server 首次交互使用时 Claude Code 会弹批准提示。
+- **Claude Code 的 Playwright MCP 改为 project scope**. Claude Code MCP 改项目级（写 `.mcp.json`），不再碰全局配置。
   - `src/commands/editors.ts` — `claudeAdapter` 三方法（`isMcpInstalled`/`installMcp`/`removeMcp`）；删除废弃的 `claudeMcpOutputIncludes`
   - `src/commands/init.ts` — MCP 安装失败时手动命令提示含 `--scope project`，并提示旧 CLI 升级
   - `tests/editors-claude-mcp.test.ts`（新增 6 用例）、`tests/init-mcp-scope.test.ts`（新增 2 用例）、`tests/shared/mcp.test.ts`、`tests/commands/doctor.test.ts`、`tests/commands/uninstall.test.ts` — 全部按文件读取行为重写
@@ -575,14 +576,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **`--tools` 帮助文本遗漏 `dsh`**. `openspec-pw init --tools` 的帮助文本只列了 `claude,opencode,cline,cursor,pi,omp`，漏掉有效 editor id `dsh`（DeepSeek Harness），与 `resolveToolsArg` 实际接受值及 init 错误提示不一致。已补全。
+- **`--tools` 帮助文本遗漏 `dsh`**. 帮助文本补 `dsh`。
   - `src/index.ts`
 
 ## [0.3.68] - 2026-08-16
 
 ### Added
 
-- **DeepSeek Harness (dsh) 支持**. 新增编辑器适配器：通过 `.dsh/skills/opsx-e2e/SKILL.md` 安装 project-dsh skill（rank 100，本地最高优先级，`name` + `description` frontmatter，经 `skill` 工具调用）。dsh 原生读 `AGENTS.md`，无需包装文件；检测信号为项目 `.dsh/` 目录或全局 `~/.dsh/`（DSH_HOME）目录。dsh 通过 `cordis.yml` 插件配置 MCP（`@deepseek-ai/dsh-mcp-client`）而非简单文件，故 `supportsMcp:false`，MCP 相位跳过、探索走 `openspec-pw explore`。
+- **DeepSeek Harness (dsh) 支持**. 新增 dsh 适配器（skill 形态，无 MCP），编辑器扩为 7 个。
   - `src/commands/editors.ts` — `EditorId` 扩为 7 个、`hasDsh` / `formatDshCommand` / `getDshCommandPath` / `dshAdapter`
   - `src/commands/init.ts` / `doctor.ts` / `update.ts` — 检测列表、无编辑器提示、`hasCommand` 判定同步 dsh skill 路径
   - `tests/editors.test.ts` — 新增 dsh 用例；既有 detectAdapters 全量用例扩为 7 个
@@ -592,7 +593,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **`openspec-pw init --tools` 编辑器选择**. 对齐 `openspec init --tools`：`all` / `none` / 逗号分隔 id 列表非交互式选择要配置的编辑器；无 `--tools` + TTY 弹 `@inquirer/prompts` 多选（预选已检测编辑器，可全不选 = `--tools none`）；非 TTY 回退到检测结果，零检测时报错退出并提示 `--tools`。选择列表驱动 MCP / 命令 / 规则各阶段，`--tools none` 仍生成测试脚手架；未知 id 或 `all`/`none` 与具体 id 混用报错非零退出，重复 id 去重保序，`oh-my-pi` 映射 `omp`。`--tools` 与 `--no-mcp` 正交。
+- **`openspec-pw init --tools` 编辑器选择**. 新增 `--tools` 编辑器选择（all / none / 列表 + TTY 多选），非 TTY 回退检测。
   - `src/index.ts` — `init` 命令注册 `--tools`；action 捕获 init 抛错打印并 `exit(1)`（原未知 id 场景 exit 0）
   - `src/commands/editors.ts` — 新增 `resolveToolsArg` 纯函数与 `getAllAdapters()`；`installCommand` 已自动建目录使未检测编辑器可装
   - `src/commands/init.ts` — `InitOptions.tools`、`InitDeps`（prompt/isTTY/homeDir 注入）、`promptSelectEditors`；移除 `detected.length === 0` 提前 return（原 0 检测连脚手架都不生成）
@@ -602,22 +603,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **employee-standards 新增「工具调用纪律（防循环）」**. §3 工具使用新增子节：一次只发一个工具调用、并行仅限真正独立调用、发现重复调用立即停止、长会话接近上限先压缩上下文。同步 `docs/script.js` 内嵌标准（ZH + EN）。
+- **employee-standards 新增「工具调用纪律（防循环）」**. §3 补工具调用防循环纪律。
 
-- **init/update 对裸 `@AGENTS.md` 的 CLAUDE.md 加提示**. 检测到 CLAUDE.md 只有裸 `@AGENTS.md` 导入（openspec CLI 或用户手写、无 OPENSPEC 标记）时，行为保持不干预，但提示「CodeGraph 优先约束未写入，删除该行后重跑 openspec-pw update 可启用」。
+- **init/update 对裸 `@AGENTS.md` 的 CLAUDE.md 加提示**. 裸 `@AGENTS.md` 时提示可删除该行重跑 update。
   - `src/commands/editors.ts` — `installClaudeWrapper` 裸导入分支
   - `src/commands/update.ts` — standards 相位漂移检查
 
 ### Fixed
 
-- **release 脚本 commit message 变量未展开**. `git commit -m 'docs: bump version badge to v${npm_package_version}'` 用单引号导致 `${npm_package_version}` 字面输出，每次发布留下 `v${npm_package_version}` 字面 commit message。改为双引号，shell 展开 npm 注入的环境变量。
+- **release 脚本 commit message 变量未展开**. 单引号改双引号，commit message 变量正常展开。
   - `package.json`
 
 ## [0.3.66] - 2026-08-11
 
 ### Added
 
-- **Pi 与 Oh My Pi (omp) 支持**. 新增两个编辑器适配器：Pi 通过 `.pi/prompts/opsx-e2e.md` 提示词模板（文件名即命令名，`argument-hint` 提示参数）；Oh My Pi 通过 `.omp/commands/opsx-e2e.md` 原生命令（`name` + `description` frontmatter）。两者原生读 `AGENTS.md`，无需包装文件；检测信号为项目 `.pi/` / `.omp/` 目录或全局 `~/.pi/agent/` / `~/.omp/agent/` 配置目录（`detectAdapters` 新增可注入 `homeDir`，测试保持封闭）。
+- **Pi 与 Oh My Pi (omp) 支持**. 新增 Pi / omp 适配器，编辑器扩为 6 个。
   - `src/commands/editors.ts` — `EditorId` 扩为 6 个、接口新增 `supportsMcp`、Pi / omp 适配器
   - `src/shared/mcp.ts` — `supportsMcp:false` 的适配器跳过全部 MCP 相位（Pi 无 MCP 客户端，探索走 `openspec-pw explore`）
   - `src/commands/doctor.ts` — MCP 分类对 Pi 记录 `ok:true` 信息性检查（不阻断 exit code）
@@ -626,7 +627,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **CLAUDE.md wrapper 沉淀官方依据**. `@AGENTS.md` 是 Claude Code 官方记载的复用 AGENTS.md 机制（AGENTS.md 默认不读），位置无关（官方 "anywhere in your CLAUDE.md"）、唯一要求是 `@` 行不在反引号/代码块内；相对 CLAUDE.md 解析、递归上限 4 跳；OPENSPEC:START/END 块级注释在注入上下文前被剥离，marker 内的 `@AGENTS.md` 仍生效。
+- **CLAUDE.md wrapper 沉淀官方依据**. JSDoc 与 README 记录 `@AGENTS.md` 的官方加载依据。
   - `src/commands/editors.ts` — `claudeWrapperStandardsContent` JSDoc 记录契约
   - `README.md` / `README.zh-CN.md` — AGENTS.md 加载机制补充官方依据
 
@@ -634,60 +635,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **docs 网页版内嵌标准同步**. `docs/script.js` ZH + EN 补齐「过时的直接删（不留 fallback）」🔴、管道命令改源码升级 🔴；删除已从通用规范移除的「禁止跨阶段跳步」残留行。与 employee-standards 保持关键一致。
+- **docs 网页版内嵌标准同步**. 内嵌副本补齐两条 🔴 并删残留行。
   - `docs/script.js`
 
-- **employee-standards 补齐 6 条工程选型/架构原则**. §1 代码质量新增「过时直接删（不留兼容层/迁移/fallback）」「优先成熟库」「选型先翻已有依赖」「用成熟产品验证过的模式」；§4 大规模任务新增「先跑通最小端到端再增量」「架构决策往长了做（不留临时方案）」。其中 3 条标 🔴（违反→静默 bug/安全漏洞）：fallback 静默降级、数据编撰、管道命令改源码。
+- **employee-standards 补齐 6 条工程选型/架构原则**. §1/§4 补 6 条选型与架构原则，其中 3 条 🔴。
   - `employee-standards.md`
 
 ### Changed
 
-- **employee-standards 收敛去重**. §2/§3/§5 重复规则改为单一事实源：跨阶段跳步并入 §4、编辑循环引用 §1、验证证据归 §7；删除 §3 搜索分层残留的 CodeGraph 覆盖说明行；CodeGraph 优先节违反理由句删除（规则自足）。docs 版本 badge 边框改 rgba 兼容旧浏览器。
+- **employee-standards 收敛去重**. §2/§3/§5 重复规则改为单一事实源。
 
 ## [0.3.64] - 2026-08-06
 
 ### Added
 
-- **`openspec-pw doctor` Sync 分类**. 检测已初始化项目里 AGENTS.md / CLAUDE.md 的 OPENSPEC 标记段与当前已装包模板是否漂移。纳入 `--json` 与 exit code，但以"是否初始化过"为闸门——未初始化项目记 `ok:true`（不阻断 CI），已初始化但标准过期记 `ok:false` 并提示 `openspec-pw update`。措辞中性（"OPENSPEC block differs from bundled version（手动修改或旧版模板）"），不归因用户修改。
+- **`openspec-pw doctor` Sync 分类**. doctor 新增 Sync 分类，检测标记段与模板漂移，未初始化项目不阻断。
   - `src/shared/drift.ts` — 新增纯函数（提取 OPENSPEC 段、内容相等比较、定位本地已装包模板，零网络）
   - `src/commands/doctor.ts` — 新增 Sync 分类 + 初始化闸门
 
-- **employee-standards.md 新增 §7「浏览器验证证据链」**. 定义「什么算浏览器验证通过」的证据标准：改了用户可见可交互的东西就必须在浏览器里证明；自检不留测试代码，验证须覆盖（构建新鲜度 / 登录态真实性 / 期望锚定 spec / 控制台与网络无错）；截图不等于行为验证；有验证价值的浏览器路径必须写成 Playwright 测试、**提交前实跑（不依赖 CI / commit / PR 机制）**；含断言的临时脚本转正或删除。§5 数据编撰禁令同步扩展：验证期望值禁止编造、验证证据不得编造或复用旧证据。
+- **employee-standards.md 新增 §7「浏览器验证证据链」**. 新增 §7 浏览器验证证据链，明确证据标准与提交前实跑。
   - `employee-standards.md`、`docs/script.js`（ZH + EN 内嵌标准）
 
 ### Changed
 
-- **`openspec-pw update` 改为漂移感知**. 命令/标准相位先比较内容，与当前已装包模板一致时 no-op（不改文件 mtime），不一致才覆盖；覆盖前打印"检测到非模板内容将被覆盖"。AGENTS.md / CLAUDE.md 标记段、BasePage.ts 仅在漂移时重写；seed.spec.ts 仅警告不覆盖。
+- **`openspec-pw update` 改为漂移感知**. update 先比较内容，一致时 no-op，不一致才覆盖并提示。
   - `src/commands/update.ts` — standards/commands 相位漂移判断
   - `src/commands/editors.ts` — 新增 `readOpenSpecBlock` / `blockMatchesExpected`，导出 `claudeWrapperStandardsContent`
   - `tests/drift.test.ts` — 新增纯函数测试；`tests/update.test.ts` / `tests/editors.test.ts` / `tests/doctor.test.ts` 扩展
 
 ### Fixed
 
-- **`--no-mcp` 未注册 bug**. `openspec-pw update` 的 `--no-mcp` 之前未被 `index.ts` 注册，用户传入被静默忽略（`options.mcp` 恒为 undefined）。现已补注册，`update --no-mcp` 跳过 Playwright MCP 相位；CLI 自重启时也正确转发 `--no-mcp` / `--no-skill`，避免重启进程重跑已跳过的相位。
+- **`--no-mcp` 未注册 bug**. 补注册 `--no-mcp` 并在自重启时转发。
 
-- **漂移判断边缘情况（code review 确认 7 个 bug）**. `compareBlock` 做 CRLF 归一化（Windows / macOS 不再误报）；单边 marker（只有 START 或只有 END）判为 stale 而非跳过，`installOpenSpecBlock` 遇到截断 marker 修复重建干净完整段，不再死胡同；AGENTS.md 作为唯一事实源**总是**检查（claude-only 项目也不例外）、无 marker 判 stale 需追加；Cursor skill 的 `extraArtifacts` 纳入命令 drift 检查；`installClaudeWrapper` 改用内容比对，过期内容能被正确清除。
+- **漂移判断边缘情况（code review 确认 7 个 bug）**. 修 7 个漂移判断 bug（CRLF、单边 marker、无 marker 等）。
   - `src/shared/drift.ts`、`src/commands/editors.ts`、`src/commands/update.ts`、`src/commands/doctor.ts`
 
 ## [0.3.63] - 2026-08-05
 
 ### Changed
 
-- **CodeGraph 规则升级为「默认第一步」**. `employee-standards.md` 文首「CodeGraph 优先」从引导式（先…自行判断）改为明确默认动作：结构性任务（定位定义、调用链、影响面、流程）默认第一步调用 `codegraph_explore`，grep/read 仅用于字面文本、已打开文件、或结果不足时补查。`openspec-pw init`/`update` 现在把 CodeGraph 优先节直接写入 Claude 的 `CLAUDE.md`（OPENSPEC 标记段内、`@AGENTS.md` 引用之前），不再依赖引用文件；init 末尾检测到 codegraph 已安装但项目未索引时提示 `codegraph init`。同步 `docs/script.js` 内嵌标准（ZH + EN）。
+- **CodeGraph 规则升级为「默认第一步」**. CodeGraph 规则升级为默认第一步，并写入 CLAUDE.md。
 
 ## [0.3.62] - 2026-08-05
 
 ### Changed
 
-- **CodeGraph 优先规则改为引导式，不再禁止内置工具**. `employee-standards.md` 文首「CodeGraph 优先」从「必须先调用 `codegraph_explore`，不要直接 grep / find / 读文件」改为「结构/定位问题先 `codegraph_explore`，字面文本/已打开文件用 grep/read，自行判断」，并补充无 `.codegraph/` 时跳过的说明。同步 `docs/script.js` 内嵌标准（ZH + EN）。
+- **CodeGraph 优先规则改为引导式，不再禁止内置工具**. 规则改为引导式，不再禁止内置工具。
 
 ## [0.3.61] - 2026-08-05
 
 ### Added
 
-- **CodeGraph 优先规则置顶员工标准**. `employee-standards.md` 新增文首「CodeGraph 优先」节：存在 `.codegraph/` 时理解/定位代码前必须先调用 `codegraph_explore`（🔴 CRITICAL）。§4 搜索分层改为引用文首，去除重复指令。同步更新 `docs/script.js` 内嵌标准（中英文各加 CodeGraph First 节）。
+- **CodeGraph 优先规则置顶员工标准**. 新增文首 CodeGraph 优先节，§4 改为引用。
 
-- **移除 §3 架构 Invariants**. `employee-standards.md` 删除「3. 架构 Invariants」整节（项目特定约束，不再作为通用员工标准下发），后续章节重编号（4→3、5→4、6→5、7→6），§6→§5 交叉引用同步更新。
+- **移除 §3 架构 Invariants**. 删除项目特定 Invariants 节并重编号。
 
 ## [0.3.60] - 2026-07-31
 
@@ -706,7 +707,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Cline editor support**. `openspec-pw init` now auto-detects Cline (`.cline/` or `.clinerules/` directory) alongside Claude Code and OpenCode, installing the `/opsx-e2e` skill and Playwright MCP for it.
+- **Cline editor support**. `openspec-pw init` now auto-detects Cline (`.cline/` or `.clinerules/`) and installs the `/opsx-e2e` skill and Playwright MCP.
   - `src/commands/editors.ts` — new `clineAdapter` (id `"cline"`), `formatClineCommand`, `getClineCommandPath`, `hasCline`; `.cline/mcp.json` read/write helpers; registered in adapter registry
   - `src/commands/init.ts` — detection prompt and MCP error messages updated for three editors
   - `src/commands/update.ts` — `hasCommand` check includes `.cline/skills/opsx-e2e/SKILL.md`
@@ -720,7 +721,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Enhanced
 
-- **`openspec-pw doctor` checks expanded by 5 items.** Previously the command verified basic tool presence (Node, npm, Playwright CLI, OpenSpec directory) but missed several failure modes users actually hit:
+- **`openspec-pw doctor` checks expanded by 5 items.** Adds checks for Playwright config, browsers, specs, tests directory and Node engines.
   - **Playwright Config** — verifies `playwright.config.ts/.js/.mjs/.mts` exists (required; missing blocks all tests)
   - **Playwright Browsers** — verifies Chromium binary is downloaded via `playwright.chromium.executablePath()` (required; CLI may be installed while browsers are not)
   - **OpenSpec Specs** — counts `.spec.md` files in `openspec/` (optional warning; empty directory is valid for fresh projects)
@@ -734,12 +735,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-- **`init --seed` flag removed (BREAKING)**. The `--seed` flag only force-overwrote `seed.spec.ts` but no other generated files. Same effect achieved by `rm tests/playwright/seed.spec.ts && openspec-pw init`. Reduces CLI surface and maintenance burden.
+- **`init --seed` flag removed (BREAKING)**. Removed `--seed`; re-run init after deleting `seed.spec.ts` achieves the same.
   - `src/index.ts` — removed `--seed` option
   - `src/commands/init.ts` — removed `seed` from `InitOptions` and `generateSeedTest` `force` parameter
   - `README.md`, `README.zh-CN.md` — removed `--seed` from CLI description
 
-- **`openspec-pw run <name>` command removed (BREAKING)**. The command was never end-to-end validated: CI ran unit tests on its parser helpers but never spawned `playwright test` against a real project, and users overwhelmingly run `npx playwright test` directly. The reported benefits (markdown report generation, port-conflict detection) never shipped in a way users actually used. Removed to reduce CLI surface and stop pretending a feature is production-ready when it has never been exercised.
+- **`openspec-pw run <name>` command removed (BREAKING)**. Removed the never-validated `run` command; users run `npx playwright test` directly.
   - `src/commands/run.ts` — deleted (346 lines)
   - `src/index.ts` — removed command registration
   - `src/commands/migrate.ts` — updated verify hint to point at `/opsx:e2e` instead of `openspec-pw run`
@@ -754,21 +755,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Docs site: removed decorative clutter**. Removed `bg-grid-overlay` (Vercel-style grid) and `bg-bottom-glow` (bottom-right amber glow) layers from the hero background. The hero's mesh-gradient and animated SVG decorations are retained.
+- **Docs site: removed decorative clutter**. Removed two hero background decoration layers.
   - `docs/index.html`, `docs/style-base.css` — removed two decoration layers
 
-- **Docs site: removed hero CLI demo**. The hero previously rendered a fabricated `openspec-pw run` transcript (Planner → Generator → Healer with invented timings) which never matched real output. Removed because the decoration conveyed no product meaning and its content violated the "no fabricated data" rule.
+- **Docs site: removed hero CLI demo**. Removed the fabricated CLI transcript from the hero.
   - `docs/index.html`, `docs/style-sections.css` — removed `.cli-demo` block (124 lines)
 
 ## [0.3.55] - 2026-07-12
 
 ### Changed
 
-- **Employee standards: frontend UI design trio**. Added `frontend-design` + `ui-ux-pro-max` + `web-design-guidelines` skill combination to §4 tool usage, with explicit invocation order.
+- **Employee standards: frontend UI design trio**. Added the frontend-design / ui-ux-pro-max / web-design-guidelines skill trio to §4.
   - `employee-standards.md` — new 🟡 rule
   - `docs/script.js` — ZH + EN templates synced
 
-- **Employee standards: agent-reach priority upgraded**. Promoted `联网调研优先 agent-reach skill` from `⚪ STANDARD` to `🟡 IMPORTANT` in §4 tool usage, reflecting that anti-bot blocks make WebFetch/WebSearch unreliable for site-specific research.
+- **Employee standards: agent-reach priority upgraded**. Promoted `agent-reach` to 🟡 in §4.
   - `employee-standards.md`, `docs/script.js` — synced
 
 
@@ -776,26 +777,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **`openspec-pw update`: AGENTS.md not created on first run after upgrade**. The old binary ran `npm install -g` but continued with stale code that predated AGENTS.md support. After successful CLI update, the process now re-executes `openspec-pw update --no-cli` with the freshly-installed binary so post-CLI steps (templates, commands, AGENTS.md) run with the latest code. Falls back gracefully to the old binary if re-execution fails.
+- **`openspec-pw update`: AGENTS.md not created on first run after upgrade**. After the CLI update, update re-executes the freshly installed binary so post-CLI steps use the latest code.
   - `src/commands/update.ts` — re-execution block after CLI update
 
 ### Changed
 
-- **CI: 1500-line max per source file**. New CI step fails if any scanned source file (`*.ts`/`*.tsx`/`*.js`/`*.mjs`/`*.css`/`*.md`/`*.html`) exceeds 1500 lines. Skips vendored dirs (`node_modules`, `dist`, `.git`, `.opencode`).
-- **Deploy Docs auto-retry**. GitHub Pages deploys occasionally fail with a transient `Deployment failed, try again later` error. The `pages.yml` workflow now retries via `gh api` and falls back to re-triggering the workflow.
+- **CI: 1500-line max per source file**. CI fails when a scanned source file exceeds 1500 lines.
+- **Deploy Docs auto-retry**. Pages deploy retries transient failures via `gh api` and re-triggers the workflow.
   - `.github/workflows/pages.yml` — `continue-on-error` + retry step (env-var based, no Actions injection)
 - **Employee-grade standards: 1500-line rule**. Added to `employee-standards.md` §1 and the `docs/script.js` CLAUDE.md templates (ZH + EN).
 
 ### Added
 
-- **Tests for `cleanProjectRules`**. 9 new unit tests covering AGENTS.md always-clean, CLAUDE.md conditional clean, blank-line collapse, empty-file deletion, idempotency, CRLF line endings, and missing-file / no-marker no-ops. Plus an OpenCode-only assertion that `opencode.jsonc` registers `AGENTS.md` in `instructions`.
+- **Tests for `cleanProjectRules`**. Added 9 unit tests covering cleaning, idempotency, CRLF, and no-op cases.
   - `tests/editors.test.ts` — 233 → 242 tests
 
 ## [0.3.51] - 2026-07-05
 
 ### Changed
 
-- **`editors.ts`: AGENTS.md is now the single source of truth (SSOT) for employee-grade standards**, regardless of which editors are detected. CLAUDE.md becomes a thin wrapper with `@AGENTS.md` import (when Claude is in use); `opencode.jsonc` instructions register `AGENTS.md`. Migrates old-format CLAUDE.md (direct standards inside OPENSPEC markers) to the wrapper on next install.
+- **`editors.ts`: AGENTS.md becomes the standards SSOT**. CLAUDE.md becomes a thin `@AGENTS.md` wrapper; `opencode.jsonc` registers AGENTS.md; old-format CLAUDE.md migrates on install.
   - `src/commands/editors.ts` — `installProjectRules` rewritten; new `installClaudeWrapper`; `installProjectClaudeMd` renamed to `installOpenSpecBlock`; `cleanProjectRules` extracted to `removeMarkersFromFile`
 
 ### Fixed
@@ -816,10 +817,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **AI Coding Assistants section** on the docs site — Claude Code and OpenCode shown side-by-side as first-class citizens, each with its own icon, command (`/opsx:e2e` vs `/opsx-e2e`), and feature list. Nav gains an "Editors" link.
-- **Artistic background layers** on the docs site: SVG fractal noise (film grain), Vercel-style grid pattern with radial mask, top aurora gradient, bottom-corner amber glow, and an animated 4-blob mesh gradient in the hero.
-- **Stripe/Cursor-grade design polish** on the docs site: 500-weight display type, `tabular-nums` on all numeric UI, glassmorphism cards (`backdrop-filter` + inset highlight), hairline borders (`rgba(28,25,23,0.08)`), magnetic primary CTA, scroll-reveal via `IntersectionObserver`, shimmer-sweep button hover.
-- **Split `docs/index.html`** (2533 lines) into `index.html` (~850) + `style-base.css` + `style-sections.css` + `style-extra.css` + `script.js`. All resources served as separate files; GitHub Pages compatible.
+- **AI Coding Assistants section** on the docs site — Claude Code and OpenCode side-by-side, each with icon, command and feature list. Nav gains an "Editors" link.
+- **Artistic background layers** on the docs site: film grain, Vercel-style grid, aurora gradient, amber glow and an animated 4-blob mesh gradient.
+- **Stripe/Cursor-grade design polish** on the docs site: 500-weight display type, tabular numerals, glassmorphism cards, hairline borders, magnetic CTA, scroll reveal, shimmer hover.
+- **Split `docs/index.html`** into `index.html` + `style-base.css` + `style-sections.css` + `style-extra.css` + `script.js`. GitHub Pages compatible.
 - **`agent-reach` rule** added to `employee-standards.md` §4 and both `docs/script.js` CLAUDE.md templates: prefer `agent-reach` skill for web research to avoid WebFetch/WebSearch anti-bot blocks.
 
 ### Fixed
@@ -842,7 +843,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Temp file management rule** (`employee-standards.md` §7): all non-source temp files (Chrome DevTools MCP screenshots, logs, heapdumps, etc.) must go in `tmp/` at the project root, flat layout, timestamped filenames; files older than 24h may be deleted before commit. Mirrored into the `docs/script.js` CLAUDE.md templates (ZH + EN).
+- **Temp file management rule** (`employee-standards.md` §7): non-source temp files go in `tmp/` at the project root, with timestamped names; mirrored into the ZH/EN templates.
   - `employee-standards.md` — new §7
   - `.gitignore` — `tmp/` ignored, `tmp/.gitkeep` tracked
   - `docs/script.js` — CLAUDE_MD_ZH + CLAUDE_MD_EN
@@ -851,10 +852,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **`openspec-pw coverage [change-name]`**: New command for spec–test coverage analysis. Analyzes OpenSpec changes against Playwright test files across 5 levels (L1 directory → L5 edit-distance similarity). Reports per-change coverage %, uncovered scenarios, orphaned tests, and recommendations. Supports `--json` output.
+- **`openspec-pw coverage [change-name]`**: new command for spec–test coverage analysis. Reports per-change coverage, uncovered scenarios, orphaned tests and recommendations; supports `--json`.
   - `src/commands/coverage.ts` — core analysis (scenario parsing, test case parsing, L1-L5 matching, route extraction, report rendering)
   - `src/index.ts` — registered as lazy-imported command
-- **`openspec-pw flake [change-name]`**: New command for static flake pattern detection in Playwright test files. Detects 4 patterns: `waitForLoadState('networkidle')` in SPAs, `page.route()` registered after `page.goto()`, `storageState` leakage across isolation boundaries, and conflicting `test.use({ storageState })` scopes. Supports `--json` and `--gate <severity>` (HIGH/MEDIUM/ALL).
+- **`openspec-pw flake [change-name]`**: new command for flake detection. Detects networkidle, late route registration, storageState leakage and conflicting scopes; supports `--json` and `--gate`.
   - `src/commands/flake.ts` — core detection (regex, line-ordering, and heuristic analyzers)
   - `tests/commands/flake.test.ts` — 25 unit tests covering all detectors and report helpers
 
@@ -865,7 +866,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Performance
 
-- **CLI startup time reduced 93%**: replaced top-level static imports of all 8 command modules with dynamic `import()` in action handlers. `--help` now loads only `commander` (~0.17s vs ~2.3s). Command module loading deferred to first execution — ESM cache ensures no overhead on repeat calls.
+- **CLI startup time reduced 93%**: command modules load via dynamic `import()` in action handlers; `--help` loads only `commander` (~0.17s vs ~2.3s). ESM cache removes repeat-call overhead.
 
 ## [0.3.45] - 2026-06-30
 
@@ -881,12 +882,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **App server auto-detection**: generated `playwright.config.ts` now detects `BASE_URL` from env, package script `--port`, `vite.config.*` `server.port`, `.env*` port variables, and framework defaults (Vite 5173, Astro 4321, Next/Nuxt 3000).
+- **App server auto-detection**: generated `playwright.config.ts` detects `BASE_URL` from env, package script, Vite config, `.env*` and framework defaults.
 - **Doctor app diagnostics**: `openspec-pw doctor` now reports detected dev script, detected base URL, and a non-blocking reachability check so `webServer` timeouts are easier to diagnose.
 - **Existing config patch hints**: `openspec-pw init` now prints recommended checks when `playwright.config.ts` already exists instead of silently skipping all config guidance.
-- **OpenCode support** (SST): auto-detected during `init` when `.opencode/` exists; the E2E command is installed as `/opsx-e2e <change-name>` (hyphenated per OpenSpec convention; command body rewritten from `/opsx:` to `/opsx-` during install and stored at `.opencode/commands/opsx-e2e.md`).
-- **EditorAdapter pattern**: multi-editor architecture in `src/commands/editors.ts` with `claudeAdapter` (existing) and `opencodeAdapter` (new) — any future editor only needs a new adapter, no CLI rewiring.
-- **Project rules routing**: `installProjectRules` helper writes employee-grade standards to `CLAUDE.md` (Claude Code, or both editors present) or `AGENTS.md` (OpenCode only), and sets `opencode.jsonc.instructions` so OpenCode picks the file up natively.
+- **OpenCode support** (SST): auto-detected during `init` when `.opencode/` exists; installs `/opsx-e2e <change-name>` at `.opencode/commands/opsx-e2e.md`, with `/opsx:` rewritten to `/opsx-`.
+- **EditorAdapter pattern**: multi-editor architecture with `claudeAdapter` and `opencodeAdapter`; future editors need only a new adapter.
+- **Project rules routing**: `installProjectRules` writes standards to `CLAUDE.md` (Claude Code or both editors) or `AGENTS.md` (OpenCode only), and sets `opencode.jsonc.instructions`.
 
 ### Changed
 
@@ -901,72 +902,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Version update hint**: after each command (except `update`), the CLI checks npm for a newer version once per 24 hours (cached in `~/.openspec-pw-version.json`). Shows a one-line hint when outdated: `💡 A new version of openspec-pw is available: X → Y. Run: npm install -g openspec-playwright@latest`
-
+- **Version update hint**: CLI checks npm once per 24 hours and prints a one-line upgrade hint.
 ### Changed
 
-- **Unified `execFile` style**: replaced all remaining `execSync` calls in `doctor.ts` and `init.ts` with `execFileSync` + args array + `shell: needsShell`. All child_process calls now use the same cross-platform pattern.
+- **Unified `execFile` style**: replaced remaining `execSync` calls with `execFileSync` + args + `needsShell`.
 
 ### Fixed
 
-- **Removed redundant `bin/openspec-pw` shell wrapper**: this script caused npm publish warnings (`"bin[openspec-pw]" script name was invalid and removed`). The `.js` wrapper already handles CWD restoration and package root resolution.
+- **Removed redundant `bin/openspec-pw` shell wrapper**: removed the wrapper that caused npm publish warnings.
 
 ## [0.3.34] - 2026-06-09
 
 ### Fixed
 
-- **Windows: `spawn EINVAL`** — v0.3.33 attempted a `.cmd` suffix approach (`npm.cmd`) which caused `EINVAL` on Windows. The correct fix is `shell: true` — Node properly quotes args-array items, so paths with spaces are safe. Changed `cmd()` helper to `needsShell` boolean constant.
+- **Windows: `spawn EINVAL`** — fixed by `shell: true` instead of a `.cmd` suffix.
 
 ## [0.3.33] - 2026-06-09
 
 ### Fixed
 
-- **Windows: `spawn npm ENOENT`** in `update`, `init`, `doctor`, `audit`, `run`, `mcp` commands. On Windows, `npm`/`npx`/`claude` are `.cmd` batch files — not bare executables. Node's `execFile()` (without `shell: true`) only looks for exact executable names and fails because there is no `npm` binary, only `npm.cmd`. Added cross-platform `needsShell` constant in `src/shared/platform.ts` (`true` on `win32`) and added `shell: needsShell` to all `execFile`/`execFileSync` calls across 6 files.
-
+- **Windows: `spawn npm ENOENT`** — added cross-platform `needsShell` and applied it to all `execFile` calls.
 
 ### Fixed
 
-- `src/commands/update.ts`: cross-platform `update` command fixes for Windows + devDep-shadow scenarios. Three issues were stacked:
+- `src/commands/update.ts`: pass npm paths as arg arrays, bind `err` in every catch, add version-shadow self-check.
 
-  1. `npm pack --pack-destination ${tmpDir}` used shell string interpolation. On Windows with paths containing spaces (OneDrive, CJK user names), cmd.exe tokenized the path incorrectly. Replaced with `execFile("npm", ["pack", "openspec-playwright", "--pack-destination", tmpDir])` so the path is passed verbatim.
-  2. `npm install -g` and `npm install -D` calls used `execSync` with a shell string. Migrated to `execFile` with arg arrays for the same reason.
-  3. Three `catch {}` blocks silently dropped `err` so users saw only "Failed to update" with no clue why. Now every catch binds `err` and prints `err.message` so the actual npm stderr reaches the user.
+- `src/commands/init.ts`, `src/commands/doctor.ts`: migrated `npx ... --version` calls to `execFileSync` with arg arrays.
 
-  Also added a `checkVersionShadow` self-check that runs at the end of `update()`. It compares the package version Node actually loaded (via `createRequire(import.meta.url).resolve("openspec-playwright/package.json")`) against the latest published version. If they differ — most commonly because a `devDependencies` entry in the user's `package.json` is shadowing the global CLI binary (Node module resolution prefers local `node_modules` over global) — it prints a clear warning with the resolved path and the fix (`npm uninstall openspec-playwright` then re-run update, or `npm install -D openspec-playwright@latest`).
-
-- `src/commands/init.ts`, `src/commands/doctor.ts`: two more `npx ... --version` calls used `execSync` / shell string with bash-isms (`2>/dev/null`, `||`) and would tokenize wrong on Windows. Migrated both to `execFileSync` with arg arrays, matching the `update.ts` migration above.
-
-- Documentation install commands: every `npm install -g openspec-playwright` (and `@fission-ai/openspec`) reference across `README.md`, `README.zh-CN.md`, `docs/index.html`, and the user-facing prompt strings in `src/commands/init.ts` and `src/commands/update.ts` was missing the `@latest` tag. Without it, `npm install -g openspec-playwright` may resolve to a cached older version instead of the current release. All 12+ call sites now pin to `@latest`.
+- Documentation install commands: all install references pinned to `@latest`.
 
 ### Changed
 
-- `openspec-pw init`: removed the `--no-seed` option. The default behavior (skip seed generation if `tests/playwright/seed.spec.ts` already exists) already covers the use case. To refresh a stale seed, run `openspec-pw init --seed`; to skip seed entirely, delete the existing `seed.spec.ts` and re-run `init`. Two remaining options: `--seed` (force overwrite) and the implicit "skip if exists" default. ⚠️ Minor breaking change — any script passing `--no-seed` will see "unknown option" and fail.
+- `openspec-pw init`: removed `--no-seed` (breaking for scripts that pass it); use `--seed` or delete the seed file.
 
-- gstack is no longer a hard prerequisite. Previously `README.md`, `docs/index.html`, and `templates/e2e-command.md` treated gstack (which provides the `/browse` slash command) as required for browser exploration. In practice, `openspec-pw explore --parallel N` (built-in) and Playwright MCP (already required for the Healer) cover the same need without an extra Bun + gstack install. Reorganized `README.md` / `README.zh-CN.md` Prerequisites into Required (4) + Optional (1, gstack) and added a "Optional" hint at the end of the 9-step First-Time Setup Checklist. `docs/index.html` now shows gstack as an Optional card with a `（可选）` label and a one-line command at the bottom of the quickstart section. The "How It Works" workflow diagram no longer says `/browse explores real DOM`; it lists the three available tools.
+- gstack is no longer a hard prerequisite; docs list it as optional.
 
-- `templates/e2e-command.md` rewritten to be tool-agnostic. Removed all 18 hard-coded `$B <sub>` calls (gstack-specific shell syntax) and replaced with intent-level descriptions: "navigate to <url>", "snapshot DOM", "evaluate JS", "check console for errors", "check network requests", "take a screenshot". Step 4 prerequisites reduced to "at least one browser exploration tool installed". The Parallel Exploration section header was clarified to read "Alternative" and now explicitly says "skip 4.2 and use the dedicated CLI". Step 4.1's "Verify BASE_URL" no longer shows `$B goto` (it just says "navigate to <BASE_URL>"). Step 4.2's "Explore each route" is now one line of intent. The Step 9 "Available options" list under `openspec-pw run` was expanded from 3 placeholder options (`--project <role>`, `--headed`, `--update-snapshots`) to the full set of 12 options actually declared in `src/index.ts:55-72` (corrected the `--project <role>` typo to `--project <name>`, and added `--timeout`, `--json`, `--grep`, `--smoke`, `--workers`, `--app-bugs`, `--healed`, `--raft`, `--escalated`). The RAFT detection hint was rephrased from "Full suite: test fails" (which contradicted the L28 "Do NOT run npx playwright test" rule) to "If you already ran the suite and a test failed".
+- `templates/e2e-command.md` rewritten to be tool-agnostic; removed gstack-specific shell calls.
 
-- `employee-standards.md` §0 was tightened: the redundant "E2E 工作流前提" line (which said "工具链（gstack / OpenSpec CLI / openspec-playwright）由用户安装并维护，AI 不做安装操作") was removed, leaving only the single rule the project agreed on: "动手前读 openspec/config.yaml".
+- `employee-standards.md` §0 was tightened: removed the redundant E2E prerequisite line.
 
 ## [0.3.31] - 2026-06-04
 
 ### Fixed
 
-- `docs/index.html`: "1 安装步骤" h3 was not rendering its title — `.quickstart-install h3 span` selector was too broad and leaked the 22×22 red-badge styles onto the title text spans. Tightened the selector to `:first-child` so only the numeric badge gets the badge styles.
-- `docs/index.html`: `CLAUDE.md 一键配置` section header was pinned to the left edge while every other section's header sat centered. The `#claude-config` section used inline `max-width: none` so its background stripe could span the viewport, which also stretched the inner section header to full width. Added `#claude-config .section-header { max-width: 1160px; margin: 0 auto }` to re-center the header without affecting the background stripe.
-- `docs/`: stale `openspec-pw vision-check` removed from CLI lists in `README.md` and `README.zh-CN.md` (the command was deleted from `src/index.ts`); `openspec-pw run <name>` added to the CLI list (was only mentioned in the Architecture section); `explore` added to the Architecture CLI tree; `doctor` description tightened.
-- `package.json`: `release` script now commits the `docs/index.html` badge update after `bump-docs.js` — previously it was just `git add`, never `git commit`, so the live page badge never advanced after release.
-- `.gitignore`: replaced `.github/` + bare `!.github/workflows/` with `.github/*` + `!.github/workflows/**` so workflow files are properly un-ignored; `.github/workflows/ci.yml` is now tracked.
+- `docs/index.html`: fixed the "1 安装步骤" badge selector leak.
+- `docs/index.html`: re-centered the `CLAUDE.md 一键配置` section header.
+- `docs/`: removed stale `vision-check`, added `run` and `explore` to CLI lists, tightened `doctor` description.
+- `package.json`: release now commits the badge update.
+- `.gitignore`: fixed workflow un-ignore rules so `.github/workflows/ci.yml` is tracked.
 
 ### Changed
 
-- `docs/index.html`: a11y + SEO pass — adjusted color tokens (`--accent #e85d04 → #9a3412`, `--muted #78716c → #57534e`, `--green #16a34a → #15803d`, `--accent-dark #c2410c → #7c2d12`, `--step6 #dc2626 → #b91c1c`; `.terminal-comment rgba(255,255,255,0.35) → #a8a8a8`; `.tag-*` inline colors updated) to fix 60+ color-contrast violations; wrapped page sections in `<main>...</main>`; added `docs/robots.txt` and `docs/llms.txt` (H1 + section format, llmstxt.org). **Lighthouse snapshot 90/100/80/50 → 100/100/100/100**.
-- `docs/index.html`: hero floating card changed from "Test Status" placeholder to a "Today's E2E" dashboard with 4 KPI lines (test cases / AI verified / Healer fixed / failures).
-- `docs/index.html`: quickstart terminal replaced 5-line comment block with the actual install + run command sequence (npm install → openspec init && openspec-pw init → playwright install → /opsx:e2e), with a `.terminal-divider` between sections.
-- `docs/index.html`: GitHub button gained the octocat SVG icon (16×16), balancing the primary "Quick Start" CTA next to it.
-- `docs/index.html`: spacing pass — `.hero-title` `line-height: 1.0 → 1.08`; `.stack-item` `gap 10 → 14px`, `padding 28 → 32px`; `.step-header` `margin-bottom 10 → 14px`; `.step-tags` `margin-top 10 → 14px`.
-- `docs/index.html`: synced the `动手前读 openspec/config.yaml` rule from `employee-standards.md` §0 into the webpage's CLAUDE.md one-click config template (both `CLAUDE_MD_ZH` and `CLAUDE_MD_EN`).
-- `.github/workflows/`: added `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'` to opt into Node 24 action runtime ahead of the 2026-06-16 Node 20 deprecation.
+- `docs/index.html`: a11y + SEO pass; Lighthouse 90/100/80/50 → 100/100/100/100.
+- `docs/index.html`: hero card replaced with a 4-KPI dashboard.
+- `docs/index.html`: quickstart terminal now shows the real install sequence.
+- `docs/index.html`: GitHub button gained the octocat icon.
+- `docs/index.html`: spacing pass.
+- `docs/index.html`: synced the `config.yaml` rule into the one-click template.
+- `.github/workflows/`: opted into Node 24 action runtime ahead of the Node 20 deprecation.
 
 ## [0.3.30] - 2026-06-04
 
@@ -1208,40 +1201,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.1] - 2026-04-12
 
 ### Added
-- `openspec-pw explore` command: parallel route exploration via N independent Chromium workers, each with its own browser context (no shared state). `--parallel <n>` sets worker count (default 4, max 16). `--dry-run` previews chunk assignment. Built-in auth redirect detection (compares final URL vs expected URL to flag protected routes), atomic write with backup, lock file to prevent concurrent runs, SIGINT/SIGTERM cleanup handlers.
-- CLI: `openspec-pw run --smoke` to run only smoke tests (`--grep @smoke`)
-- CLI: `openspec-pw run -w/--workers <n>` to control parallel worker count
-- CLI: `openspec-pw run --grep` combined with `--smoke` produces AND pattern (all regex chars escaped)
-- SKILL.md Step 4.5: Route Snapshot Hash — sitemap.xml hash to skip unchanged routes on re-runs
-- SKILL.md Step 6: Selector Caching — reuse Step 4 exploration selectors in test generation (~30-50 fewer navigations per 50-test suite)
-- playwright.config.ts: CI workers default raised to 4 (from 1)
+- `openspec-pw explore` command: parallel route exploration with isolated Chromium workers, auth redirect detection, atomic writes, lock file, and signal cleanup.
+- CLI: `openspec-pw run --smoke`, `-w/--workers <n>`, and `--grep` + `--smoke` AND pattern.
+- SKILL.md Step 4.5: route snapshot hash to skip unchanged routes on re-runs.
+- SKILL.md Step 6: selector caching reuses Step 4 exploration selectors.
+- playwright.config.ts: CI workers default raised to 4.
 
 ### Fixed
-- SKILL.md Step 4.2: removed broken `Promise.allSettled` + `$B` parallel approach (caused data pollution due to shared Chromium instance). Replaced with `openspec-pw explore` redirect.
-- `openspec-pw explore`: added auth redirect detection (prevents HTTP 200 + login page being reported as "ok"), atomic write with backup, lock file (30min TTL + stale-lock auto-detection), signal handlers, max workers cap.
-- `openspec-pw explore` lock file: stale locks (>30min) are auto-removed; process.alive check via `kill(pid, 0)` prevents false "already locked" errors from crashed processes.
-- `openspec-pw run`: `--grep` and `--smoke` now combine into AND pattern with full regex escaping (previously last flag won, silently dropping the other).
+- SKILL.md Step 4.2: replaced the broken shared-Chromium parallel approach with `openspec-pw explore`.
+- `openspec-pw explore`: added auth redirect detection, atomic write with backup, stale-lock cleanup, signal handlers, and a worker cap.
+- `openspec-pw run`: `--grep` and `--smoke` now combine into an AND pattern with full regex escaping.
 
 ### Performance
-- **Healer Phase 2**: batch diagnosis first (read specs + app-knowledge.md, no Playwright overhead), then apply ALL fixes + single `--workers=1` run for all Phase 2 tests as one combined grep. Eliminates N×M Playwright startups where N=failures, M=heal attempts. Estimated ~15-20s saved per eliminated startup.
-- **Healer Phase 2**: `--workers=1` sequential isolated execution eliminates data races from shared Playwright state (previously parallel workers polluted each other's state causing cascading failures).
-- **Parallel exploration**: 4 workers default (up to 16) — each worker launches independent Chromium, true parallelism vs sequential single-process. Estimated exploration time reduced by ~3-4x.
+- **Healer Phase 2**: batch diagnosis then one combined `--workers=1` run, eliminating per-failure Playwright startups.
+- **Healer Phase 2**: sequential isolated execution removes shared-state races.
+- **Parallel exploration**: 4 workers by default (up to 16), roughly 3–4x faster exploration.
 
 ## [0.3.0] - 2026-04-12
 
 ### Changed
-- `employee-standards.md`: complete rewrite — add 6-chapter structure (适用范围、浏览器操作约束、代码质量、上下文管理、大规模任务处理、工具限制与编辑安全) + 完整生产工作流（含步骤详解 + 反馈循环表）；4轮深度检查后 P0/P1 问题全部修复
+- `employee-standards.md`: complete rewrite with a 6-chapter structure and the full production workflow.
 
-- `SKILL.md` v2.24: Mock Data Rule 大幅扩展 — Frontend mocking 禁止（禁止 mock JS 变量/组件状态，否则隐藏真实集成问题）；API mocking 仅限 HTTP 层（`page.route()` 拦截，不能 mock 数据库/后端服务）；使用前必须用户授权（列 reason + endpoint + expected behavior）；业务计算类断言必须用 API 验证（余额、总数、折扣等）；移除 5 处模板路径引用（模板已通过 `openspec-pw init/update` 同步到项目本地）；test-plan.md 的 test case 如需 API mock 则标记 `⚠️ API Mock`
+- `SKILL.md` v2.24: expanded the Mock Data Rule — no frontend mocking, API mocking only at the HTTP layer with user authorization, and business assertions verified through the API.
 
-- `docs/index.html`: Hero 按钮布局修复 — `.hero-desc` 和 `.hero-actions` 同处 grid row 3 导致 margin-bottom:36 + margin-top:80 = 116px 间隙；改为 grid 行 4 分离；`employee-standards.md` Step 5 同步 CSS 审计步骤
+- `docs/index.html`: fixed the hero button layout gap.
 
-- `employee-standards.md`: Step 5 CSS 审计升级为两步式框架感知方法 — 1) 确定间距基准 → grep 提取值对比基准，列低于基准的项；2) 检查 margin hack（同一 grid/flex 容器中相邻元素 margin 和 > 基准 2 倍 → 改为 grid 行或 gap 控制）；移除写死的阈值数字；描述精简（14 行→7 行）
+- `employee-standards.md`: Step 5 CSS audit upgraded to a two-step framework-aware method with no hard-coded thresholds.
 
 ## [0.2.9] - 2026-04-10
 
 ### Changed
-- `SKILL.md` v2.22: Phase 2 Step 5 selector repair — split into 5a Extract (structured candidate list with stability ranking: Stable/Fair/Fragile, project-specific upgrade via Common Selector Patterns) and 5b Select (top candidate with reason); Selector Fixes log adds date field; add "Before Phase 1 — check accumulated knowledge" step to leverage app-knowledge.md Selector Fixes table for known fixes (closes the learning loop); add file-missing guard
+- `SKILL.md` v2.22: Phase 2 Step 5 selector repair split into 5a Extract (stability-ranked candidates) and 5b Select; selector-fix log gains a date field and a known-fix lookup step.
 
 ## [0.2.8] - 2026-04-10
 
