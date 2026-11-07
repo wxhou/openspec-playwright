@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.112] - 2026-11-07
 - **fix(standards): §1 必做清理**. 删除 gate 异常的 import 旁路；「无须买断」改为「无须额外论证」；两处「2 轮」标注 lint/typecheck 与任务验证范围。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`CHANGELOG.md`
 - **fix(standards): 澄清四处高影响规则**. 竞态条件改为「四项都不存在」；try 控制流改为「捕获驱动控制流」；就地消化补明「上述两种」与「最外层/入口」；盲点改为「确实存在」。
