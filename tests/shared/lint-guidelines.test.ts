@@ -70,6 +70,7 @@ describe("lint-guidelines checklist data ↔ template pairing", () => {
       "B904",
       "D100",
       "D101",
+      "D102",
       "D103",
       "jsdoc/require-jsdoc",
     ]);

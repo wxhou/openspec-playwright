@@ -42,7 +42,8 @@ const ZH_ANCHORS: [string, string][] = [
   ["§1 停下先写假设", "共同依赖的假设"],
   ["§1 无 linter 自查", "每次编辑后对改动自查"],
   ["§1 注释纪律自检", "删掉这句，读者会不会调用错或改错"],
-  ["§1 公共接口文档注释", "公共接口写一句用途"],
+  ["§1 公共接口文档注释", "公共接口必须写一句用途"],
+  ["§1 lint 清单未装跳过", "未安装或该语言无对应规则"],
   ["§1 机制标注豁免", "机制标注（lint/类型抑制"],
   ["§1 spec 锚豁免", "spec 锚"],
   ["§1 UI 文案克制", "界面不写冗余"],
@@ -121,7 +122,8 @@ const EN_ANCHORS: [string, string][] = [
   ["§1 name the shared assumption", "the assumption every attempt relied on"],
   ["§1 no-linter self-check", "self-check the changes after every edit"],
   ["§1 comment self-check scope", "if deleting this line would not make a reader"],
-  ["§1 public API doc comments", "public interface gets one purpose line"],
+  ["§1 public API doc comments", "public interface must carry one purpose line"],
+  ["§1 lint checklist skip guard", "if it is not installed, or the language has no matching rule"],
   ["§1 mechanism-marking exemption", "Mechanism markings (lint/type suppression"],
   ["§1 spec anchor exemption", "spec anchors"],
   ["§1 UI copy restraint", "redundant secondary labels"],
@@ -187,8 +189,8 @@ const EN_ANCHORS: [string, string][] = [
   ["§0 experience-distillation carrier", "carrier the tooling does not own"],
 ];
 
-// The catch clause carries seven sub-bullets. The mirrors must hold the same
-// seven in the same order — a standards change that adds, drops or reorders one
+// The catch clause carries eight sub-bullets. The mirrors must hold the same
+// eight in the same order — a standards change that adds, drops or reorders one
 // has to update both mirrors and this list. A single phrase anchor cannot catch
 // that drift: the EN mistranslation in 0.3.106 shipped through one.
 const CATCH_SUB_BULLETS_ZH = [

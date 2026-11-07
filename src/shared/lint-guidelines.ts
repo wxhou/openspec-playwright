@@ -111,6 +111,13 @@ export const LINT_GUIDELINE_RULES: LintRuleEntry[] = [
     scope: "opt-in via extend-select of the rule id; the docstring's content is not checked",
   },
   {
+    id: "D102",
+    tool: "ruff",
+    semantics: "public method without a docstring",
+    defaultOn: false,
+    scope: "opt-in via extend-select of the rule id; underscore-prefixed names are exempt",
+  },
+  {
     id: "D103",
     tool: "ruff",
     semantics: "public function without a docstring",
@@ -120,9 +127,9 @@ export const LINT_GUIDELINE_RULES: LintRuleEntry[] = [
   {
     id: "jsdoc/require-jsdoc",
     tool: "ESLint",
-    semantics: "exported function or class without a JSDoc block",
+    semantics: "function declaration without a JSDoc block",
     defaultOn: false,
-    scope: "needs eslint-plugin-jsdoc (not part of `@eslint/js`); content rules are separate rules",
+    scope: "needs eslint-plugin-jsdoc registered (not part of `@eslint/js`); default require checks FunctionDeclaration only; classes, methods and arrow functions are opt-in; use publicOnly/contexts to scope to exports; content rules are separate rules",
   },
   {
     id: "C0114",

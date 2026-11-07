@@ -1,6 +1,6 @@
 # Lint Guidelines — Swallowed Errors & Docstrings
 
-<!-- openspec-pw: lint-guidelines 17bb1022 -->
+<!-- openspec-pw: lint-guidelines bbd925a6 -->
 
 Machine reference for two employee-standards clauses (§1 捕获/吞错: "a caught exception must never vanish silently — the failure must be visible, any one exit"; §1 注释纪律: 公共接口的文档注释). Maintained by openspec-pw; refresh with `npx openspec-pw update`.
 
@@ -26,36 +26,41 @@ Measures verified against: ruff 0.17.1 rule metadata (2026-10), pylint upstream 
 | --- | --- | --- | --- | --- |
 | `D100` | ruff (pydocstyle) | public module without a docstring | **off by default** — opt in | presence only — whether the docstring states the right contract is judged by the clause |
 | `D101` | ruff (pydocstyle) | public class without a docstring | **off by default** | presence only |
+| `D102` | ruff (pydocstyle) | public method without a docstring | **off by default** — opt in | presence only; underscore-prefixed names are exempt |
 | `D103` | ruff (pydocstyle) | public function without a docstring | **off by default** | presence only; underscore-prefixed names are exempt |
-| `jsdoc/require-jsdoc` | ESLint (`eslint-plugin-jsdoc`) | exported function or class without a JSDoc block | **off by default** — needs the plugin | the plugin is not part of `@eslint/js`; content rules (`jsdoc/require-param` etc.) are separate rules |
+| `jsdoc/require-jsdoc` | ESLint (`eslint-plugin-jsdoc`) | function declaration without a JSDoc block | **off by default** — needs the plugin | default `require` checks `FunctionDeclaration` only; classes, methods and arrow functions are opt-in; use `publicOnly`/`contexts` to scope to exports; content rules (`jsdoc/require-param` etc.) are separate rules |
 | `C0114` | pylint | missing-module-docstring | on by default | pylint's default set; disabled only by project config |
 | `C0115` | pylint | missing-class-docstring | on by default | pylint's default set; disabled only by project config |
 | `C0116` | pylint | missing-function-docstring | on by default | pylint's default set; disabled only by project config |
 
 ## Enabling what is missing
 
-Off-by-default rules above: **`B904`** (dropped-causality on `raise ... from` inside a handler) and the docstring family (`D100`/`D101`/`D103`, `jsdoc/require-jsdoc`).
+Off-by-default rules above: **`B904`** (dropped-causality on `raise ... from` inside a handler) and the docstring family (`D100`/`D101`/`D102`/`D103`, `jsdoc/require-jsdoc`).
 
 In `pyproject.toml`:
 
 ```toml
 [tool.ruff.lint]
-extend-select = ["B904", "D100", "D101", "D103"]
+extend-select = ["B904", "D100", "D101", "D102", "D103"]
 ```
 
 In a dedicated `ruff.toml` / `.ruff.toml` (the `tool.ruff` prefix is dropped):
 
 ```toml
 [lint]
-extend-select = ["B904", "D100", "D101", "D103"]
+extend-select = ["B904", "D100", "D101", "D102", "D103"]
 ```
 
-(`select = ["B"]` or `["ALL"]` covers it too, and `extend-select = ["D"]` covers the docstring trio — but the whole pydocstyle category also pulls in the mutually exclusive convention pairs (D203 vs D211, D212 vs D213), so naming the three ids is the quieter opt-in. The ruff swallow family — `E722`, `S110`, `S112`, `BLE001` — is already on by default; the pylint trio is on by default when pylint runs, and so are the pylint docstring checks `C0114`–`C0116`.)
+(`select = ["B"]` or `["ALL"]` covers it too, and `extend-select = ["D"]` covers the docstring family — but the whole pydocstyle category also pulls in the mutually exclusive convention pairs (D203 vs D211, D212 vs D213), so naming the four ids is the quieter opt-in. The ruff swallow family — `E722`, `S110`, `S112`, `BLE001` — is already on by default; the pylint trio is on by default when pylint runs, and so are the pylint docstring checks `C0114`–`C0116`.)
 
-For TS/JS, `no-empty` ships inside `@eslint/js`'s `recommended` config — a flat config that extends it already covers the shape. The JSDoc rules need the plugin installed:
+For TS/JS, `no-empty` ships inside `@eslint/js`'s `recommended` config — a flat config that extends it already covers the shape. The JSDoc rules need the plugin installed and registered:
 
-```json
-{ "rules": { "jsdoc/require-jsdoc": "error" } }
+```js
+import jsdoc from "eslint-plugin-jsdoc";
+
+export default [
+  { plugins: { jsdoc }, rules: { "jsdoc/require-jsdoc": "error" } },
+];
 ```
 
 ## Boundary of this checklist

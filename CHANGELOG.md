@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- **fix(standards): 修正 lint 清单与注释规则**. `jsdoc/require-jsdoc` 默认范围改准并补插件注册示例；补 `D102`；注释规则补 lint 跳过条件；三副本与测试锚点同步。
+  - `templates/lint-guidelines.md`、`src/shared/lint-guidelines.ts`、`employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`tests/shared/lint-guidelines.test.ts`、`CHANGELOG.md`
 - **refactor(standards): §3 任务审查与停止规则**. 审查按风险分级（2 轮，高风险独立）；门槛改多文件/架构；修复预算 2 轮、连续 3 轮无进展即停。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 - **fix(standards): §1 验证与注释纪律收口**. 验证重试改为「最多 2 轮修复」；注释纪律压缩为一段；恢复 `spec 锚` 豁免；删除悬空的「失效定义」引用。
@@ -14,9 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `templates/lint-guidelines.md`、`src/shared/lint-guidelines.ts`、`employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/shared/lint-guidelines.test.ts`、`tests/docs-sync.test.ts`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
 - **fix(standards): §2 工具规则收口**. 搜索规则补回代码索引降级路径；变更完成只报已验证盲点；等待后台任务时不发空调用。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
-- **refactor(standards): 测试规则收口**. UI 测试禁令并入无断言价值条；验收期望不得从实现反推；补异步吞错与网络超时。
+- **refactor(standards): 测试规则收口**. UI 测试禁令并入无断言价值条；验收期望不得从实现反推；补异步吞错与网络超时；删具体值断言条。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
-- **refactor(standards): 压缩 WHY 行与重复子句**. 删 §5 超 24 小时条；补规模门槛例外与「不同失败分别计」。
+- **refactor(standards): 压缩 WHY 行与重复子句**. 删 §5 超 24 小时条、§6 连跑两次、§7 哈希查找/CPU 分片；补规模门槛例外与「不同失败分别计」。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 
 ## [0.3.110] - 2026-10-29
