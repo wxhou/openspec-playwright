@@ -7,6 +7,7 @@ export interface BaseExecOptions {
     windowsHide?: boolean;
 }
 export interface ExecOptions extends BaseExecOptions {
+    /** `"pipe"` captures stdout/stderr; stdin is ignored. */
     stdio?: "pipe" | "ignore" | "inherit";
 }
 export interface ExecSyncOptions extends BaseExecOptions {

@@ -47,6 +47,16 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Windows update smoke
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path tmp/ci-update/openspec | Out-Null
+          Push-Location tmp/ci-update
+          npm init -y | Out-Null
+          node ../../dist/index.js update --no-cli
+          Pop-Location
+
       # npm audit calls the registry's security endpoint, which has been
       # flaky (400/503) and is not a code-quality gate — a registry outage
       # must not fail CI. Runs once on a single matrix leg (the dependency

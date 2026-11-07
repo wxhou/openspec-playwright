@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 - **fix(windows): 外部命令改用 cross-spawn**. 移除 `needsShell` 与 `shell: true` 参数数组用法，统一走 `src/shared/exec.ts`；npm/npx/claude/git 等调用不再触发 Node DEP0190。
   - `package.json`、`package-lock.json`、`src/shared/exec.ts`、`src/shared/platform.ts`（删除）、`src/commands/*.ts`、`src/shared/*.ts`、测试、`CHANGELOG.md`
+- **fix(exec): 异步包装器忽略 stdin**. 避免 `stdio: "pipe"` 留下 stdin 管道导致读取 stdin 的命令挂起；新增 Windows 真实 npm/npx 集成测试与 CI `update --no-cli` smoke。
+  - `src/shared/exec.ts`、`tests/shared/exec-windows.test.ts`、`.github/workflows/ci.yml`、`CHANGELOG.md`
 
 ## [0.3.112] - 2026-11-07
 - **fix(standards): §1 必做清理**. 删除 gate 异常的 import 旁路；「无须买断」改为「无须额外论证」；两处「2 轮」标注 lint/typecheck 与任务验证范围。

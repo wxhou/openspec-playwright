@@ -146,6 +146,11 @@ describe("shared/exec", () => {
       }),
     );
     expect(mocks.spawn.mock.calls[0][2]).not.toHaveProperty("shell", true);
+    expect(mocks.spawn.mock.calls[0][2]).toHaveProperty("stdio", [
+      "ignore",
+      "pipe",
+      "pipe",
+    ]);
   });
 
   it("execFileAsync rejects on a non-zero status", async () => {

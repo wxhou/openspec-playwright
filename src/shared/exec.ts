@@ -11,6 +11,7 @@ export interface BaseExecOptions {
 }
 
 export interface ExecOptions extends BaseExecOptions {
+  /** `"pipe"` captures stdout/stderr; stdin is ignored. */
   stdio?: "pipe" | "ignore" | "inherit";
 }
 
@@ -89,7 +90,8 @@ export async function execFileAsync(
     env,
     timeout,
     windowsHide,
-    stdio,
+    // Keep stdin ignored: an open pipe makes stdin-reading commands hang.
+    stdio: capture ? ["ignore", "pipe", "pipe"] : stdio,
   } as unknown as SpawnOptions);
 
   let stdout = "";

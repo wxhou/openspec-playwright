@@ -26,7 +26,8 @@ export async function execFileAsync(file, args, options = {}) {
         env,
         timeout,
         windowsHide,
-        stdio,
+        // Keep stdin ignored: an open pipe makes stdin-reading commands hang.
+        stdio: capture ? ["ignore", "pipe", "pipe"] : stdio,
     });
     let stdout = "";
     let stderr = "";
