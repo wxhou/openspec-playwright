@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+- **fix(templates): 模板改用 type-only import，补模板 typecheck**. BasePage/seed/e2e-test 改 `type` 导入；BasePage 头部标明工具所有；新增 `tsconfig.templates.json` 与 CI 检查。
+  - `templates/pages/BasePage.ts`、`templates/seed.spec.ts`、`templates/e2e-test.ts`、`tsconfig.templates.json`、`package.json`、`.github/workflows/ci.yml`、`CHANGELOG.md`
+
 ## [0.3.111] - 2026-11-07
 - **fix(lint-guidelines): 校正 E722/BLE001 边界与 jsdoc 默认说明**. E722 改为 bare handlers；BLE001 补 re-raised 豁免；jsdoc 标注 ESLint core 默认关闭、插件 recommended 会开启。
   - `templates/lint-guidelines.md`、`src/shared/lint-guidelines.ts`、`CHANGELOG.md`

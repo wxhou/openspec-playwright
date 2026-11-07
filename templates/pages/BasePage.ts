@@ -1,8 +1,8 @@
 // BasePage — shared navigation and selector utilities for all page objects
-// Extends this class in tests/playwright/pages/<PageName>.ts to build page objects
-// Customize: add page-specific selectors as getters or methods
+// Tool-owned: `openspec-pw update` overwrites this file; do not edit it here.
+// Extend this class in tests/playwright/pages/<PageName>.ts and add page-specific selectors there.
 
-import { Page, Locator, expect } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 const BASE_URL = process.env.BASE_URL;
 

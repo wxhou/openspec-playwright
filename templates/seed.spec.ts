@@ -2,7 +2,7 @@
 // Copy this to tests/playwright/seed.spec.ts after running openspec-pw init
 // Customize the page object and base URL for your application
 
-import { test, expect, Page, ConsoleMessage } from '@playwright/test';
+import { test, expect, type Page, type ConsoleMessage } from '@playwright/test';
 import { existsSync } from 'fs';
 import { BasePage } from './pages/BasePage';
 

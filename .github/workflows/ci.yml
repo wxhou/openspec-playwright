@@ -40,6 +40,10 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
+      - name: Type check templates
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '22'
+        run: npm run typecheck:templates
+
       - name: Build
         run: npm run build
 
