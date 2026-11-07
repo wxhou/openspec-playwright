@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `package.json`、`package-lock.json`、`src/shared/exec.ts`、`src/shared/platform.ts`（删除）、`src/commands/*.ts`、`src/shared/*.ts`、测试、`CHANGELOG.md`
 - **fix(exec): 异步包装器忽略 stdin**. 避免 `stdio: "pipe"` 留下 stdin 管道导致读取 stdin 的命令挂起；新增 Windows 真实 npm/npx 集成测试与 CI `update --no-cli` smoke。
   - `src/shared/exec.ts`、`tests/shared/exec-windows.test.ts`、`.github/workflows/ci.yml`、`CHANGELOG.md`
+- **fix(exec): 超时与 maxBuffer 超限立即终止**. 包装器自行计时，超时立即 kill 并销毁 stdout/stderr；输出超限时移除监听并销毁流，避免后代进程持管道导致挂起或内存累积。
+  - `src/shared/exec.ts`、`tests/shared/exec.test.ts`、`CHANGELOG.md`
+- **fix(cli): 版本提示改写到 stderr**. `--json` 命令的 stdout 不再混入升级提示；Windows CI smoke 改为断言 `update` 的 npm-pack 成功路径。
+  - `src/shared/version-check.ts`、`tests/shared/version-check.test.ts`、`.github/workflows/ci.yml`、`CHANGELOG.md`
 
 ## [0.3.112] - 2026-11-07
 - **fix(standards): §1 必做清理**. 删除 gate 异常的 import 旁路；「无须买断」改为「无须额外论证」；两处「2 轮」标注 lint/typecheck 与任务验证范围。

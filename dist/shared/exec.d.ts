@@ -2,6 +2,7 @@ export interface BaseExecOptions {
     cwd?: string;
     env?: NodeJS.ProcessEnv;
     encoding?: BufferEncoding;
+    /** Milliseconds before the command is terminated. */
     timeout?: number;
     maxBuffer?: number;
     windowsHide?: boolean;
@@ -29,6 +30,9 @@ export interface SpawnSyncResult<T = Buffer> {
 /**
  * Run a command without a shell. Cross-spawn resolves Windows `.cmd` shims
  * through `cmd.exe` with its own escaping, so argument arrays stay safe.
+ *
+ * `timeout` is enforced here rather than by the spawned child: a descendant
+ * holding the stdio pipes can delay `close` indefinitely.
  */
 export declare function execFileAsync(file: string, args: readonly string[], options?: ExecOptions): Promise<ExecResult>;
 export declare function execFileSync(file: string, args: readonly string[], options: ExecSyncOptions & {

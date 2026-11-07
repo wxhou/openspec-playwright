@@ -71,8 +71,8 @@ export async function checkForUpdate(currentVersion) {
     }
     if (!latest || compareVersions(latest, currentVersion) <= 0)
         return;
-    // Newer version available
-    console.log(chalk.gray(`\n💡 A new version of openspec-pw is available: ${currentVersion} → ${latest}`));
-    console.log(chalk.gray("   Run: npm install -g openspec-playwright@latest"));
+    // Write to stderr so --json stdout stays machine-readable.
+    console.error(chalk.gray(`\n💡 A new version of openspec-pw is available: ${currentVersion} → ${latest}`));
+    console.error(chalk.gray("   Run: npm install -g openspec-playwright@latest"));
 }
 //# sourceMappingURL=version-check.js.map

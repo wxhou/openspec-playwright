@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 import { readFileSync, readdirSync } from "node:fs";
@@ -34,6 +34,10 @@ function fakeChild() {
 beforeEach(() => {
   mocks.spawn.mockReset();
   mocks.sync.mockReset();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("shared/exec", () => {
@@ -141,10 +145,10 @@ describe("shared/exec", () => {
       expect.objectContaining({
         windowsHide: true,
         cwd: "/tmp/work",
-        timeout: 1234,
         env: { OSPW_TEST: "1" },
       }),
     );
+    expect(mocks.spawn.mock.calls[0][2]).not.toHaveProperty("timeout");
     expect(mocks.spawn.mock.calls[0][2]).not.toHaveProperty("shell", true);
     expect(mocks.spawn.mock.calls[0][2]).toHaveProperty("stdio", [
       "ignore",
@@ -162,6 +166,63 @@ describe("shared/exec", () => {
     child.emit("close", 1, null);
 
     await expect(promise).rejects.toMatchObject({ status: 1, stderr: "boom" });
+  });
+
+  it("execFileAsync enforces its own timeout", async () => {
+    vi.useFakeTimers();
+    const child = fakeChild();
+    mocks.spawn.mockReturnValue(child);
+
+    const promise = execFileAsync("npm", ["install"], { timeout: 100 });
+    const assertion = expect(promise).rejects.toMatchObject({
+      code: "ETIMEDOUT",
+      killed: true,
+      signal: "SIGTERM",
+    });
+
+    await vi.advanceTimersByTimeAsync(100);
+    await assertion;
+    expect(child.kill).toHaveBeenCalledTimes(1);
+    expect(child.stdout.destroyed).toBe(true);
+    expect(child.stderr.destroyed).toBe(true);
+    expect(child.stdout.listenerCount("data")).toBe(0);
+    expect(child.stderr.listenerCount("data")).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("execFileAsync clears the timeout after a normal close", async () => {
+    vi.useFakeTimers();
+    const child = fakeChild();
+    mocks.spawn.mockReturnValue(child);
+
+    const promise = execFileAsync("npm", ["--version"], { timeout: 100 });
+    child.emit("close", 0, null);
+
+    await expect(promise).resolves.toEqual({ stdout: "", stderr: "" });
+    expect(vi.getTimerCount()).toBe(0);
+    await vi.advanceTimersByTimeAsync(200);
+    expect(child.kill).not.toHaveBeenCalled();
+  });
+
+  it("execFileAsync rejects and cleans up when maxBuffer is exceeded", async () => {
+    const child = fakeChild();
+    mocks.spawn.mockReturnValue(child);
+
+    const promise = execFileAsync("npm", ["install"], { maxBuffer: 5 });
+    const assertion = expect(promise).rejects.toMatchObject({
+      code: "ERR_CHILD_PROCESS_STDIO_MAXBUFFER",
+      killed: true,
+      stdout: "abc",
+    });
+
+    child.stdout.emit("data", "abc");
+    child.stdout.emit("data", "456");
+    await assertion;
+    expect(child.kill).toHaveBeenCalledTimes(1);
+    expect(child.stdout.destroyed).toBe(true);
+    expect(child.stderr.destroyed).toBe(true);
+    expect(child.stdout.listenerCount("data")).toBe(0);
+    expect(child.stderr.listenerCount("data")).toBe(0);
   });
 
   it("no source file uses shell: true or needsShell", () => {

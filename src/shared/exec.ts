@@ -5,6 +5,7 @@ export interface BaseExecOptions {
   cwd?: string;
   env?: NodeJS.ProcessEnv;
   encoding?: BufferEncoding;
+  /** Milliseconds before the command is terminated. */
   timeout?: number;
   maxBuffer?: number;
   windowsHide?: boolean;
@@ -68,6 +69,9 @@ function makeExecError(
 /**
  * Run a command without a shell. Cross-spawn resolves Windows `.cmd` shims
  * through `cmd.exe` with its own escaping, so argument arrays stay safe.
+ *
+ * `timeout` is enforced here rather than by the spawned child: a descendant
+ * holding the stdio pipes can delay `close` indefinitely.
  */
 export async function execFileAsync(
   file: string,
@@ -88,7 +92,6 @@ export async function execFileAsync(
   const child = crossSpawn(file, args, {
     cwd,
     env,
-    timeout,
     windowsHide,
     // Keep stdin ignored: an open pipe makes stdin-reading commands hang.
     stdio: capture ? ["ignore", "pipe", "pipe"] : stdio,
@@ -99,52 +102,126 @@ export async function execFileAsync(
   let stdoutBytes = 0;
   let stderrBytes = 0;
   let settled = false;
+  let timer: NodeJS.Timeout | undefined;
 
   return new Promise<ExecResult>((resolve, reject) => {
-    const fail = (error: Error) => {
-      if (settled) return;
-      settled = true;
-      reject(error);
-    };
-    const succeed = () => {
-      if (settled) return;
-      settled = true;
-      resolve({ stdout, stderr });
-    };
-    const overflow = () => {
-      if (settled) return;
-      settled = true;
+    const stdoutStream = child.stdout;
+    const stderrStream = child.stderr;
+
+    function cleanup(): void {
+      if (timer) {
+        clearTimeout(timer);
+        timer = undefined;
+      }
+      stdoutStream?.off("data", onStdout);
+      stderrStream?.off("data", onStderr);
+    }
+
+    function terminate(): void {
       child.kill();
+      stdoutStream?.destroy();
+      stderrStream?.destroy();
+      (child as { unref?: () => void }).unref?.();
+    }
+
+    function fail(error: Error): void {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(error);
+    }
+
+    function succeed(): void {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve({ stdout, stderr });
+    }
+
+    function overflow(): void {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      terminate();
       reject(
         Object.assign(
           new Error(
             `Command output exceeded maxBuffer: ${commandLabel(file, args)}`,
           ),
-          { code: "ERR_CHILD_PROCESS_STDIO_MAXBUFFER", stdout, stderr },
+          {
+            code: "ERR_CHILD_PROCESS_STDIO_MAXBUFFER",
+            killed: true,
+            signal: "SIGTERM",
+            stdout,
+            stderr,
+          },
         ),
       );
-    };
+    }
+
+    function onTimeout(): void {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      terminate();
+      reject(
+        Object.assign(
+          new Error(
+            `Command timed out after ${timeout}ms: ${commandLabel(file, args)}`,
+          ),
+          {
+            code: "ETIMEDOUT",
+            killed: true,
+            signal: "SIGTERM",
+            stdout,
+            stderr,
+          },
+        ),
+      );
+    }
+
+    function onStdout(chunk: string): void {
+      const bytes = Buffer.byteLength(chunk, encoding);
+      if (stdoutBytes + bytes > maxBuffer) {
+        overflow();
+        return;
+      }
+      stdout += chunk;
+      stdoutBytes += bytes;
+    }
+
+    function onStderr(chunk: string): void {
+      const bytes = Buffer.byteLength(chunk, encoding);
+      if (stderrBytes + bytes > maxBuffer) {
+        overflow();
+        return;
+      }
+      stderr += chunk;
+      stderrBytes += bytes;
+    }
+
+    function onClose(
+      status: number | null,
+      signal: NodeJS.Signals | null,
+    ): void {
+      if (settled) return;
+      if (status === 0) succeed();
+      else fail(makeExecError(file, args, status, signal, stdout, stderr));
+    }
 
     if (capture) {
-      child.stdout?.setEncoding(encoding);
-      child.stderr?.setEncoding(encoding);
-      child.stdout?.on("data", (chunk: string) => {
-        stdout += chunk;
-        stdoutBytes += Buffer.byteLength(chunk, encoding);
-        if (stdoutBytes > maxBuffer) overflow();
-      });
-      child.stderr?.on("data", (chunk: string) => {
-        stderr += chunk;
-        stderrBytes += Buffer.byteLength(chunk, encoding);
-        if (stderrBytes > maxBuffer) overflow();
-      });
+      stdoutStream?.setEncoding(encoding);
+      stderrStream?.setEncoding(encoding);
+      stdoutStream?.on("data", onStdout);
+      stderrStream?.on("data", onStderr);
     }
 
     child.on("error", fail);
-    child.on("close", (status, signal) => {
-      if (status === 0) succeed();
-      else fail(makeExecError(file, args, status, signal, stdout, stderr));
-    });
+    child.on("close", onClose);
+
+    if (timeout !== undefined && timeout > 0) {
+      timer = setTimeout(onTimeout, timeout);
+    }
   });
 }
 

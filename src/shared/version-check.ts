@@ -82,13 +82,13 @@ export async function checkForUpdate(currentVersion: string): Promise<void> {
 
   if (!latest || compareVersions(latest, currentVersion) <= 0) return;
 
-  // Newer version available
-  console.log(
+  // Write to stderr so --json stdout stays machine-readable.
+  console.error(
     chalk.gray(
       `\n💡 A new version of openspec-pw is available: ${currentVersion} → ${latest}`,
     ),
   );
-  console.log(
+  console.error(
     chalk.gray("   Run: npm install -g openspec-playwright@latest"),
   );
 }
