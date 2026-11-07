@@ -40,4 +40,16 @@ windowsOnly("shared/exec on Windows", () => {
     expect(result.status).toBe(0);
     expect(String(result.stdout)).toMatch(/^\d+\.\d+\.\d+/);
   });
+
+  it("runs npm.cmd with inherited stdio", async () => {
+    await expect(
+      execFileAsync("npm", ["--version"], { stdio: "inherit" }),
+    ).resolves.toEqual({ stdout: "", stderr: "" });
+  });
+
+  it("runs npm.cmd with inherited stdio synchronously", () => {
+    expect(() =>
+      execFileSync("npm", ["--version"], { stdio: "inherit" }),
+    ).not.toThrow();
+  });
 });
