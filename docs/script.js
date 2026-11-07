@@ -14,13 +14,13 @@ const CLAUDE_MD_ZH = `# 项目规范
 ## 代码质量
 - 🔴 **lint+typecheck 每次编辑后自动执行，通过才算成功**
   - 按本次编辑涉及的文件类型选对应 linter 与 type checker（可多语言并存）；项目 lint 脚本未覆盖该路径时，直接对改动文件跑对应 linter
-  - lint 失败时对本次触及的文件运行对应 linter 的 auto-fix（如 \`npm run lint:fix\`、\`eslint --fix\`、\`ruff check --fix\`）；修复循环最多 2 轮，仍失败即停
-- 🟡 gate 异常不造假：linter/typechecker 不存在（如该栈适用）→ 告知用户并建议安装，装上之前每次编辑后对改动自查并在响应中注明结果，重点：import 顶置纪律见工具节；检查未运行 → 标注「未运行」；仍失败 → 完整输出错误日志并停止
+  - lint 失败时对本次触及的文件运行对应 linter 的 auto-fix（如 \`npm run lint:fix\`、\`eslint --fix\`、\`ruff check --fix\`）；lint/typecheck 修复循环最多 2 轮，仍失败即停
+- 🟡 gate 异常不造假：linter/typechecker 不存在（如该栈适用）→ 告知用户并建议安装，装上之前每次编辑后对改动自查并在响应中注明结果；检查未运行 → 标注「未运行」；装上后仍失败 → 完整输出错误日志并停止
 - 🟡 关键假设（外部数据源/接口、环境可运行、依赖版本、已装依赖能力）动手前逐条验证——断言现成依赖缺少某能力、或准备自行实现该能力前，先查其文档、类型定义或已装源码（按已装版本）；无法确认 → 不自行实现，先提问；其余理解不清或有可见风险 → 先提问再执行。更简单方案提出并坚持——用户已否决 → 按用户方案执行，不再重提
-- 🟡 多步任务每步带验证，循环验证直到成功（同一验证最多 2 轮修复，仍失败 → 记录失败并停，停前用一句话写出各次尝试共同依赖的假设，改掉该假设之前不再重试）
+- 🟡 多步任务每步带验证，循环验证直到成功（任务验证的同一检查最多 2 轮修复，仍失败 → 记录失败并停，停前用一句话写出各次尝试共同依赖的假设，改掉该假设之前不再重试）
 - 🟡 只写被要求的：不加用户未要求的扩展点（"灵活"/"可配置"之类，不限词面）、单次使用抽象，不主动为想象中的场景写防御
-- 🟡 疑似竞态或信任边界的极端情况，若无复现、事故记录、项目威胁模型或合规要求 → 先说明再动手：给出失败模式、量级依据、复杂度代价；未获同意或用户不可达 → 不加并报告
-  - 基线安全实践（参数化查询、输出编码、CSRF 防护）本就应存在，无须买断；例外与去留按「简化有边界」，架构方向按「大规模任务」节
+- 🟡 疑似竞态，或处于信任边界的极端情况，若复现、事故记录、项目威胁模型、合规要求四项都不存在 → 先说明再动手：给出失败模式、量级依据、复杂度代价；未获同意或用户不可达 → 不加并报告
+  - 基线安全实践（参数化查询、输出编码、CSRF 防护）本就应存在，无须额外论证；例外按「简化有边界」处理，架构方向按「大规模任务」节
 - 新增或改写的界面不写冗余文案：只保留用户明确要求或信息/操作必需的部分——不写用户未要求的介绍性/营销性文案（次级标签、副标题、逐项说明、slogan 等）；改动范围内任何文案删后信息/操作仍完整即冗余，删（用户明确要求的除外）；能用既有布局/层级消解的不加文案，不为省文案新增或重排布局元素（信息/操作必需文本与无障碍基础除外）
 - 🟡 简化有边界，永不简化掉：信任边界的输入校验、防数据丢失的错误处理、安全措施、无障碍基础、用户明确要求的东西；刻意砍角且有已知天花板的简化（全局锁、O(n²) 扫描、朴素启发式）用 \`debt:\` 注释标明天花板和升级路径——debt 只属性能取舍，不豁免性能节已标 🔴 的无界类禁令与正确性/安全措施
 - 🔴 过时的直接删（过时=因本次改动而不再被引用或不再为真）：删除/修改时不留兼容层/迁移/fallback（仅限本次触及的范围）；与「保持既有测试通过」冲突时按测试红的分类分流
@@ -35,16 +35,12 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🟡 可变状态先分离再串行化：不需要共享的各持一份；必须共享的收窄到单一写入口（单线程 / 队列 / 锁），其余只读
 
 ## 代码质量 · 禁止项与要求
-- 🔴 不假设外部输入可信：信任边界上的数据/响应/异步结果先校验（类型/范围/null/空/边界，数值含精度）再使用；资源用后必须释放；可预判的失败不裹 try 当控制流——预判守卫或取默认 API（如 \`dict.get\`、\`next(it, None)\`）先行，但守卫只能把失败变成显式的拒绝或默认值，不能让它静默消失；根因在别处时修根因，不在调用点拦住这一例
-- 🔴 默认上抛：错误要么上抛，要么在能改变结局的地方处理一次，其余不碰
-  - 上抛（默认出口）：不要为了再抛而 catch，让异常自然上行（Go 直接 \`return err\`）；要加信息才捕获并带因（\`raise … from e\` / \`{cause: e}\` / \`%w\`），新建错误不带因=丢因果
-  - 就地消化（仅两种）：改变控制流——重试（写操作须先满足幂等条）、跳过该步骤及其依赖或以替代值前行；catch-all 隔离点——批量循环顶/事件分发/进程顶等不影响其余输入与状态的边界。两处都记录 + 行内原因
-  - 同一错误只处理一次：记录后又原样上抛=重复处理（调用方再记一次，顶层只剩无上下文的原始错误）——要记就记在终点，要传播就带上原因
-  - 降级继续（仅窄类型 catch，记 debug/warning + 行内原因）只限可承受步骤（如清理、幂等二次释放）：失败结果不被下游消费且不留不一致状态，否则直接上抛；无类型 catch 按错误类别（instanceof/错误码）分流，枚举不出就直接上抛
+- 🔴 不假设外部输入可信：信任边界上的数据/响应/异步结果先校验（类型/范围/null/空/边界，数值含精度）再使用；资源用后必须释放；可预判的失败不要用 try 捕获来驱动控制流——先用前置守卫，或改用带默认值的 API（如 \`dict.get\`、\`next(it, None)\`），但守卫只能把失败变成显式的拒绝或默认值，不能让它静默消失；根因在别处时修根因，不在调用点拦住这一例
+- 🔴 默认上抛：错误默认向上抛。只有处理能改变结果时，才捕获并处理一次；其余不捕获。
+  - 上抛（默认出口）：不要为了再抛而 catch，让异常自然上行（Go 直接 \`return err\`）；要加信息才捕获并带因（\`raise … from e\` / \`{cause: e}\` / \`%w\`），新建错误不带因=丢因果；异步 Promise 未 await、未 catch 视同吞错；记录后又原样上抛=重复处理——要记就记在终点
+  - 就地消化（仅两种）：改变控制流——重试（写操作须先满足幂等条）、跳过该步骤及其依赖或以替代值前行；catch-all 隔离点——批量循环的最外层 / 事件分发处 / 进程入口等不影响其余输入与状态的边界。上述两种消化方式都记录 + 行内原因；降级继续只限窄类型 catch（记 debug/warning + 行内原因；如清理、幂等二次释放），且失败不被下游消费、不留不一致状态，否则直接上抛；无类型 catch 按错误类别（instanceof/错误码）分流，枚举不出就直接上抛，不凭印象写错误类或错误码
   - try 块只包可能失败的那一句（块越大会吞掉无关异常）；清理放 finally / defer
-  - 兜底返回不算出口：宽 catch 兜底（\`except Exception: return default\`、\`.catch(()=>null)\`）、空 catch / \`except: pass\` / \`_ = err\` / \`.catch(()=>{})\` 同判吞错（记录不构成豁免）；空 catch 里加注释不算处理，行为才算；行内原因不受注释纪律黑名单约束
-  - 异步路径同理：Promise 的错误必须处理或上抛——未 await、未 catch 的 Promise 视同吞错
-  - 参考：捕获/吞错规则的机器清单见根目录 \`lint-guidelines.md\`（未安装 → 跳过）
+  - 兜底返回不算出口：宽 catch 返回默认值/空值、空 catch 同判吞错（只记录或只加注释不构成豁免）；窄类型 catch + 显式失败值（调用方按契约消费）不算兜底。吞错形状见 \`lint-guidelines.md\`（未安装 → 跳过）；行内原因不受注释纪律黑名单约束
 - 不写只适配样例输入的逻辑、魔法数字（入常量；有确切依据才注原因）；路径/换行用语言内建跨平台 API（\`path.sep\`/\`path.join\`），比较前归一化 EOL
 - mock 数据/fixture → 参见数据编撰禁令
 
@@ -56,7 +52,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🟡 引用作依据的文件先通读再断言；未通读就下的结论显式标注低置信，不冒充已充分验证
 - 🟡 重命名/挪动覆盖：调用、类型、字符串、import（含 CJS require）、barrel file、测试 mock、文档与配置中的同名引用，不得假设一次覆盖；抽出/搬移到其他文件时其 import 随迁；静态模块级 import 一律置文件顶部——豁免仅限：循环依赖、可选依赖、按需加载、运行顺序依赖（如 django.setup()），例外须行内注明缘由
 - 🟡 编辑 → 重新读取确认 → lint+typecheck（含 auto-fix 循环）→ 仍失败则回退到编辑前内容，输出失败日志并明示已回退
-- 🟡 变更完成只报已验证的盲点（实际触及却未验证的部分，如没跑过 gate 的改动），不报猜测的风险清单
+- 🟡 变更完成只报确实存在的盲点（实际触及却未验证的部分，如没跑过 gate 的改动），不报猜测的风险清单
 - 🔴 禁止用经 shell 就地或重定向改写已有文件的命令（\`sed -i\`/awk/\`node -e\`/python -c/\`perl -pi\`/重定向等；不改文件内容的纯管道查询不计）改写项目内已有文件——源码/文档/测试/配置同算；确需批量改写，先征得用户同意
 - 🔴 破坏性/不可逆命令（\`git clean -fdx\`、\`git reset --hard\`、\`rm -rf\` 等）执行前声明影响范围并取得明确同意；本任务自有临时产物清理除外；「清理/重置」等宽泛指令不构成授权
 - 🟡 不主动推送，除非用户明确要求
@@ -137,13 +133,13 @@ const CLAUDE_MD_EN = `# Project Guidelines
 ## Code Quality
 - 🔴 **lint+typecheck runs after every edit, both must pass**
   - Pick the linter and type checker matching the file types touched by this edit (multiple may apply); when the project's lint script doesn't cover that path, run the matching linter directly on the changed files
-  - On lint failure, run the linter's auto-fix on touched files only (e.g. \`npm run lint:fix\`, \`eslint --fix\`, \`ruff check --fix\`); the fix loop runs at most 2 rounds — still failing, stop
-- 🟡 Gate anomalies are never faked: linter/typechecker missing (if applicable to the stack) → tell the user and suggest installing; until then, self-check the changes after every edit and note the result in the reply, focus: import discipline (see Tool Constraints); unexecuted checks are explicitly marked "not run"; still failing → output the full error log and stop
+  - On lint failure, run the linter's auto-fix on touched files only (e.g. \`npm run lint:fix\`, \`eslint --fix\`, \`ruff check --fix\`); the lint/typecheck fix loop runs at most 2 rounds — still failing, stop
+- 🟡 Gate anomalies are never faked: linter/typechecker missing (if applicable to the stack) → tell the user and suggest installing; until then, self-check the changes after every edit and note the result in the reply; unexecuted checks are explicitly marked "not run"; still failing after installation → output the full error log and stop
 - 🟡 Verify key assumptions before coding (external data sources & API fields, runnable environment, dependency availability, and whether an installed dependency provides a capability) — before asserting an installed dependency lacks a capability, or preparing to implement that capability yourself, check its documentation, type definitions, or installed source for the installed version; if you cannot confirm → do not hand-roll it, ask first; otherwise, if unclear or risks are visible → ask before acting. Suggest simpler approaches and insist — if already rejected, follow the user's plan, don't re-raise
-- 🟡 Multi-step tasks: verify every step, loop until verified (same check gets at most 2 repair rounds; if it still fails → record the failure and stop; before stopping, state in one sentence the assumption every attempt relied on — no further retry until that assumption changes)
+- 🟡 Multi-step tasks: verify every step, loop until verified (the same task-verification check gets at most 2 repair rounds; if it still fails → record the failure and stop; before stopping, state in one sentence the assumption every attempt relied on — no further retry until that assumption changes)
 - 🟡 Write only what's requested: no un-requested extension points (flexibility/configurability — wording aside), no single-use abstractions, no proactive defensive code for imagined scenarios
-- 🟡 When you suspect an extreme case on a race or trust boundary and have no reproduction, incident record, project threat model, or compliance requirement → explain it and get consent before acting: state the failure mode, its magnitude and basis, and the complexity cost; without consent or if the user is unreachable → do not add it and report
-  - Baseline security practice (parameterized queries, output encoding, CSRF protection) is already owed, no buy-in needed; exemptions and keep/remove decisions follow the simplification-boundaries rule, architecture direction by the Large-Scale Tasks section
+- 🟡 For a suspected race condition, or an extreme case at a trust boundary, if all four are absent (reproduction, incident record, project threat model, compliance requirement), explain it and get consent before acting: state the failure mode, its magnitude and basis, and the complexity cost; without consent or if the user is unreachable → do not add it and report
+  - Baseline security practice (parameterized queries, output encoding, CSRF protection) is already owed, no extra justification needed; exemptions follow the simplification-boundaries rule, architecture direction by the Large-Scale Tasks section
 - New or rewritten interfaces carry no redundant secondary labels, subtitles, or item-by-item descriptions, and no un-requested slogans — keep only what the user explicitly requested or what information/actions require; within the scope of this change, any copy whose removal leaves information/actions intact is redundant, delete it unless the user explicitly requested that copy; resolve with existing layout/hierarchy instead of adding copy, and never add or rearrange layout elements just to save copy (text required for information/actions and accessibility basics are exempt)
 - 🟡 Simplification has boundaries, never simplify away: input validation at trust boundaries, error handling that prevents data loss, security measures, accessibility basics, anything the user explicitly asked for; deliberate corner-cutting with a known ceiling (global locks, O(n²) scans, naive heuristics) gets a \`debt:\` comment marking the ceiling and upgrade path — debt is a performance trade-off only, it never exempts the 🔴 unbounded-resource bans in the Performance section or correctness/security measures
 - 🔴 Delete obsolete code outright (obsolete = no longer referenced or no longer true because of this change): no compat layers, migrations, or fallbacks when removing/editing (within the scope of the current change only); when deadlocked with "keep existing tests passing", route through the red-test triage in the Testing section
@@ -158,16 +154,12 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🟡 Separate mutable state before serializing access: give each consumer its own copy when sharing is unnecessary. When sharing is required, funnel writes through a single entry point (one thread, a queue, or a lock) and keep everyone else read-only
 
 ## Code Quality · Prohibitions and Requirements
-- 🔴 Don't assume external input is trusted: validate data/responses/async results at trust boundaries (type/range/null/empty/boundary, numeric precision included) before use; release resources after use; foreseeable failures don't get wrapped in try as control flow — precondition guards or default-fetching APIs (like \`dict.get\`, \`next(it, None)\`) go first, but a guard may only turn the failure into an explicit rejection or default value, never let it disappear silently; when the root cause lies elsewhere, fix the cause instead of stopping this one instance at the call site
-- 🔴 Propagate by default: either propagate the error, or handle it once where the outcome can change; nothing else:
-  - Rethrow (the default exit): never catch just to rethrow — let it propagate (in Go, just \`return err\`); catch only to add context with the cause form (\`raise … from e\` / \`{cause: e}\` / \`%w\`); a new error without a cause loses the chain
-  - Absorb in place (two cases only): change control flow — retry (for writes only after the idempotency rule is met), or skip the step and its dependents or move on with a substitute; or a catch-all isolation point — batch loop top / event dispatch / process top, not affecting other inputs or state; both log + an inline reason
-  - Handle each error once: logging then rethrowing unchanged = double handling (the caller logs it again; the top level is left with the bare original error) — log at the final destination, or propagate with the cause
-  - Degrade and continue (narrow catch only, log at debug/warning by impact + inline reason) only for tolerable steps (e.g. cleanup, idempotent double-release): the failed result is not consumed downstream and leaves no inconsistent state, otherwise propagate; untyped catch branches on error class (instanceof/error code) — if the classes can't be enumerated, rethrow rather than guess a class or code
+- 🔴 Don't assume external input is trusted: validate data/responses/async results at trust boundaries (type/range/null/empty/boundary, numeric precision included) before use; release resources after use; do not catch foreseeable failures with try to drive control flow — use precondition guards first, or switch to APIs with a default value (like \`dict.get\`, \`next(it, None)\`); but a guard may only turn the failure into an explicit rejection or default value, never let it disappear silently; when the root cause lies elsewhere, fix the cause instead of stopping this one instance at the call site
+- 🔴 Propagate by default: an error propagates upward by default. Catch and handle it once only when handling can change the outcome; otherwise do not catch.
+  - Rethrow (the default exit): never catch just to rethrow — let it propagate (in Go, just \`return err\`); catch only to add context with the cause form (\`raise … from e\` / \`{cause: e}\` / \`%w\`); a new error without a cause loses the chain; an unawaited or uncaught promise counts as swallowing; logging then rethrowing unchanged = double handling — log at the final destination
+  - Absorb in place (two cases only): change control flow — retry (for writes only after the idempotency rule is met), or skip the step and its dependents or move on with a substitute; or a catch-all isolation point — the outermost batch loop / event dispatch / process entry, not affecting other inputs or state; both paths above must log + include an inline reason; degrade and continue is limited to narrow catch (log debug/warning + inline reason; e.g. cleanup, idempotent double-release), and the failed result is not consumed downstream and leaves no inconsistent state, otherwise propagate; untyped catch branches on error class (instanceof/error code) — if the classes can't be enumerated, rethrow rather than guess a class or code
   - Try blocks contain only the line that can fail (a bigger block swallows unrelated exceptions); cleanup goes in finally / defer
-  - Fallbacks outside those boundaries are not exits — broad-catch fallbacks (\`except Exception: return default\` / \`.catch(()=>null)\`), bare catch, \`except: pass\`, \`_ = err\`, \`.catch(()=>{})\` all count as swallowing, and logging does not exempt it; a comment inside an empty catch is not handling, the behavior is; inline reasons are exempt from the comment-discipline blacklist
-  - Async paths follow the same rule: a promise's errors must be handled or propagated — an unawaited or uncaught promise counts as swallowing
-  - Reference: the machine checklist for catch/swallow rules lives in the root \`lint-guidelines.md\` (if not installed, skip this item)
+  - Fallbacks outside those boundaries are not exits — a broad catch returning a default/empty value and a bare catch both count as swallowing (merely logging or commenting does not exempt them); a narrow catch plus an explicit failure value (consumed by the caller under its contract) is not a fallback. Swallow shapes live in \`lint-guidelines.md\` (if not installed, skip); inline reasons are exempt from the comment-discipline blacklist
 - No logic that only fits sample inputs, no magic numbers (constants; a reason comment only when grounded in fact); paths/newlines via the language's built-in cross-platform APIs (\`path.sep\`/\`path.join\`), normalize EOL before comparing
 - Mock data / fixtures → see Data Fabrication section below
 
@@ -179,7 +171,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🟡 Read every file you cite as evidence end-to-end before asserting; conclusions drawn from partial reads are marked low-confidence explicitly, never presented as verified
 - 🟡 Renaming/moving must cover: calls, types, strings, imports (incl. CJS require), barrel files, test mocks, plus same-name references in docs/config — don't assume one pass covers everything; when code moves to another file its imports migrate with it; static module-level imports always sit at the file top — exemptions only for: circular deps, optional deps, on-demand loading, runtime-order deps (e.g. django.setup()), annotated inline with its reason
 - 🟡 Edit → re-read to confirm → lint+typecheck (incl. its auto-fix loop) → if still failing, roll back to pre-edit content, output the failure log, and state the rollback explicitly
-- 🟡 After changes, report only verified blind spots (parts actually touched but not verified, e.g. edits without a gate run), never a speculative risk list
+- 🟡 After changes, report only blind spots that actually exist (parts actually touched but not verified, e.g. edits without a gate run), never a speculative risk list
 - 🔴 No shell in-place/redirect rewriting of existing files (\`sed -i\`, awk, \`node -e\`, python -c, \`perl -pi\`, output redirection; plain query pipelines that don't write are fine) — source, docs, tests, config all count; for bulk rewrites, get user consent first
 - 🔴 Destructive/irreversible commands (\`git clean -fdx\`, \`git reset --hard\`, \`rm -rf\`, etc.): state the blast radius and get explicit consent before running; cleanup of this task's own temp artifacts is exempt; a vague "clean up" or "reset" is not authorization
 - 🟡 No push unless explicitly requested

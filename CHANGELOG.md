@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- **fix(standards): §1 必做清理**. 删除 gate 异常的 import 旁路；「无须买断」改为「无须额外论证」；两处「2 轮」标注 lint/typecheck 与任务验证范围。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`CHANGELOG.md`
+- **fix(standards): 澄清四处高影响规则**. 竞态条件改为「四项都不存在」；try 控制流改为「捕获驱动控制流」；就地消化补明「上述两种」与「最外层/入口」；盲点改为「确实存在」。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
+- **refactor(standards): 压缩默认上抛，补显式失败值边界**. 合并异步/重复记录/降级子项；吞错形状移到 lint 清单；窄类型 catch + 显式失败值不算兜底；主句改为默认/例外结构。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`templates/lint-guidelines.md`、`CHANGELOG.md`
 - **fix(templates): 模板改用 type-only import，补模板 typecheck**. BasePage/seed/e2e-test 改 `type` 导入；BasePage 头部标明工具所有；新增 `tsconfig.templates.json` 与 CI 检查。
   - `templates/pages/BasePage.ts`、`templates/seed.spec.ts`、`templates/e2e-test.ts`、`tsconfig.templates.json`、`package.json`、`.github/workflows/ci.yml`、`CHANGELOG.md`
 

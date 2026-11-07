@@ -47,23 +47,24 @@ const ZH_ANCHORS: [string, string][] = [
   ["§1 机制标注豁免", "机制标注（lint/类型抑制"],
   ["§1 spec 锚豁免", "spec 锚"],
   ["§1 UI 文案克制", "界面不写冗余"],
-  ["§1 推测性扩展买断", "若无复现"],
+  ["§1 推测性扩展买断", "四项都不存在"],
   ["§1 库能力假设", "断言现成依赖缺少某能力"],
   ["§1 模块化", "模块化与关注点分离"],
   ["§1 非法组合挡在构造处", "把非法组合挡在构造处"],
   ["§1 写操作幂等", "不重复插入"],
   ["§1 可变状态单写入口", "收窄到单一写入口"],
   ["§1 默认上抛", "默认上抛"],
-  ["§1 异步路径吞错", "异步路径同理"],
+  ["§1 异步路径吞错", "未 await、未 catch 视同吞错"],
   ["§1 注释存在性下沉 lint", "文档注释的存在性交给 lint"],
-  ["§1 兜底返回形状", "记录不构成豁免"],
+  ["§1 兜底返回形状", "只记录或只加注释不构成豁免"],
+  ["§1 显式失败值边界", "调用方按契约消费"],
   ["§1 守卫不掩盖失败", "不能让它静默消失"],
   ["§1 修根因", "根因在别处时修根因"],
   ["§1 错误类枚举逃生口", "枚举不出就直接上抛"],
   ["§2 挪动随迁", "其 import 随迁"],
   ["§2 豁免标注", "例外须行内注明缘由"],
   ["§2 破坏性命令授权", "破坏性/不可逆命令"],
-  ["§2 只报已验证盲点", "只报已验证的盲点"],
+  ["§2 只报确实存在的盲点", "确实存在的盲点"],
   ["§2 占位调用", "等后台任务通知期间不发占位/空调用"],
   ["§3 阶段自动串联", "做到绿"],
   ["§3 审查分级", "审查按风险分级"],
@@ -127,16 +128,17 @@ const EN_ANCHORS: [string, string][] = [
   ["§1 mechanism-marking exemption", "Mechanism markings (lint/type suppression"],
   ["§1 spec anchor exemption", "spec anchors"],
   ["§1 UI copy restraint", "redundant secondary labels"],
-  ["§1 speculative robustness buy-in", "project threat model, or compliance requirement"],
+  ["§1 speculative robustness buy-in", "if all four are absent"],
   ["§1 library capability check", "lacks a capability"],
   ["§1 modularity", "separation of concerns"],
   ["§1 illegal combinations at construction", "make illegal combinations impossible at construction"],
   ["§1 idempotent writes", "no duplicate inserts"],
   ["§1 single writer entry", "funnel writes through a single entry point"],
   ["§1 propagate by default", "Propagate by default"],
-  ["§1 async paths swallow", "Async paths follow the same rule"],
+  ["§1 async paths swallow", "an unawaited or uncaught promise counts as swallowing"],
   ["§1 docstring existence to lint", "leave docstring existence to lint"],
-  ["§1 broad-catch fallback shape", "logging does not exempt it"],
+  ["§1 broad-catch fallback shape", "merely logging or commenting does not exempt them"],
+  ["§1 explicit failure value boundary", "consumed by the caller under its contract"],
   ["§1 guard vs silent failure", "never let it disappear silently"],
   ["§1 fix the root cause", "fix the cause instead of stopping this one instance"],
   ["§1 catch class-enumeration escape", "if the classes can't be enumerated"],
@@ -146,7 +148,7 @@ const EN_ANCHORS: [string, string][] = [
   ["§2 move migration", "its imports migrate with it"],
   ["§2 exemption annotation", "annotated inline with its reason"],
   ["§2 destructive command consent", "Destructive/irreversible commands"],
-  ["§2 verified blind spots", "report only verified blind spots"],
+  ["§2 actual blind spots", "blind spots that actually exist"],
   ["§2 placeholder calls", "send no placeholder/no-op calls"],
   ["§3 phase auto-chain", "run this change through"],
   ["§3 risk-tiered review", "review is risk-tiered"],
@@ -189,29 +191,21 @@ const EN_ANCHORS: [string, string][] = [
   ["§0 experience-distillation carrier", "carrier the tooling does not own"],
 ];
 
-// The catch clause carries eight sub-bullets. The mirrors must hold the same
-// eight in the same order — a standards change that adds, drops or reorders one
+// The catch clause carries four sub-bullets. The mirrors must hold the same
+// four in the same order — a standards change that adds, drops or reorders one
 // has to update both mirrors and this list. A single phrase anchor cannot catch
 // that drift: the EN mistranslation in 0.3.106 shipped through one.
 const CATCH_SUB_BULLETS_ZH = [
   "上抛（默认出口）",
   "就地消化（仅两种）",
-  "同一错误只处理一次",
-  "降级继续（仅窄类型",
   "try 块只包",
   "兜底返回不算出口",
-  "异步路径同理",
-  "参考：",
 ];
 const CATCH_SUB_BULLETS_EN = [
   "Rethrow (the default exit)",
   "Absorb in place",
-  "Handle each error once",
-  "Degrade and continue",
   "Try blocks contain",
   "Fallbacks outside",
-  "Async paths follow the same rule",
-  "Reference:",
 ];
 
 function catchSubBullets(text: string, startMarker: string): string[] {

@@ -1,6 +1,6 @@
 # Lint Guidelines — Swallowed Errors & Docstrings
 
-<!-- openspec-pw: lint-guidelines 7754752d -->
+<!-- openspec-pw: lint-guidelines 2004122d -->
 
 Machine reference for two employee-standards clauses (§1 捕获/吞错: "a caught exception must never vanish silently — the failure must be visible, any one exit"; §1 注释纪律: 公共接口的文档注释). Maintained by openspec-pw; refresh with `npx openspec-pw update`.
 
@@ -67,6 +67,6 @@ export default [
 
 - These rules cover literal shapes only. The clause's semantic exits (rethrow with cause, log-then-continue at a narrow catch, isolated catch-all at an isolating boundary) are judged by the clause text, not lint.
 - A commented-out empty catch is exempt from ESLint `no-empty` — the comment does not make the failure visible. Human review carries it.
-- The JS `.catch(() => null / false / undefined)` black-hole family has no built-in rule yet (a custom rule is a future batch).
+- The JS `.catch(() => null / false / undefined / {})` black-hole family and the Go `_ = err` discard have no built-in rule yet (a custom rule is a future batch).
 - Docstring rules check presence and shape only; the contract the docstring must carry (units, return semantics, raised errors, side effects, preconditions) is judged by the clause, not by lint.
 - Hooks (agent-internal interceptors) are deliberately not part of this checklist — execution is lint config, CI, and pre-commit, none of which depend on the agent.
