@@ -1,6 +1,6 @@
 # Lint Guidelines — Swallowed Errors & Docstrings
 
-<!-- openspec-pw: lint-guidelines bbd925a6 -->
+<!-- openspec-pw: lint-guidelines 7754752d -->
 
 Machine reference for two employee-standards clauses (§1 捕获/吞错: "a caught exception must never vanish silently — the failure must be visible, any one exit"; §1 注释纪律: 公共接口的文档注释). Maintained by openspec-pw; refresh with `npx openspec-pw update`.
 
@@ -11,10 +11,10 @@ Measures verified against: ruff 0.17.1 rule metadata (2026-10), pylint upstream 
 | Rule | Tool | Fires on | Default | Boundary |
 | --- | --- | --- | --- | --- |
 | `no-empty` | ESLint (`@eslint/js` recommended) | empty catch block with no comment | enabled within recommended configs | blocks containing a comment are exempt — the exception survives, and human review resolves it |
-| `E722` | ruff | bare `except:` | on by default | typed handlers only — narrow catches are not flagged |
+| `E722` | ruff | bare `except:` | on by default | bare handlers only — typed/narrow catches are not flagged |
 | `S110` | ruff | `except Exception: pass` | on by default | broad or bare handlers only |
 | `S112` | ruff | `except Exception: continue` | on by default | broad or bare handlers only |
-| `BLE001` | ruff | blind `except Exception` / `BaseException` | on by default | not flagged when the handler logs with `exc_info` enabled |
+| `BLE001` | ruff | blind `except Exception` / `BaseException` | on by default | re-raised exceptions and handlers logging with `exc_info` enabled are exempt |
 | `B904` | ruff | `raise` inside an except handler without `from` (dropped causality) | **off by default** — opt in | rethrown as-is (`raise ... from err` / `from None`) is the fix; bare re-`raise` is exempt |
 | `W0702` | pylint | bare-except | on by default | pylint's default set; disabled only by project config |
 | `W0718` | pylint | broad-exception-caught | on by default | pylint's default set; disabled only by project config |
@@ -28,14 +28,14 @@ Measures verified against: ruff 0.17.1 rule metadata (2026-10), pylint upstream 
 | `D101` | ruff (pydocstyle) | public class without a docstring | **off by default** | presence only |
 | `D102` | ruff (pydocstyle) | public method without a docstring | **off by default** — opt in | presence only; underscore-prefixed names are exempt |
 | `D103` | ruff (pydocstyle) | public function without a docstring | **off by default** | presence only; underscore-prefixed names are exempt |
-| `jsdoc/require-jsdoc` | ESLint (`eslint-plugin-jsdoc`) | function declaration without a JSDoc block | **off by default** — needs the plugin | default `require` checks `FunctionDeclaration` only; classes, methods and arrow functions are opt-in; use `publicOnly`/`contexts` to scope to exports; content rules (`jsdoc/require-param` etc.) are separate rules |
+| `jsdoc/require-jsdoc` | ESLint (`eslint-plugin-jsdoc`) | function declaration without a JSDoc block | **off in ESLint core** — the plugin's recommended config enables it as a warning | default `require` checks `FunctionDeclaration` only; classes, methods and arrow functions are opt-in; use `publicOnly` to scope to exports and `contexts` for custom contexts; content rules (`jsdoc/require-param` etc.) are separate rules |
 | `C0114` | pylint | missing-module-docstring | on by default | pylint's default set; disabled only by project config |
 | `C0115` | pylint | missing-class-docstring | on by default | pylint's default set; disabled only by project config |
 | `C0116` | pylint | missing-function-docstring | on by default | pylint's default set; disabled only by project config |
 
 ## Enabling what is missing
 
-Off-by-default rules above: **`B904`** (dropped-causality on `raise ... from` inside a handler) and the docstring family (`D100`/`D101`/`D102`/`D103`, `jsdoc/require-jsdoc`).
+Off-by-default rules above: **`B904`** (dropped-causality on `raise ... from` inside a handler), the docstring family (`D100`/`D101`/`D102`/`D103`), and `jsdoc/require-jsdoc` (off in ESLint core; the plugin's recommended config enables it as a warning).
 
 In `pyproject.toml`:
 

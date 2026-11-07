@@ -45,7 +45,7 @@ export const LINT_GUIDELINE_RULES = [
         tool: "ruff",
         semantics: "blind `except Exception` / `except BaseException`",
         defaultOn: true,
-        scope: "not flagged when the handler logs with exc_info enabled (logged-exempt).",
+        scope: "re-raised exceptions and handlers logging with exc_info enabled are exempt (logged-exempt).",
     },
     {
         id: "B904",
