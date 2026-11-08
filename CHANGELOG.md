@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.113] - 2026-11-08
 - **fix(windows): 外部命令改用 cross-spawn**. 移除 `needsShell` 与 `shell: true` 参数数组用法，统一走 `src/shared/exec.ts`；npm/npx/claude/git 等调用不再触发 Node DEP0190。
   - `package.json`、`package-lock.json`、`src/shared/exec.ts`、`src/shared/platform.ts`（删除）、`src/commands/*.ts`、`src/shared/*.ts`、测试、`CHANGELOG.md`
 - **fix(exec): 异步包装器忽略 stdin**. 避免 `stdio: "pipe"` 留下 stdin 管道导致读取 stdin 的命令挂起；新增 Windows 真实 npm/npx 集成测试与 CI `update --no-cli` smoke。
