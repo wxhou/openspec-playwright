@@ -14,7 +14,12 @@ const program = new Command();
 program
     .name("openspec-pw")
     .description("OpenSpec + Playwright E2E verification setup tool")
-    .version(pkg.version);
+    .version(pkg.version)
+    .option("-v", "output the version number (alias for --version)");
+program.on("option:v", () => {
+    console.log(pkg.version);
+    process.exit(0);
+});
 program
     .command("init")
     .description("Initialize OpenSpec + Playwright E2E integration in the current project")

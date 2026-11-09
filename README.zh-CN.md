@@ -169,6 +169,7 @@ openspec-pw init --tools claude --agents   # 额外安装官方三个 agent 定�
 ### CLI 命令
 
 ```bash
+openspec-pw -v            # 打印版本（也支持 -V / --version）
 openspec-pw init          # 初始化集成（--tools all|none|ids… 可选编辑器；--agents 加装官方 agents；--lint-config 生成/扩展吞错清单的 ESLint 与 ruff 配置；--hook[=static|full] 安装 Claude Code Stop hook；--auto-pipeline 生成无头 CI 工作流）
 openspec-pw update        # 更新 CLI 和命令到最新版本
 openspec-pw doctor        # 检查前置条件 (Node, Playwright, OpenSpec, 配置, 测试) + 应用服务器诊断

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+- **docs(standards): 加入状态建模启发式**. §1 增加一条状态建模引导（类型 → 工作流引擎 → 形式化），不新增 §3 交付清单；同步三副本与锚点。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
+- **docs(standards): 加入数据库迁移规则**. §1 要求 schema 变更走项目已有迁移工具，不绕过工具手写脚本；同步三副本与锚点。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
+- **feat(cli): 支持 `-v` 查版本**. `-v`、`-V`、`--version` 均输出 CLI 版本；README 命令表同步。
+  - `src/index.ts`、`tests/smoke.test.ts`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
+
 ## [0.3.113] - 2026-11-08
 - **fix(windows): 外部命令改用 cross-spawn**. 移除 `needsShell` 与 `shell: true` 参数数组用法，统一走 `src/shared/exec.ts`；npm/npx/claude/git 等调用不再触发 Node DEP0190。
   - `package.json`、`package-lock.json`、`src/shared/exec.ts`、`src/shared/platform.ts`（删除）、`src/commands/*.ts`、`src/shared/*.ts`、测试、`CHANGELOG.md`

@@ -280,6 +280,7 @@ a `/opsx:e2e` delivery.
 ### CLI Commands
 
 ```bash
+openspec-pw -v            # Print version (also -V / --version)
 openspec-pw init          # Initialize integration (--tools all|none|ids… to select editors; --agents adds the official agents; --frontend/--no-frontend force the install mode; --lint-config generates/extends ESLint and ruff config for the swallow-error checklist; --hook[=static|full] installs a Claude Code Stop hook; --auto-pipeline generates the headless CI workflow)
 openspec-pw update        # Update CLI and commands to latest version
 openspec-pw doctor        # Check prerequisites (Node, Playwright, OpenSpec, config, tests) + app server diagnostics

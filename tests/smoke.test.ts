@@ -150,13 +150,15 @@ const distExists = existsSync(distDir);
     }
   }
 
-  it("--version prints version from package.json", async () => {
-     
+  it("-v, -V, and --version print version from package.json", async () => {
     const { version } = await import("../package.json", {
       assert: { type: "json" },
     });
-    const { stdout } = runCli("--version");
-    expect(stdout.trim()).toBe(version);
+    for (const flag of ["-v", "-V", "--version"]) {
+      const { stdout, status } = runCli(flag);
+      expect(status).toBe(0);
+      expect(stdout.trim()).toBe(version);
+    }
   });
 
   it("--help exits with 0 and lists all commands", () => {
