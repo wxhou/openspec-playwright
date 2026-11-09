@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.114] - 2026-11-09
 - **docs(standards): 加入状态建模启发式**. §1 增加一条状态建模引导（类型 → 工作流引擎 → 形式化），不新增 §3 交付清单；同步三副本与锚点。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 - **docs(standards): 加入数据库迁移规则**. §1 要求 schema 变更走项目已有迁移工具，不绕过工具手写脚本；同步三副本与锚点。
