@@ -5,10 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.114] - 2026-11-09
-- **docs(standards): 加入状态建模启发式**. §1 增加一条状态建模引导（类型 → 工作流引擎 → 形式化），不新增 §3 交付清单；同步三副本与锚点。
+## [0.3.115] - 2026-11-11
+- **docs(standards): 试运行代码库所有权约定**. §0 约定开头声明这份代码库归 AI 所有、用途与构建方式由其决定，观察一版后按效果决定去留。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
-- **docs(standards): 加入数据库迁移规则**. §1 要求 schema 变更走项目已有迁移工具，不绕过工具手写脚本；同步三副本与锚点。
+- **docs(standards): 扩充并发与事务规则**. §1 将「可变状态单写入口」扩为并发与事务，覆盖共享状态、事务边界、原子条件写与应用层锁边界。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
+- **fix(standards): 收口 P0 条款分歧**. 竞态门槛限定为并发与事务之外的新增防护；删除迁移的重复破坏性确认；公共接口改为写明用途。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
+- **docs(standards): 加入无限循环检查**. §6 要求 UI 测试检查预期外的无限循环，覆盖动画、渲染、轮询、重连、定时器、监听器、重定向，须有终止条件或清理。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
+
+## [0.3.114] - 2026-11-09
+- **docs(standards): 加入状态建模启发式**. §1 增加状态建模引导（类型 → 工作流引擎 → 形式化），不新增 §3 交付清单。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
+- **docs(standards): 加入数据库迁移规则**. §1 要求 schema 变更走项目已有迁移工具，不绕过工具手写脚本。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 - **feat(cli): 支持 `-v` 查版本**. `-v`、`-V`、`--version` 均输出 CLI 版本；README 命令表同步。
   - `src/index.ts`、`tests/smoke.test.ts`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
