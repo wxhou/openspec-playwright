@@ -27,6 +27,7 @@ describe("hook entry", () => {
   it("adds flake and e2e in the full tier", () => {
     const entry = buildHookEntry("full");
     expect(entry.command).toContain("flake,e2e");
+    expect(entry.command).not.toContain("--repeat");
     expect(entry.timeout).toBeGreaterThan(buildHookEntry("static").timeout ?? 0);
   });
 });
@@ -112,7 +113,7 @@ describe("removeStopHook", () => {
   });
 });
 
-describe("install / uninstall on disk", () => {
+describe("install / remove on disk", () => {
   let root: string;
 
   beforeEach(() => {

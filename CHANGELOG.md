@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- **feat(gate): 加入运行时 flake 证据**. `gate --repeat <N>` 只重跑首跑失败的 E2E 用例，按尝试记录区分 flaky 与真失败；flaky 默认只报告，`--strict-flake` 才判失败；产物写入隔离的 tmp 目录，未开启时不改变现有行为。
+  - `src/commands/gate.ts`、`src/index.ts`、`src/shared/ignore-check.ts`、`tests/gate.test.ts`、`tests/hooks.test.ts`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
 - **docs(standards): 补完未完成工作的收尾规则**. §3 禁止在用户已请求的工作完成前自行收尾：普通障碍先诊断并继续，需求不清仍先问，刻意阻断另找安全路径；§2 要求改动清单以实际 diff 为准。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 
