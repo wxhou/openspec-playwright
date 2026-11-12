@@ -139,11 +139,22 @@ describe("discoverProjects", () => {
     try {
       const target = makeTemp("ospw-discover-target-");
       makeProject(target);
-      symlinkSync(target, join(root, "linked"));
+      const link = join(root, "linked");
+      try {
+        // Junction works without developer mode on Windows; ignored on POSIX.
+        symlinkSync(target, link, "junction");
+      } catch {
+        try {
+          symlinkSync(target, link);
+        } catch {
+          // Environment cannot create symlinks (Windows without privileges).
+          return;
+        }
+      }
 
       const result = discoverProjects({ roots: [root], cwd: join(root, "none") });
 
-      expect(result.projects).not.toContain(join(root, "linked"));
+      expect(result.projects).not.toContain(link);
       rmSync(target, { recursive: true, force: true });
     } finally {
       rmSync(root, { recursive: true, force: true });

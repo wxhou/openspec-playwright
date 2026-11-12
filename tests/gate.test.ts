@@ -868,7 +868,10 @@ describe("runtime flake evidence", () => {
       { cwd: root, exec, out: lines.out },
     );
     expect(code).toBe(0);
-    expect(callsOf(exec)).toContain("npx playwright test tests/playwright/changes/demo");
+    // Windows builds the path with backslashes — compare separator-normalized.
+    expect(callsOf(exec).map((c) => c.replace(/\\/g, "/"))).toContain(
+      "npx playwright test tests/playwright/changes/demo",
+    );
     expect(callsOf(exec).some((c) => c.includes("--output"))).toBe(false);
     const report = JSON.parse(lines.lines.join("\n"));
     expect(report.flakeRunDir).toBeUndefined();
