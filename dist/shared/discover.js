@@ -8,7 +8,7 @@
  */
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { buildCommandMeta, getAllAdapters, hasRuleFileMarkers, listCommandArtifactPaths, } from "../commands/editors.js";
 import { GITIGNORE_BLOCK_BEGIN, GITIGNORE_BLOCK_END } from "./gitignore-managed.js";
 export const SCAN_MAX_DEPTH = 6;
@@ -63,14 +63,19 @@ export function hasOpenspecPwTerritory(projectRoot) {
             return true;
         }
     }
+    // Ask each adapter itself: the opencode carrier keeps its entries in
+    // opencode.json(c) and declares no mcpConfigPath, so a path-based scan
+    // would miss an OpenCode-only leftover.
     for (const adapter of getAllAdapters()) {
         if (adapter.supportsMcp === false)
             continue;
-        const mcpPath = adapter.mcpConfigPath?.(projectRoot);
-        if (!mcpPath || !isSmallFile(mcpPath))
-            continue;
-        if (readFileSync(mcpPath, "utf-8").includes("playwright-test"))
-            return true;
+        try {
+            if (adapter.isMcpInstalled(projectRoot, "playwright-test"))
+                return true;
+        }
+        catch {
+            // Unreadable config for this editor — try the next one.
+        }
     }
     return false;
 }
@@ -94,6 +99,7 @@ export function discoverProjects(options = {}) {
         : defaultScanRoots(homeDir, platform, driveExists);
     const found = new Map();
     let scannedDirs = 0;
+    let unreadableDirs = 0;
     let truncated = false;
     const visit = (dir, depth) => {
         if (truncated || depth > maxDepth)
@@ -107,7 +113,9 @@ export function discoverProjects(options = {}) {
             isProject = hasOpenspecPwTerritory(dir);
         }
         catch {
-            // Unreadable directory — skip it and keep scanning.
+            // Unreadable directory — count it so the batch summary can say the
+            // scan was incomplete, then keep scanning its siblings.
+            unreadableDirs++;
             return;
         }
         // A detected project is scanned as one unit: do not descend into its
@@ -127,6 +135,7 @@ export function discoverProjects(options = {}) {
             entries = readdirSync(dir, { withFileTypes: true });
         }
         catch {
+            unreadableDirs++;
             return;
         }
         for (const entry of entries) {
@@ -152,23 +161,40 @@ export function discoverProjects(options = {}) {
     const projects = [...found.values()];
     const cwd = options.cwd;
     if (cwd) {
-        const cwdKey = safeRealpath(cwd) ?? cwd;
-        const existing = projects.findIndex((p) => (safeRealpath(p) ?? p) === cwdKey);
-        if (existing === -1) {
-            try {
-                if (hasOpenspecPwTerritory(cwd))
-                    projects.unshift(cwd);
+        // The spec includes the *project containing* the cwd, not the cwd itself:
+        // `remove --all` is often run from a subdirectory of the project.
+        const cwdProject = findContainingProject(cwd);
+        if (cwdProject) {
+            const cwdKey = safeRealpath(cwdProject) ?? cwdProject;
+            const existing = projects.findIndex((p) => (safeRealpath(p) ?? p) === cwdKey);
+            if (existing === -1) {
+                projects.unshift(cwdProject);
             }
-            catch {
-                // cwd unreadable — leave it out.
+            else if (existing > 0) {
+                const [hit] = projects.splice(existing, 1);
+                projects.unshift(hit);
             }
-        }
-        else if (existing > 0) {
-            const [hit] = projects.splice(existing, 1);
-            projects.unshift(hit);
         }
     }
-    return { projects, truncated, scannedDirs };
+    return { projects, truncated, scannedDirs, unreadableDirs };
+}
+/** Nearest directory at or above `startDir` that carries openspec-pw territory. */
+function findContainingProject(startDir) {
+    let dir = startDir;
+    for (let hops = 0; hops < 64; hops++) {
+        try {
+            if (hasOpenspecPwTerritory(dir))
+                return dir;
+        }
+        catch {
+            // Unreadable level — keep ascending.
+        }
+        const parent = dirname(dir);
+        if (parent === dir)
+            return null;
+        dir = parent;
+    }
+    return null;
 }
 /** Default roots: home; on Windows, home plus every drive letter that exists. */
 export function defaultScanRoots(homeDir, platform, driveExists) {

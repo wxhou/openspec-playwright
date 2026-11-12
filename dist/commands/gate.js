@@ -458,11 +458,30 @@ function runE2eWithRepeat(plan, repeatCount, strictFlake, deps) {
             result: { name: "e2e", status: "skipped", exitCode: null, durationMs: 0, reason: plan.skip },
         };
     }
-    const runDir = createFlakeRunDir(deps.cwd);
-    const firstDir = join(runDir, "first");
-    const retryDir = join(runDir, "retry");
-    mkdirSync(firstDir, { recursive: true });
-    mkdirSync(retryDir, { recursive: true });
+    // The run directory is only the evidence store: a failure here is an
+    // environment error, not a verdict on the code under test.
+    let runDir;
+    let firstDir;
+    let retryDir;
+    try {
+        runDir = createFlakeRunDir(deps.cwd);
+        firstDir = join(runDir, "first");
+        retryDir = join(runDir, "retry");
+        mkdirSync(firstDir, { recursive: true });
+        mkdirSync(retryDir, { recursive: true });
+    }
+    catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return {
+            result: {
+                name: "e2e",
+                status: "error",
+                exitCode: null,
+                durationMs: Date.now() - started,
+                reason: `cannot create flake run directory: ${message}`,
+            },
+        };
+    }
     const first = deps.exec(plan.cmd, [...plan.args, "--output", firstDir], {
         cwd: deps.cwd,
         timeoutMs: TIMEOUTS.e2e,
@@ -500,7 +519,15 @@ function runE2eWithRepeat(plan, repeatCount, strictFlake, deps) {
     if (!failedIds || failedIds.length === 0)
         return unavailable("no failed-test list");
     const retryInput = join(retryDir, "last-run-input.json");
-    copyFileSync(lastRunFile, retryInput);
+    try {
+        copyFileSync(lastRunFile, retryInput);
+    }
+    catch (err) {
+        // First run already failed; losing the retry input only costs the
+        // flake classification, so keep the red and say why it is unavailable.
+        const message = err instanceof Error ? err.message : String(err);
+        return unavailable(`cannot prepare retry input: ${message}`);
+    }
     const reportFile = join(retryDir, "report.json");
     const retryArgs = [
         ...plan.args,

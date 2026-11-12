@@ -18,6 +18,8 @@ export interface DiscoverResult {
     /** True when the visited-directory cap stopped the scan early. */
     truncated: boolean;
     scannedDirs: number;
+    /** Directories skipped because they could not be read. */
+    unreadableDirs: number;
 }
 /** Does this directory carry any openspec-pw territory? Read-only, signal per design D4. */
 export declare function hasOpenspecPwTerritory(projectRoot: string): boolean;

@@ -136,8 +136,8 @@ describe("discoverProjects", () => {
 
   it("does not follow directory symlinks", () => {
     const root = makeTemp("ospw-discover-link-");
+    const target = makeTemp("ospw-discover-target-");
     try {
-      const target = makeTemp("ospw-discover-target-");
       makeProject(target);
       const link = join(root, "linked");
       try {
@@ -155,8 +155,8 @@ describe("discoverProjects", () => {
       const result = discoverProjects({ roots: [root], cwd: join(root, "none") });
 
       expect(result.projects).not.toContain(link);
-      rmSync(target, { recursive: true, force: true });
     } finally {
+      rmSync(target, { recursive: true, force: true });
       rmSync(root, { recursive: true, force: true });
     }
   });

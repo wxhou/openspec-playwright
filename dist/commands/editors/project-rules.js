@@ -401,10 +401,19 @@ export function hasRuleFileMarkers(projectRoot, maxBytes = Number.POSITIVE_INFIN
         if (!existsSync(path))
             continue;
         // Discovery over arbitrary trees skips oversized files rather than
-        // reading them whole; init/update keep the default (no limit).
-        if (statSync(path).size > maxBytes)
-            continue;
+        // reading them whole; init/update keep the default (no limit). A
+        // partially mocked fs (tests) can omit statSync — fall through to the
+        // content-length check below.
+        try {
+            if (statSync(path).size > maxBytes)
+                continue;
+        }
+        catch {
+            // stat unavailable — decide from the loaded content instead.
+        }
         const content = readFileSync(path, "utf-8");
+        if (Buffer.byteLength(content, "utf-8") > maxBytes)
+            continue;
         if (content.includes(OPENSPEC_START))
             return true;
         if (hasLegacyTerritoryStart(content) && content.includes(LEGACY_MAIN_SIGNATURE))

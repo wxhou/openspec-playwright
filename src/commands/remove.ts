@@ -25,6 +25,7 @@ import {
   removeChecklist,
   removeGeneratedEslintConfig,
   removeRuffManagedBlock,
+  isChecklistUnmodified,
   isToolGeneratedEslintConfig,
   findRuffManagedBlock,
   LINT_ESLINT_CONFIG_FILE,
@@ -101,6 +102,10 @@ export async function removeInProject(projectRoot: string): Promise<string[]> {
         }
       }
       if (removedAny) {
+        // Record before the multi-file primitive: if a later file throws, the
+        // project is already partially cleaned and must count as failed,
+        // never as skipped.
+        track(`commands:${adapter.id}`);
         for (const relPath of removeAdapterCommandArtifacts(adapter, projectRoot)) {
           track(relPath);
         }
@@ -115,6 +120,13 @@ export async function removeInProject(projectRoot: string): Promise<string[]> {
     // installs). Tool-owned files go; user-modified files are kept and named.
     console.log(chalk.blue("\n─── Removing Vendored Agents ───"));
     if (detected.some((a) => a.id === "claude")) {
+      const agentFiles = (claudeAdapter.optionalArtifacts?.(true) ?? []).map(
+        (extra) => extra.relativePath,
+      );
+      if (agentFiles.some((rel) => existsSync(join(projectRoot, rel)))) {
+        // Pre-record: a throw mid-primitive still means partial cleanup.
+        track("vendored-agents");
+      }
       const removedAgents = removeOwnedVendoredAgents(projectRoot, claudeAdapter);
       if (removedAgents.length === 0) {
         console.log(
@@ -175,6 +187,10 @@ export async function removeInProject(projectRoot: string): Promise<string[]> {
     // eslint config that still matches a tool-generated shape. User-edited
     // copies are kept and named.
     console.log(chalk.blue("\n─── Removing Lint Config ───"));
+    if (hasRuffBlock(projectRoot)) {
+      // Pre-record: the primitive edits several candidate files in a loop.
+      track("ruff-managed-block");
+    }
     const ruffRemovals = removeRuffManagedBlock(projectRoot);
     if (ruffRemovals.length === 0) {
       console.log(chalk.gray("  - No ruff managed block found, skipping"));
@@ -257,7 +273,7 @@ export async function removeInProject(projectRoot: string): Promise<string[]> {
 
     // 5. Clean rules file markers for each detected editor
     console.log(chalk.blue("\n─── Cleaning Rules Files ───"));
-    if (hasRuleFileMarkers(projectRoot)) track("rules-markers");
+    if (hasRuleFileMarkers(projectRoot, SIGNAL_MAX_BYTES)) track("rules-markers");
     for (const adapter of detected) {
       cleanProjectRules(adapter, projectRoot);
     }
@@ -268,10 +284,10 @@ export async function removeInProject(projectRoot: string): Promise<string[]> {
     // editor is not among the detected editors but our territory is present;
     // removeMarkersFromFile stays quiet-ish (gray info lines) when the files
     // carry no markers.
-    if (!detected.some((a) => a.id === "claude") && hasRuleFileMarkers(projectRoot)) {
+    if (!detected.some((a) => a.id === "claude") && hasRuleFileMarkers(projectRoot, SIGNAL_MAX_BYTES)) {
       cleanProjectRules(claudeAdapter, projectRoot);
     }
-    if (!detected.some((a) => a.id === "codebuddy") && hasRuleFileMarkers(projectRoot)) {
+    if (!detected.some((a) => a.id === "codebuddy") && hasRuleFileMarkers(projectRoot, SIGNAL_MAX_BYTES)) {
       cleanProjectRules(codebuddyAdapter, projectRoot);
     }
 
@@ -382,6 +398,13 @@ export async function runRemoveAll(options: RemoveAllOptions = {}): Promise<numb
       ),
     );
   }
+  if (discovery.unreadableDirs > 0) {
+    console.log(
+      chalk.yellow(
+        `  ⚠ ${discovery.unreadableDirs} director${discovery.unreadableDirs === 1 ? "y" : "ies"} could not be read — results may be incomplete.\n`,
+      ),
+    );
+  }
   if (discovery.projects.length === 0) {
     console.log(chalk.gray("  - No projects with openspec-pw territory found.\n"));
     return 0;
@@ -394,7 +417,14 @@ export async function runRemoveAll(options: RemoveAllOptions = {}): Promise<numb
   if (!options.yes) {
     for (const project of discovery.projects) {
       console.log(chalk.blue(`─── ${project} ───`));
-      console.log(chalk.gray(`  would remove: ${describePlan(project).join(", ")}`));
+      // One unreadable or odd file must not abort the rest of the plan.
+      let plan: string;
+      try {
+        plan = describePlan(project).join(", ");
+      } catch (err) {
+        plan = `(plan unavailable: ${err instanceof Error ? err.message : String(err)})`;
+      }
+      console.log(chalk.gray(`  would remove: ${plan}`));
     }
     console.log(
       chalk.gray(
@@ -446,7 +476,11 @@ function describePlan(projectRoot: string): string[] {
     ).length;
     if (adapter.supportsMcp !== false) {
       for (const serverName of OPENSPEC_PW_MCP_SERVERS) {
-        if (adapter.isMcpInstalled(projectRoot, serverName)) mcp++;
+        try {
+          if (adapter.isMcpInstalled(projectRoot, serverName)) mcp++;
+        } catch {
+          // Unreadable MCP config — leave it out of the plan.
+        }
       }
     }
   }
@@ -454,19 +488,57 @@ function describePlan(projectRoot: string): string[] {
   if (mcp > 0) groups.push(`MCP ${mcp}`);
   if (existsSync(join(projectRoot, CLAUDE_LEGACY_SKILL_REL))) groups.push("legacy skill");
   if (existsSync(join(projectRoot, "openspec", "schemas", "playwright-e2e"))) groups.push("schema");
-  if (existsSync(join(projectRoot, "tests", "README.md"))) groups.push("tests/README.md");
+  // Content-owned artifacts: list them only when removal would really delete
+  // them (a user-modified copy is kept), so the plan matches the execution.
+  if (isPristineCopy(projectRoot, join("tests", "README.md"), "tests-readme.md")) {
+    groups.push("tests/README.md");
+  }
   if (hasRuleFileMarkers(projectRoot, SIGNAL_MAX_BYTES)) groups.push("rules markers");
-  if (existsSync(join(projectRoot, "lint-guidelines.md"))) groups.push("lint checklist");
-  if (existsSync(join(projectRoot, WORKFLOW_REL))) groups.push("CI workflow");
+  if (isChecklistUnmodified(projectRoot)) groups.push("lint checklist");
+  if (isPristineCopy(projectRoot, WORKFLOW_REL, "github-workflow.yml")) {
+    groups.push("CI workflow");
+  }
   if (hasRuffBlock(projectRoot)) groups.push("ruff managed block");
-  const eslintPath = join(projectRoot, LINT_ESLINT_CONFIG_FILE);
-  if (existsSync(eslintPath) && isToolGeneratedEslintConfig(readFileSync(eslintPath, "utf-8"))) {
-    groups.push("generated eslint config");
+  try {
+    const eslintPath = join(projectRoot, LINT_ESLINT_CONFIG_FILE);
+    if (
+      existsSync(eslintPath) &&
+      isToolGeneratedEslintConfig(readFileSync(eslintPath, "utf-8"))
+    ) {
+      groups.push("generated eslint config");
+    }
+  } catch {
+    // Unreadable file — skip the group rather than aborting the plan.
+  }
+  const agentFiles = (claudeAdapter.optionalArtifacts?.(true) ?? []).map(
+    (extra) => extra.relativePath,
+  );
+  if (agentFiles.some((rel) => existsSync(join(projectRoot, rel)))) {
+    groups.push("vendored agents");
   }
   if (hasManagedGitignoreBlock(projectRoot)) groups.push(".gitignore block");
   if (hasStopHook(projectRoot)) groups.push("stop hook");
   if (groups.length === 0) groups.push("(nothing detected — will be skipped)");
   return groups;
+}
+
+/** True when the file exists and is byte-identical (EOL-normalized) to its template. */
+function isPristineCopy(
+  projectRoot: string,
+  relPath: string,
+  templateFile: string,
+): boolean {
+  try {
+    const dest = join(projectRoot, relPath);
+    if (!existsSync(dest)) return false;
+    const template = readFileSync(
+      fileURLToPath(new URL(`../../templates/${templateFile}`, import.meta.url)),
+      "utf-8",
+    );
+    return normalizeEol(readFileSync(dest, "utf-8")) === normalizeEol(template);
+  } catch {
+    return false;
+  }
 }
 
 function hasRuffBlock(projectRoot: string): boolean {

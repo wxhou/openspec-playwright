@@ -50,18 +50,22 @@ export function buildMcpRuntime(spec) {
                 isMcpInstalled(root, serverName) {
                     return isMcpServerInFile(spec.configPath(root), serverName);
                 },
-                installMcp(_root, serverName, command) {
+                installMcp(root, serverName, command) {
                     execFileSync("claude", ["mcp", "add", "--scope", "project", serverName, ...command], {
                         encoding: "utf-8",
                         timeout: TIMEOUT.MCP_LIST,
                         stdio: ["pipe", "pipe", "pipe"],
+                        // `--scope project` resolves against the CLI's cwd; batch
+                        // removal targets a project that is not the process cwd.
+                        cwd: root,
                     });
                 },
-                removeMcp(_root, serverName) {
+                removeMcp(root, serverName) {
                     execFileSync("claude", ["mcp", "remove", "--scope", "project", serverName], {
                         encoding: "utf-8",
                         timeout: TIMEOUT.MCP_LIST,
                         stdio: ["pipe", "pipe", "pipe"],
+                        cwd: root,
                     });
                 },
             };
