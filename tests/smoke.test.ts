@@ -60,7 +60,7 @@ const distExists = existsSync(distDir);
     const { doctor } = await import("../dist/commands/doctor.js");
     const { coverage } = await import("../dist/commands/coverage.js");
     const { flake } = await import("../dist/commands/flake.js");
-    const { uninstall } = await import("../dist/commands/uninstall.js");
+    const { removeInProject } = await import("../dist/commands/remove.js");
     const { update } = await import("../dist/commands/update.js");
     const {
       hasClaudeCode,
@@ -77,7 +77,7 @@ const distExists = existsSync(distDir);
     expect(typeof doctor).toBe("function");
     expect(typeof coverage).toBe("function");
     expect(typeof flake).toBe("function");
-    expect(typeof uninstall).toBe("function");
+    expect(typeof removeInProject).toBe("function");
     expect(typeof update).toBe("function");
     expect(typeof hasClaudeCode).toBe("function");
     expect(typeof claudeAdapter).toBe("object");
@@ -168,7 +168,27 @@ const distExists = existsSync(distDir);
     expect(stdout).toContain("coverage");
     expect(stdout).toContain("flake");
     expect(stdout).toContain("update");
-    expect(stdout).toContain("uninstall");
+    expect(stdout).toContain("remove");
+    expect(stdout).not.toContain("uninstall");
+  });
+
+  it("remove rejects --yes/--root without --all with exit code 2", () => {
+    const { stderr, status } = runCli("remove --yes");
+    expect(status).toBe(2);
+    expect(stderr).toContain("require --all");
+  });
+
+  it("remove --help documents the batch options", () => {
+    const { stdout } = runCli("remove --help");
+    expect(stdout).toContain("--all");
+    expect(stdout).toContain("--yes");
+    expect(stdout).toContain("--root");
+  });
+
+  it("uninstall no longer exists", () => {
+    const { stderr, status } = runCli("uninstall");
+    expect(status).not.toBe(0);
+    expect(stderr).toContain("unknown command");
   });
 
   it("init --help works", () => {

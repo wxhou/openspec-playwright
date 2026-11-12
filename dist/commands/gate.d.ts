@@ -16,12 +16,27 @@ export interface GateFlag {
     /** Why the file was flagged, when the reason is not just config churn. */
     reason?: string;
 }
+/** An E2E test that failed on the first run but passed at least once on rerun. */
+export interface FlakyEntry {
+    title: string;
+    file: string;
+    /** Passing attempts observed during the rerun. */
+    passed: number;
+    /** Failing attempts observed during the rerun. */
+    failed: number;
+    /** Trace of a failed rerun attempt, when one was recorded. */
+    trace?: string;
+}
 export interface GateReport {
     verdict: Verdict;
     change: string | null;
     checks: CheckResult[];
     totals: Record<CheckStatus, number>;
     flags: GateFlag[];
+    /** Present only when `--repeat` found flaky tests. */
+    flaky?: FlakyEntry[];
+    /** Directory holding the first/retry Playwright artifacts, when `--repeat` ran. */
+    flakeRunDir?: string;
 }
 export interface GateOptions {
     json?: boolean;
@@ -29,6 +44,10 @@ export interface GateOptions {
     only?: string;
     skip?: string;
     coverageMin?: string;
+    /** Positive integer as a string; enables the E2E rerun phase. */
+    repeat?: string;
+    /** Fail the gate when flaky tests are found. Requires `repeat`. */
+    strictFlake?: boolean;
     /**
      * Stop-hook mode: read the Claude Code payload from stdin, block with exit
      * 2 instead of 1, cache by working-tree fingerprint and never trap the turn.
@@ -48,6 +67,7 @@ export interface ExecResult {
 export type Executor = (cmd: string, args: string[], opts: {
     cwd: string;
     timeoutMs: number;
+    env?: NodeJS.ProcessEnv;
 }) => ExecResult;
 export interface GateDeps {
     cwd?: string;
@@ -88,6 +108,21 @@ export declare function countScenarios(changeDir: string): number;
 export declare const defaultExecutor: Executor;
 /** Capabilities this change touches that already have a main spec. */
 export declare function touchedMainSpecs(cwd: string, change: string): string[];
+export interface PlaywrightReportSummary {
+    flaky: FlakyEntry[];
+    realFailures: string[];
+    total: number;
+    fatalErrors: number;
+}
+/**
+ * Classify a rerun report by attempt records. A rerun is a fresh process, so
+ * a recovered test is `expected` when it passes on the first attempt; only
+ * `status === "flaky"` would miss it. Any `passed` attempt therefore means
+ * flaky, and an all-failure attempt list means a real failure.
+ */
+export declare function parsePlaywrightReport(raw: string): PlaywrightReportSummary | {
+    error: string;
+};
 /** Changed files under `HEAD`, with numstat. Untracked files count as all-added. */
 export declare function collectChangedFiles(exec: Executor, cwd: string): Array<{
     path: string;

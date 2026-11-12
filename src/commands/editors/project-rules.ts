@@ -8,6 +8,7 @@ import {
   lstatSync,
   rmSync,
   readFileSync,
+  statSync,
   writeFileSync,
 } from "fs";
 import { join, basename } from "path";
@@ -331,7 +332,7 @@ export function cleanProjectRules(adapter: EditorAdapter, projectRoot: string): 
  * Remove openspec-pw marker blocks (both namespaces) from a single file,
  * deleting the file entirely when it empties out. Exported for the init
  * deselect-removal flow (CLAUDE.md wrapper cleanup); cleanProjectRules
- * wraps it for the uninstall context.
+ * wraps it for the remove command's context.
  */
 export function removeMarkersFromFile(dest: string, fileLabel: string): void {
   if (!existsSync(dest)) {
@@ -490,7 +491,10 @@ export function migrateLegacyMarkers(
  * block proves the project is ours (design D5 / init-minimal-mode).
  * Enumerates AGENTS.md plus every registered editor's wrapper file.
  */
-export function hasRuleFileMarkers(projectRoot: string): boolean {
+export function hasRuleFileMarkers(
+  projectRoot: string,
+  maxBytes = Number.POSITIVE_INFINITY,
+): boolean {
   const files = new Set<string>([join(projectRoot, "AGENTS.md")]);
   for (const adapter of getAllAdapters()) {
     const wrapper = wrapperRulesFile(adapter, projectRoot);
@@ -498,7 +502,17 @@ export function hasRuleFileMarkers(projectRoot: string): boolean {
   }
   for (const path of files) {
     if (!existsSync(path)) continue;
+    // Discovery over arbitrary trees skips oversized files rather than
+    // reading them whole; init/update keep the default (no limit). A
+    // partially mocked fs (tests) can omit statSync — fall through to the
+    // content-length check below.
+    try {
+      if (statSync(path).size > maxBytes) continue;
+    } catch {
+      // stat unavailable — decide from the loaded content instead.
+    }
     const content = readFileSync(path, "utf-8");
+    if (Buffer.byteLength(content, "utf-8") > maxBytes) continue;
     if (content.includes(OPENSPEC_START)) return true;
     if (hasLegacyTerritoryStart(content) && content.includes(LEGACY_MAIN_SIGNATURE)) return true;
   }

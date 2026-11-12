@@ -621,6 +621,126 @@ export function installLintConfig(projectRoot: string): LintConfigResult[] {
   return [installEslintConfig(projectRoot), installRuffConfig(projectRoot)];
 }
 
+/** Deterministic body of the generated `eslint.config.mjs` (three shapes, version-free). */
+export function buildGeneratedEslintConfig(
+  tsParser: { importLine: string; parserExpr: string } | null,
+): string {
+  return tsParser
+    ? `${LINT_ESLINT_GENERATED_MARKER} You own this file; openspec-pw won't modify it.
+${tsParser.importLine}
+export default [
+  {
+    files: ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts", "**/*.js", "**/*.mjs", "**/*.cjs"],
+    languageOptions: { parser: ${tsParser.parserExpr} },
+    rules: {
+      "no-empty": "error",
+    },
+  },
+];
+`
+    : `${LINT_ESLINT_GENERATED_MARKER} You own this file; openspec-pw won't modify it.
+export default [
+  {
+    rules: {
+      "no-empty": "error",
+    },
+  },
+];
+`;
+}
+
+/** All tool-generatable eslint config bodies, for ownership comparison at removal time. */
+export function generatedEslintConfigVariants(): string[] {
+  return [
+    buildGeneratedEslintConfig({
+      importLine: 'import tseslint from "typescript-eslint";',
+      parserExpr: "tseslint.parser",
+    }),
+    buildGeneratedEslintConfig({
+      importLine: 'import tsParser from "@typescript-eslint/parser";',
+      parserExpr: "tsParser",
+    }),
+    buildGeneratedEslintConfig(null),
+  ];
+}
+
+/** True when the content is byte-identical (EOL-normalized) to a tool-generated shape. */
+export function isToolGeneratedEslintConfig(content: string): boolean {
+  const normalized = normalizeEol(content);
+  return generatedEslintConfigVariants().some(
+    (variant) => normalizeEol(variant) === normalized,
+  );
+}
+
+export type EslintConfigRemovalStatus =
+  | "removed"
+  | "kept-modified"
+  | "not-generated"
+  | "absent";
+
+/** Remove the generated `eslint.config.mjs` when it is still tool-owned; never touches user files. */
+export function removeGeneratedEslintConfig(projectRoot: string): {
+  status: EslintConfigRemovalStatus;
+  file: string;
+} {
+  const file = join(projectRoot, LINT_ESLINT_CONFIG_FILE);
+  if (!existsSync(file)) return { status: "absent", file };
+  const content = readFileSync(file, "utf-8");
+  if (!content.startsWith(LINT_ESLINT_GENERATED_MARKER)) {
+    return { status: "not-generated", file };
+  }
+  if (!isToolGeneratedEslintConfig(content)) {
+    return { status: "kept-modified", file };
+  }
+  rmSync(file);
+  return { status: "removed", file };
+}
+
+/**
+ * Remove the ruff managed block from `pyproject.toml` / `.ruff.toml` / `ruff.toml`.
+ * Bytes outside the block are preserved verbatim; a file left empty by the
+ * removal (tool-created `ruff.toml` holding only the block) is deleted.
+ */
+export function removeRuffManagedBlock(projectRoot: string): {
+  file: string;
+  removed: boolean;
+}[] {
+  const candidates = ["pyproject.toml", ".ruff.toml", "ruff.toml"].map((f) =>
+    join(projectRoot, f),
+  );
+  const results: { file: string; removed: boolean }[] = [];
+  for (const file of candidates) {
+    if (!existsSync(file)) continue;
+    let content: string;
+    try {
+      content = readFileSync(file, "utf-8");
+    } catch {
+      continue;
+    }
+    const spliced = spliceRuffManagedBlock(content);
+    if (spliced === null) continue;
+    if (spliced.trim().length === 0) {
+      rmSync(file);
+    } else {
+      writeFileSync(file, spliced);
+    }
+    results.push({ file, removed: true });
+  }
+  return results;
+}
+
+/** Cut the managed block (begin line through end line + its trailing EOL); null when absent. */
+function spliceRuffManagedBlock(content: string): string | null {
+  const begin = content.indexOf(LINT_RUFF_BLOCK_BEGIN);
+  if (begin === -1) return null;
+  const end = content.indexOf(LINT_RUFF_BLOCK_END, begin);
+  if (end === -1) return null;
+  let cut = end + LINT_RUFF_BLOCK_END.length;
+  if (content[cut] === "\r") cut++;
+  if (content[cut] === "\n") cut++;
+  return content.slice(0, begin) + content.slice(cut);
+}
+
 function installEslintConfig(projectRoot: string): LintConfigResult {
   const found = findEslintConfig(projectRoot);
   if (found) {
@@ -679,29 +799,7 @@ function installEslintConfig(projectRoot: string): LintConfigResult {
   }
 
   const file = join(projectRoot, LINT_ESLINT_CONFIG_FILE);
-  const config = tsParser
-    ? `${LINT_ESLINT_GENERATED_MARKER} You own this file; openspec-pw won't modify it.
-${tsParser.importLine}
-export default [
-  {
-    files: ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts", "**/*.js", "**/*.mjs", "**/*.cjs"],
-    languageOptions: { parser: ${tsParser.parserExpr} },
-    rules: {
-      "no-empty": "error",
-    },
-  },
-];
-`
-    : `${LINT_ESLINT_GENERATED_MARKER} You own this file; openspec-pw won't modify it.
-export default [
-  {
-    rules: {
-      "no-empty": "error",
-    },
-  },
-];
-`;
-  writeFileSync(file, config);
+  writeFileSync(file, buildGeneratedEslintConfig(tsParser));
   return { tool: "ESLint", action: "created", file };
 }
 

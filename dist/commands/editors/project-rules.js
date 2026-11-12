@@ -3,7 +3,7 @@
  * AGENTS.md (single source of truth) and the thin CLAUDE.md wrapper for
  * Claude Code (@AGENTS.md import).
  */
-import { existsSync, lstatSync, rmSync, readFileSync, writeFileSync, } from "fs";
+import { existsSync, lstatSync, rmSync, readFileSync, statSync, writeFileSync, } from "fs";
 import { join, basename } from "path";
 import chalk from "chalk";
 // The marker constants hold no regex metacharacters, so they are safe to
@@ -259,7 +259,7 @@ export function cleanProjectRules(adapter, projectRoot) {
  * Remove openspec-pw marker blocks (both namespaces) from a single file,
  * deleting the file entirely when it empties out. Exported for the init
  * deselect-removal flow (CLAUDE.md wrapper cleanup); cleanProjectRules
- * wraps it for the uninstall context.
+ * wraps it for the remove command's context.
  */
 export function removeMarkersFromFile(dest, fileLabel) {
     if (!existsSync(dest)) {
@@ -390,7 +390,7 @@ export function migrateLegacyMarkers(projectRoot, hasPwArtifacts, claudeAuthoriz
  * block proves the project is ours (design D5 / init-minimal-mode).
  * Enumerates AGENTS.md plus every registered editor's wrapper file.
  */
-export function hasRuleFileMarkers(projectRoot) {
+export function hasRuleFileMarkers(projectRoot, maxBytes = Number.POSITIVE_INFINITY) {
     const files = new Set([join(projectRoot, "AGENTS.md")]);
     for (const adapter of getAllAdapters()) {
         const wrapper = wrapperRulesFile(adapter, projectRoot);
@@ -399,6 +399,10 @@ export function hasRuleFileMarkers(projectRoot) {
     }
     for (const path of files) {
         if (!existsSync(path))
+            continue;
+        // Discovery over arbitrary trees skips oversized files rather than
+        // reading them whole; init/update keep the default (no limit).
+        if (statSync(path).size > maxBytes)
             continue;
         const content = readFileSync(path, "utf-8");
         if (content.includes(OPENSPEC_START))

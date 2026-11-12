@@ -113,3 +113,27 @@ export interface LintConfigResult {
  * managed block, and never outside the project directory.
  */
 export declare function installLintConfig(projectRoot: string): LintConfigResult[];
+/** Deterministic body of the generated `eslint.config.mjs` (three shapes, version-free). */
+export declare function buildGeneratedEslintConfig(tsParser: {
+    importLine: string;
+    parserExpr: string;
+} | null): string;
+/** All tool-generatable eslint config bodies, for ownership comparison at removal time. */
+export declare function generatedEslintConfigVariants(): string[];
+/** True when the content is byte-identical (EOL-normalized) to a tool-generated shape. */
+export declare function isToolGeneratedEslintConfig(content: string): boolean;
+export type EslintConfigRemovalStatus = "removed" | "kept-modified" | "not-generated" | "absent";
+/** Remove the generated `eslint.config.mjs` when it is still tool-owned; never touches user files. */
+export declare function removeGeneratedEslintConfig(projectRoot: string): {
+    status: EslintConfigRemovalStatus;
+    file: string;
+};
+/**
+ * Remove the ruff managed block from `pyproject.toml` / `.ruff.toml` / `ruff.toml`.
+ * Bytes outside the block are preserved verbatim; a file left empty by the
+ * removal (tool-created `ruff.toml` holding only the block) is deleted.
+ */
+export declare function removeRuffManagedBlock(projectRoot: string): {
+    file: string;
+    removed: boolean;
+}[];

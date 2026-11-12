@@ -17,7 +17,7 @@ export function detectCodeGraphStatus(projectRoot, homeDir) {
         /* codegraph not installed — skip */
     }
     const mcpInstalledAdapters = detectAdapters(projectRoot, homeDir)
-        .filter((adapter) => isMcpInstalled(adapter, CODEGRAPH_MCP_SERVER))
+        .filter((adapter) => isMcpInstalled(adapter, projectRoot, CODEGRAPH_MCP_SERVER))
         .map((adapter) => adapter.label);
     return {
         cliInstalled,

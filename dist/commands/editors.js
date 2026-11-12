@@ -40,7 +40,7 @@ export { formatMinimaxSkill, getMinimaxSkillPath, hasMinimax, hasMinimaxProjectS
 export { formatDshSkill, getDshSkillPath, hasDsh, hasDshProjectSignal, dshAdapter, } from "./editors/adapters/dsh.js";
 // Tool selection (--tools flag parsing)
 export { resolveToolsArg } from "./editors/tool-selection.js";
-// Per-editor artifact removal (init deselect + uninstall cleanup)
+// Per-editor artifact removal (init deselect + remove cleanup)
 export { OPENSPEC_PW_MCP_SERVERS, CLAUDE_LEGACY_SKILL_REL, enumerateAdapterArtifacts, isInventoryEmpty, retainedMcpConfigFiles, removeAdapterMcp, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, removeLegacyArtifact, removeWrapper, cleanupEmptyDirs, } from "./editors/removal.js";
 // Vendored Playwright agent snapshots (claude, init --agents)
 export { VENDORED_AGENT_ROLES, vendoredAgentRelPath, vendoredAgentRelPaths, installedAgentsSnapshotDir, readAgentsManifest, loadAgentSnapshots, sha256Contents, roleForRelPath, classifyAgentFile, enumerateVendoredAgents, syncVendoredAgents, } from "./editors/agents.js";

@@ -213,7 +213,7 @@ Upgrading later: once the project gains a frontend signal (or you pass
 and prunes the tool-owned `tests/README.md` (a modified one is kept with a
 notice). Minimal-mode projects are first-class: `update` syncs their
 standards block and wrapper, `doctor` checks them without failing on
-missing Playwright, and `uninstall` cleans the README and markers.
+missing Playwright, and `remove` cleans the README and markers.
 
 ### Official Playwright Agents
 
@@ -237,7 +237,7 @@ workflow rules a delegated subagent would not inherit, and the official
 healer edits assertions/expected values to force tests green — the opposite
 of the pipeline's honest-failure exit. Projects with older installs keep
 those files: unmodified copies are still recognized as tool-owned (listed by
-`doctor`, removed by `uninstall`), edited copies are user-owned and never
+`doctor`, removed by `remove`), edited copies are user-owned and never
 touched.
 
 Their `tools:` frontmatter references the `playwright-test` MCP server —
@@ -287,11 +287,15 @@ openspec-pw doctor        # Check prerequisites (Node, Playwright, OpenSpec, con
 openspec-pw audit         # Audit tests for orphaned specs and issues (--gate exits 1 when any issue is found)
 openspec-pw coverage      # Analyze spec–test coverage for changes (--fail-under <pct> exits 1 below it; --plan <file> exits 1 unless every delta-spec scenario appears in that plan)
 openspec-pw flake         # Detect flake patterns in test files (static patterns + raised timeouts)
-openspec-pw gate [change]  # Run every quality check and exit 0 / 1 / 2 (pass / fail / cannot decide)
+openspec-pw gate [change]  # Run every quality check and exit 0 / 1 / 2 (pass / fail / cannot decide; --repeat N reruns failed E2E tests to classify flaky vs real)
 openspec-pw migrate       # Migrate old test files to new structure
 openspec-pw explore       # Explore app routes with Playwright
-openspec-pw uninstall     # Remove integration from the project
+openspec-pw remove        # Remove integration (--all scans every project; --yes executes)
 ```
+
+**`remove`** cleans the current project: editor command carriers, the `playwright-test` / legacy `playwright` MCP entries, rules-file marker blocks, the managed `.gitignore` block, the Stop hook, `openspec/schemas/playwright-e2e/`, the lint checklist, vendored agents, the legacy skill directory, and — when still byte-identical to the bundled templates — `tests/README.md`, `.github/workflows/openspec-pw.yml`, the generated `eslint.config.mjs`, and the ruff managed block. User data is never touched (`tests/**`, `credentials.yaml`, `openspec/specs`), and edited tool files are kept with a notice. **BREAKING (0.3.x → next):** `uninstall` was renamed to `remove`; the old name is gone.
+
+`remove --all` scans for projects that carry openspec-pw territory — editor command files, the schema directory, marker blocks, the managed `.gitignore` block, or a `playwright-test` MCP entry. Default scan roots are your home directory, plus every existing drive root on Windows. It is a **dry run by default**: it prints each project and the artifact groups it would remove. Add `--yes` to execute; `--root <dir>` (repeatable, `~` expanded) replaces the default roots, and UNC network roots are not scanned. A cwd project outside the scan roots is always included and listed first. One project's failure never stops the rest; the run ends with `removed N / skipped M / failed K` and exits nonzero when anything failed.
 
 `openspec-pw gate` is the single verdict the rest of the tooling calls — the Claude Code Stop hook and the generated CI workflow both invoke it rather than keeping their own check lists. It runs `validate → lint → typecheck → test → flake → e2e` (cheap first, stop at the first failure unless `--keep-going`), and exit codes are three-valued: `0` every check passed, `1` a check failed, `2` the run could not decide (tool missing, timeout, ambiguous change name).
 
@@ -302,7 +306,9 @@ Two deterministic guards stop a false green:
 
 Edits to lint config, `tsconfig*.json`, Playwright or Vitest config appear under `flags` in the verdict, as does any timeout raised inside a test file (`timeout: N` / `test.setTimeout(N)`). They are reported, not failed: loosening a config or extending a timeout is sometimes legitimate, but a reviewer needs to know when the ruler moved — a raised timeout turns a failing test green without fixing the race it tripped over.
 
-**Stop hook.** `openspec-pw init --hook` merges a `Stop` hook into `.claude/settings.json` that runs `openspec-pw gate --hook`. When the gate is red the hook exits 2 with the failing checks on stderr, so the agent keeps working instead of claiming done. Two tiers: `static` (default — validate, lint, typecheck, unit tests) and `full` (adds flake and e2e). Use `full` only once the change's E2E tests exist: before that, the "scenarios but no tests" guard fails the gate on every turn and the hook blocks work that is on the right track. It blocks at most once per turn (honouring Claude Code's `stop_hook_active`) and caches its verdict against a working-tree fingerprint, so an unchanged tree is not re-checked. `--no-hook` or `openspec-pw uninstall` removes it; your own hooks in the same file are never touched.
+**Runtime flake evidence.** `gate --repeat <N>` reruns only the E2E tests that failed on the first run (`--last-failed`), with `--retries=N`. Tests that pass at least once on the rerun are listed as flaky in the verdict and in `--json` (`flaky`, with pass/fail attempt counts and any trace from a failed attempt); tests that fail every attempt stay real failures. Flaky is reported, not failed, unless `--strict-flake` is also given, so a first-run flake no longer forces a red gate. The feature is opt-in and does not touch `playwright.config.*`; Playwright artifacts land in `tmp/gate-flake-<pid>-<timestamp>/` (or the OS temp directory when `tmp/` is not ignored). It is probabilistic: it only catches tests that fail on the first run and pass on rerun. The Stop hook does not pass `--repeat`.
+
+**Stop hook.** `openspec-pw init --hook` merges a `Stop` hook into `.claude/settings.json` that runs `openspec-pw gate --hook`. When the gate is red the hook exits 2 with the failing checks on stderr, so the agent keeps working instead of claiming done. Two tiers: `static` (default — validate, lint, typecheck, unit tests) and `full` (adds flake and e2e). Use `full` only once the change's E2E tests exist: before that, the "scenarios but no tests" guard fails the gate on every turn and the hook blocks work that is on the right track. It blocks at most once per turn (honouring Claude Code's `stop_hook_active`) and caches its verdict against a working-tree fingerprint, so an unchanged tree is not re-checked. `--no-hook` or `openspec-pw remove` removes it; your own hooks in the same file are never touched.
 
 **Autonomous pipeline.** `openspec-pw init --auto-pipeline` writes `.github/workflows/openspec-auto.yml` once and never overwrites it. Two triggers on purpose: every pull request runs `gate` only — mark that job as a **required status check**, or a PR with a red gate can still merge — while a `openspec:auto` label or a manual dispatch starts the headless agent (apply → static gate → generate E2E → full gate) and opens the PR. Required secret: `ANTHROPIC_API_KEY`. Stages run cheapest-first: apply verifies itself with `gate --skip e2e` (the change's E2E tests do not exist yet, and the "scenarios but no tests" guard would fail a full gate — a loop that cannot terminate), a static gate follows at zero token cost, then the browser-driven E2E stage, and only then the full gate as the job's own verdict. Apply is judged by `openspec list --json` task counts, because a headless run that stops to ask a question still exits 0. A final `/opsx:verify` pass is advisory — its report and every stage's `total_cost_usd` land in the PR body, and it never blocks. The E2E step runs `/opsx:e2e --auto`: the human plan approval becomes `openspec-pw coverage --plan`, and every point that would wait for a person becomes a structured abort with a non-zero exit. Because CI checks out the repository, `openspec/` is kept out of the managed `.gitignore` block in pipeline projects — the specs and changes must be committed or the agent has nothing to apply. A rule outside the block that still ignores `openspec/` is reported, not rewritten.
 
@@ -396,7 +402,7 @@ Browser exploration is provided out of the box by Playwright MCP and `openspec-p
 
 1. Detects supported editors in the project (Claude Code and/or OpenCode and/or Cline and/or Cursor and/or Pi and/or Oh My Pi and/or CodeBuddy CLI and/or MiniMax Code and/or DeepSeek Harness; Pi, Oh My Pi, MiniMax Code and DeepSeek Harness are also detected via their global config dirs `~/.pi/agent/` / `~/.omp/agent/` / `~/.minimax-code/` / `~/.dsh/`)
 2. Installs the E2E command for each detected editor (`/opsx:e2e` for Claude Code and CodeBuddy CLI, `/opsx-e2e` for OpenCode, Cline, Cursor, Pi, Oh My Pi, MiniMax Code and DeepSeek Harness; Cursor also gets an Agent Skill, MiniMax Code and DeepSeek Harness get an Agent Skill as their only command artifact)
-3. Generates `tests/playwright/seed.spec.ts`, `auth.setup.ts`, `credentials.yaml`, `app-knowledge.md`, `pages/BasePage.ts`, plus the project-root `lint-guidelines.md` swallow-error and docstring lint checklist (refreshed by `update` while unmodified, removed by `uninstall`)
+3. Generates `tests/playwright/seed.spec.ts`, `auth.setup.ts`, `credentials.yaml`, `app-knowledge.md`, `pages/BasePage.ts`, plus the project-root `lint-guidelines.md` swallow-error and docstring lint checklist (refreshed by `update` while unmodified, removed by `remove`)
 
 > **`--lint-config` (opt-in)**: creates a minimal `eslint.config.mjs` (eslint 9+ declared, no config anywhere in the project or its ancestors up to the git root; TypeScript projects get the declared parser — `typescript-eslint` or `@typescript-eslint/parser` — wired into `files`/`languageOptions`) and creates or extends the ruff config with a managed `extend-select = ["B904"]` block (`.ruff.toml` > `ruff.toml` > `pyproject.toml`, ruff's own precedence). Existing configs are never edited — a paste-ready snippet is printed instead. Re-runs are idempotent; a hand-edited managed block is kept as-is.
 4. Generates `playwright.config.ts` with automatic dev script and port detection (Vite/Next/Nuxt/Astro, `.env`, and `--port`)
@@ -476,7 +482,7 @@ If your project already has `playwright.config.ts`, `openspec-pw init` will not 
 
 If your app requires login, set up credentials once, then all tests run authenticated automatically.
 
-> **Credentials are ignored automatically**: init and update maintain a marked block at the tail of your `.gitignore` that ignores `tests/playwright/credentials.yaml`, its `.bak`, `tests/playwright/test-results/`, and exploration screenshots (`tests/playwright/screenshots/` — they age as the app evolves; stay local like app-exploration.md) — plus auth storageState (`playwright/.auth/`, logged-in session cookies), MCP config (`.mcp.json` — user-added servers often carry API keys in env/headers), tool-local data (`.codegraph/`, `.playwright-mcp/`), and first-tier names like `.claude/`, `.cursor/`, `.codebuddy/`, `.agents/skills/opsx-e2e/`, `.dsh/skills/opsx-e2e/`, `openspec/`, `AGENTS.md`, `CLAUDE.md`, `CODEBUDDY.md` (the generated products stay local, per design). The block is idempotent, never touches your own rules, and is cleaned up by `uninstall`. If the block cannot be written, a warning lists the uncovered paths instead. Note: ignore rules do not apply to already-tracked files — if credentials were committed before, run `git rm --cached tests/playwright/credentials.yaml`. Alternatively keep credentials in the `E2E_USERNAME` / `E2E_PASSWORD` env vars. Interactive init can uncheck individual paths; the opt-outs are stored on the block's `# openspec-pw: skip=…` header line and honored by every later `update`.
+> **Credentials are ignored automatically**: init and update maintain a marked block at the tail of your `.gitignore` that ignores `tests/playwright/credentials.yaml`, its `.bak`, `tests/playwright/test-results/`, and exploration screenshots (`tests/playwright/screenshots/` — they age as the app evolves; stay local like app-exploration.md) — plus auth storageState (`playwright/.auth/`, logged-in session cookies), MCP config (`.mcp.json` — user-added servers often carry API keys in env/headers), tool-local data (`.codegraph/`, `.playwright-mcp/`), and first-tier names like `.claude/`, `.cursor/`, `.codebuddy/`, `.agents/skills/opsx-e2e/`, `.dsh/skills/opsx-e2e/`, `openspec/`, `AGENTS.md`, `CLAUDE.md`, `CODEBUDDY.md` (the generated products stay local, per design). The block is idempotent, never touches your own rules, and is cleaned up by `remove`. If the block cannot be written, a warning lists the uncovered paths instead. Note: ignore rules do not apply to already-tracked files — if credentials were committed before, run `git rm --cached tests/playwright/credentials.yaml`. Alternatively keep credentials in the `E2E_USERNAME` / `E2E_PASSWORD` env vars. Interactive init can uncheck individual paths; the opt-outs are stored on the block's `# openspec-pw: skip=…` header line and honored by every later `update`.
 
 ```bash
 # 1. Edit credentials
@@ -531,7 +537,7 @@ CLI (openspec-pw)
   ├── flake      → Detects flake patterns in test files (static + raised timeouts)
   ├── doctor     → Checks prerequisites
   ├── explore    → Explores app routes with Playwright
-  └── uninstall  → Removes integration from the project
+  └── remove     → Removes integration (--all: every project on this machine)
 
 Editors (auto-detected by openspec-pw init)
   ├── Claude Code (/opsx:e2e)

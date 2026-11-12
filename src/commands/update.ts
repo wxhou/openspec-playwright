@@ -334,7 +334,7 @@ export async function update(options: UpdateOptions) {
             );
             continue;
           }
-          if (isTestRunnerMcpInstalled(adapter)) {
+          if (isTestRunnerMcpInstalled(adapter, projectRoot)) {
             console.log(
               chalk.green(
                 `  ✓ ${adapter.label}: Test-runner MCP already installed`,
@@ -343,7 +343,7 @@ export async function update(options: UpdateOptions) {
             continue;
           }
           try {
-            ensureTestRunnerMcp(adapter);
+            ensureTestRunnerMcp(adapter, projectRoot);
             if (adapter.supportsMcp !== false) {
               console.log(
                 chalk.gray(`  (Restart ${adapter.label} to activate)`),
@@ -662,7 +662,7 @@ export function syncEmployeeStandards(
         );
         console.log(
           chalk.yellow(
-            '    If the removal was intentional, run "openspec-pw uninstall" to stop these warnings.',
+            '    If the removal was intentional, run "openspec-pw remove" to stop these warnings.',
           ),
         );
       } else {

@@ -16,7 +16,7 @@
  * These artifacts deliberately stay OUT of listCommandArtifactPaths: they
  * never confer configured status, pre-selection, or write authorization.
  * Removal happens only through the agents-aware primitives in removal.ts,
- * called from init's deselection flow and uninstall.
+ * called from init's deselection flow and remove.
  */
 import { createHash } from "crypto";
 import { existsSync, readFileSync, writeFileSync } from "fs";
@@ -182,7 +182,7 @@ export function syncVendoredAgents(dir, projectRoot, claudeAuthorized) {
     for (const role of RETIRED_AGENT_ROLES) {
         const relPath = retiredAgentRelPath(role);
         if (inventory.owned.includes(relPath)) {
-            console.log(chalk.gray(`  - claude: ${relPath} is retired (no longer installed by --agents) — run "openspec-pw uninstall" to remove it`));
+            console.log(chalk.gray(`  - claude: ${relPath} is retired (no longer installed by --agents) — run "openspec-pw remove" to remove it`));
         }
     }
 }

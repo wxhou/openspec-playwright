@@ -118,15 +118,35 @@ program
   });
 
 program
-  .command("uninstall")
+  .command("remove")
   .description(
-    "Remove OpenSpec + Playwright E2E integration from the current project",
+    "Remove OpenSpec + Playwright E2E integration (current project, or every project with --all)",
   )
-  .action(async () => {
-    const { uninstall } = await import("./commands/uninstall.js");
+  .option(
+    "--all",
+    "Discover projects on this machine and print the removal plan (dry run)",
+  )
+  .option("--yes", "With --all: actually remove (without it, --all only prints the plan)")
+  .option(
+    "--root <dir>",
+    "With --all: scan root (repeatable; replaces the default home scan)",
+    (value: string, previous: string[] = []) => [...previous, value],
+    [] as string[],
+  )
+  .action(async (opts: { all?: boolean; yes?: boolean; root?: string[] }) => {
+    const { removeOptionError, removeSingle, runRemoveAll } = await import(
+      "./commands/remove.js"
+    );
+    const usageError = removeOptionError(opts);
+    if (usageError) {
+      console.error(`  ${usageError}`);
+      process.exitCode = 2;
+      return;
+    }
+    const code = opts.all ? await runRemoveAll(opts) : await removeSingle();
     const { checkForUpdate } = await import("./shared/version-check.js");
-    await uninstall();
     await checkForUpdate(pkg.version);
+    process.exitCode = code;
   });
 
 program
@@ -184,6 +204,14 @@ program
   .option(
     "--coverage-min <pct>",
     "Coverage threshold; without it the coverage check reports skipped",
+  )
+  .option(
+    "--repeat <n>",
+    "Rerun failed E2E tests up to N times to tell flaky tests from real failures",
+  )
+  .option(
+    "--strict-flake",
+    "Treat flaky E2E tests as failures (requires --repeat)",
   )
   .option(
     "--hook",

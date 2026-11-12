@@ -859,9 +859,9 @@ describe("cleanProjectRules", () => {
     );
   });
 
-  it("uninstall also removes a surviving legacy OPENSPEC: block (pre-migration project)", () => {
+  it("removeInProject also removes a surviving legacy OPENSPEC: block (pre-migration project)", () => {
     // MARKER_BLOCK writes the new OPENSPEC-PW namespace; this fixture keeps
-    // the legacy one on purpose — uninstall must clean both namespaces.
+    // the legacy one on purpose — the remove command must clean both namespaces.
     writeFileSync(
       join(tmpRoot, "AGENTS.md"),
       `# Project\n\n<!-- OPENSPEC:START -->\nold standards body\n<!-- OPENSPEC:END -->\n\nuser tail\n`,

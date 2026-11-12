@@ -142,7 +142,7 @@ export {
 // Tool selection (--tools flag parsing)
 export { resolveToolsArg } from "./editors/tool-selection.js";
 
-// Per-editor artifact removal (init deselect + uninstall cleanup)
+// Per-editor artifact removal (init deselect + remove cleanup)
 export {
   OPENSPEC_PW_MCP_SERVERS,
   CLAUDE_LEGACY_SKILL_REL,

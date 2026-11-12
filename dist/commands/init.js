@@ -444,12 +444,12 @@ export async function init(options, deps = {}) {
     if (options.mcp !== false && editors.length > 0 && mode === "frontend") {
         console.log(chalk.blue("\n─── Installing Playwright MCP ───"));
         for (const adapter of editors) {
-            if (isTestRunnerMcpInstalled(adapter)) {
+            if (isTestRunnerMcpInstalled(adapter, projectRoot)) {
                 console.log(chalk.green(`  ✓ ${adapter.label}: Test-runner MCP already installed`));
                 continue;
             }
             try {
-                ensureTestRunnerMcp(adapter);
+                ensureTestRunnerMcp(adapter, projectRoot);
                 if (adapter.supportsMcp !== false) {
                     console.log(chalk.gray(`  (Restart ${adapter.label} to activate)`));
                 }

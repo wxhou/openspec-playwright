@@ -4,7 +4,7 @@
  * Shared by two callers with different output styles:
  *   - `init` (deselect = remove): enumerates the openspec-pw products of
  *     deselected editors, prints one confirmation list, then removes.
- *   - `uninstall` (full cleanup): calls the same small delete functions
+ *   - `remove` (full cleanup): calls the same small delete functions
  *     inside its existing section-major loop (all MCP → all commands →
  *     legacy → rules), so its log order stays unchanged.
  *
@@ -12,7 +12,7 @@
  * writes — so it doubles as the dry-run source for init's confirm list.
  * The delete side is composed of small single-purpose functions instead of
  * one monolithic `removeAdapterArtifacts` because a monolith would reorder
- * uninstall's section-major output and the MCP removal helpers in
+ * remove's section-major output and the MCP removal helpers in
  * shared/mcp.ts print their own status lines (unusable for dry enumeration).
  */
 import { existsSync, lstatSync, readFileSync, readdirSync, rmSync, rmdirSync } from "fs";
@@ -30,13 +30,13 @@ import { CLAUDE_LEGACY_SKILL_REL } from "./shared.js";
 /**
  * The Playwright MCP servers openspec-pw manages. `playwright-test` is the
  * official test-runner server installed today; `playwright` is the legacy
- * @playwright/mcp entry older versions wrote (uninstall removes both).
+ * @playwright/mcp entry older versions wrote (the remove command deletes both).
  * Literals here rather than importing shared/mcp.ts, which imports the
  * editors facade that re-exports this module (import cycle).
  */
 export const OPENSPEC_PW_MCP_SERVERS = ["playwright-test", "playwright"] as const;
 
-/** Re-exported for uninstall's fixed historical cleanup and the facade. */
+/** Re-exported for the remove command's fixed historical cleanup and the facade. */
 export { CLAUDE_LEGACY_SKILL_REL };
 
 // ─── Dry enumeration (read-only, never prints) ───────────────────────────
@@ -188,7 +188,7 @@ export function removeAdapterMcp(
       adapter.removeMcp(projectRoot, serverName);
       console.log(chalk.green(`  ✓ ${adapter.label}: ${serverName} MCP removed`));
     } catch {
-      // Same posture as uninstall: claude CLI missing/degraded warns, never throws.
+      // Same posture as the remove command: claude CLI missing/degraded warns, never throws.
       console.warn(chalk.yellow(`  ⚠ ${adapter.label}: failed to remove ${serverName} MCP`));
     }
   }
@@ -215,7 +215,7 @@ export function removeAdapterCommandArtifacts(
 
 /**
  * Remove the tool-owned vendored Playwright agent files (claude; init
- * deselection + uninstall). User-owned files are never deleted — each is
+ * deselection + remove). User-owned files are never deleted — each is
  * reported as kept-modified. Returns the removed project-relative paths.
  */
 export function removeOwnedVendoredAgents(

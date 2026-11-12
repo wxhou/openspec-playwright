@@ -39,7 +39,7 @@ describe("removePlaywrightMcp", () => {
     );
 
     const consoleSpy = vi.spyOn(console, "log");
-    removePlaywrightMcp(claudeAdapter);
+    removePlaywrightMcp(claudeAdapter, "/proj");
     expect(consoleSpy).toHaveBeenCalledWith("  ✓ claude: playwright MCP removed");
     consoleSpy.mockRestore();
 
@@ -56,7 +56,7 @@ describe("removePlaywrightMcp", () => {
     });
 
     const consoleSpy = vi.spyOn(console, "log");
-    removePlaywrightMcp(claudeAdapter);
+    removePlaywrightMcp(claudeAdapter, "/proj");
     expect(consoleSpy).toHaveBeenCalledWith("  - claude: playwright MCP not installed (nothing to remove)");
     consoleSpy.mockRestore();
     expect(execFileSync).not.toHaveBeenCalled();
@@ -71,7 +71,7 @@ describe("removePlaywrightMcp", () => {
     });
 
     const consoleSpy = vi.spyOn(console, "warn");
-    removePlaywrightMcp(claudeAdapter);
+    removePlaywrightMcp(claudeAdapter, "/proj");
     expect(consoleSpy).toHaveBeenCalledWith("  ⚠ claude: failed to remove playwright MCP");
     consoleSpy.mockRestore();
   });
@@ -106,7 +106,7 @@ describe("removeTestRunnerMcp", () => {
     );
 
     const consoleSpy = vi.spyOn(console, "log");
-    removeTestRunnerMcp(claudeAdapter);
+    removeTestRunnerMcp(claudeAdapter, "/proj");
     expect(consoleSpy).toHaveBeenCalledWith(
       "  ✓ claude: playwright-test MCP removed",
     );
@@ -125,7 +125,7 @@ describe("removeTestRunnerMcp", () => {
     );
 
     const consoleSpy = vi.spyOn(console, "log");
-    removeTestRunnerMcp(claudeAdapter);
+    removeTestRunnerMcp(claudeAdapter, "/proj");
     expect(consoleSpy).toHaveBeenCalledWith(
       "  - claude: playwright-test MCP not installed (nothing to remove)",
     );

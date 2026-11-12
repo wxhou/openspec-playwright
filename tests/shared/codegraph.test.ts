@@ -128,8 +128,8 @@ describe("detectCodeGraphStatus — MCP detection", () => {
   it("checks the codegraph MCP server name for every detected adapter", () => {
     mockedIsMcpInstalled.mockReturnValue(true);
     detectCodeGraphStatus(tmp);
-    expect(mockedIsMcpInstalled).toHaveBeenCalledWith(claudeAdapter, "codegraph");
-    expect(mockedIsMcpInstalled).toHaveBeenCalledWith(opencodeAdapter, "codegraph");
+    expect(mockedIsMcpInstalled).toHaveBeenCalledWith(claudeAdapter, tmp, "codegraph");
+    expect(mockedIsMcpInstalled).toHaveBeenCalledWith(opencodeAdapter, tmp, "codegraph");
   });
 
   it("reports only adapters with the codegraph MCP installed", () => {

@@ -24,6 +24,26 @@ export function credentialsIgnoreHint(unignored) {
         " — add them to .gitignore (or keep credentials in the" +
         " E2E_USERNAME / E2E_PASSWORD env vars instead)");
 }
+function loadIgnore(projectRoot) {
+    const ig = ignore();
+    for (const ruleFile of [join(".git", "info", "exclude"), ".gitignore"]) {
+        const abs = join(projectRoot, ruleFile);
+        if (existsSync(abs))
+            ig.add(readFileSync(abs, "utf-8"));
+    }
+    return ig;
+}
+/**
+ * Whether the project's ignore rules cover `relPath`, independent of whether
+ * the path exists yet. `findUnignoredFiles` cannot answer this: it skips
+ * paths that are not on disk, which makes a not-yet-created `tmp/` look safe.
+ */
+export function isPathIgnored(projectRoot, relPath) {
+    const ig = loadIgnore(projectRoot);
+    const clean = relPath.replace(/\/+$/, "");
+    // Directory rules such as `tmp/` match only the trailing-slash form.
+    return ig.ignores(clean) || ig.ignores(`${clean}/`);
+}
 /**
  * Return the subset of `relPaths` that exist on disk but are NOT covered
  * by the project's ignore rules. Empty result = fully covered.
@@ -35,12 +55,7 @@ export function credentialsIgnoreHint(unignored) {
  * path uncovered).
  */
 export function findUnignoredFiles(projectRoot, relPaths) {
-    const ig = ignore();
-    for (const ruleFile of [join(".git", "info", "exclude"), ".gitignore"]) {
-        const abs = join(projectRoot, ruleFile);
-        if (existsSync(abs))
-            ig.add(readFileSync(abs, "utf-8"));
-    }
+    const ig = loadIgnore(projectRoot);
     return relPaths.filter((rel) => existsSync(join(projectRoot, rel)) && !ig.ignores(rel));
 }
 //# sourceMappingURL=ignore-check.js.map

@@ -90,7 +90,7 @@ export declare function cleanProjectRules(adapter: EditorAdapter, projectRoot: s
  * Remove openspec-pw marker blocks (both namespaces) from a single file,
  * deleting the file entirely when it empties out. Exported for the init
  * deselect-removal flow (CLAUDE.md wrapper cleanup); cleanProjectRules
- * wraps it for the uninstall context.
+ * wraps it for the remove command's context.
  */
 export declare function removeMarkersFromFile(dest: string, fileLabel: string): void;
 /** Read the employee-grade standards source file (empty string if missing). */
@@ -126,4 +126,4 @@ export declare function migrateLegacyMarkers(projectRoot: string, hasPwArtifacts
  * block proves the project is ours (design D5 / init-minimal-mode).
  * Enumerates AGENTS.md plus every registered editor's wrapper file.
  */
-export declare function hasRuleFileMarkers(projectRoot: string): boolean;
+export declare function hasRuleFileMarkers(projectRoot: string, maxBytes?: number): boolean;

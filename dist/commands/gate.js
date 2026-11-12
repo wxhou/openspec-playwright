@@ -10,10 +10,12 @@
  * and "fix the environment".
  */
 import { createHash } from "crypto";
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, mkdirSync } from "fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync, } from "fs";
+import { tmpdir } from "os";
 import { dirname, join, relative } from "path";
 import { fileURLToPath } from "url";
 import { parseTimeoutIncreases } from "./flake.js";
+import { isPathIgnored } from "../shared/ignore-check.js";
 import { spawnSync } from "../shared/exec.js";
 // ─── Check registry ──────────────────────────────────────────────────────
 /** Execution order is cheap-first and stable; docs quote it verbatim. */
@@ -203,6 +205,8 @@ export const defaultExecutor = (cmd, args, opts) => {
         timeout: opts.timeoutMs,
         encoding: "utf-8",
         stdio: ["ignore", "pipe", "pipe"],
+        // spawnSync replaces the whole environment when `env` is given.
+        ...(opts.env ? { env: { ...process.env, ...opts.env } } : {}),
     });
     if (res.error) {
         const err = res.error;
@@ -340,6 +344,232 @@ function runOne(name, plan, deps) {
     const reason = firstReasonLine(res.stderr) || `exit code ${res.exitCode}`;
     return { name, status: "fail", exitCode: res.exitCode, durationMs, reason };
 }
+// ─── E2E rerun (runtime flake evidence) ──────────────────────────────────
+/** Refuse to pull a multi-megabyte report into memory (see §7 resource bounds). */
+const MAX_REPORT_BYTES = 32 * 1024 * 1024;
+function traceFromResults(results) {
+    let trace;
+    for (const result of results) {
+        if (result.status === "passed" || result.status === "skipped")
+            continue;
+        for (const attachment of result.attachments ?? []) {
+            if (attachment.name === "trace" && attachment.path)
+                trace = attachment.path;
+        }
+    }
+    return trace;
+}
+/**
+ * Classify a rerun report by attempt records. A rerun is a fresh process, so
+ * a recovered test is `expected` when it passes on the first attempt; only
+ * `status === "flaky"` would miss it. Any `passed` attempt therefore means
+ * flaky, and an all-failure attempt list means a real failure.
+ */
+export function parsePlaywrightReport(raw) {
+    let report;
+    try {
+        report = JSON.parse(raw);
+    }
+    catch {
+        return { error: "report is not valid JSON" };
+    }
+    if (!Array.isArray(report.suites))
+        return { error: "report has no suites" };
+    const flaky = [];
+    const realFailures = [];
+    let total = 0;
+    const walk = (suite) => {
+        for (const spec of suite.specs ?? []) {
+            const file = spec.file ?? suite.file ?? "";
+            const title = spec.title ?? "";
+            for (const test of spec.tests ?? []) {
+                const results = test.results ?? [];
+                const passed = results.filter((r) => r.status === "passed").length;
+                const failed = results.filter((r) => r.status === "failed" ||
+                    r.status === "timedOut" ||
+                    r.status === "interrupted").length;
+                if (passed + failed === 0)
+                    continue;
+                total++;
+                // test.fail()/test.fixme() expectations: an unexpected pass is a
+                // failure in its own right, not flakiness.
+                if (passed > 0 &&
+                    test.expectedStatus !== undefined &&
+                    test.expectedStatus !== "passed") {
+                    realFailures.push(title || file);
+                }
+                else if (passed > 0) {
+                    flaky.push({ title, file, passed, failed, trace: traceFromResults(results) });
+                }
+                else {
+                    realFailures.push(title || file);
+                }
+            }
+        }
+        for (const child of suite.suites ?? [])
+            walk(child);
+    };
+    for (const suite of report.suites)
+        walk(suite);
+    return {
+        flaky,
+        realFailures,
+        total,
+        fatalErrors: Array.isArray(report.errors) ? report.errors.length : 0,
+    };
+}
+function readLastFailedIds(file) {
+    try {
+        const parsed = JSON.parse(readFileSync(file, "utf-8"));
+        if (!Array.isArray(parsed.failedTests))
+            return null;
+        return parsed.failedTests.filter((id) => typeof id === "string");
+    }
+    catch {
+        return null;
+    }
+}
+function readReportFile(file) {
+    try {
+        if (!existsSync(file))
+            return { error: "report file missing" };
+        if (statSync(file).size > MAX_REPORT_BYTES)
+            return { error: "report file too large" };
+        return readFileSync(file, "utf-8");
+    }
+    catch {
+        return { error: "report file unreadable" };
+    }
+}
+function createFlakeRunDir(cwd) {
+    const base = isPathIgnored(cwd, "tmp") ? join(cwd, "tmp") : tmpdir();
+    mkdirSync(base, { recursive: true });
+    return mkdtempSync(join(base, `gate-flake-${process.pid}-${Date.now()}-`));
+}
+/**
+ * Run E2E once; on failure, rerun only the failed tests to separate flaky
+ * tests from real failures. Always returns the first-run verdict when the
+ * rerun cannot produce usable evidence, so a red never turns into a pass.
+ */
+function runE2eWithRepeat(plan, repeatCount, strictFlake, deps) {
+    const started = Date.now();
+    if (plan.skip) {
+        return {
+            result: { name: "e2e", status: "skipped", exitCode: null, durationMs: 0, reason: plan.skip },
+        };
+    }
+    const runDir = createFlakeRunDir(deps.cwd);
+    const firstDir = join(runDir, "first");
+    const retryDir = join(runDir, "retry");
+    mkdirSync(firstDir, { recursive: true });
+    mkdirSync(retryDir, { recursive: true });
+    const first = deps.exec(plan.cmd, [...plan.args, "--output", firstDir], {
+        cwd: deps.cwd,
+        timeoutMs: TIMEOUTS.e2e,
+    });
+    if (first.failure) {
+        return {
+            result: {
+                name: "e2e",
+                status: "error",
+                exitCode: null,
+                durationMs: Date.now() - started,
+                reason: first.failure.message,
+            },
+            runDir,
+        };
+    }
+    if (first.exitCode === 0) {
+        return {
+            result: { name: "e2e", status: "pass", exitCode: 0, durationMs: Date.now() - started },
+            runDir,
+        };
+    }
+    const unavailable = (why) => ({
+        result: {
+            name: "e2e",
+            status: "fail",
+            exitCode: first.exitCode,
+            durationMs: Date.now() - started,
+            reason: `E2E failed; flake evidence unavailable (${why})`,
+        },
+        runDir,
+    });
+    const lastRunFile = join(firstDir, ".last-run.json");
+    const failedIds = readLastFailedIds(lastRunFile);
+    if (!failedIds || failedIds.length === 0)
+        return unavailable("no failed-test list");
+    const retryInput = join(retryDir, "last-run-input.json");
+    copyFileSync(lastRunFile, retryInput);
+    const reportFile = join(retryDir, "report.json");
+    const retryArgs = [
+        ...plan.args,
+        "--last-failed",
+        "--last-failed-file",
+        retryInput,
+        "--retries",
+        String(repeatCount),
+        "--reporter=json",
+        "--trace=on",
+        "--output",
+        retryDir,
+    ];
+    const retry = deps.exec(plan.cmd, retryArgs, {
+        cwd: deps.cwd,
+        timeoutMs: TIMEOUTS.e2e,
+        env: { PLAYWRIGHT_JSON_OUTPUT_FILE: reportFile },
+    });
+    if (retry.failure) {
+        return {
+            result: {
+                name: "e2e",
+                status: "error",
+                exitCode: null,
+                durationMs: Date.now() - started,
+                reason: retry.failure.message,
+            },
+            runDir,
+        };
+    }
+    const raw = readReportFile(reportFile);
+    if (typeof raw !== "string")
+        return unavailable(raw.error);
+    const summary = parsePlaywrightReport(raw);
+    if ("error" in summary)
+        return unavailable(summary.error);
+    if (summary.fatalErrors > 0)
+        return unavailable(`${summary.fatalErrors} fatal error(s) in rerun`);
+    if (summary.total === 0)
+        return unavailable("rerun executed no tests");
+    if (summary.total < failedIds.length) {
+        return unavailable(`rerun covered ${summary.total} of ${failedIds.length} failed test(s)`);
+    }
+    const flaky = summary.flaky.length > 0 ? summary.flaky : undefined;
+    if (summary.realFailures.length > 0) {
+        return {
+            result: {
+                name: "e2e",
+                status: "fail",
+                exitCode: retry.exitCode ?? 1,
+                durationMs: Date.now() - started,
+                reason: `${summary.realFailures.length} real failure(s) after rerun, ${summary.flaky.length} flaky`,
+            },
+            flaky,
+            runDir,
+        };
+    }
+    return {
+        result: {
+            name: "e2e",
+            status: strictFlake ? "fail" : "pass",
+            exitCode: strictFlake ? 1 : 0,
+            durationMs: Date.now() - started,
+            reason: `${summary.flaky.length} flaky test(s)${strictFlake ? " (--strict-flake)" : ""}`,
+        },
+        flaky,
+        runDir,
+    };
+}
 /** Changed files under `HEAD`, with numstat. Untracked files count as all-added. */
 export function collectChangedFiles(exec, cwd) {
     const out = [];
@@ -451,6 +681,18 @@ function renderHuman(report, out) {
         out(`  ${glyph} ${c.name.padEnd(9)} ${c.status}${ms}${c.reason ? ` — ${c.reason}` : ""}`);
     }
     out("");
+    if (report.flaky && report.flaky.length > 0) {
+        out("  Flaky E2E tests (failed on the first run, passed on rerun):");
+        for (const f of report.flaky) {
+            const label = f.title && f.title !== f.file ? `${f.title} — ${f.file}` : f.file;
+            out(`    ${label} (${f.passed} pass / ${f.failed} fail)${f.trace ? `; trace: ${f.trace}` : ""}`);
+        }
+        out("");
+    }
+    if (report.flakeRunDir) {
+        out(`  Flake evidence: ${report.flakeRunDir}`);
+        out("");
+    }
     if (report.flags.length > 0) {
         out("  Review these before trusting a green gate:");
         for (const f of report.flags) {
@@ -553,6 +795,17 @@ export async function gate(changeName, options = {}, deps = {}) {
         err(`  gate: ${selected.error}`);
         return 2;
     }
+    const repeatRaw = options.repeat;
+    const repeatCount = repeatRaw === undefined ? 0 : Number(repeatRaw);
+    if (repeatRaw !== undefined &&
+        (!Number.isInteger(repeatCount) || repeatCount <= 0)) {
+        err("  gate: --repeat requires a positive integer");
+        return 2;
+    }
+    if (options.strictFlake === true && repeatRaw === undefined) {
+        err("  gate: --strict-flake requires --repeat <n>");
+        return 2;
+    }
     // Only some checks read a change. Resolving one unconditionally made a
     // `--only lint,typecheck,test` run fail with "multiple active changes" the
     // moment a repo had two changes open at once.
@@ -568,6 +821,8 @@ export async function gate(changeName, options = {}, deps = {}) {
     }
     const scripts = readScripts(cwd);
     const results = [];
+    let flakyEntries = [];
+    let flakeRunDir;
     // The hook's own timeout is a safety valve: a gate that never returns would
     // make the turn impossible to end, which is worse than skipping a check.
     const deadlineAt = hookMode
@@ -584,7 +839,19 @@ export async function gate(changeName, options = {}, deps = {}) {
             scripts,
             coverageMin: options.coverageMin,
         });
-        const result = runOne(name, plan, { cwd, exec });
+        let result;
+        if (name === "e2e" && repeatCount > 0) {
+            const repeated = runE2eWithRepeat(plan, repeatCount, options.strictFlake === true, {
+                cwd,
+                exec,
+            });
+            result = repeated.result;
+            flakyEntries = repeated.flaky ?? [];
+            flakeRunDir = repeated.runDir;
+        }
+        else {
+            result = runOne(name, plan, { cwd, exec });
+        }
         results.push(result);
         if (!asJson)
             out(`  gate: ${name} → ${result.status}`);
@@ -656,6 +923,8 @@ export async function gate(changeName, options = {}, deps = {}) {
         checks: results,
         totals: summarize(results),
         flags,
+        ...(flakyEntries.length > 0 ? { flaky: flakyEntries } : {}),
+        ...(flakeRunDir ? { flakeRunDir } : {}),
     };
     if (asJson) {
         out(JSON.stringify(report, null, 2));
