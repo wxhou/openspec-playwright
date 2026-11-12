@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+- **docs(standards): 补完未完成工作的收尾规则**. §3 禁止在用户已请求的工作完成前自行收尾：普通障碍先诊断并继续，需求不清仍先问，刻意阻断另找安全路径；§2 要求改动清单以实际 diff 为准。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
+
 ## [0.3.115] - 2026-11-11
 - **docs(standards): 试运行代码库所有权约定**. §0 约定开头声明这份代码库归 AI 所有、用途与构建方式由其决定，观察一版后按效果决定去留。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
