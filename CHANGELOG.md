@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.116] - 2026-11-13
 - **docs(standards): 修复预算上移 §0，自动链重排**. 全局条统一「同一失败最多修复 2 轮、不同失败分别计、连续 3 轮失败项未减少即停」；§1 lint 条与 §3 删除重复轮次与指针，任务验证条保留 2 轮口径，e2e 预算留给模板；自动链拆为触发/收尾/范围/停止/测试五条；ZH/EN 副本与锚点同步。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 - **docs(standards): 精简「默认上抛」条款，机制细节移入 lint 清单**. 条款只保留策略（默认上抛、两类合法出口、兜底判定）；降级、无类型 catch、Promise、try 边界移入 `templates/lint-guidelines.md` 的新章节，清单校验和更新；ZH/EN 文档副本与 docs-sync 锚点同步。同时删除 6 处 pylint 默认状态重复、4 处 presence-only 重复与过期校验说明。
