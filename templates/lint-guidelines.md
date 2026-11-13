@@ -1,10 +1,8 @@
 # Lint Guidelines — Swallowed Errors & Docstrings
 
-<!-- openspec-pw: lint-guidelines 2004122d -->
+<!-- openspec-pw: lint-guidelines 3e7aa4da -->
 
-Machine reference for two employee-standards clauses (§1 捕获/吞错: "a caught exception must never vanish silently — the failure must be visible, any one exit"; §1 注释纪律: 公共接口的文档注释). Maintained by openspec-pw; refresh with `npx openspec-pw update`.
-
-Measures verified against: ruff 0.17.1 rule metadata (2026-10), pylint upstream `checkers/exceptions.py` + `checkers/base.py`, ESLint rule documentation, eslint-plugin-jsdoc.
+Machine reference for two employee-standards clauses (§1 捕获/吞错: "a caught exception must never vanish silently — the failure must be visible, any one exit"; §1 注释纪律: 公共接口的文档注释), plus the swallow mechanics that the §1 捕获/吞错 clause delegates here. Maintained by openspec-pw; refresh with `npx openspec-pw update`.
 
 ## Swallowed errors
 
@@ -16,22 +14,24 @@ Measures verified against: ruff 0.17.1 rule metadata (2026-10), pylint upstream 
 | `S112` | ruff | `except Exception: continue` | on by default | broad or bare handlers only |
 | `BLE001` | ruff | blind `except Exception` / `BaseException` | on by default | re-raised exceptions and handlers logging with `exc_info` enabled are exempt |
 | `B904` | ruff | `raise` inside an except handler without `from` (dropped causality) | **off by default** — opt in | rethrown as-is (`raise ... from err` / `from None`) is the fix; bare re-`raise` is exempt |
-| `W0702` | pylint | bare-except | on by default | pylint's default set; disabled only by project config |
-| `W0718` | pylint | broad-exception-caught | on by default | pylint's default set; disabled only by project config |
-| `W0707` | pylint | raise-missing-from (dropped causality) | on by default | pylint's default set; disabled only by project config |
+| `W0702` | pylint | bare-except | on by default | see note |
+| `W0718` | pylint | broad-exception-caught | on by default | see note |
+| `W0707` | pylint | raise-missing-from (dropped causality) | on by default | see note |
 
 ## Docstrings
 
 | Rule | Tool | Fires on | Default | Boundary |
 | --- | --- | --- | --- | --- |
-| `D100` | ruff (pydocstyle) | public module without a docstring | **off by default** — opt in | presence only — whether the docstring states the right contract is judged by the clause |
-| `D101` | ruff (pydocstyle) | public class without a docstring | **off by default** | presence only |
-| `D102` | ruff (pydocstyle) | public method without a docstring | **off by default** — opt in | presence only; underscore-prefixed names are exempt |
-| `D103` | ruff (pydocstyle) | public function without a docstring | **off by default** | presence only; underscore-prefixed names are exempt |
+| `D100` | ruff (pydocstyle) | public module without a docstring | **off by default** — opt in | see note |
+| `D101` | ruff (pydocstyle) | public class without a docstring | **off by default** | see note |
+| `D102` | ruff (pydocstyle) | public method without a docstring | **off by default** — opt in | see note |
+| `D103` | ruff (pydocstyle) | public function without a docstring | **off by default** | see note |
 | `jsdoc/require-jsdoc` | ESLint (`eslint-plugin-jsdoc`) | function declaration without a JSDoc block | **off in ESLint core** — the plugin's recommended config enables it as a warning | default `require` checks `FunctionDeclaration` only; classes, methods and arrow functions are opt-in; use `publicOnly` to scope to exports and `contexts` for custom contexts; content rules (`jsdoc/require-param` etc.) are separate rules |
-| `C0114` | pylint | missing-module-docstring | on by default | pylint's default set; disabled only by project config |
-| `C0115` | pylint | missing-class-docstring | on by default | pylint's default set; disabled only by project config |
-| `C0116` | pylint | missing-function-docstring | on by default | pylint's default set; disabled only by project config |
+| `C0114` | pylint | missing-module-docstring | on by default | see note |
+| `C0115` | pylint | missing-class-docstring | on by default | see note |
+| `C0116` | pylint | missing-function-docstring | on by default | see note |
+
+Note: pylint rules are on by default; only project config disables them. The four pydocstyle rules check presence only; D102/D103 exempt underscore-prefixed names.
 
 ## Enabling what is missing
 
@@ -63,10 +63,21 @@ export default [
 ];
 ```
 
+## Swallow mechanics delegated by the §1 clause
+
+The employee-standards clause keeps the policy (default propagate, the two legal exits). These mechanics live here; a human reviewer checks them, not a lint rule.
+
+- **Promises**: an unawaited or uncaught promise counts as swallowing. Attach a handler or let the error propagate.
+- **Cause chain**: a new error without a cause (`raise … from e` / `{cause: e}` / `%w`) loses the chain; logging then rethrowing unchanged is double handling, so log only at the exit.
+- **Degrade and continue**: limited to a narrow catch (log debug/warning + an inline reason). The failed result must not be consumed downstream, and no inconsistent state may remain; otherwise propagate.
+- **Untyped catch**: branch on error class (`instanceof` / error code). If the classes can't be enumerated, rethrow rather than guess a class or code.
+- **Try scope**: a try block contains only the line that can fail (a bigger block swallows unrelated exceptions); cleanup goes in `finally` / `defer`.
+- Inline reasons required by these rules are exempt from the comment-discipline blacklist.
+
 ## Boundary of this checklist
 
-- These rules cover literal shapes only. The clause's semantic exits (rethrow with cause, log-then-continue at a narrow catch, isolated catch-all at an isolating boundary) are judged by the clause text, not lint.
+- These rules cover literal shapes only. The policy (default propagate, the two legal exits) is judged by the clause text. The delegated mechanics above are judged by human review, not by lint.
 - A commented-out empty catch is exempt from ESLint `no-empty` — the comment does not make the failure visible. Human review carries it.
-- The JS `.catch(() => null / false / undefined / {})` black-hole family and the Go `_ = err` discard have no built-in rule yet (a custom rule is a future batch).
+- The JS `.catch(() => null / false / undefined / {})` black-hole family and the Go `_ = err` discard have no built-in rule yet.
 - Docstring rules check presence and shape only; the contract the docstring must carry (units, return semantics, raised errors, side effects, preconditions) is judged by the clause, not by lint.
 - Hooks (agent-internal interceptors) are deliberately not part of this checklist — execution is lint config, CI, and pre-commit, none of which depend on the agent.

@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- **docs(standards): 修复预算上移 §0，自动链重排**. 全局条统一「同一失败最多修复 2 轮、不同失败分别计、连续 3 轮失败项未减少即停」；§1 lint 条与 §3 删除重复轮次与指针，任务验证条保留 2 轮口径，e2e 预算留给模板；自动链拆为触发/收尾/范围/停止/测试五条；ZH/EN 副本与锚点同步。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
+- **docs(standards): 精简「默认上抛」条款，机制细节移入 lint 清单**. 条款只保留策略（默认上抛、两类合法出口、兜底判定）；降级、无类型 catch、Promise、try 边界移入 `templates/lint-guidelines.md` 的新章节，清单校验和更新；ZH/EN 文档副本与 docs-sync 锚点同步。同时删除 6 处 pylint 默认状态重复、4 处 presence-only 重复与过期校验说明。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`templates/lint-guidelines.md`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 - **fix(remove/gate): 评审收敛修复**. `remove`：init 取消勾选不再删掉被 wrapper 符号链接指向的 AGENTS.md；`--all` 发现补上遗留 skill 目录与工具拥有的 vendored agents；ruff/eslint/checklist 读取失败不再被吞成「未找到」，超 1MB 的配置与计划读取有界，CI workflow/脚手架不可读时如实失败。`gate`：重跑报告嵌套结构非法时按证据不可用处理而不是崩溃；`--hook` 与 `--repeat` 同时使用直接以退出码 2 拒绝。
   - `src/shared/file-read.ts`（新增）、`src/shared/{discover,lint-guidelines,gitignore-managed}.ts`、`src/commands/{remove,init,gate}.ts`、`src/commands/editors/{agents,project-rules}.ts`、`src/commands/editors.ts`、测试、spec/design、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
 - **BREAKING feat(cli): `uninstall` 改名 `remove`，并支持全机批量清理**. `remove` 清理当前项目（含新增的 CI workflow 与 `--auto-pipeline` 的 `openspec-auto.yml`、生成的 `eslint.config.mjs` 与 ruff managed block，均按所有权判断；规则文件与工具创建时字节一致则整文件删除，否则只删标记块；官方 OpenSpec 的 `OPENSPEC:` 块、未闭合标记与符号链接指向项目外的产物一律保留，init/update 也不再写穿符号链接的规则文件）；`remove --all` 扫描本机装过本工具的项目（单独 MCP 条目不算发现信号），默认只列计划，`--yes` 才执行，计划按同一所有权规则列出真正会删除的产物组；批量汇总区分「权限不可写 → skipped」与真实失败（failed，退出码 1）；`--root` 可重复限定扫描根（显式给出时范围即这些根，不并入当前项目；路径不存在或为 UNC 时退出 2；Windows 覆盖所有存在的盘根）；旧命令 `uninstall` 不再保留。

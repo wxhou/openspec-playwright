@@ -8,16 +8,17 @@ const CLAUDE_MD_ZH = `# 项目规范
   - 未标注的条款按 🟡 处理
   - 条款冲突按 🔴 > 🟡 > ⚪ 裁决；同级冲突先看是否已有条款规定了违规后的处置（如代码质量节的 auto-fix 循环）——有则先按该条款执行，无才停下问用户
   - 用户显式指令可偏离 🟡/⚪ 即刻生效；与 🔴 冲突 → 先复述风险，用户终裁后执行
+- **修复预算**：同一失败（同一检查或断言）最多修复 2 轮，不同失败分别计；连续 3 轮失败项未减少即停
 
 - 被用户纠正后，把防再犯规则沉淀到非工具托管的载体；用户项目写自有规则文件中 \`OPENSPEC-PW\` 标记块之外（块内会被 \`openspec-pw update\` 整块覆盖）。经用户确认后合入
 
 ## 代码质量
 - 🔴 **lint+typecheck 每次编辑后自动执行，通过才算成功**
   - 按本次编辑涉及的文件类型选对应 linter 与 type checker（可多语言并存）；项目 lint 脚本未覆盖该路径时，直接对改动文件跑对应 linter
-  - lint 失败时对本次触及的文件运行对应 linter 的 auto-fix（如 \`npm run lint:fix\`、\`eslint --fix\`、\`ruff check --fix\`）；lint/typecheck 修复循环最多 2 轮，仍失败即停
+  - lint 失败时对本次触及的文件运行对应 linter 的 auto-fix（如 \`npm run lint:fix\`、\`eslint --fix\`、\`ruff check --fix\`）。
 - 🟡 gate 异常不造假：linter/typechecker 不存在（如该栈适用）→ 告知用户并建议安装，装上之前每次编辑后对改动自查并在响应中注明结果；检查未运行 → 标注「未运行」；装上后仍失败 → 完整输出错误日志并停止
 - 🟡 关键假设（外部数据源/接口、环境可运行、依赖版本、已装依赖能力）动手前逐条验证——断言现成依赖缺少某能力、或准备自行实现该能力前，先查其文档、类型定义或已装源码（按已装版本）；无法确认 → 不自行实现，先提问；其余理解不清或有可见风险 → 先提问再执行。更简单方案提出并坚持——用户已否决 → 按用户方案执行，不再重提
-- 🟡 多步任务每步带验证，循环验证直到成功（任务验证的同一检查最多 2 轮修复，仍失败 → 记录失败并停，停前用一句话写出各次尝试共同依赖的假设，改掉该假设之前不再重试）
+- 🟡 多步任务每步带验证，循环验证直到成功（任务验证的同一检查修复 2 轮后仍失败 → 记录失败并停，停前用一句话写出各次尝试共同依赖的假设，改掉该假设之前不再重试）
 - 🟡 只写被要求的：不加用户未要求的扩展点（"灵活"/"可配置"之类，不限词面）、单次使用抽象，不主动为想象中的场景写防御
 - 🟡 在「并发与事务」之外新增竞态防护，或处于信任边界的极端情况，若复现、事故记录、项目威胁模型、合规要求四项都不存在 → 先说明再动手：给出失败模式、量级依据、复杂度代价；未获同意或用户不可达 → 不加并报告
   - 基线安全实践（参数化查询、输出编码、CSRF 防护）本就应存在，无须额外论证；例外按「简化有边界」处理，架构方向按「大规模任务」节
@@ -38,11 +39,11 @@ const CLAUDE_MD_ZH = `# 项目规范
 
 ## 代码质量 · 禁止项与要求
 - 🔴 不假设外部输入可信：信任边界上的数据/响应/异步结果先校验（类型/范围/null/空/边界，数值含精度）再使用；资源用后必须释放；可预判的失败不要用 try 捕获来驱动控制流——先用前置守卫，或改用带默认值的 API（如 \`dict.get\`、\`next(it, None)\`），但守卫只能把失败变成显式的拒绝或默认值，不能让它静默消失；根因在别处时修根因，不在调用点拦住这一例
-- 🔴 默认上抛：错误默认向上抛。只有处理能改变结果时，才捕获并处理一次；其余不捕获。
-  - 上抛（默认出口）：不要为了再抛而 catch，让异常自然上行（Go 直接 \`return err\`）；要加信息才捕获并带因（\`raise … from e\` / \`{cause: e}\` / \`%w\`），新建错误不带因=丢因果；异步 Promise 未 await、未 catch 视同吞错；记录后又原样上抛=重复处理——要记就记在终点
-  - 就地消化（仅两种）：改变控制流——重试（写操作须先满足幂等条）、跳过该步骤及其依赖或以替代值前行；catch-all 隔离点——批量循环的最外层 / 事件分发处 / 进程入口等不影响其余输入与状态的边界。上述两种消化方式都记录 + 行内原因；降级继续只限窄类型 catch（记 debug/warning + 行内原因；如清理、幂等二次释放），且失败不被下游消费、不留不一致状态，否则直接上抛；无类型 catch 按错误类别（instanceof/错误码）分流，枚举不出就直接上抛，不凭印象写错误类或错误码
-  - try 块只包可能失败的那一句（块越大会吞掉无关异常）；清理放 finally / defer
-  - 兜底返回不算出口：宽 catch 返回默认值/空值、空 catch 同判吞错（只记录或只加注释不构成豁免）；窄类型 catch + 显式失败值（调用方按契约消费）不算兜底。吞错形状见 \`lint-guidelines.md\`（未安装 → 跳过）；行内原因不受注释纪律黑名单约束
+- 🔴 默认上抛：错误默认向上抛；只有处理能改变结果时才捕获，且只处理一次；记录只发生在出口。
+  - 上抛（默认出口）：不为再抛而 catch，让异常自然上行；补信息才带因，新建错误不带因=丢因果。
+  - 就地消化（仅两种）：改变控制流——重试（写操作须先满足幂等条）、跳过该步骤及其依赖、改用替代值前行；catch-all 隔离点——批量循环最外层、事件分发处、进程入口等不影响其余输入与状态的边界。两类出口都必须记录 + 行内原因。
+  - 兜底返回不算出口：宽 catch 返回默认值/空值、空 catch 同判吞错（只记录或只加注释不构成豁免）；窄类型 catch + 显式失败值（调用方按契约消费）不算兜底。
+  - 降级、无类型 catch、Promise、try 边界与吞错形状见 \`lint-guidelines.md\`（未安装 → 跳过）。
 - 不写只适配样例输入的逻辑、魔法数字（入常量；有确切依据才注原因）；路径/换行用语言内建跨平台 API（\`path.sep\`/\`path.join\`），比较前归一化 EOL
 - mock 数据/fixture → 参见数据编撰禁令
 
@@ -63,7 +64,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 
 ## 大规模任务
 - 🔴 跨多个文件的代码修改（纯文档、注释、格式除外），或架构级变更（如新增服务/API 契约/数据模型重构，非穷举）必须走 OpenSpec 提案流程，禁止直接修改；命中 → 停下建议用户运行该流程（行数不作触发依据）
-- 🟡 执行中发现走偏（方案不成立、前提变化、验证反复失败）或转场检查不通过（失败、需求歧义、写入超出声明范围）→ 立即停下重新评估并汇报；同一会话的「继续」从停下阶段续跑，跨会话需重新表达完成意图；修复预算按同一失败最多 2 轮（不同失败分别计；连续 3 轮修复失败项未减少即停；e2e heal 用模板自身预算）
+- 🟡 执行中发现走偏（方案不成立、前提变化、验证反复失败）或转场检查不通过（失败、需求歧义、写入超出声明范围）→ 立即停下重新评估并汇报；同一会话的「继续」从停下阶段续跑，跨会话需重新表达完成意图
 - 🟡 用户已请求的工作完成前不得自行收尾——普通障碍（报错、超时、空结果）先诊断，能用现有权限处理就继续，不要把剩余工作列成清单后等用户开口；需求或方案不清先问；刻意阻断（禁改文件、撤回的访问、安全护栏）照实说明并另找安全路径；修复预算、走偏、授权与高风险确认不变。
 
 ## 工作流参考
@@ -72,11 +73,12 @@ const CLAUDE_MD_ZH = `# 项目规范
   - 第 1 轮（所有提案）：对抗审查——对照目标/约束/specs，检查完整性、一致性、正确性与范围蔓延并修正
   - 第 2 轮：高风险或架构级提案换独立视角复检全部制品（子代理 → 独立上下文；否则重读并输出「需求/场景 → 证据(file:line) → 结论」表，不复用上轮自评）；普通提案在同一上下文复检修订后的制品
   - 审查内不中途等确认；结束后列出修正并请求范围确认：仍有阻断则停在提案阶段，仅非阻断项记录后确认；自修不得增删需求，需增删时列入待确认
-- 🟡 自动链唯一触发：用户明确要求完成该变更（「实现/做到绿/走完这个变更」或 \`/opsx:apply\`）；仅确认范围不触发；无法判定是否为完成意图 → 按未触发处理，并一句话向用户确认
-  - 收尾：最后一项任务勾完即在同一回合调用 \`/opsx:verify\`——跑测试或自查不等于 verify，\`opsx:apply\` 收尾的「review or verify as appropriate / 可归档」不构成跳过理由
-  - 适用面：适用于任何经 \`/opsx:apply\` 的变更，不受规模门槛限制；e2e 不在自动链内，仅在用户显式调用时执行（「做到绿」不含 e2e）
-  - 停止：只说「改这个」或单独调用 propose/verify/e2e 等单阶段命令 → 该阶段结束即停；不得以修改断言/期望值绕过失败
-- 🟡 verify 之后：CRITICAL → 按前述修复预算修复并复跑 verify；需增删范围或预算耗尽仍有 CRITICAL → 停下汇报；WARNING/SUGGESTION → 记录后交用户裁决
+- 🟡 自动链唯一触发：用户明确要求完成该变更（「实现/做到绿/走完」）或 \`/opsx:apply\`；仅确认范围不触发，意图不明 → 按未触发处理，一句话向用户确认
+  - 收尾：勾完最后一项任务，同一回合调用 \`/opsx:verify\`；跑测试或自查不等于 verify，\`opsx:apply\` 的「可归档」收尾语不豁免
+  - 范围：适用于任何经 \`/opsx:apply\` 的变更，不受规模门槛限制；e2e 不在自动链内，「做到绿」不含 e2e，仅在用户显式调用时执行
+  - 停止：只说「改这个」或单独调用 propose/verify/e2e 等单阶段命令 → 该阶段结束即停
+  - 测试：不得以修改断言/期望值绕过失败
+- 🟡 verify 之后：CRITICAL → 按修复预算修复并复跑 verify；需增删范围或预算耗尽仍有 CRITICAL → 停下汇报；WARNING/SUGGESTION → 记录后交用户裁决
 - 🟡 高风险变更（公共 API/CLI 契约、数据模型/迁移、鉴权与安全、跨模块架构；不确定按高风险）在动手前（无论是否走提案流程）汇报设计要点、影响面与回滚方式并等待确认
 - 🟡 仅当用户明确要求「自动归档」，且 tasks 全勾无 blocked、verify 无 CRITICAL、e2e（如运行）无 active App Bug、commit/merge 已授权并完成时才自动执行；skipped 与 WARNING 列出交用户裁决；手动归档不受此限
 - 🟡 在 tasks.md 末尾维护「## 状态」：当前阶段、提案审查结论、最后停止原因、e2e 未运行或运行结果、待裁决项；每次停下或上下文压缩前更新
@@ -132,15 +134,16 @@ const CLAUDE_MD_EN = `# Project Guidelines
   - unmarked rules are treated as 🟡
   - clause conflicts resolve 🔴 > 🟡 > ⚪; for same-tier conflicts, if an existing clause already specifies the handling after its violation (e.g. the Code Quality auto-fix loop), follow that clause first — stop and ask the user only when none does
   - explicit user instructions may override 🟡/⚪ rules and take effect immediately; if one conflicts with a 🔴 → restate the risk first, the user makes the final call
+- **Repair budget**: one failure (the same check or assertion) gets at most 2 rounds of repair; different failures count separately; stop after 3 rounds with no reduction in failing items
 - When corrected by the user, land the prevention rule in a carrier the tooling does not own; in a user project write outside the \`OPENSPEC-PW\` marker block in the project's own rules file (the block is overwritten wholesale by \`openspec-pw update\`). Land it after user confirmation
 
 ## Code Quality
 - 🔴 **lint+typecheck runs after every edit, both must pass**
   - Pick the linter and type checker matching the file types touched by this edit (multiple may apply); when the project's lint script doesn't cover that path, run the matching linter directly on the changed files
-  - On lint failure, run the linter's auto-fix on touched files only (e.g. \`npm run lint:fix\`, \`eslint --fix\`, \`ruff check --fix\`); the lint/typecheck fix loop runs at most 2 rounds — still failing, stop
+  - On lint failure, run the linter's auto-fix on touched files only (e.g. \`npm run lint:fix\`, \`eslint --fix\`, \`ruff check --fix\`).
 - 🟡 Gate anomalies are never faked: linter/typechecker missing (if applicable to the stack) → tell the user and suggest installing; until then, self-check the changes after every edit and note the result in the reply; unexecuted checks are explicitly marked "not run"; still failing after installation → output the full error log and stop
 - 🟡 Verify key assumptions before coding (external data sources & API fields, runnable environment, dependency availability, and whether an installed dependency provides a capability) — before asserting an installed dependency lacks a capability, or preparing to implement that capability yourself, check its documentation, type definitions, or installed source for the installed version; if you cannot confirm → do not hand-roll it, ask first; otherwise, if unclear or risks are visible → ask before acting. Suggest simpler approaches and insist — if already rejected, follow the user's plan, don't re-raise
-- 🟡 Multi-step tasks: verify every step, loop until verified (the same task-verification check gets at most 2 repair rounds; if it still fails → record the failure and stop; before stopping, state in one sentence the assumption every attempt relied on — no further retry until that assumption changes)
+- 🟡 Multi-step tasks: verify every step, loop until verified (if the same task-verification check still fails after 2 repair rounds → record the failure and stop; before stopping, state in one sentence the assumption every attempt relied on — no further retry until that assumption changes)
 - 🟡 Write only what's requested: no un-requested extension points (flexibility/configurability — wording aside), no single-use abstractions, no proactive defensive code for imagined scenarios
 - 🟡 For new race protection beyond the concurrency and transactions rule, or an extreme case at a trust boundary, if all four are absent (reproduction, incident record, project threat model, compliance requirement), explain it and get consent before acting: state the failure mode, its magnitude and basis, and the complexity cost; without consent or if the user is unreachable → do not add it and report
   - Baseline security practice (parameterized queries, output encoding, CSRF protection) is already owed, no extra justification needed; exemptions follow the simplification-boundaries rule, architecture direction by the Large-Scale Tasks section
@@ -161,11 +164,11 @@ const CLAUDE_MD_EN = `# Project Guidelines
 
 ## Code Quality · Prohibitions and Requirements
 - 🔴 Don't assume external input is trusted: validate data/responses/async results at trust boundaries (type/range/null/empty/boundary, numeric precision included) before use; release resources after use; do not catch foreseeable failures with try to drive control flow — use precondition guards first, or switch to APIs with a default value (like \`dict.get\`, \`next(it, None)\`); but a guard may only turn the failure into an explicit rejection or default value, never let it disappear silently; when the root cause lies elsewhere, fix the cause instead of stopping this one instance at the call site
-- 🔴 Propagate by default: an error propagates upward by default. Catch and handle it once only when handling can change the outcome; otherwise do not catch.
-  - Rethrow (the default exit): never catch just to rethrow — let it propagate (in Go, just \`return err\`); catch only to add context with the cause form (\`raise … from e\` / \`{cause: e}\` / \`%w\`); a new error without a cause loses the chain; an unawaited or uncaught promise counts as swallowing; logging then rethrowing unchanged = double handling — log at the final destination
-  - Absorb in place (two cases only): change control flow — retry (for writes only after the idempotency rule is met), or skip the step and its dependents or move on with a substitute; or a catch-all isolation point — the outermost batch loop / event dispatch / process entry, not affecting other inputs or state; both paths above must log + include an inline reason; degrade and continue is limited to narrow catch (log debug/warning + inline reason; e.g. cleanup, idempotent double-release), and the failed result is not consumed downstream and leaves no inconsistent state, otherwise propagate; untyped catch branches on error class (instanceof/error code) — if the classes can't be enumerated, rethrow rather than guess a class or code
-  - Try blocks contain only the line that can fail (a bigger block swallows unrelated exceptions); cleanup goes in finally / defer
-  - Fallbacks outside those boundaries are not exits — a broad catch returning a default/empty value and a bare catch both count as swallowing (merely logging or commenting does not exempt them); a narrow catch plus an explicit failure value (consumed by the caller under its contract) is not a fallback. Swallow shapes live in \`lint-guidelines.md\` (if not installed, skip); inline reasons are exempt from the comment-discipline blacklist
+- 🔴 Propagate by default: an error propagates upward by default; catch it only when handling can change the outcome, and handle it once; log only at the exit.
+  - Rethrow (the default exit): never catch just to rethrow — let the error propagate; catch only to add context, and attach the cause; a new error without a cause loses the chain.
+  - Absorb in place (two cases only): change control flow — retry (for writes only after the idempotency rule is met), skip the step and its dependents, or move on with a substitute; a catch-all isolation point — the outermost batch loop, event dispatch, or process entry, where the failure does not affect other inputs or state. Both exits must log + include an inline reason.
+  - Fallbacks outside those boundaries are not exits — a broad catch returning a default/empty value and a bare catch both count as swallowing (merely logging or commenting does not exempt them); a narrow catch plus an explicit failure value (consumed by the caller under its contract) is not a fallback.
+  - Degrade, untyped catch, promises and try scope, plus swallow shapes, live in \`lint-guidelines.md\` (if not installed, skip).
 - No logic that only fits sample inputs, no magic numbers (constants; a reason comment only when grounded in fact); paths/newlines via the language's built-in cross-platform APIs (\`path.sep\`/\`path.join\`), normalize EOL before comparing
 - Mock data / fixtures → see Data Fabrication section below
 
@@ -186,7 +189,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 
 ## Large-Scale Tasks
 - 🔴 Code changes across multiple files (docs, comments and formatting excepted), or architecture changes (e.g. new services/API contracts/data model refactors — not exhaustive) must go through the OpenSpec proposal flow, no direct edits; on a hit, stop and suggest the user run that flow (line count is not a trigger)
-- 🟡 If execution goes off track (plan untenable, premises changed, verification repeatedly failing) or a transition check fails (failure, ambiguity, out-of-scope writes), stop immediately, re-evaluate, and report; "continue" in the same session resumes from the stopped phase, while a new session requires renewed completion intent; repair budget is at most 2 rounds per identical failure (different failures count separately; stop after 3 consecutive rounds with no reduction in failing items; e2e heals use the template's own budget)
+- 🟡 If execution goes off track (plan untenable, premises changed, verification repeatedly failing) or a transition check fails (failure, ambiguity, out-of-scope writes), stop immediately, re-evaluate, and report; "continue" in the same session resumes from the stopped phase, while a new session requires renewed completion intent
 - 🟡 Do not wrap up before the work the user requested is done — diagnose ordinary obstacles (errors, timeouts, empty results) and continue with the access you have; do not list what remains and wait for the user to speak. Ask first when the requirement or approach is unclear. For a deliberate blocker (a file marked not to be touched, access deliberately withheld, a safety guardrail), say plainly what you found and look for another safe way. The repair budget, off-track stop, authorization and high-risk confirmation rules are unchanged.
 
 ## Workflow Reference
@@ -195,11 +198,12 @@ const CLAUDE_MD_EN = `# Project Guidelines
   - Round 1 (all proposals): adversarial review — check goals/constraints/existing specs for completeness, consistency, correctness and scope creep, and fix findings
   - Round 2: high-risk or architecture-level proposals get an independent re-check of all artifacts (subagents → independent context; otherwise re-read and output a "requirement/scenario → evidence (file:line) → conclusion" table, never reuse the previous self-assessment); ordinary proposals re-check the revised artifacts in the same context
   - Do not pause between rounds; afterwards list fixes and request scope confirmation: blocking issues → stop at the proposal stage; non-blocking items are recorded, then confirmation. Fixes never add or remove requirements; proposed scope changes are listed for final confirmation
-- 🟡 The auto-chain's only trigger is an explicit request to complete the change ("implement / make it green / run this change through" or invoking \`/opsx:apply\`); confirming scope alone does not trigger it; when completion intent is unclear, treat it as not triggered and confirm with the user in one line
-  - Close-out: the moment the last task is checked, invoke \`/opsx:verify\` in the same turn — running tests or a self-check is not verify, and the \`opsx:apply\` closing line "review or verify as appropriate / you can archive" does not justify skipping it
+- 🟡 The auto-chain's only trigger: the user explicitly asks to complete the change ("implement / make it green / run this change through"), or invokes \`/opsx:apply\`; confirming scope alone does not trigger it; when intent is unclear → treat it as not triggered and confirm with the user in one line
+  - Close-out: the moment the last task is checked, invoke \`/opsx:verify\` in the same turn; running tests or a self-check is not verify, and the \`opsx:apply\` "you can archive" closing line does not justify skipping it
   - Scope: applies to every change run through \`/opsx:apply\`, and is not gated by the size threshold; e2e is not part of the auto-chain and runs only when the user explicitly invokes it ("make it green" does not authorize e2e)
-  - Stop: a bare "change this" or invoking propose/verify/e2e alone stops after that phase; never weaken assertions or expected values to force a green run — resolve spec/assertion conflicts per the Testing section
-- 🟡 After verify: CRITICAL → fix within the repair budget above and re-run verify; if scope must change or CRITICAL remains after the budget → stop and report; WARNING/SUGGESTION → record and hand to the user
+  - Stop: a bare "change this" or invoking propose/verify/e2e alone stops after that phase
+  - Testing: never weaken assertions or expected values to force a green run — resolve conflicts per the Testing section
+- 🟡 After verify: CRITICAL → fix within the repair budget and re-run verify; if scope must change or CRITICAL remains after the budget → stop and report; WARNING/SUGGESTION → record and hand to the user
 - 🟡 High-risk changes (public API/CLI contracts, data models/migrations, auth & security, cross-module architecture; when unsure, treat as high-risk) report design essentials, impact and rollback before implementation (even outside the proposal flow) and wait for confirmation
 - 🟡 Auto-archive only when explicitly requested ("auto archive") and all tasks are checked with no blocked item, verify has no CRITICAL, e2e (if run) has no active App Bug, and commit/merge are authorized and completed; list skipped tests and WARNINGs for the user to decide — manual archive is exempt
 - 🟡 Maintain a "## Status" section at the end of tasks.md: current phase, proposal review conclusion, last stop reason, e2e not run or its result, pending decisions; update it before every stop or context compaction
