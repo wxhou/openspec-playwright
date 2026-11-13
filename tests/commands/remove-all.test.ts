@@ -24,6 +24,10 @@ vi.mock("../../src/commands/editors.js", async (importOriginal) => {
 });
 
 import { removeChecklist } from "../../src/shared/index.js";
+import {
+  LINT_GUIDELINES_RELPATH,
+  installOrRefreshChecklist,
+} from "../../src/shared/lint-guidelines.js";
 import { detectAdapters, cursorAdapter } from "../../src/commands/editors.js";
 import { removeOptionError, runRemoveAll } from "../../src/commands/remove.js";
 
@@ -133,6 +137,22 @@ describe("runRemoveAll --yes", () => {
     expect(code).toBe(1);
     const out = vi.mocked(console.log).mock.calls.map((c) => String(c[0])).join("\n");
     expect(out).toContain("removed 0 / skipped 1 / failed 1");
+  });
+
+  it("lists the lint checklist only when the project copy is unmodified", async () => {
+    const logs: string[] = [];
+    vi.mocked(console.log).mockImplementation((msg?: unknown) =>
+      logs.push(String(msg)),
+    );
+    installOrRefreshChecklist(projectA);
+    installOrRefreshChecklist(projectB);
+    const checklistB = join(projectB, LINT_GUIDELINES_RELPATH);
+    writeFileSync(checklistB, readFileSync(checklistB, "utf-8") + "\nuser edit\n");
+
+    await runRemoveAll({ root: [roots], cwd: emptyCwd });
+
+    const out = logs.join("\n");
+    expect(out.split("lint checklist").length - 1).toBe(1);
   });
 
   it("puts the cwd project first in the plan", async () => {

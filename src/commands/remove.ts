@@ -494,7 +494,17 @@ function describePlan(projectRoot: string): string[] {
     groups.push("tests/README.md");
   }
   if (hasRuleFileMarkers(projectRoot, SIGNAL_MAX_BYTES)) groups.push("rules markers");
-  if (isChecklistUnmodified(projectRoot)) groups.push("lint checklist");
+  try {
+    const checklistPath = join(projectRoot, LINT_GUIDELINES_RELPATH);
+    if (
+      existsSync(checklistPath) &&
+      isChecklistUnmodified(readFileSync(checklistPath, "utf-8"))
+    ) {
+      groups.push("lint checklist");
+    }
+  } catch {
+    // Unreadable file — skip the group rather than aborting the plan.
+  }
   if (isPristineCopy(projectRoot, WORKFLOW_REL, "github-workflow.yml")) {
     groups.push("CI workflow");
   }

@@ -20,7 +20,11 @@ import { dirname, join, basename } from "path";
 import chalk from "chalk";
 import { buildCommandMeta, type EditorAdapter } from "./types.js";
 import { listCommandArtifactPaths } from "./registry.js";
-import { removeMarkersFromFile, wrapperRulesFile } from "./project-rules.js";
+import {
+  claudeWrapperStandardsContent,
+  removeMarkersFromFile,
+  wrapperRulesFile,
+} from "./project-rules.js";
 import { LEGACY_OPENSPEC_START, OPENSPEC_START } from "../../shared/drift.js";
 import { enumerateVendoredAgents, installedAgentsSnapshotDir } from "./agents.js";
 import { CLAUDE_LEGACY_SKILL_REL } from "./shared.js";
@@ -282,7 +286,7 @@ export function removeWrapper(adapter: EditorAdapter, projectRoot: string): stri
     );
     return null;
   }
-  removeMarkersFromFile(dest, basename(wrapper));
+  removeMarkersFromFile(dest, basename(wrapper), claudeWrapperStandardsContent());
   return basename(wrapper);
 }
 

@@ -11,7 +11,7 @@ import {
   statSync,
   writeFileSync,
 } from "fs";
-import { join, basename } from "path";
+import { dirname, join, basename } from "path";
 import chalk from "chalk";
 // The marker constants hold no regex metacharacters, so they are safe to
 // interpolate into the RegExp below.
@@ -77,7 +77,7 @@ export function installOpenSpecBlock(
   const markerEnd = OPENSPEC_END;
 
   if (!existsSync(dest)) {
-    const projName = projectRoot.split("/").pop() ?? "Project";
+    const projName = basename(projectRoot) || "Project";
     const content = `# ${projName}\n\n${markerStart}\n\n${standardsContent.trim()}\n\n${markerEnd}\n`;
     writeFileSync(dest, content);
     console.log(
@@ -319,27 +319,66 @@ export function installProjectRules(
 /** Remove all OpenSpec marker blocks from AGENTS.md (always) and the adapter's wrapper file (claude/codebuddy). */
 export function cleanProjectRules(adapter: EditorAdapter, projectRoot: string): void {
   // AGENTS.md always has the employee standards (SSOT)
-  removeMarkersFromFile(join(projectRoot, "AGENTS.md"), "AGENTS.md");
+  removeMarkersFromFile(
+    join(projectRoot, "AGENTS.md"),
+    "AGENTS.md",
+    bundledStandardsContent() ?? undefined,
+  );
 
   // Wrapper files (CLAUDE.md / CODEBUDDY.md) may carry the wrapper import
   const wrapper = wrapperRulesFile(adapter, projectRoot);
   if (wrapper) {
-    removeMarkersFromFile(wrapper, basename(wrapper));
+    removeMarkersFromFile(wrapper, basename(wrapper), claudeWrapperStandardsContent());
+  }
+}
+
+/** Bundled employee standards, or null when the file cannot be read. */
+function bundledStandardsContent(): string | null {
+  try {
+    return readFileSync(
+      new URL("../../../employee-standards.md", import.meta.url),
+      "utf-8",
+    );
+  } catch {
+    return null;
   }
 }
 
 /**
- * Remove openspec-pw marker blocks (both namespaces) from a single file,
- * deleting the file entirely when it empties out. Exported for the init
- * deselect-removal flow (CLAUDE.md wrapper cleanup); cleanProjectRules
- * wraps it for the remove command's context.
+ * True when `content` is exactly what `installOpenSpecBlock` writes for a
+ * fresh file: the generated title plus the marker block around `body`. Lets
+ * removal delete the file instead of leaving a title-only shell.
  */
-export function removeMarkersFromFile(dest: string, fileLabel: string): void {
+function isPristineRulesFile(dest: string, content: string, body: string): boolean {
+  const title = `# ${basename(dirname(dest))}`;
+  const expected = `${title}\n\n${OPENSPEC_START}\n\n${body.trim()}\n\n${OPENSPEC_END}\n`;
+  return content.replace(/\r\n/g, "\n") === expected.replace(/\r\n/g, "\n");
+}
+
+/**
+ * Remove openspec-pw marker blocks (both namespaces) from a single file,
+ * deleting the file entirely when it empties out. `pristineBody`, when given,
+ * is the block body the tool writes on creation: a file matching that exact
+ * generated form is deleted whole rather than left as a title-only shell.
+ * Exported for the init deselect-removal flow (CLAUDE.md wrapper cleanup);
+ * cleanProjectRules wraps it for the remove command's context.
+ */
+export function removeMarkersFromFile(
+  dest: string,
+  fileLabel: string,
+  pristineBody?: string,
+): void {
   if (!existsSync(dest)) {
     console.log(chalk.gray(`  - ${fileLabel} not found, skipping`));
     return;
   }
   const existing = readFileSync(dest, "utf-8");
+
+  if (pristineBody !== undefined && isPristineRulesFile(dest, existing, pristineBody)) {
+    rmSync(dest);
+    console.log(chalk.green(`  ✓ Removed ${fileLabel}`));
+    return;
+  }
 
   // Both namespaces: our OPENSPEC-PW block and any surviving legacy
   // OPENSPEC: block (pre-migration installs). Uninstall must clean both.

@@ -893,6 +893,21 @@ describe("cleanProjectRules", () => {
     expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(false);
   });
 
+  it("deletes untouched files the tool created, generated title included", () => {
+    const standards = readFileSync(
+      new URL("../employee-standards.md", import.meta.url),
+      "utf-8",
+    );
+    installProjectRules(tmpRoot, standards, [claudeAdapter]);
+    expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(true);
+    expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(true);
+
+    cleanProjectRules(claudeAdapter, tmpRoot);
+
+    expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(false);
+    expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(false);
+  });
+
   it("is idempotent — second call is a no-op", () => {
     writeFileSync(
       join(tmpRoot, "AGENTS.md"),

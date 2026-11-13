@@ -20,7 +20,7 @@ import { dirname, join, basename } from "path";
 import chalk from "chalk";
 import { buildCommandMeta } from "./types.js";
 import { listCommandArtifactPaths } from "./registry.js";
-import { removeMarkersFromFile, wrapperRulesFile } from "./project-rules.js";
+import { claudeWrapperStandardsContent, removeMarkersFromFile, wrapperRulesFile, } from "./project-rules.js";
 import { LEGACY_OPENSPEC_START, OPENSPEC_START } from "../../shared/drift.js";
 import { enumerateVendoredAgents, installedAgentsSnapshotDir } from "./agents.js";
 import { CLAUDE_LEGACY_SKILL_REL } from "./shared.js";
@@ -208,7 +208,7 @@ export function removeWrapper(adapter, projectRoot) {
         console.log(chalk.gray(`  - ${basename(wrapper)} is a symlink — skipping wrapper cleanup (would write through to AGENTS.md)`));
         return null;
     }
-    removeMarkersFromFile(dest, basename(wrapper));
+    removeMarkersFromFile(dest, basename(wrapper), claudeWrapperStandardsContent());
     return basename(wrapper);
 }
 /**

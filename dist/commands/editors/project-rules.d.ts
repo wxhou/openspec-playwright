@@ -88,11 +88,13 @@ export declare function installProjectRules(projectRoot: string, standardsConten
 export declare function cleanProjectRules(adapter: EditorAdapter, projectRoot: string): void;
 /**
  * Remove openspec-pw marker blocks (both namespaces) from a single file,
- * deleting the file entirely when it empties out. Exported for the init
- * deselect-removal flow (CLAUDE.md wrapper cleanup); cleanProjectRules
- * wraps it for the remove command's context.
+ * deleting the file entirely when it empties out. `pristineBody`, when given,
+ * is the block body the tool writes on creation: a file matching that exact
+ * generated form is deleted whole rather than left as a title-only shell.
+ * Exported for the init deselect-removal flow (CLAUDE.md wrapper cleanup);
+ * cleanProjectRules wraps it for the remove command's context.
  */
-export declare function removeMarkersFromFile(dest: string, fileLabel: string): void;
+export declare function removeMarkersFromFile(dest: string, fileLabel: string, pristineBody?: string): void;
 /** Read the employee-grade standards source file (empty string if missing). */
 export declare function readEmployeeStandards(srcPath: string): string;
 /** Our content signatures inside legacy blocks — an official legacy init
