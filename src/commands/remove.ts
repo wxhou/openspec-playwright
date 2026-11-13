@@ -36,6 +36,7 @@ import {
 import { discoverProjects } from "../shared/discover.js";
 import { GITIGNORE_BLOCK_BEGIN, GITIGNORE_BLOCK_END } from "../shared/gitignore-managed.js";
 import type { EditorAdapter } from "./editors/types.js";
+import { AUTO_PIPELINE_REL, AUTO_PIPELINE_TEMPLATE } from "./pipeline.js";
 
 const WORKFLOW_REL = join(".github", "workflows", "openspec-pw.yml");
 
@@ -188,28 +189,27 @@ export async function removeInProject(projectRoot: string): Promise<string[]> {
       console.log(chalk.gray("  - Lint guidelines not found, skipping"));
     }
 
-    // 2d. Remove the generated CI workflow — tool-named and tool-written, so
-    // a byte-identical copy is tool-owned; an edited one is kept and named.
-    console.log(chalk.blue("\n─── Removing CI Workflow ───"));
-    const workflowDest = join(projectRoot, WORKFLOW_REL);
-    if (existsSync(workflowDest)) {
-      const template = readFileSync(
-        fileURLToPath(new URL("../../templates/github-workflow.yml", import.meta.url)),
-        "utf-8",
-      );
-      if (normalizeEol(readFileSync(workflowDest, "utf-8")) === normalizeEol(template)) {
-        rmSync(workflowDest);
-        track(WORKFLOW_REL);
-        console.log(chalk.green(`  ✓ Removed ${WORKFLOW_REL}`));
+    // 2d. Remove generated CI workflows — tool-named and tool-written, so a
+    // byte-identical copy is tool-owned; an edited one is kept and named.
+    console.log(chalk.blue("\n─── Removing CI Workflows ───"));
+    for (const [rel, templateFile] of [
+      [WORKFLOW_REL, "github-workflow.yml"],
+      [AUTO_PIPELINE_REL, AUTO_PIPELINE_TEMPLATE],
+    ] as const) {
+      const dest = join(projectRoot, rel);
+      if (!existsSync(dest)) {
+        console.log(chalk.gray(`  - ${rel} not found, skipping`));
+      } else if (isPristineCopy(projectRoot, rel, templateFile)) {
+        rmSync(dest);
+        track(rel);
+        console.log(chalk.green(`  ✓ Removed ${rel}`));
       } else {
         console.log(
           chalk.yellow(
-            `  ⚠ ${WORKFLOW_REL} differs from the bundled template — kept (user-modified)`,
+            `  ⚠ ${rel} differs from the bundled template — kept (user-modified)`,
           ),
         );
       }
-    } else {
-      console.log(chalk.gray("  - CI workflow not found, skipping"));
     }
 
     // 2e. Remove lint-config products written by `init --lint-config`: the
@@ -349,7 +349,8 @@ export async function removeInProject(projectRoot: string): Promise<string[]> {
     console.log(chalk.blue("\n─── Removing Stop Hook ───"));
     const hookResult = uninstallStopHook(projectRoot);
     if ("error" in hookResult) {
-      console.log(chalk.yellow(`  ⚠ ${hookResult.error}`));
+      // The hook may still be installed — report a failure, not success.
+      throw new Error(`Stop hook could not be removed: ${hookResult.error}`);
     } else if (hookResult.removed) {
       const hookRel = relative(projectRoot, hookResult.path);
       track(hookRel);
@@ -550,6 +551,9 @@ function describePlan(projectRoot: string): string[] {
   }
   if (isPristineCopy(projectRoot, WORKFLOW_REL, "github-workflow.yml")) {
     groups.push("CI workflow");
+  }
+  if (isPristineCopy(projectRoot, AUTO_PIPELINE_REL, AUTO_PIPELINE_TEMPLATE)) {
+    groups.push("auto pipeline workflow");
   }
   if (hasRuffBlock(projectRoot)) groups.push("ruff managed block");
   try {

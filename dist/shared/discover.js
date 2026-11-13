@@ -9,8 +9,11 @@
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { buildCommandMeta, getAllAdapters, hasRuleFileMarkers, listCommandArtifactPaths, OPENSPEC_PW_MCP_SERVERS, } from "../commands/editors.js";
+import { buildCommandMeta, getAllAdapters, hasRuleFileMarkers, listCommandArtifactPaths, normalizeEol, OPENSPEC_PW_MCP_SERVERS, } from "../commands/editors.js";
+import { isStopHookInstalled } from "../commands/hooks.js";
+import { AUTO_PIPELINE_REL } from "../commands/pipeline.js";
 import { GITIGNORE_BLOCK_BEGIN, GITIGNORE_BLOCK_END } from "./gitignore-managed.js";
+import { isChecklistUnmodified, isToolGeneratedEslintConfig, isToolOwnedRuffBlock, } from "./lint-guidelines.js";
 export const SCAN_MAX_DEPTH = 6;
 export const SCAN_MAX_DIRS = 50_000;
 /** Signal files larger than this are skipped instead of read whole. */
@@ -80,7 +83,54 @@ export function hasOpenspecPwTerritory(projectRoot) {
             }
         }
     }
-    return false;
+    // Content-owned leftovers carry no markers or MCP entries but are still
+    // removable — without these signals `--all` would skip such projects.
+    return hasContentOwnedTerritory(projectRoot);
+}
+const TESTS_README_TEMPLATE = new URL("../../templates/tests-readme.md", import.meta.url);
+/** True when a content-owned artifact is present and still tool-owned. */
+function hasContentOwnedTerritory(projectRoot) {
+    const readSmall = (path) => {
+        try {
+            if (!existsSync(path) || !statSync(path).isFile())
+                return null;
+            if (statSync(path).size > SIGNAL_MAX_BYTES)
+                return null;
+            return readFileSync(path, "utf-8");
+        }
+        catch {
+            return null;
+        }
+    };
+    const testsReadme = readSmall(join(projectRoot, "tests", "README.md"));
+    if (testsReadme !== null) {
+        try {
+            const template = readFileSync(TESTS_README_TEMPLATE, "utf-8");
+            if (normalizeEol(testsReadme) === normalizeEol(template))
+                return true;
+        }
+        catch {
+            // Template unreadable — fall through to the other signals.
+        }
+    }
+    const checklist = readSmall(join(projectRoot, "lint-guidelines.md"));
+    if (checklist !== null && isChecklistUnmodified(checklist))
+        return true;
+    // Filenames below are tool-specific, so existence is signal enough.
+    if (existsSync(join(projectRoot, ".github", "workflows", "openspec-pw.yml"))) {
+        return true;
+    }
+    if (existsSync(join(projectRoot, AUTO_PIPELINE_REL)))
+        return true;
+    const eslint = readSmall(join(projectRoot, "eslint.config.mjs"));
+    if (eslint !== null && isToolGeneratedEslintConfig(eslint))
+        return true;
+    for (const name of ["pyproject.toml", ".ruff.toml", "ruff.toml"]) {
+        const content = readSmall(join(projectRoot, name));
+        if (content !== null && isToolOwnedRuffBlock(content))
+            return true;
+    }
+    return isStopHookInstalled(projectRoot);
 }
 /** Scan for openspec-pw projects under the given (or default) roots. */
 export function discoverProjects(options = {}) {
@@ -162,7 +212,9 @@ export function discoverProjects(options = {}) {
     }
     const projects = [...found.values()];
     const cwd = options.cwd;
-    if (cwd) {
+    // An explicit `--root` defines the whole scope: merging the cwd project
+    // would let `--yes` clean a project the user did not ask about.
+    if (cwd && !options.roots?.length) {
         // The spec includes the *project containing* the cwd, not the cwd itself:
         // `remove --all` is often run from a subdirectory of the project.
         const cwdProject = findContainingProject(cwd);

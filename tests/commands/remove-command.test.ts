@@ -249,6 +249,47 @@ describe("removeInProject() CI workflow", () => {
     ).toBe(modified);
     expect(lines.some((l) => l.includes("differs from the bundled template"))).toBe(true);
   });
+
+  it("removes the auto pipeline workflow when it matches the bundled template", async () => {
+    const auto = readFileSync(
+      fileURLToPath(new URL("../../templates/auto-pipeline.yml", import.meta.url)),
+      "utf-8",
+    );
+    mkdirSync(join(tmp, ".github", "workflows"), { recursive: true });
+    writeFileSync(join(tmp, ".github", "workflows", "openspec-auto.yml"), auto);
+
+    await removeInProject(tmp);
+
+    expect(existsSync(join(tmp, ".github", "workflows", "openspec-auto.yml"))).toBe(false);
+  });
+
+  it("keeps a user-modified auto pipeline workflow with a notice", async () => {
+    const auto = readFileSync(
+      fileURLToPath(new URL("../../templates/auto-pipeline.yml", import.meta.url)),
+      "utf-8",
+    );
+    mkdirSync(join(tmp, ".github", "workflows"), { recursive: true });
+    writeFileSync(join(tmp, ".github", "workflows", "openspec-auto.yml"), `${auto}\n# local tweak\n`);
+
+    await removeInProject(tmp);
+
+    expect(existsSync(join(tmp, ".github", "workflows", "openspec-auto.yml"))).toBe(true);
+  });
+});
+
+// ─── Stop hook ───────────────────────────────────────────────────────────
+
+describe("removeInProject() stop hook", () => {
+  it("reports failure instead of success when settings.json is unparsable", async () => {
+    mkdirSync(join(tmp, ".claude"), { recursive: true });
+    writeFileSync(join(tmp, ".claude", "settings.json"), "{ not json");
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect(await removeSingle(tmp)).toBe(1);
+    } finally {
+      spy.mockRestore();
+    }
+  });
 });
 
 // ─── Error path ──────────────────────────────────────────────────────────

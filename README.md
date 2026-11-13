@@ -290,12 +290,12 @@ openspec-pw flake         # Detect flake patterns in test files (static patterns
 openspec-pw gate [change]  # Run every quality check and exit 0 / 1 / 2 (pass / fail / cannot decide; --repeat N reruns failed E2E tests to classify flaky vs real)
 openspec-pw migrate       # Migrate old test files to new structure
 openspec-pw explore       # Explore app routes with Playwright
-openspec-pw remove        # Remove integration (--all scans every project; --yes executes)
+openspec-pw remove        # Remove integration (--all scans home + Windows drives; --yes executes)
 ```
 
-**`remove`** cleans the current project: editor command carriers, the `playwright-test` / legacy `playwright` MCP entries, rules-file marker blocks, the managed `.gitignore` block, the Stop hook, `openspec/schemas/playwright-e2e/`, the lint checklist, vendored agents, the legacy skill directory, and — when still byte-identical to the bundled templates — `tests/README.md`, `.github/workflows/openspec-pw.yml`, the generated `eslint.config.mjs`, and the ruff managed block. User data is never touched (`tests/**`, `credentials.yaml`, `openspec/specs`), and edited tool files are kept with a notice. **BREAKING (0.3.x → next):** `uninstall` was renamed to `remove`; the old name is gone.
+**`remove`** cleans the current project: editor command carriers, the `playwright-test` / legacy `playwright` MCP entries, rules-file marker blocks, the managed `.gitignore` block, the Stop hook, `openspec/schemas/playwright-e2e/`, the lint checklist, vendored agents, the legacy skill directory, and — when still byte-identical to the bundled templates — `tests/README.md`, `.github/workflows/openspec-pw.yml`, `.github/workflows/openspec-auto.yml`, the generated `eslint.config.mjs`, and the ruff managed block. User data is never touched (`tests/**`, `credentials.yaml`, `openspec/specs`), and edited tool files are kept with a notice. **BREAKING (0.3.x → next):** `uninstall` was renamed to `remove`; the old name is gone.
 
-`remove --all` scans for projects that carry openspec-pw territory — editor command files, the schema directory, marker blocks, the managed `.gitignore` block, or a `playwright-test` MCP entry. Default scan roots are your home directory, plus every existing drive root on Windows. It is a **dry run by default**: it prints each project and the artifact groups it would remove. Add `--yes` to execute; `--root <dir>` (repeatable, `~` expanded) replaces the default roots, and UNC network roots are not scanned. A cwd project outside the scan roots is always included and listed first. One project's failure never stops the rest; the run ends with `removed N / skipped M / failed K` and exits nonzero when anything failed.
+`remove --all` scans for projects that carry openspec-pw territory — editor command files, the schema directory, marker blocks, the managed `.gitignore` block, an MCP entry (`playwright-test` or the legacy `playwright`), or a tool-owned leftover such as `tests/README.md`, the lint checklist, a generated CI workflow, tool-generated ESLint/ruff config, or the Stop hook. Default scan roots are your home directory, plus every existing drive root on Windows. It is a **dry run by default**: it prints each project and the artifact groups it would remove. Add `--yes` to execute; `--root <dir>` (repeatable, `~` expanded) replaces the default roots — an explicit `--root` defines the whole scope, so the cwd project is not added — and UNC network roots are not scanned. Without `--root`, the cwd project is included and listed first. One project's failure never stops the rest; the run ends with `removed N / skipped M / failed K` and exits nonzero when anything failed.
 
 `openspec-pw gate` is the single verdict the rest of the tooling calls — the Claude Code Stop hook and the generated CI workflow both invoke it rather than keeping their own check lists. It runs `validate → lint → typecheck → test → flake → e2e` (cheap first, stop at the first failure unless `--keep-going`), and exit codes are three-valued: `0` every check passed, `1` a check failed, `2` the run could not decide (tool missing, timeout, ambiguous change name).
 
@@ -537,7 +537,7 @@ CLI (openspec-pw)
   ├── flake      → Detects flake patterns in test files (static + raised timeouts)
   ├── doctor     → Checks prerequisites
   ├── explore    → Explores app routes with Playwright
-  └── remove     → Removes integration (--all: every project on this machine)
+  └── remove     → Removes integration (--all: scan home / Windows drives; --yes executes)
 
 Editors (auto-detected by openspec-pw init)
   ├── Claude Code (/opsx:e2e)

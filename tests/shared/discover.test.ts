@@ -130,24 +130,6 @@ describe("discoverProjects", () => {
     }
   });
 
-  it("lists the cwd project first even when it is outside the scan roots", () => {
-    const root = makeTemp("ospw-discover-roots-");
-    const outside = makeTemp("ospw-discover-cwd-");
-    try {
-      const scanned = join(root, "proj");
-      makeProject(scanned);
-      makeProject(outside);
-
-      const result = discoverProjects({ roots: [root], cwd: outside });
-
-      expect(result.projects[0]).toBe(outside);
-      expect(result.projects).toContain(scanned);
-    } finally {
-      rmSync(root, { recursive: true, force: true });
-      rmSync(outside, { recursive: true, force: true });
-    }
-  });
-
   it("does not follow directory symlinks", () => {
     const root = makeTemp("ospw-discover-link-");
     const target = makeTemp("ospw-discover-target-");
@@ -191,6 +173,42 @@ describe("discoverProjects", () => {
     } finally {
       chmodSync(file, 0o644);
       rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("merges the cwd project first when no explicit root is given", () => {
+    const home = makeTemp("ospw-discover-home-");
+    const outside = makeTemp("ospw-discover-cwd-default-");
+    try {
+      makeProject(join(home, "proj"));
+      makeProject(outside);
+
+      const result = discoverProjects({
+        homeDir: home,
+        platform: "darwin",
+        cwd: outside,
+      });
+
+      expect(result.projects[0]).toBe(outside);
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+      rmSync(outside, { recursive: true, force: true });
+    }
+  });
+
+  it("does not merge the cwd project when roots are explicit", () => {
+    const root = makeTemp("ospw-discover-explicit-");
+    const outside = makeTemp("ospw-discover-cwd-explicit-");
+    try {
+      makeProject(join(root, "proj"));
+      makeProject(outside);
+
+      const result = discoverProjects({ roots: [root], cwd: outside });
+
+      expect(result.projects).not.toContain(outside);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+      rmSync(outside, { recursive: true, force: true });
     }
   });
 

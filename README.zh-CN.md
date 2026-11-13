@@ -179,12 +179,12 @@ openspec-pw flake         # 检测测试文件中的不稳定模式（静态模�
 openspec-pw gate [change]  # 跑全部质量检查，退出码 0 / 1 / 2（通过 / 不达标 / 无法判定；--repeat N 重跑失败的 E2E 以区分 flaky 与真失败）
 openspec-pw migrate       # 迁移旧测试文件到新目录结构
 openspec-pw explore       # 探索应用路由
-openspec-pw remove        # 移除集成（--all 扫描本机全部项目；--yes 才执行）
+openspec-pw remove        # 移除集成（--all 扫描 home 与 Windows 盘根；--yes 才执行）
 ```
 
-**`remove`** 清理当前项目的全部工具痕迹：编辑器命令载体、`playwright-test` 与遗留 `playwright` 的 MCP 条目、规则文件标记块、`.gitignore` managed block、Stop hook、`openspec/schemas/playwright-e2e/`、lint 清单、vendored agents、legacy skill 目录，以及仍与内置模板字节一致的 `tests/README.md`、`.github/workflows/openspec-pw.yml`、工具生成的 `eslint.config.mjs` 与 ruff managed block。用户数据永不删除（`tests/**`、`credentials.yaml`、`openspec/specs`），被改过的工具文件保留并提示。**BREAKING**：`uninstall` 已改名为 `remove`，旧名不再保留。
+**`remove`** 清理当前项目的全部工具痕迹：编辑器命令载体、`playwright-test` 与遗留 `playwright` 的 MCP 条目、规则文件标记块、`.gitignore` managed block、Stop hook、`openspec/schemas/playwright-e2e/`、lint 清单、vendored agents、legacy skill 目录，以及仍与内置模板字节一致的 `tests/README.md`、`.github/workflows/openspec-pw.yml`、`.github/workflows/openspec-auto.yml`、工具生成的 `eslint.config.mjs` 与 ruff managed block。用户数据永不删除（`tests/**`、`credentials.yaml`、`openspec/specs`），被改过的工具文件保留并提示。**BREAKING**：`uninstall` 已改名为 `remove`，旧名不再保留。
 
-`remove --all` 扫描本机带 openspec-pw 痕迹的项目——编辑器命令文件、schema 目录、标记块、`.gitignore` managed block、或 `playwright-test` MCP 条目任一命中即可。默认扫描根是 home 目录，Windows 上再加所有存在的盘根。**默认只列计划不删除**：打印每个项目与将删除的产物组；加 `--yes` 才执行；`--root <dir>`（可重复，支持 `~`）替换默认扫描根，UNC 网络路径不在扫描范围。扫描根之外的当前项目始终包含并排在首位。单个项目失败不阻断其余项目，结束时打印 `removed N / skipped M / failed K`，有失败则退出码非零。
+`remove --all` 扫描本机带 openspec-pw 痕迹的项目——编辑器命令文件、schema 目录、标记块、`.gitignore` managed block、MCP 条目（`playwright-test` 或遗留 `playwright`），或工具拥有的残留（`tests/README.md`、lint 清单、生成的 CI workflow、工具生成的 ESLint/ruff 配置、Stop hook）任一命中即可。默认扫描根是 home 目录，Windows 上再加所有存在的盘根。**默认只列计划不删除**：打印每个项目与将删除的产物组；加 `--yes` 才执行；`--root <dir>`（可重复，支持 `~`）替换默认扫描根——显式给出 `--root` 时扫描范围就是这些根，不再并入当前项目；UNC 网络路径不在扫描范围。不传 `--root` 时，当前项目包含在计划中并排在首位。单个项目失败不阻断其余项目，结束时打印 `removed N / skipped M / failed K`，有失败则退出码非零。
 
 `openspec-pw gate` 是其余所有环节共用的唯一裁决入口——Claude Code 的 Stop hook 与生成的 CI 工作流都调用它，不再各自维护一份检查清单。它按「validate → lint → typecheck → test → flake → e2e」的顺序执行（廉价在前，默认首败即停，`--keep-going` 跑完全部），退出码三值：`0` 全部通过、`1` 有检查不达标、`2` 无法判定（工具缺失、超时、变更名有歧义）。
 
@@ -368,7 +368,7 @@ CLI (openspec-pw)
   ├── flake      → 检测测试文件中的不稳定模式（静态 + 被调大的超时）
   ├── doctor     → 检查前置条件
   ├── explore    → 探索应用路由
-  └── remove     → 移除集成（--all：本机全部项目）
+  └── remove     → 移除集成（--all：扫描 home 与 Windows 盘根；--yes 才执行）
 
 编辑器（由 openspec-pw init 自动检测）
   ├── Claude Code (/opsx:e2e)

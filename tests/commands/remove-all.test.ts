@@ -254,7 +254,7 @@ describe("runRemoveAll --yes", () => {
     expect(logs.join("\n")).not.toContain(".gitignore block");
   });
 
-  it("puts the cwd project first in the plan", async () => {
+  it("does not add the cwd project when --root defines the scope", async () => {
     const outside = join(base, "outside-proj");
     mkdirSync(outside, { recursive: true });
     writeFileSync(join(outside, "AGENTS.md"), MARKERS);
@@ -266,11 +266,7 @@ describe("runRemoveAll --yes", () => {
 
     await runRemoveAll({ root: [roots], cwd: outside });
 
-    const out = logs.join("\n");
-    expect(out.indexOf(`─── ${outside} ───`)).toBeGreaterThan(-1);
-    expect(out.indexOf(`─── ${outside} ───`)).toBeLessThan(
-      out.indexOf(`─── ${projectA} ───`),
-    );
+    expect(logs.join("\n")).not.toContain(`─── ${outside} ───`);
     expect(existsSync(outside)).toBe(true);
   });
 });
