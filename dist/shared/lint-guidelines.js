@@ -10,6 +10,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync, } from "node:fs";
 import { dirname, extname, join, sep } from "node:path";
 import { bundledTemplatePath } from "./drift.js";
+import { readTextFileCapped } from "./file-read.js";
 import { normalizeEol } from "../commands/editors/agents.js";
 import { isPathInsideProjectRoot } from "./path-guard.js";
 export const LINT_GUIDELINE_RULES = [
@@ -176,7 +177,18 @@ export function removeChecklist(projectRoot) {
         return "absent";
     if (!isPathInsideProjectRoot(projectRoot, dest))
         return "kept-unsafe";
-    if (isChecklistUnmodified(readFileSync(dest, "utf-8"))) {
+    const read = readTextFileCapped(dest);
+    if (read.kind === "missing")
+        return "absent";
+    // The checklist is a small static reference; a larger file is not ours.
+    if (read.kind === "too-large")
+        return "kept-too-large";
+    if (read.kind === "unreadable") {
+        throw new Error(`cannot read ${dest} to check ownership`, {
+            cause: read.error,
+        });
+    }
+    if (isChecklistUnmodified(read.content)) {
         rmSync(dest);
         return "removed";
     }
@@ -572,7 +584,17 @@ export function removeGeneratedEslintConfig(projectRoot) {
     if (!isPathInsideProjectRoot(projectRoot, file)) {
         return { status: "kept-unsafe", file };
     }
-    const content = readFileSync(file, "utf-8");
+    const read = readTextFileCapped(file);
+    if (read.kind === "missing")
+        return { status: "absent", file };
+    if (read.kind === "too-large")
+        return { status: "kept-too-large", file };
+    if (read.kind === "unreadable") {
+        throw new Error(`cannot read ${file} to check ownership`, {
+            cause: read.error,
+        });
+    }
+    const content = read.content;
     if (!content.startsWith(LINT_ESLINT_GENERATED_MARKER)) {
         return { status: "not-generated", file };
     }
@@ -608,13 +630,20 @@ export function removeRuffManagedBlock(projectRoot, onRemoved) {
             results.push({ file, status: "kept-unsafe" });
             continue;
         }
-        let content;
-        try {
-            content = readFileSync(file, "utf-8");
-        }
-        catch {
+        const read = readTextFileCapped(file);
+        if (read.kind === "missing")
+            continue;
+        if (read.kind === "too-large") {
+            results.push({ file, status: "kept-too-large" });
             continue;
         }
+        // An existing tool config we cannot read is a real failure: reporting
+        // "no managed block" would claim a cleanup that did not happen.
+        if (read.kind === "unreadable") {
+            results.push({ file, status: "unreadable", error: read.error });
+            continue;
+        }
+        const content = read.content;
         if (findRuffManagedBlock(content) === null)
             continue;
         if (!isToolOwnedRuffBlock(content)) {

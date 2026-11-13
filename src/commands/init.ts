@@ -44,6 +44,7 @@ import {
   removeWrapper,
   removeMarkersFromFile,
   agentsFileHasCleanableMarkers,
+  wrapperLinksToAgents,
   normalizeEol,
 } from "./editors.js";
 import {
@@ -651,15 +652,23 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
             removeWrapper(adapter, projectRoot);
           }
         }
-        if (
-          agentsHasBlock &&
-          removeMarkersFromFile(
+        if (agentsHasBlock) {
+          // Deleting the whole file would dangle a wrapper symlinked to it —
+          // the same guard cleanProjectRules applies (keep the heading, strip
+          // markers only).
+          const agentsLinked = getAllAdapters().some((adapter) =>
+            wrapperLinksToAgents(projectRoot, adapter),
+          );
+          const removedAgents = removeMarkersFromFile(
             join(projectRoot, "AGENTS.md"),
             "AGENTS.md",
-            readEmployeeStandards(EMPLOYEE_STANDARDS_SRC),
-          )
-        ) {
-          console.log(chalk.green("  ✓ AGENTS.md: shared openspec-pw block removed"));
+            agentsLinked
+              ? undefined
+              : readEmployeeStandards(EMPLOYEE_STANDARDS_SRC),
+          );
+          if (removedAgents) {
+            console.log(chalk.green("  ✓ AGENTS.md: shared openspec-pw block removed"));
+          }
         }
       }
     }

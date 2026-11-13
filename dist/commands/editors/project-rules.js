@@ -310,7 +310,7 @@ function isSymlink(path) {
     }
 }
 /** True when a wrapper file is a symlink resolving to this project's AGENTS.md. */
-function wrapperLinksToAgents(projectRoot, adapter) {
+export function wrapperLinksToAgents(projectRoot, adapter) {
     const wrapper = wrapperRulesFile(adapter, projectRoot);
     if (!wrapper)
         return false;

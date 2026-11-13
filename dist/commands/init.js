@@ -6,7 +6,7 @@ import { readFile } from "fs/promises";
 import { execFileSync } from "../shared/exec.js";
 import { installStopHook, isHookTier, uninstallStopHook } from "./hooks.js";
 import { BRANCH_PROTECTION_HINT, generateAutoPipeline, pipelineGitignoreOmit, PIPELINE_TRACKED_PATHS, } from "./pipeline.js";
-import { buildCommandMeta, detectAdapters, detectProjectAdapters, preselectAdapters, getAdapter, getAllAdapters, installCommand, installOptionalArtifacts, installProjectRules, migrateLegacyMarkers, readEmployeeStandards, resolveToolsArg, slashCommandForAdapter, enumerateAdapterArtifacts, enumerateVendoredAgents, installedAgentsSnapshotDir, isInventoryEmpty, removeAdapterMcp, retainedMcpConfigFiles, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, removeLegacyArtifact, removeWrapper, removeMarkersFromFile, agentsFileHasCleanableMarkers, normalizeEol, } from "./editors.js";
+import { buildCommandMeta, detectAdapters, detectProjectAdapters, preselectAdapters, getAdapter, getAllAdapters, installCommand, installOptionalArtifacts, installProjectRules, migrateLegacyMarkers, readEmployeeStandards, resolveToolsArg, slashCommandForAdapter, enumerateAdapterArtifacts, enumerateVendoredAgents, installedAgentsSnapshotDir, isInventoryEmpty, removeAdapterMcp, retainedMcpConfigFiles, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, removeLegacyArtifact, removeWrapper, removeMarkersFromFile, agentsFileHasCleanableMarkers, wrapperLinksToAgents, normalizeEol, } from "./editors.js";
 import { isEditorConfigured, agentsFileHasMarkers, } from "./editors/configured.js";
 import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, TEST_RUNNER_MCP_SERVER, hasFrontendSignal, explainFrontendSignal, detectCodeGraphStatus, codegraphHintLines, ensureGitignoreEntries, findUncoveredManagedPaths, skippableManagedPaths, readManagedSkips, detectTrackedFiles, isIgnoredPath, managedBlockAdvisoryHint, installOrRefreshChecklist, installLintConfig, LINT_ESLINT_SNIPPET, LINT_GUIDELINES_RELPATH, } from "../shared/index.js";
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
@@ -414,9 +414,17 @@ export async function init(options, deps = {}) {
                         removeWrapper(adapter, projectRoot);
                     }
                 }
-                if (agentsHasBlock &&
-                    removeMarkersFromFile(join(projectRoot, "AGENTS.md"), "AGENTS.md", readEmployeeStandards(EMPLOYEE_STANDARDS_SRC))) {
-                    console.log(chalk.green("  ✓ AGENTS.md: shared openspec-pw block removed"));
+                if (agentsHasBlock) {
+                    // Deleting the whole file would dangle a wrapper symlinked to it —
+                    // the same guard cleanProjectRules applies (keep the heading, strip
+                    // markers only).
+                    const agentsLinked = getAllAdapters().some((adapter) => wrapperLinksToAgents(projectRoot, adapter));
+                    const removedAgents = removeMarkersFromFile(join(projectRoot, "AGENTS.md"), "AGENTS.md", agentsLinked
+                        ? undefined
+                        : readEmployeeStandards(EMPLOYEE_STANDARDS_SRC));
+                    if (removedAgents) {
+                        console.log(chalk.green("  ✓ AGENTS.md: shared openspec-pw block removed"));
+                    }
                 }
             }
         }

@@ -13,6 +13,8 @@ export type KnownAgentRole = VendoredAgentRole | RetiredAgentRole;
 /** Project-relative install path for one vendored agent file. */
 export declare function vendoredAgentRelPath(role: VendoredAgentRole): string;
 export declare function vendoredAgentRelPaths(): string[];
+/** Every project-relative agent path this tool has ever installed. */
+export declare function knownAgentRelPaths(): string[];
 /** Machine-readable snapshot manifest shipped next to the templates. */
 export interface AgentsManifest {
     baseline: string;

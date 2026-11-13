@@ -43,12 +43,12 @@ export { resolveToolsArg } from "./editors/tool-selection.js";
 // Per-editor artifact removal (init deselect + remove cleanup)
 export { OPENSPEC_PW_MCP_SERVERS, CLAUDE_LEGACY_SKILL_REL, enumerateAdapterArtifacts, isInventoryEmpty, retainedMcpConfigFiles, removeAdapterMcp, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, removeLegacyArtifact, removeWrapper, cleanupEmptyDirs, } from "./editors/removal.js";
 // Vendored Playwright agent snapshots (claude, init --agents)
-export { VENDORED_AGENT_ROLES, vendoredAgentRelPath, vendoredAgentRelPaths, installedAgentsSnapshotDir, readAgentsManifest, loadAgentSnapshots, sha256Contents, roleForRelPath, classifyAgentFile, enumerateVendoredAgents, syncVendoredAgents, } from "./editors/agents.js";
+export { VENDORED_AGENT_ROLES, vendoredAgentRelPath, vendoredAgentRelPaths, knownAgentRelPaths, installedAgentsSnapshotDir, readAgentsManifest, loadAgentSnapshots, sha256Contents, roleForRelPath, classifyAgentFile, enumerateVendoredAgents, syncVendoredAgents, } from "./editors/agents.js";
 // Config-state predicates (init pre-select manifest)
 export { isEditorConfigured, anyEditorConfigured, agentsFileHasMarkers, } from "./editors/configured.js";
 // Pre-select-only intent-file signals (first-run tier; never authorize writes)
 export { intentFileEditors } from "./editors/preselect.js";
 // Project rules file management (AGENTS.md SSOT + CLAUDE.md / CODEBUDDY.md wrappers)
-export { readOpenSpecBlock, blockMatchesExpected, installOpenSpecBlock, claudeWrapperStandardsContent, installThinWrapper, installClaudeWrapper, installCodebuddyWrapper, installProjectRules, migrateLegacyMarkers, cleanProjectRules, removeMarkersFromFile, hasCleanableMarkers, agentsFileHasCleanableMarkers, readEmployeeStandards, hasRuleFileMarkers, wrapperRulesFile, wrapperHasMarkers, } from "./editors/project-rules.js";
+export { readOpenSpecBlock, blockMatchesExpected, installOpenSpecBlock, claudeWrapperStandardsContent, installThinWrapper, installClaudeWrapper, installCodebuddyWrapper, installProjectRules, migrateLegacyMarkers, cleanProjectRules, removeMarkersFromFile, hasCleanableMarkers, agentsFileHasCleanableMarkers, readEmployeeStandards, hasRuleFileMarkers, wrapperRulesFile, wrapperHasMarkers, wrapperLinksToAgents, } from "./editors/project-rules.js";
 export { normalizeEol } from "./editors/agents.js";
 //# sourceMappingURL=editors.js.map

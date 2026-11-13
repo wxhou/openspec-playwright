@@ -27,7 +27,7 @@ export declare function computeChecklistChecksum(body: string): string;
 export declare function isChecklistUnmodified(content: string): boolean;
 export type ChecklistDisposition = "created" | "unchanged" | "refreshed" | "kept-modified";
 /** Uninstall-side disposition for the checklist file. */
-export type ChecklistRemovalDisposition = "removed" | "kept-modified" | "kept-unsafe" | "absent";
+export type ChecklistRemovalDisposition = "removed" | "kept-modified" | "kept-unsafe" | "kept-too-large" | "absent";
 /**
  * Uninstall the checklist: tool-owned (checksum intact) → remove;
  * user-modified → keep and report; missing → nothing to do. A path that
@@ -123,7 +123,7 @@ export declare function buildGeneratedEslintConfig(tsParser: {
 export declare function generatedEslintConfigVariants(): string[];
 /** True when the content is byte-identical (EOL-normalized) to a tool-generated shape. */
 export declare function isToolGeneratedEslintConfig(content: string): boolean;
-export type EslintConfigRemovalStatus = "removed" | "kept-modified" | "kept-unsafe" | "not-generated" | "absent";
+export type EslintConfigRemovalStatus = "removed" | "kept-modified" | "kept-unsafe" | "kept-too-large" | "not-generated" | "absent";
 /** Remove the generated `eslint.config.mjs` when it is still tool-owned; never touches user files. */
 export declare function removeGeneratedEslintConfig(projectRoot: string): {
     status: EslintConfigRemovalStatus;
@@ -134,7 +134,7 @@ export declare function removeGeneratedEslintConfig(projectRoot: string): {
  * Bytes outside the block are preserved verbatim; a file left empty by the
  * removal (tool-created `ruff.toml` holding only the block) is deleted.
  */
-export type RuffBlockRemovalStatus = "removed" | "kept-modified" | "kept-unsafe";
+export type RuffBlockRemovalStatus = "removed" | "kept-modified" | "kept-unsafe" | "kept-too-large" | "unreadable";
 /** True when the file's managed block is exactly what install writes (owned). */
 export declare function isToolOwnedRuffBlock(content: string): boolean;
 /**
@@ -147,4 +147,5 @@ export declare function isToolOwnedRuffBlock(content: string): boolean;
 export declare function removeRuffManagedBlock(projectRoot: string, onRemoved?: (file: string) => void): {
     file: string;
     status: RuffBlockRemovalStatus;
+    error?: unknown;
 }[];

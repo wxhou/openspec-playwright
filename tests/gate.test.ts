@@ -528,6 +528,21 @@ describe("stop-hook mode", () => {
     expect(lines.lines.join("\n")).toContain("fail");
   });
 
+  it("rejects --repeat in hook mode before running any check", async () => {
+    const exec = makeExec();
+    const lines = capture();
+    const code = await gate(
+      "demo",
+      { hook: true, only: "lint", repeat: "2" },
+      { cwd: root, exec, err: lines.out, hookPayload: {} },
+    );
+    expect(code).toBe(2);
+    expect(lintCalls(exec)).toBe(0);
+    expect(lines.lines.join("\n")).toContain(
+      "--repeat is not supported with --hook",
+    );
+  });
+
   it("writes a cache entry and reuses it when the tree is unchanged", async () => {
     const exec = makeExec();
     const lines = capture();
@@ -1008,6 +1023,25 @@ describe("parsePlaywrightReport", () => {
 
   it("rejects reports without suites", () => {
     expect(parsePlaywrightReport("{}")).toEqual({ error: "report has no suites" });
+  });
+
+  it("reports malformed nested shapes as errors instead of throwing", () => {
+    const malformed = [
+      { suites: [null] },
+      { suites: [{ specs: {} }] },
+      { suites: [{ specs: [{ tests: {} }] }] },
+      { suites: [{ specs: [{ tests: [{ results: {} }] }] }] },
+      { suites: [{ specs: [{ tests: [{ results: [null] }] }] }] },
+      { suites: [{ specs: [{ tests: [{ results: [{ attachments: {} }] }] }] }] },
+      { suites: [{ suites: {} }] },
+    ];
+    for (const report of malformed) {
+      const summary = parsePlaywrightReport(JSON.stringify(report));
+      if (!("error" in summary)) {
+        throw new Error(`expected an error for ${JSON.stringify(report)}`);
+      }
+      expect(summary.error).toMatch(/^report has /);
+    }
   });
 });
 

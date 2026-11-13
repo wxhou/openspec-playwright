@@ -7,6 +7,7 @@ import { uninstallStopHook, isStopHookInstalled, isStopHookRemovable } from "./h
 import { buildCommandMeta, CLAUDE_LEGACY_SKILL_REL, cleanProjectRules, cleanupEmptyDirs, claudeAdapter, codebuddyAdapter, detectAdapters, enumerateVendoredAgents, getAllAdapters, installedAgentsSnapshotDir, listCommandArtifactPaths, OPENSPEC_PW_MCP_SERVERS, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, hasCleanableMarkers, hasRuleFileMarkers, normalizeEol, wrapperRulesFile, } from "./editors.js";
 import { removeMcp, detectCodeGraphStatus, removeManagedBlock, removeChecklist, removeGeneratedEslintConfig, removeRuffManagedBlock, isChecklistUnmodified, isToolGeneratedEslintConfig, isToolOwnedRuffBlock, LINT_ESLINT_CONFIG_FILE, LINT_GUIDELINES_RELPATH, } from "../shared/index.js";
 import { discoverProjects, expandTilde } from "../shared/discover.js";
+import { readTextFileCapped } from "../shared/file-read.js";
 import { hasRemovableManagedBlock } from "../shared/gitignore-managed.js";
 import { GITHUB_WORKFLOW_REL } from "../shared/constants.js";
 import { isPathInsideProjectRoot } from "../shared/path-guard.js";
@@ -209,6 +210,9 @@ export async function removeInProject(projectRoot, options = {}) {
         else if (checklistResult === "kept-unsafe") {
             console.log(chalk.yellow(`  ⚠ ${LINT_GUIDELINES_RELPATH} resolves outside the project (symlink) — skipping`));
         }
+        else if (checklistResult === "kept-too-large") {
+            console.log(chalk.yellow(`  ⚠ ${LINT_GUIDELINES_RELPATH} is too large to verify ownership — kept`));
+        }
         else {
             console.log(chalk.gray("  - Lint guidelines not found, skipping"));
         }
@@ -245,13 +249,24 @@ export async function removeInProject(projectRoot, options = {}) {
         if (ruffRemovals.length === 0) {
             console.log(chalk.gray("  - No ruff managed block found, skipping"));
         }
-        for (const { file, status } of ruffRemovals) {
+        const lintReadFailures = [];
+        for (const { file, status, error } of ruffRemovals) {
             if (status === "kept-modified") {
                 console.log(chalk.yellow(`  ⚠ ${relative(projectRoot, file)} ruff block is locally modified — kept`));
                 continue;
             }
             if (status === "kept-unsafe") {
                 console.log(chalk.yellow(`  ⚠ ${relative(projectRoot, file)} resolves outside the project (symlink) — skipping`));
+                continue;
+            }
+            if (status === "kept-too-large") {
+                console.log(chalk.yellow(`  ⚠ ${relative(projectRoot, file)} is too large to verify ownership — kept`));
+                continue;
+            }
+            if (status === "unreadable") {
+                // Cannot tell whether the block is there; defer the failure until the
+                // rest of the cleanup ran, so its accounting stays honest.
+                lintReadFailures.push({ file, error });
                 continue;
             }
             console.log(chalk.green(`  ✓ Removed ruff managed block from ${relative(projectRoot, file)}`));
@@ -266,6 +281,9 @@ export async function removeInProject(projectRoot, options = {}) {
         }
         else if (eslintResult.status === "kept-unsafe") {
             console.log(chalk.yellow(`  ⚠ ${LINT_ESLINT_CONFIG_FILE} resolves outside the project (symlink) — skipping`));
+        }
+        else if (eslintResult.status === "kept-too-large") {
+            console.log(chalk.yellow(`  ⚠ ${LINT_ESLINT_CONFIG_FILE} is too large to verify ownership — kept`));
         }
         else if (eslintResult.status === "not-generated") {
             console.log(chalk.gray(`  - ${LINT_ESLINT_CONFIG_FILE} is user-authored, skipping`));
@@ -313,8 +331,18 @@ export async function removeInProject(projectRoot, options = {}) {
             console.log(chalk.yellow("  ⚠ tests/README.md resolves outside the project (symlink) — skipping"));
         }
         else {
-            const template = readFileSync(fileURLToPath(new URL("../../templates/tests-readme.md", import.meta.url)), "utf-8");
-            if (normalizeEol(readFileSync(readmeDest, "utf-8")) === normalizeEol(template)) {
+            const template = readTextFileCapped(fileURLToPath(new URL("../../templates/tests-readme.md", import.meta.url)));
+            if (template.kind !== "ok") {
+                throw new Error("bundled tests README template is unreadable");
+            }
+            const read = readTextFileCapped(readmeDest);
+            if (read.kind === "unreadable") {
+                throw new Error("cannot read tests/README.md to verify ownership", {
+                    cause: read.error,
+                });
+            }
+            if (read.kind === "ok" &&
+                normalizeEol(read.content) === normalizeEol(template.content)) {
                 rmSync(readmeDest);
                 track("tests/README.md");
                 try {
@@ -379,6 +407,9 @@ export async function removeInProject(projectRoot, options = {}) {
                 }
             }
         }
+        else if (blockResult.tooLarge) {
+            console.log(chalk.yellow("  ⚠ .gitignore is too large to verify ownership — kept"));
+        }
         else if (existsSync(join(projectRoot, ".gitignore")) &&
             !isPathInsideProjectRoot(projectRoot, join(projectRoot, ".gitignore"))) {
             console.log(chalk.yellow("  ⚠ .gitignore resolves outside the project (symlink) — skipping"));
@@ -435,6 +466,18 @@ export async function removeInProject(projectRoot, options = {}) {
                     ? causes[0]
                     : new AggregateError(causes, message);
             throw cause === undefined ? new Error(message) : new Error(message, { cause });
+        }
+        if (lintReadFailures.length > 0) {
+            // The file exists but could not be read, so "no managed block" would be
+            // a guess. Fail after the rest of the cleanup, keeping its accounting.
+            const files = lintReadFailures
+                .map(({ file }) => relative(projectRoot, file))
+                .join(", ");
+            const causes = lintReadFailures.map(({ error }) => error);
+            const cause = causes.length === 1
+                ? causes[0]
+                : new AggregateError(causes, "lint config unreadable");
+            throw new Error(`failed to inspect lint config: ${files}`, { cause });
         }
         // Summary — batch mode prints its own per-project verdict afterwards, so
         // an unconditional "Remove complete!" here would contradict it.
@@ -622,16 +665,13 @@ function describePlan(projectRoot) {
     }
     if (hasCleanableRuleMarkers(projectRoot))
         groups.push("rules markers");
-    try {
-        const checklistPath = join(projectRoot, LINT_GUIDELINES_RELPATH);
-        if (existsSync(checklistPath) &&
-            isPathInsideProjectRoot(projectRoot, checklistPath) &&
-            isChecklistUnmodified(readFileSync(checklistPath, "utf-8"))) {
+    const checklistPath = join(projectRoot, LINT_GUIDELINES_RELPATH);
+    if (existsSync(checklistPath) &&
+        isPathInsideProjectRoot(projectRoot, checklistPath)) {
+        const read = readTextFileCapped(checklistPath);
+        if (read.kind === "ok" && isChecklistUnmodified(read.content)) {
             groups.push("lint checklist");
         }
-    }
-    catch {
-        // Unreadable file — skip the group rather than aborting the plan.
     }
     if (isPristineCopy(projectRoot, GITHUB_WORKFLOW_REL, WORKFLOW_TEMPLATE)) {
         groups.push("CI workflow");
@@ -641,16 +681,13 @@ function describePlan(projectRoot) {
     }
     if (hasRuffBlock(projectRoot))
         groups.push("ruff managed block");
-    try {
-        const eslintPath = join(projectRoot, LINT_ESLINT_CONFIG_FILE);
-        if (existsSync(eslintPath) &&
-            isPathInsideProjectRoot(projectRoot, eslintPath) &&
-            isToolGeneratedEslintConfig(readFileSync(eslintPath, "utf-8"))) {
+    const eslintPath = join(projectRoot, LINT_ESLINT_CONFIG_FILE);
+    if (existsSync(eslintPath) &&
+        isPathInsideProjectRoot(projectRoot, eslintPath)) {
+        const read = readTextFileCapped(eslintPath);
+        if (read.kind === "ok" && isToolGeneratedEslintConfig(read.content)) {
             groups.push("generated eslint config");
         }
-    }
-    catch {
-        // Unreadable file — skip the group rather than aborting the plan.
     }
     const agents = enumerateVendoredAgents(projectRoot, installedAgentsSnapshotDir());
     const ownedAgents = agents.owned.filter((rel) => isPathInsideProjectRoot(projectRoot, join(projectRoot, rel)));
@@ -666,17 +703,27 @@ function describePlan(projectRoot) {
 }
 /** True when the file exists and is byte-identical (EOL-normalized) to its template. */
 function isPristineCopy(projectRoot, relPath, templateFile) {
-    try {
-        const dest = join(projectRoot, relPath);
-        if (!existsSync(dest) || !isPathInsideProjectRoot(projectRoot, dest)) {
-            return false;
-        }
-        const template = readFileSync(fileURLToPath(new URL(`../../templates/${templateFile}`, import.meta.url)), "utf-8");
-        return normalizeEol(readFileSync(dest, "utf-8")) === normalizeEol(template);
-    }
-    catch {
+    const dest = join(projectRoot, relPath);
+    if (!existsSync(dest) || !isPathInsideProjectRoot(projectRoot, dest)) {
         return false;
     }
+    const template = readTextFileCapped(fileURLToPath(new URL(`../../templates/${templateFile}`, import.meta.url)));
+    if (template.kind !== "ok") {
+        throw new Error(`bundled template ${templateFile} is unreadable`);
+    }
+    const read = readTextFileCapped(dest);
+    if (read.kind === "missing")
+        return false;
+    // An unreadable file is not "user-modified" — map it to an honest failure.
+    if (read.kind === "unreadable") {
+        throw new Error(`cannot read ${relPath} to verify ownership`, {
+            cause: read.error,
+        });
+    }
+    // Templates are small; a larger file cannot be a byte-identical copy.
+    if (read.kind === "too-large")
+        return false;
+    return normalizeEol(read.content) === normalizeEol(template.content);
 }
 /** Identity of one physical MCP entry — shared config files count once. */
 function mcpEntryKey(adapter, projectRoot, serverName) {
@@ -709,27 +756,19 @@ function hasCleanableRuleMarkers(projectRoot) {
 function hasRuffBlock(projectRoot) {
     return ["pyproject.toml", ".ruff.toml", "ruff.toml"].some((name) => {
         const file = join(projectRoot, name);
-        try {
-            return (existsSync(file) &&
-                isPathInsideProjectRoot(projectRoot, file) &&
-                isToolOwnedRuffBlock(readFileSync(file, "utf-8")));
-        }
-        catch {
+        if (!existsSync(file) || !isPathInsideProjectRoot(projectRoot, file)) {
             return false;
         }
+        const read = readTextFileCapped(file);
+        return read.kind === "ok" && isToolOwnedRuffBlock(read.content);
     });
 }
 function hasManagedGitignoreBlock(projectRoot) {
     const file = join(projectRoot, ".gitignore");
-    try {
-        if (!existsSync(file) || !isPathInsideProjectRoot(projectRoot, file)) {
-            return false;
-        }
-        const text = readFileSync(file, "utf-8");
-        return hasRemovableManagedBlock(text);
-    }
-    catch {
+    if (!existsSync(file) || !isPathInsideProjectRoot(projectRoot, file)) {
         return false;
     }
+    const read = readTextFileCapped(file);
+    return read.kind === "ok" && hasRemovableManagedBlock(read.content);
 }
 //# sourceMappingURL=remove.js.map

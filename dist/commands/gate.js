@@ -359,6 +359,52 @@ function traceFromResults(results) {
     }
     return trace;
 }
+function isRecord(value) {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+/**
+ * Validate the nested report shape before the typed walk runs. A malformed
+ * or version-drifted report must surface as "evidence unavailable", not as
+ * a TypeError escaping the gate (design: 不崩溃也不放行).
+ */
+function malformedReportPart(suites) {
+    for (const suite of suites) {
+        if (!isRecord(suite))
+            return "a malformed suite entry";
+        if (suite.specs !== undefined && !Array.isArray(suite.specs)) {
+            return "malformed suite.specs";
+        }
+        if (suite.suites !== undefined && !Array.isArray(suite.suites)) {
+            return "malformed suite.suites";
+        }
+        for (const spec of (suite.specs ?? [])) {
+            if (!isRecord(spec))
+                return "a malformed spec entry";
+            if (spec.tests !== undefined && !Array.isArray(spec.tests)) {
+                return "malformed spec.tests";
+            }
+            for (const test of (spec.tests ?? [])) {
+                if (!isRecord(test))
+                    return "a malformed test entry";
+                if (test.results !== undefined && !Array.isArray(test.results)) {
+                    return "malformed test.results";
+                }
+                for (const result of (test.results ?? [])) {
+                    if (!isRecord(result))
+                        return "a malformed result entry";
+                    if (result.attachments !== undefined &&
+                        !Array.isArray(result.attachments)) {
+                        return "malformed result.attachments";
+                    }
+                }
+            }
+        }
+        const nested = malformedReportPart((suite.suites ?? []));
+        if (nested !== null)
+            return nested;
+    }
+    return null;
+}
 /**
  * Classify a rerun report by attempt records. A rerun is a fresh process, so
  * a recovered test is `expected` when it passes on the first attempt; only
@@ -375,6 +421,9 @@ export function parsePlaywrightReport(raw) {
     }
     if (!Array.isArray(report.suites))
         return { error: "report has no suites" };
+    const malformed = malformedReportPart(report.suites);
+    if (malformed !== null)
+        return { error: `report has ${malformed}` };
     const flaky = [];
     const realFailures = [];
     let total = 0;
@@ -834,6 +883,12 @@ export async function gate(changeName, options = {}, deps = {}) {
     }
     if (options.strictFlake === true && repeatRaw === undefined) {
         err("  gate: --strict-flake requires --repeat <n>");
+        return 2;
+    }
+    if (hookMode && repeatCount > 0) {
+        // The hook's 890s deadline cannot cover a first E2E run plus a rerun
+        // (2 × 600s), and the Stop hook never passes --repeat by design.
+        err("  gate: --repeat is not supported with --hook");
         return 2;
     }
     // Only some checks read a change. Resolving one unconditionally made a

@@ -3,12 +3,14 @@ import {
   chmodSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   defaultScanRoots,
   discoverProjects,
@@ -109,6 +111,51 @@ describe("hasOpenspecPwTerritory", () => {
       expect(hasOpenspecPwTerritory(root)).toBe(false);
     } finally {
       rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("detects the legacy skill directory alone", () => {
+    const root = makeTemp("ospw-discover-legacy-skill-");
+    try {
+      mkdirSync(join(root, ".claude", "skills", "openspec-e2e"), {
+        recursive: true,
+      });
+      expect(hasOpenspecPwTerritory(root)).toBe(true);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("detects a tool-owned vendored agent but not an edited copy", () => {
+    const owned = makeTemp("ospw-discover-agents-");
+    const edited = makeTemp("ospw-discover-agents-edited-");
+    try {
+      const snapshot = readFileSync(
+        fileURLToPath(
+          new URL(
+            "../../templates/agents/claude/playwright-test-planner.md",
+            import.meta.url,
+          ),
+        ),
+        "utf-8",
+      );
+      for (const dir of [owned, edited]) {
+        mkdirSync(join(dir, ".claude", "agents"), { recursive: true });
+        writeFileSync(
+          join(dir, ".claude", "agents", "playwright-test-planner.md"),
+          snapshot,
+        );
+      }
+      writeFileSync(
+        join(edited, ".claude", "agents", "playwright-test-planner.md"),
+        `${snapshot}\nhand edit\n`,
+      );
+
+      expect(hasOpenspecPwTerritory(owned)).toBe(true);
+      expect(hasOpenspecPwTerritory(edited)).toBe(false);
+    } finally {
+      rmSync(owned, { recursive: true, force: true });
+      rmSync(edited, { recursive: true, force: true });
     }
   });
 });

@@ -212,6 +212,35 @@ describe("removeInProject() lint config", () => {
 
     expect(readFileSync(join(tmp, "eslint.config.mjs"), "utf-8")).toBe(own);
   });
+
+  it("fails honestly when a ruff config exists but cannot be read", async () => {
+    // A directory with the config's name is unreadable as a file on every
+    // platform, deterministically (no chmod tricks, no root/admin variance).
+    mkdirSync(join(tmp, "pyproject.toml"));
+
+    await expect(removeInProject(tmp)).rejects.toThrow(
+      /failed to inspect lint config: pyproject\.toml/,
+    );
+  });
+
+  it("keeps an oversized ruff config instead of reading it whole", async () => {
+    writeFileSync(
+      join(tmp, "ruff.toml"),
+      `# openspec-pw: lint-guidelines begin\n[lint]\nextend-select = ["B904"]\n# openspec-pw: lint-guidelines end\n${"#".repeat(1024 * 1024)}\n`,
+    );
+
+    const lines: string[] = [];
+    const spy = vi.spyOn(console, "log");
+    spy.mockImplementation((msg?: unknown) => lines.push(String(msg)));
+    try {
+      await removeInProject(tmp);
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(existsSync(join(tmp, "ruff.toml"))).toBe(true);
+    expect(lines.some((l) => l.includes("too large to verify"))).toBe(true);
+  });
 });
 
 // ─── CI workflow ─────────────────────────────────────────────────────────
@@ -251,6 +280,18 @@ describe("removeInProject() CI workflow", () => {
       readFileSync(join(tmp, ".github", "workflows", "openspec-pw.yml"), "utf-8"),
     ).toBe(modified);
     expect(lines.some((l) => l.includes("differs from the bundled template"))).toBe(true);
+  });
+
+  it("fails honestly when the workflow cannot be read", async () => {
+    // Same deterministic trick: a directory at the workflow path is never a
+    // readable file, so "user-modified" would be a lie.
+    mkdirSync(join(tmp, ".github", "workflows", "openspec-pw.yml"), {
+      recursive: true,
+    });
+
+    await expect(removeInProject(tmp)).rejects.toThrow(
+      /cannot read .*openspec-pw\.yml to verify ownership/,
+    );
   });
 
   it("removes the auto pipeline workflow when it matches the bundled template", async () => {

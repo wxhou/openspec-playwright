@@ -154,6 +154,35 @@ describe("init deselect-removal: cursor deselected and confirmed", () => {
     expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(false);
   });
 
+  it("keeps a pristine AGENTS.md when a wrapper symlinks to it", async () => {
+    // Deleting the file whole would leave CLAUDE.md dangling; the shared
+    // cleanup guard keeps the heading and strips only the block.
+    const standards = readFileSync(
+      new URL("../../employee-standards.md", import.meta.url),
+      "utf-8",
+    );
+    writeFileSync(
+      join(tmpRoot, "AGENTS.md"),
+      `# ${basename(tmpRoot)}\n\n<!-- OPENSPEC-PW:START -->\n\n${standards.trim()}\n\n<!-- OPENSPEC-PW:END -->\n`,
+    );
+    symlinkSync(join(tmpRoot, "AGENTS.md"), join(tmpRoot, "CLAUDE.md"));
+
+    await init(
+      { mcp: false },
+      {
+        isTTY: true,
+        prompt: async () => [],
+        confirm: async () => true,
+      },
+    );
+
+    expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(true);
+    const agents = readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8");
+    expect(agents).toContain(`# ${basename(tmpRoot)}`);
+    expect(agents).not.toContain("OPENSPEC-PW");
+    expect(readFileSync(join(tmpRoot, "CLAUDE.md"), "utf-8")).toBe(agents);
+  });
+
   it("per-editor artifacts gone but shared block present → still asks, removal happens", async () => {
     // Simulate hand-deleted per-editor artifacts: only dirs remain
     rmSync(join(tmpRoot, CURSOR_COMMAND));

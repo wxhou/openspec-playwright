@@ -9,10 +9,11 @@
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { buildCommandMeta, getAllAdapters, hasRuleFileMarkers, listCommandArtifactPaths, normalizeEol, } from "../commands/editors.js";
+import { buildCommandMeta, CLAUDE_LEGACY_SKILL_REL, enumerateVendoredAgents, getAllAdapters, hasRuleFileMarkers, installedAgentsSnapshotDir, knownAgentRelPaths, listCommandArtifactPaths, normalizeEol, } from "../commands/editors.js";
 import { isStopHookInstalled } from "../commands/hooks.js";
 import { AUTO_PIPELINE_REL } from "../commands/pipeline.js";
 import { hasRemovableManagedBlock } from "./gitignore-managed.js";
+import { isPathInsideProjectRoot } from "./path-guard.js";
 import { isChecklistUnmodified, isToolGeneratedEslintConfig, isToolOwnedRuffBlock, LINT_ESLINT_CONFIG_FILE, LINT_GUIDELINES_RELPATH, } from "./lint-guidelines.js";
 import { GITHUB_WORKFLOW_REL } from "./constants.js";
 export const SCAN_MAX_DEPTH = 6;
@@ -118,7 +119,30 @@ function hasContentOwnedTerritory(projectRoot) {
         if (content !== null && isToolOwnedRuffBlock(content))
             return true;
     }
+    // Legacy skill directory from pre-command installs — remove deletes it.
+    const legacySkill = join(projectRoot, CLAUDE_LEGACY_SKILL_REL);
+    if (existsSync(legacySkill) &&
+        isPathInsideProjectRoot(projectRoot, legacySkill)) {
+        return true;
+    }
+    // Vendored agents are content-owned; an edited copy alone is not a signal
+    // because remove leaves it in place.
+    if (hasOwnedVendoredAgent(projectRoot))
+        return true;
     return isStopHookInstalled(projectRoot);
+}
+/** True when at least one tool-owned vendored agent file is installed. */
+function hasOwnedVendoredAgent(projectRoot) {
+    if (!knownAgentRelPaths().some((rel) => existsSync(join(projectRoot, rel)))) {
+        return false;
+    }
+    try {
+        return (enumerateVendoredAgents(projectRoot, installedAgentsSnapshotDir())
+            .owned.length > 0);
+    }
+    catch {
+        return false;
+    }
 }
 /** Scan for openspec-pw projects under the given (or default) roots. */
 export function discoverProjects(options = {}) {

@@ -163,6 +163,7 @@ export {
   VENDORED_AGENT_ROLES,
   vendoredAgentRelPath,
   vendoredAgentRelPaths,
+  knownAgentRelPaths,
   type AgentsManifest,
   installedAgentsSnapshotDir,
   readAgentsManifest,
@@ -203,5 +204,6 @@ export {
   hasRuleFileMarkers,
   wrapperRulesFile,
   wrapperHasMarkers,
+  wrapperLinksToAgents,
 } from "./editors/project-rules.js";
 export { normalizeEol } from "./editors/agents.js";

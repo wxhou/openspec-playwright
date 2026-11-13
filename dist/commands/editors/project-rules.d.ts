@@ -95,6 +95,8 @@ export declare function cleanProjectRules(adapter: EditorAdapter, projectRoot: s
     agents?: boolean;
     onChanged?: () => void;
 }): boolean;
+/** True when a wrapper file is a symlink resolving to this project's AGENTS.md. */
+export declare function wrapperLinksToAgents(projectRoot: string, adapter: EditorAdapter): boolean;
 /**
  * Remove openspec-pw marker blocks (both namespaces) from a single file,
  * deleting the file entirely when it empties out. `pristineBody`, when given,

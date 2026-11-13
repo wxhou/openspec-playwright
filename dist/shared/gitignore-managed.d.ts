@@ -82,6 +82,7 @@ export declare function ensureGitignoreEntries(projectRoot: string, opts?: {
 export declare function removeManagedBlock(projectRoot: string): {
     removed: boolean;
     fileDeleted: boolean;
+    tooLarge?: boolean;
 };
 /** Normalize EOL helper re-exported for callers comparing file content. */
 export { normalizeEol };

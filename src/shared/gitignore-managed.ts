@@ -18,6 +18,7 @@ import { join } from "path";
 import ignore from "ignore";
 import { normalizeEol } from "../commands/editors/agents.js";
 import { execFileSync } from "./exec.js";
+import { readTextFileCapped } from "./file-read.js";
 import { isPathInsideProjectRoot } from "./path-guard.js";
 
 /** Managed paths (user-decided artifacts/config + credentials + regenerable local data). */
@@ -311,6 +312,7 @@ export function ensureGitignoreEntries(
 export function removeManagedBlock(projectRoot: string): {
   removed: boolean;
   fileDeleted: boolean;
+  tooLarge?: boolean;
 } {
   const gitignorePath = join(projectRoot, ".gitignore");
   if (!existsSync(gitignorePath)) return { removed: false, fileDeleted: false };
@@ -320,7 +322,17 @@ export function removeManagedBlock(projectRoot: string): {
     return { removed: false, fileDeleted: false };
   }
 
-  const raw = readFileSync(gitignorePath, "utf-8");
+  const read = readTextFileCapped(gitignorePath);
+  if (read.kind === "missing") return { removed: false, fileDeleted: false };
+  if (read.kind === "too-large") {
+    return { removed: false, fileDeleted: false, tooLarge: true };
+  }
+  if (read.kind === "unreadable") {
+    throw new Error(`cannot read ${gitignorePath} to remove the managed block`, {
+      cause: read.error,
+    });
+  }
+  const raw = read.content;
   const hadTrailingNewline = raw.endsWith("\n");
   const body = hadTrailingNewline ? raw.slice(0, -1) : raw;
   const lines = toLines(body);

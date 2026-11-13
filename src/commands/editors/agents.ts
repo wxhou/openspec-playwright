@@ -23,6 +23,7 @@ import { existsSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
+import { readTextFileCapped } from "../../shared/file-read.js";
 import type { ExtraArtifact } from "./types.js";
 
 export const VENDORED_AGENT_ROLES = ["planner"] as const;
@@ -53,6 +54,14 @@ function retiredAgentRelPath(role: RetiredAgentRole): string {
 
 export function vendoredAgentRelPaths(): string[] {
   return VENDORED_AGENT_ROLES.map(vendoredAgentRelPath);
+}
+
+/** Every project-relative agent path this tool has ever installed. */
+export function knownAgentRelPaths(): string[] {
+  return [
+    ...VENDORED_AGENT_ROLES.map(vendoredAgentRelPath),
+    ...RETIRED_AGENT_ROLES.map(retiredAgentRelPath),
+  ];
 }
 
 /** Machine-readable snapshot manifest shipped next to the templates. */
@@ -130,7 +139,11 @@ export function classifyAgentFile(
 ): AgentFileState {
   const abs = join(projectRoot, relPath);
   if (!existsSync(abs)) return "missing";
-  const existing = readFileSync(abs, "utf-8");
+  const read = readTextFileCapped(abs);
+  // Unreadable or oversized content cannot be a known snapshot: report it as
+  // user-owned so removal/refresh never guesses (§7 bounded read).
+  if (read.kind !== "ok") return "modified";
+  const existing = read.content;
   if (snapshotContents && normalizeEol(existing) === normalizeEol(snapshotContents)) {
     return "owned";
   }
