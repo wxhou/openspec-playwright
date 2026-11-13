@@ -7,7 +7,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, parse } from "node:path";
 import { isPathInsideProjectRoot } from "../../src/shared/path-guard.js";
 
 describe("isPathInsideProjectRoot", () => {
@@ -96,7 +96,8 @@ describe("isPathInsideProjectRoot", () => {
   it("treats the filesystem root as containing everything", () => {
     const root = mkdtempSync(join(tmpdir(), "ospw-guard-"));
     try {
-      expect(isPathInsideProjectRoot("/", join(root, "anything"))).toBe(true);
+      // "/" is drive-relative on Windows; use the drive root that holds tmpdir.
+      expect(isPathInsideProjectRoot(parse(root).root, join(root, "anything"))).toBe(true);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
