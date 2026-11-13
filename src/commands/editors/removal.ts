@@ -4,7 +4,7 @@
  * Shared by two callers with different output styles:
  *   - `init` (deselect = remove): enumerates the openspec-pw products of
  *     deselected editors, prints one confirmation list, then removes.
- *   - `uninstall` (full cleanup): calls the same small delete functions
+ *   - `remove` (full cleanup): calls the same small delete functions
  *     inside its existing section-major loop (all MCP → all commands →
  *     legacy → rules), so its log order stays unchanged.
  *
@@ -12,16 +12,21 @@
  * writes — so it doubles as the dry-run source for init's confirm list.
  * The delete side is composed of small single-purpose functions instead of
  * one monolithic `removeAdapterArtifacts` because a monolith would reorder
- * uninstall's section-major output and the MCP removal helpers in
+ * remove's section-major output and the MCP removal helpers in
  * shared/mcp.ts print their own status lines (unusable for dry enumeration).
  */
 import { existsSync, lstatSync, readFileSync, readdirSync, rmSync, rmdirSync } from "fs";
 import { dirname, join, basename } from "path";
+import { isPathInsideProjectRoot } from "../../shared/path-guard.js";
 import chalk from "chalk";
 import { buildCommandMeta, type EditorAdapter } from "./types.js";
 import { listCommandArtifactPaths } from "./registry.js";
-import { removeMarkersFromFile, wrapperRulesFile } from "./project-rules.js";
-import { LEGACY_OPENSPEC_START, OPENSPEC_START } from "../../shared/drift.js";
+import {
+  claudeWrapperStandardsContent,
+  hasCleanableMarkers,
+  removeMarkersFromFile,
+  wrapperRulesFile,
+} from "./project-rules.js";
 import { enumerateVendoredAgents, installedAgentsSnapshotDir } from "./agents.js";
 import { CLAUDE_LEGACY_SKILL_REL } from "./shared.js";
 
@@ -30,13 +35,13 @@ import { CLAUDE_LEGACY_SKILL_REL } from "./shared.js";
 /**
  * The Playwright MCP servers openspec-pw manages. `playwright-test` is the
  * official test-runner server installed today; `playwright` is the legacy
- * @playwright/mcp entry older versions wrote (uninstall removes both).
+ * @playwright/mcp entry older versions wrote (the remove command deletes both).
  * Literals here rather than importing shared/mcp.ts, which imports the
  * editors facade that re-exports this module (import cycle).
  */
 export const OPENSPEC_PW_MCP_SERVERS = ["playwright-test", "playwright"] as const;
 
-/** Re-exported for uninstall's fixed historical cleanup and the facade. */
+/** Re-exported for the remove command's fixed historical cleanup and the facade. */
 export { CLAUDE_LEGACY_SKILL_REL };
 
 // ─── Dry enumeration (read-only, never prints) ───────────────────────────
@@ -105,7 +110,7 @@ function wrapperFileHasMarkersForRemoval(
   // enumeration follows the same guard the removal does.
   if (lstatSync(dest).isSymbolicLink()) return false;
   const content = readFileSync(dest, "utf-8");
-  return content.includes(OPENSPEC_START) || content.includes(LEGACY_OPENSPEC_START);
+  return hasCleanableMarkers(content);
 }
 
 /**
@@ -121,14 +126,21 @@ export function enumerateAdapterArtifacts(
   retainedFiles?: ReadonlySet<string>,
 ): AdapterArtifactInventory {
   const meta = buildCommandMeta("");
-  const commandPaths = listCommandArtifactPaths(adapter, meta).filter((rel) =>
-    existsSync(join(projectRoot, rel)),
-  );
+  const commandPaths = listCommandArtifactPaths(adapter, meta).filter((rel) => {
+    const abs = join(projectRoot, rel);
+    return existsSync(abs) && isPathInsideProjectRoot(projectRoot, abs);
+  });
   const legacyArtifacts = (adapter.declaration?.legacyArtifacts ?? []).filter(
-    (rel) => existsSync(join(projectRoot, rel)),
+    (rel) => {
+      const abs = join(projectRoot, rel);
+      return existsSync(abs) && isPathInsideProjectRoot(projectRoot, abs);
+    },
   );
+  const mcpConfigPath = adapter.mcpConfigPath?.(projectRoot);
+  const mcpConfigSafe =
+    !mcpConfigPath || isPathInsideProjectRoot(projectRoot, mcpConfigPath);
   const installedMcpServers =
-    adapter.supportsMcp === false
+    adapter.supportsMcp === false || !mcpConfigSafe
       ? []
       : OPENSPEC_PW_MCP_SERVERS.filter((server) =>
           adapter.isMcpInstalled(projectRoot, server),
@@ -188,7 +200,7 @@ export function removeAdapterMcp(
       adapter.removeMcp(projectRoot, serverName);
       console.log(chalk.green(`  ✓ ${adapter.label}: ${serverName} MCP removed`));
     } catch {
-      // Same posture as uninstall: claude CLI missing/degraded warns, never throws.
+      // Same posture as the remove command: claude CLI missing/degraded warns, never throws.
       console.warn(chalk.yellow(`  ⚠ ${adapter.label}: failed to remove ${serverName} MCP`));
     }
   }
@@ -198,29 +210,39 @@ export function removeAdapterMcp(
 export function removeAdapterCommandArtifacts(
   adapter: EditorAdapter,
   projectRoot: string,
+  onRemoved?: (relPath: string) => void,
 ): string[] {
   const meta = buildCommandMeta("");
   const removed: string[] = [];
   for (const relPath of listCommandArtifactPaths(adapter, meta)) {
     const absPath = join(projectRoot, relPath);
-    if (existsSync(absPath)) {
-      rmSync(absPath);
-      cleanupEmptyDirs(dirname(absPath), projectRoot);
-      console.log(chalk.green(`  ✓ ${adapter.label}: ${relPath}`));
-      removed.push(relPath);
+    if (!existsSync(absPath)) continue;
+    if (!isPathInsideProjectRoot(projectRoot, absPath)) {
+      console.log(
+        chalk.gray(
+          `  - ${adapter.label}: ${relPath} resolves outside the project — skipping`,
+        ),
+      );
+      continue;
     }
+    rmSync(absPath);
+    cleanupEmptyDirs(dirname(absPath), projectRoot);
+    console.log(chalk.green(`  ✓ ${adapter.label}: ${relPath}`));
+    removed.push(relPath);
+    onRemoved?.(relPath);
   }
   return removed;
 }
 
 /**
  * Remove the tool-owned vendored Playwright agent files (claude; init
- * deselection + uninstall). User-owned files are never deleted — each is
+ * deselection + remove). User-owned files are never deleted — each is
  * reported as kept-modified. Returns the removed project-relative paths.
  */
 export function removeOwnedVendoredAgents(
   projectRoot: string,
   adapter: EditorAdapter,
+  onRemoved?: (relPath: string) => void,
 ): string[] {
   if (!adapter.optionalArtifacts) return [];
   const { owned, modified } = enumerateVendoredAgents(
@@ -231,10 +253,19 @@ export function removeOwnedVendoredAgents(
   for (const relPath of owned) {
     const absPath = join(projectRoot, relPath);
     if (!existsSync(absPath)) continue;
+    if (!isPathInsideProjectRoot(projectRoot, absPath)) {
+      console.log(
+        chalk.gray(
+          `  - ${adapter.label}: ${relPath} resolves outside the project — skipping`,
+        ),
+      );
+      continue;
+    }
     rmSync(absPath);
     cleanupEmptyDirs(dirname(absPath), projectRoot);
     console.log(chalk.green(`  ✓ ${adapter.label}: ${relPath}`));
     removed.push(relPath);
+    onRemoved?.(relPath);
   }
   for (const relPath of modified) {
     console.log(
@@ -257,6 +288,12 @@ export function removeLegacyArtifact(
 ): string | null {
   const absPath = join(projectRoot, relPath);
   if (!existsSync(absPath)) return null;
+  if (!isPathInsideProjectRoot(projectRoot, absPath)) {
+    console.log(
+      chalk.gray(`  - ${adapter.label}: ${relPath}/ resolves outside the project — skipping`),
+    );
+    return null;
+  }
   rmSync(absPath, { recursive: true, force: true });
   cleanupEmptyDirs(dirname(absPath), projectRoot);
   console.log(chalk.green(`  ✓ ${adapter.label}: ${relPath}/`));
@@ -282,16 +319,24 @@ export function removeWrapper(adapter: EditorAdapter, projectRoot: string): stri
     );
     return null;
   }
-  removeMarkersFromFile(dest, basename(wrapper));
-  return basename(wrapper);
+  return removeMarkersFromFile(
+    dest,
+    basename(wrapper),
+    claudeWrapperStandardsContent(),
+  )
+    ? basename(wrapper)
+    : null;
 }
 
 /**
- * Delete empty directories up to (not including) `stopAt`. Moved here from
- * uninstall.ts so both the section loop and the per-editor removals share it.
+ * Delete empty directories up to (not including) `stopAt`. Shared by the
+ * section loop and the per-editor removals.
  */
 export function cleanupEmptyDirs(dir: string, stopAt: string): void {
   while (dir !== stopAt && dir.length > stopAt.length) {
+    // A symlinked parent resolves outside the project — stop instead of
+    // removing directories the project does not own.
+    if (!isPathInsideProjectRoot(stopAt, dir)) break;
     try {
       const entries = readdirSync(dir);
       if (entries.length === 0) {

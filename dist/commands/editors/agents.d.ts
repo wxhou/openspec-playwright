@@ -4,7 +4,7 @@ export type VendoredAgentRole = (typeof VENDORED_AGENT_ROLES)[number];
 /**
  * Roles we used to vendor and no longer ship. Their hashes live in
  * manifest.json historicalHashes so older installs' clean copies still
- * classify as tool-owned (removable on uninstall/deselect) — the paths are
+ * classify as tool-owned (removable on remove/deselect) — the paths are
  * derived from the manifest, never installed or refreshed.
  */
 export declare const RETIRED_AGENT_ROLES: readonly ["generator", "healer"];
@@ -13,6 +13,8 @@ export type KnownAgentRole = VendoredAgentRole | RetiredAgentRole;
 /** Project-relative install path for one vendored agent file. */
 export declare function vendoredAgentRelPath(role: VendoredAgentRole): string;
 export declare function vendoredAgentRelPaths(): string[];
+/** Every project-relative agent path this tool has ever installed. */
+export declare function knownAgentRelPaths(): string[];
 /** Machine-readable snapshot manifest shipped next to the templates. */
 export interface AgentsManifest {
     baseline: string;

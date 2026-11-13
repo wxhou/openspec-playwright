@@ -8,15 +8,20 @@
  */
 import { type EditorAdapter } from "../commands/editors.js";
 
-/** Check if the named MCP server is installed in this editor. */
-export function isMcpInstalled(adapter: EditorAdapter, serverName: string): boolean {
+/** Check if the named MCP server is installed in this editor for `projectRoot`. */
+export function isMcpInstalled(
+  adapter: EditorAdapter,
+  projectRoot: string,
+  serverName: string,
+): boolean {
   if (adapter.supportsMcp === false) return false;
-  return adapter.isMcpInstalled(process.cwd(), serverName);
+  return adapter.isMcpInstalled(projectRoot, serverName);
 }
 
 /** Install an MCP server in this editor. Throws on failure. */
 export function ensureMcp(
   adapter: EditorAdapter,
+  projectRoot: string,
   serverName: string,
   command: string[],
 ): void {
@@ -26,12 +31,12 @@ export function ensureMcp(
     );
     return;
   }
-  if (isMcpInstalled(adapter, serverName)) {
+  if (isMcpInstalled(adapter, projectRoot, serverName)) {
     console.log(`  ✓ ${adapter.label}: ${serverName} MCP already installed`);
     return;
   }
   try {
-    adapter.installMcp(process.cwd(), serverName, command);
+    adapter.installMcp(projectRoot, serverName, command);
     console.log(`  ✓ ${adapter.label}: ${serverName} MCP installed`);
   } catch (err) {
     console.warn(`  ⚠ ${adapter.label}: failed to install ${serverName} MCP`);
@@ -39,21 +44,39 @@ export function ensureMcp(
   }
 }
 
-/** Remove an MCP server from this editor. Does not throw if missing. */
-export function removeMcp(adapter: EditorAdapter, serverName: string): void {
+export interface McpRemovalResult {
+  /** True only when an entry was actually removed. */
+  removed: boolean;
+  /** Error thrown by the adapter when removal was attempted and failed. */
+  error?: unknown;
+}
+
+/**
+ * Remove an MCP server from this editor for `projectRoot`. Does not throw if
+ * missing; returns `removed: true` only when an entry was actually removed.
+ * A failed attempt carries the adapter error so callers can tell an
+ * unwritable config from a logic failure.
+ */
+export function removeMcp(
+  adapter: EditorAdapter,
+  projectRoot: string,
+  serverName: string,
+): McpRemovalResult {
   if (adapter.supportsMcp === false) {
     console.log(`  - ${adapter.label}: ${serverName} MCP not supported (nothing to remove)`);
-    return;
+    return { removed: false };
   }
-  if (!isMcpInstalled(adapter, serverName)) {
+  if (!isMcpInstalled(adapter, projectRoot, serverName)) {
     console.log(`  - ${adapter.label}: ${serverName} MCP not installed (nothing to remove)`);
-    return;
+    return { removed: false };
   }
   try {
-    adapter.removeMcp(process.cwd(), serverName);
+    adapter.removeMcp(projectRoot, serverName);
     console.log(`  ✓ ${adapter.label}: ${serverName} MCP removed`);
-  } catch {
+    return { removed: true };
+  } catch (error) {
     console.warn(`  ⚠ ${adapter.label}: failed to remove ${serverName} MCP`);
+    return { removed: false, error };
   }
 }
 
@@ -64,20 +87,20 @@ export const TEST_RUNNER_MCP_SERVER = "playwright-test";
 const TEST_RUNNER_MCP_COMMAND = ["npx", "playwright", "run-test-mcp-server"];
 
 // Kept for backward compatibility with projects that still have a
-// legacy `@playwright/mcp` entry from older openspec-pw versions — uninstall
-// uses this to clean the stale entry out of the project's mcp config.
-export function removePlaywrightMcp(adapter: EditorAdapter): void {
-  removeMcp(adapter, "playwright");
+// legacy `@playwright/mcp` entry from older openspec-pw versions — the
+// remove command uses this to clean the stale entry out of the project's mcp config.
+export function removePlaywrightMcp(adapter: EditorAdapter, projectRoot: string): void {
+  removeMcp(adapter, projectRoot, "playwright");
 }
 
-export function isTestRunnerMcpInstalled(adapter: EditorAdapter): boolean {
-  return isMcpInstalled(adapter, TEST_RUNNER_MCP_SERVER);
+export function isTestRunnerMcpInstalled(adapter: EditorAdapter, projectRoot: string): boolean {
+  return isMcpInstalled(adapter, projectRoot, TEST_RUNNER_MCP_SERVER);
 }
 
-export function ensureTestRunnerMcp(adapter: EditorAdapter): void {
-  ensureMcp(adapter, TEST_RUNNER_MCP_SERVER, TEST_RUNNER_MCP_COMMAND);
+export function ensureTestRunnerMcp(adapter: EditorAdapter, projectRoot: string): void {
+  ensureMcp(adapter, projectRoot, TEST_RUNNER_MCP_SERVER, TEST_RUNNER_MCP_COMMAND);
 }
 
-export function removeTestRunnerMcp(adapter: EditorAdapter): void {
-  removeMcp(adapter, TEST_RUNNER_MCP_SERVER);
+export function removeTestRunnerMcp(adapter: EditorAdapter, projectRoot: string): void {
+  removeMcp(adapter, projectRoot, TEST_RUNNER_MCP_SERVER);
 }

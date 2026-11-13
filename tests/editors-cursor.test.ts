@@ -24,7 +24,7 @@ import {
   listCommandArtifactPaths,
   opencodeAdapter,
 } from "../src/commands/editors.js";
-import { uninstall } from "../src/commands/uninstall.js";
+import { removeInProject } from "../src/commands/remove.js";
 import { compareBlock } from "../src/shared/drift.js";
 
 // Shared temp-dir lifecycle for filesystem-touching tests below.
@@ -171,20 +171,14 @@ describe("installCommand (Cursor dual artifacts)", () => {
   });
 });
 
-describe("uninstall removes Cursor dual artifacts", () => {
+describe("removeInProject() removes Cursor dual artifacts", () => {
   it("deletes command, skill, and empties skill dir", async () => {
     mkdirSync(join(tmpRoot, ".cursor"));
     const meta = buildCommandMeta("body /opsx:e2e");
     installCommand(cursorAdapter, meta, tmpRoot);
     cursorAdapter.installMcp(tmpRoot, "playwright", ["npx", "pw"]);
 
-    const cwd = process.cwd();
-    try {
-      process.chdir(tmpRoot);
-      await uninstall();
-    } finally {
-      process.chdir(cwd);
-    }
+    await removeInProject(tmpRoot);
 
     expect(
       existsSync(join(tmpRoot, ".cursor", "commands", "opsx-e2e.md")),
@@ -199,28 +193,18 @@ describe("uninstall removes Cursor dual artifacts", () => {
   });
 });
 
-describe("uninstall dsh artifacts (adapter in registry)", () => {
-  const cwdRestore = async (fn: () => Promise<void>) => {
-    const cwd = process.cwd();
-    try {
-      process.chdir(tmpRoot);
-      await fn();
-    } finally {
-      process.chdir(cwd);
-    }
-  };
-
+describe("removeInProject() removes dsh artifacts (adapter in registry)", () => {
   it("removes .dsh/skills/opsx-e2e and the AGENTS.md block (dsh-only project)", async () => {
     mkdirSync(join(tmpRoot, ".dsh", "skills", "opsx-e2e"), { recursive: true });
     writeFileSync(join(tmpRoot, ".dsh", "skills", "opsx-e2e", "SKILL.md"), "x");
     // dsh is the only detected editor, so both its skill and the shared
-    // AGENTS.md block go through the normal uninstall path.
+    // AGENTS.md block go through the normal remove path.
     writeFileSync(
       join(tmpRoot, "AGENTS.md"),
       `# proj\n\n<!-- OPENSPEC-PW:START -->\nstandards body\n<!-- OPENSPEC-PW:END -->\n\nuser tail\n`,
     );
 
-    await cwdRestore(() => uninstall());
+    await removeInProject(tmpRoot);
 
     expect(existsSync(join(tmpRoot, ".dsh", "skills", "opsx-e2e"))).toBe(false);
     const agents = readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8");
@@ -234,7 +218,7 @@ describe("uninstall dsh artifacts (adapter in registry)", () => {
     mkdirSync(join(tmpRoot, ".dsh", "skills", "my-opsx-helper"), { recursive: true });
     writeFileSync(join(tmpRoot, ".dsh", "skills", "my-opsx-helper", "SKILL.md"), "user skill");
 
-    await cwdRestore(() => uninstall());
+    await removeInProject(tmpRoot);
 
     expect(existsSync(join(tmpRoot, ".dsh", "skills", "opsx-e2e"))).toBe(false);
     expect(
@@ -243,7 +227,7 @@ describe("uninstall dsh artifacts (adapter in registry)", () => {
   });
 
   it("stays silent when .dsh does not exist", async () => {
-    await cwdRestore(() => uninstall());
+    await removeInProject(tmpRoot);
     expect(existsSync(join(tmpRoot, ".dsh"))).toBe(false);
   });
 });

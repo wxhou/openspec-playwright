@@ -17,7 +17,9 @@ import {
 } from "node:fs";
 import { dirname, extname, join, sep } from "node:path";
 import { bundledTemplatePath } from "./drift.js";
+import { readTextFileCapped } from "./file-read.js";
 import { normalizeEol } from "../commands/editors/agents.js";
+import { isPathInsideProjectRoot } from "./path-guard.js";
 
 export interface LintRuleEntry {
   /** Rule id as written in linter config/docs. */
@@ -198,18 +200,34 @@ export type ChecklistDisposition =
   | "kept-modified";
 
 /** Uninstall-side disposition for the checklist file. */
-export type ChecklistRemovalDisposition = "removed" | "kept-modified" | "absent";
+export type ChecklistRemovalDisposition =
+  | "removed"
+  | "kept-modified"
+  | "kept-unsafe"
+  | "kept-too-large"
+  | "absent";
 
 /**
  * Uninstall the checklist: tool-owned (checksum intact) → remove;
- * user-modified → keep and report; missing → nothing to do.
+ * user-modified → keep and report; missing → nothing to do. A path that
+ * resolves outside the project (symlinked parent or file) is never touched.
  */
 export function removeChecklist(
   projectRoot: string,
 ): ChecklistRemovalDisposition {
   const dest = join(projectRoot, LINT_GUIDELINES_RELPATH);
   if (!existsSync(dest)) return "absent";
-  if (isChecklistUnmodified(readFileSync(dest, "utf-8"))) {
+  if (!isPathInsideProjectRoot(projectRoot, dest)) return "kept-unsafe";
+  const read = readTextFileCapped(dest);
+  if (read.kind === "missing") return "absent";
+  // The checklist is a small static reference; a larger file is not ours.
+  if (read.kind === "too-large") return "kept-too-large";
+  if (read.kind === "unreadable") {
+    throw new Error(`cannot read ${dest} to check ownership`, {
+      cause: read.error,
+    });
+  }
+  if (isChecklistUnmodified(read.content)) {
     rmSync(dest);
     return "removed";
   }
@@ -621,6 +639,187 @@ export function installLintConfig(projectRoot: string): LintConfigResult[] {
   return [installEslintConfig(projectRoot), installRuffConfig(projectRoot)];
 }
 
+/** Deterministic body of the generated `eslint.config.mjs` (three shapes, version-free). */
+export function buildGeneratedEslintConfig(
+  tsParser: { importLine: string; parserExpr: string } | null,
+): string {
+  return tsParser
+    ? `${LINT_ESLINT_GENERATED_MARKER} You own this file; openspec-pw won't modify it.
+${tsParser.importLine}
+export default [
+  {
+    files: ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts", "**/*.js", "**/*.mjs", "**/*.cjs"],
+    languageOptions: { parser: ${tsParser.parserExpr} },
+    rules: {
+      "no-empty": "error",
+    },
+  },
+];
+`
+    : `${LINT_ESLINT_GENERATED_MARKER} You own this file; openspec-pw won't modify it.
+export default [
+  {
+    rules: {
+      "no-empty": "error",
+    },
+  },
+];
+`;
+}
+
+/** All tool-generatable eslint config bodies, for ownership comparison at removal time. */
+export function generatedEslintConfigVariants(): string[] {
+  return [
+    buildGeneratedEslintConfig({
+      importLine: 'import tseslint from "typescript-eslint";',
+      parserExpr: "tseslint.parser",
+    }),
+    buildGeneratedEslintConfig({
+      importLine: 'import tsParser from "@typescript-eslint/parser";',
+      parserExpr: "tsParser",
+    }),
+    buildGeneratedEslintConfig(null),
+  ];
+}
+
+/** True when the content is byte-identical (EOL-normalized) to a tool-generated shape. */
+export function isToolGeneratedEslintConfig(content: string): boolean {
+  const normalized = normalizeEol(content);
+  return generatedEslintConfigVariants().some(
+    (variant) => normalizeEol(variant) === normalized,
+  );
+}
+
+export type EslintConfigRemovalStatus =
+  | "removed"
+  | "kept-modified"
+  | "kept-unsafe"
+  | "kept-too-large"
+  | "not-generated"
+  | "absent";
+
+/** Remove the generated `eslint.config.mjs` when it is still tool-owned; never touches user files. */
+export function removeGeneratedEslintConfig(projectRoot: string): {
+  status: EslintConfigRemovalStatus;
+  file: string;
+} {
+  const file = join(projectRoot, LINT_ESLINT_CONFIG_FILE);
+  if (!existsSync(file)) return { status: "absent", file };
+  if (!isPathInsideProjectRoot(projectRoot, file)) {
+    return { status: "kept-unsafe", file };
+  }
+  const read = readTextFileCapped(file);
+  if (read.kind === "missing") return { status: "absent", file };
+  if (read.kind === "too-large") return { status: "kept-too-large", file };
+  if (read.kind === "unreadable") {
+    throw new Error(`cannot read ${file} to check ownership`, {
+      cause: read.error,
+    });
+  }
+  const content = read.content;
+  if (!content.startsWith(LINT_ESLINT_GENERATED_MARKER)) {
+    return { status: "not-generated", file };
+  }
+  if (!isToolGeneratedEslintConfig(content)) {
+    return { status: "kept-modified", file };
+  }
+  rmSync(file);
+  return { status: "removed", file };
+}
+
+/**
+ * Remove the ruff managed block from `pyproject.toml` / `.ruff.toml` / `ruff.toml`.
+ * Bytes outside the block are preserved verbatim; a file left empty by the
+ * removal (tool-created `ruff.toml` holding only the block) is deleted.
+ */
+export type RuffBlockRemovalStatus =
+  | "removed"
+  | "kept-modified"
+  | "kept-unsafe"
+  | "kept-too-large"
+  | "unreadable";
+
+/** True when the file's managed block is exactly what install writes (owned). */
+export function isToolOwnedRuffBlock(content: string): boolean {
+  const body = findRuffManagedBlock(content);
+  if (body === null) return false;
+  return (["[tool.ruff.lint]", "[lint]"] as const)
+    .map((header) => buildRuffManagedBlock(header).split("\n").slice(1, -1).join("\n"))
+    .includes(body);
+}
+
+/**
+ * Remove the ruff managed block from `pyproject.toml` / `.ruff.toml` / `ruff.toml`.
+ *
+ * Ownership matches install: only the exact block `buildRuffManagedBlock`
+ * writes is deleted. A block the user edited is kept and reported — install
+ * already refuses to overwrite it, so deleting it here would lose their edit.
+ */
+export function removeRuffManagedBlock(
+  projectRoot: string,
+  onRemoved?: (file: string) => void,
+): {
+  file: string;
+  status: RuffBlockRemovalStatus;
+  error?: unknown;
+}[] {
+  const candidates = ["pyproject.toml", ".ruff.toml", "ruff.toml"].map((f) =>
+    join(projectRoot, f),
+  );
+  const results: {
+    file: string;
+    status: RuffBlockRemovalStatus;
+    error?: unknown;
+  }[] = [];
+  for (const file of candidates) {
+    if (!existsSync(file)) continue;
+    if (!isPathInsideProjectRoot(projectRoot, file)) {
+      results.push({ file, status: "kept-unsafe" });
+      continue;
+    }
+    const read = readTextFileCapped(file);
+    if (read.kind === "missing") continue;
+    if (read.kind === "too-large") {
+      results.push({ file, status: "kept-too-large" });
+      continue;
+    }
+    // An existing tool config we cannot read is a real failure: reporting
+    // "no managed block" would claim a cleanup that did not happen.
+    if (read.kind === "unreadable") {
+      results.push({ file, status: "unreadable", error: read.error });
+      continue;
+    }
+    const content = read.content;
+    if (findRuffManagedBlock(content) === null) continue;
+    if (!isToolOwnedRuffBlock(content)) {
+      results.push({ file, status: "kept-modified" });
+      continue;
+    }
+    const spliced = spliceRuffManagedBlock(content);
+    if (spliced === null) continue;
+    if (spliced.trim().length === 0) {
+      rmSync(file);
+    } else {
+      writeFileSync(file, spliced);
+    }
+    results.push({ file, status: "removed" });
+    onRemoved?.(file);
+  }
+  return results;
+}
+
+/** Cut the managed block (begin line through end line + its trailing EOL); null when absent. */
+function spliceRuffManagedBlock(content: string): string | null {
+  const begin = content.indexOf(LINT_RUFF_BLOCK_BEGIN);
+  if (begin === -1) return null;
+  const end = content.indexOf(LINT_RUFF_BLOCK_END, begin);
+  if (end === -1) return null;
+  let cut = end + LINT_RUFF_BLOCK_END.length;
+  if (content[cut] === "\r") cut++;
+  if (content[cut] === "\n") cut++;
+  return content.slice(0, begin) + content.slice(cut);
+}
+
 function installEslintConfig(projectRoot: string): LintConfigResult {
   const found = findEslintConfig(projectRoot);
   if (found) {
@@ -679,29 +878,7 @@ function installEslintConfig(projectRoot: string): LintConfigResult {
   }
 
   const file = join(projectRoot, LINT_ESLINT_CONFIG_FILE);
-  const config = tsParser
-    ? `${LINT_ESLINT_GENERATED_MARKER} You own this file; openspec-pw won't modify it.
-${tsParser.importLine}
-export default [
-  {
-    files: ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts", "**/*.js", "**/*.mjs", "**/*.cjs"],
-    languageOptions: { parser: ${tsParser.parserExpr} },
-    rules: {
-      "no-empty": "error",
-    },
-  },
-];
-`
-    : `${LINT_ESLINT_GENERATED_MARKER} You own this file; openspec-pw won't modify it.
-export default [
-  {
-    rules: {
-      "no-empty": "error",
-    },
-  },
-];
-`;
-  writeFileSync(file, config);
+  writeFileSync(file, buildGeneratedEslintConfig(tsParser));
   return { tool: "ESLint", action: "created", file };
 }
 

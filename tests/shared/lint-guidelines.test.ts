@@ -4,6 +4,7 @@ import {
   readFileSync,
   mkdtempSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -20,6 +21,10 @@ import {
   computeChecklistChecksum,
   eslintMajorFromSpec,
   findRuffManagedBlock,
+  generatedEslintConfigVariants,
+  isToolGeneratedEslintConfig,
+  removeGeneratedEslintConfig,
+  removeRuffManagedBlock,
   findSourceFile,
   hasDedicatedRuffLintTable,
   hasRuffLintTable,
@@ -194,7 +199,7 @@ describe("lint-guidelines install / refresh (content-based ownership)", () => {
   });
 });
 
-describe("lint-guidelines uninstall (content-based ownership)", () => {
+describe("lint-guidelines removal (content-based ownership)", () => {
   it("tool-owned checklist → removed", () => {
     const root = mkdtempSync(join(tmpdir(), "ospw-lintguidelines-rm-"));
     try {
@@ -231,6 +236,23 @@ describe("lint-guidelines uninstall (content-based ownership)", () => {
       expect(removeChecklist(root)).toBe("absent");
     } finally {
       rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("symlinked checklist resolving outside the project → kept-unsafe", () => {
+    if (process.platform === "win32") return;
+    const root = mkdtempSync(join(tmpdir(), "ospw-lintguidelines-rm-"));
+    const outside = mkdtempSync(join(tmpdir(), "ospw-lintguidelines-outside-"));
+    try {
+      const external = join(outside, "lint-guidelines.md");
+      writeFileSync(external, template);
+      symlinkSync(external, join(root, LINT_GUIDELINES_RELPATH));
+
+      expect(removeChecklist(root)).toBe("kept-unsafe");
+      expect(readFileSync(external, "utf-8")).toBe(template);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+      rmSync(outside, { recursive: true, force: true });
     }
   });
 });
@@ -839,6 +861,155 @@ describe("installLintConfig: ruff 面", () => {
       expect(lastResult(child).action).toBe("snippet");
     } finally {
       rmSync(parent, { recursive: true, force: true });
+    }
+  });
+});
+
+// ─── Removal (remove command) ────────────────────────────────────────────
+
+describe("removeRuffManagedBlock", () => {
+  it("removes a block sitting between user content, byte-exact outside", () => {
+    const root = mkdtempSync(join(tmpdir(), "ospw-ruff-remove-mid-"));
+    try {
+      const before = '[project]\nname = "x"\n';
+      const after = '\n[tool.black]\nline-length = 88\n';
+      writeFileSync(
+        join(root, "pyproject.toml"),
+        `${before}${buildRuffManagedBlock("[tool.ruff.lint]")}\n${after}`,
+      );
+
+      const results = removeRuffManagedBlock(root);
+
+      expect(results).toHaveLength(1);
+      expect(readFileSync(join(root, "pyproject.toml"), "utf-8")).toBe(
+        `${before}${after}`,
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("deletes a file that held only the block", () => {
+    const root = mkdtempSync(join(tmpdir(), "ospw-ruff-remove-only-"));
+    try {
+      writeFileSync(join(root, "ruff.toml"), `${buildRuffManagedBlock("[lint]")}\n`);
+      expect(removeRuffManagedBlock(root)).toHaveLength(1);
+      expect(() => readFileSync(join(root, "ruff.toml"))).toThrow();
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("is a no-op when no block exists", () => {
+    const root = mkdtempSync(join(tmpdir(), "ospw-ruff-remove-none-"));
+    try {
+      const original = "line-length = 100\n";
+      writeFileSync(join(root, "ruff.toml"), original);
+      expect(removeRuffManagedBlock(root)).toHaveLength(0);
+      expect(readFileSync(join(root, "ruff.toml"), "utf-8")).toBe(original);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps a user-modified block, matching install's ownership rule", () => {
+    const root = mkdtempSync(join(tmpdir(), "ospw-ruff-remove-modified-"));
+    try {
+      const file = join(root, "pyproject.toml");
+      const original = `[project]\nname = "x"\n\n${[
+        LINT_RUFF_BLOCK_BEGIN,
+        "[tool.ruff.lint]",
+        'extend-select = ["B904", "E501"]',
+        LINT_RUFF_BLOCK_END,
+      ].join("\n")}\n`;
+      writeFileSync(file, original);
+
+      const results = removeRuffManagedBlock(root);
+
+      expect(results).toEqual([{ file, status: "kept-modified" }]);
+      expect(readFileSync(file, "utf-8")).toBe(original);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("does not rewrite a symlinked config that resolves outside the project", () => {
+    if (process.platform === "win32") return;
+    const root = mkdtempSync(join(tmpdir(), "ospw-ruff-remove-link-"));
+    const outside = mkdtempSync(join(tmpdir(), "ospw-ruff-outside-"));
+    try {
+      const external = join(outside, "pyproject.toml");
+      const original = `${buildRuffManagedBlock("[tool.ruff.lint]")}\n`;
+      writeFileSync(external, original);
+      symlinkSync(external, join(root, "pyproject.toml"));
+
+      const results = removeRuffManagedBlock(root);
+
+      expect(results).toEqual([
+        { file: join(root, "pyproject.toml"), status: "kept-unsafe" },
+      ]);
+      expect(readFileSync(external, "utf-8")).toBe(original);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+      rmSync(outside, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("generated eslint config ownership", () => {
+  it("recognizes all three generated shapes", () => {
+    for (const variant of generatedEslintConfigVariants()) {
+      expect(isToolGeneratedEslintConfig(variant)).toBe(true);
+      expect(isToolGeneratedEslintConfig(variant.replace(/\n/g, "\r\n"))).toBe(true);
+    }
+  });
+
+  it("does not claim a user-edited or user-authored config", () => {
+    expect(isToolGeneratedEslintConfig(LINT_ESLINT_GENERATED_MARKER + "\nexport default [];\n")).toBe(false);
+    expect(isToolGeneratedEslintConfig("export default [];\n")).toBe(false);
+  });
+
+  it("keeps a symlinked generated config that resolves outside the project", () => {
+    if (process.platform === "win32") return;
+    const root = mkdtempSync(join(tmpdir(), "ospw-eslint-link-"));
+    const outside = mkdtempSync(join(tmpdir(), "ospw-eslint-outside-"));
+    try {
+      const content = generatedEslintConfigVariants()[0];
+      const external = join(outside, LINT_ESLINT_CONFIG_FILE);
+      writeFileSync(external, content);
+      symlinkSync(external, join(root, LINT_ESLINT_CONFIG_FILE));
+
+      expect(removeGeneratedEslintConfig(root)).toEqual({
+        status: "kept-unsafe",
+        file: join(root, LINT_ESLINT_CONFIG_FILE),
+      });
+      expect(readFileSync(external, "utf-8")).toBe(content);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+      rmSync(outside, { recursive: true, force: true });
+    }
+  });
+
+  it("removes only an unmodified generated file", () => {
+    const root = mkdtempSync(join(tmpdir(), "ospw-eslint-remove-"));
+    try {
+      writeFileSync(
+        join(root, LINT_ESLINT_CONFIG_FILE),
+        generatedEslintConfigVariants()[0],
+      );
+      expect(removeGeneratedEslintConfig(root).status).toBe("removed");
+      expect(() => readFileSync(join(root, LINT_ESLINT_CONFIG_FILE))).toThrow();
+
+      writeFileSync(
+        join(root, LINT_ESLINT_CONFIG_FILE),
+        `${generatedEslintConfigVariants()[0]}\n// tweak\n`,
+      );
+      expect(removeGeneratedEslintConfig(root).status).toBe("kept-modified");
+
+      writeFileSync(join(root, LINT_ESLINT_CONFIG_FILE), "export default [];\n");
+      expect(removeGeneratedEslintConfig(root).status).toBe("not-generated");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
     }
   });
 });

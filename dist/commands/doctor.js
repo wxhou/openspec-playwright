@@ -452,7 +452,7 @@ export async function doctor(options = {}) {
             // fix (update never expands territory). Unauthorized → info line
             // pointing at the init extension path.
             const authorized = hasCommandArtifacts(projectRoot, adapter);
-            const testRunnerInstalled = isTestRunnerMcpInstalled(adapter);
+            const testRunnerInstalled = isTestRunnerMcpInstalled(adapter, projectRoot);
             checks.push({
                 category: "Playwright MCP",
                 name: `test-runner-mcp-${adapter.label}`,
@@ -509,7 +509,7 @@ export async function doctor(options = {}) {
                         message: "differs from the bundled snapshot (manual edit or newer init-agents output) — update leaves it untouched",
                     });
                 }
-                if (!isTestRunnerMcpInstalled(claude)) {
+                if (!isTestRunnerMcpInstalled(claude, projectRoot)) {
                     checks.push({
                         category: "Vendored Agents",
                         name: "vendored-agents-mcp",

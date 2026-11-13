@@ -43,6 +43,8 @@ import {
   removeLegacyArtifact,
   removeWrapper,
   removeMarkersFromFile,
+  agentsFileHasCleanableMarkers,
+  wrapperLinksToAgents,
   normalizeEol,
 } from "./editors.js";
 import {
@@ -586,7 +588,7 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     // whose per-editor artifacts were hand-deleted would remove the shared
     // block without ever asking).
     const agentsHasBlock =
-      selectedIds.length === 0 && agentsFileHasMarkers(projectRoot);
+      selectedIds.length === 0 && agentsFileHasCleanableMarkers(projectRoot);
 
     if (inventories.length > 0 || agentsHasBlock) {
       console.log(chalk.blue("\n─── Removing Deselected Editors ───"));
@@ -651,8 +653,22 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
           }
         }
         if (agentsHasBlock) {
-          removeMarkersFromFile(join(projectRoot, "AGENTS.md"), "AGENTS.md");
-          console.log(chalk.green("  ✓ AGENTS.md: shared openspec-pw block removed"));
+          // Deleting the whole file would dangle a wrapper symlinked to it —
+          // the same guard cleanProjectRules applies (keep the heading, strip
+          // markers only).
+          const agentsLinked = getAllAdapters().some((adapter) =>
+            wrapperLinksToAgents(projectRoot, adapter),
+          );
+          const removedAgents = removeMarkersFromFile(
+            join(projectRoot, "AGENTS.md"),
+            "AGENTS.md",
+            agentsLinked
+              ? undefined
+              : readEmployeeStandards(EMPLOYEE_STANDARDS_SRC),
+          );
+          if (removedAgents) {
+            console.log(chalk.green("  ✓ AGENTS.md: shared openspec-pw block removed"));
+          }
         }
       }
     }
@@ -686,14 +702,14 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   if (options.mcp !== false && editors.length > 0 && mode === "frontend") {
     console.log(chalk.blue("\n─── Installing Playwright MCP ───"));
     for (const adapter of editors) {
-      if (isTestRunnerMcpInstalled(adapter)) {
+      if (isTestRunnerMcpInstalled(adapter, projectRoot)) {
         console.log(
           chalk.green(`  ✓ ${adapter.label}: Test-runner MCP already installed`),
         );
         continue;
       }
       try {
-        ensureTestRunnerMcp(adapter);
+        ensureTestRunnerMcp(adapter, projectRoot);
         if (adapter.supportsMcp !== false) {
           console.log(chalk.gray(`  (Restart ${adapter.label} to activate)`));
         }

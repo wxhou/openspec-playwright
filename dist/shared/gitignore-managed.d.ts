@@ -1,3 +1,4 @@
+import ignore from "ignore";
 import { normalizeEol } from "../commands/editors/agents.js";
 /** Managed paths (user-decided artifacts/config + credentials + regenerable local data). */
 export declare const MANAGED_GITIGNORE_PATHS: readonly [".claude/", ".cursor/", ".opencode/", ".cline/", ".pi/", ".omp/", ".codebuddy/", ".agents/skills/opsx-e2e/", ".dsh/skills/opsx-e2e/", ".codegraph/", ".playwright-mcp/", "openspec/", "AGENTS.md", "CLAUDE.md", "CODEBUDDY.md", "app-exploration.md", "opencode.json", ".mcp.json", "tmp/", "playwright/.auth/", "tests/playwright/test-results/", "tests/playwright/screenshots/", "tests/playwright/credentials.yaml", "tests/playwright/credentials.yaml.bak"];
@@ -12,6 +13,13 @@ export declare const LOCKED_GITIGNORE_PATHS: readonly ["AGENTS.md", "CLAUDE.md",
 /** Candidates for the init selection prompt: managed paths minus locked/omitted. */
 export declare function skippableManagedPaths(omit?: readonly string[]): string[];
 /**
+ * Load the run directory's ignore rules (.git/info/exclude first, then
+ * .gitignore). Per-file read tolerance (review F1): an unreadable rule
+ * file is skipped — "not covered by that file's rules" — so detectors
+ * built on this never throw while degrading an advisory.
+ */
+export declare function loadIgnoreRules(projectRoot: string): ReturnType<typeof ignore>;
+/**
  * Managed paths NOT yet covered by any ignore rule — existence-independent
  * (a path that does not exist on disk is exactly the forward-looking case
  * this module exists for). Never throws (review F1): rule-file read errors
@@ -24,6 +32,12 @@ export declare function skippableManagedPaths(omit?: readonly string[]): string[
 export declare function findUncoveredManagedPaths(projectRoot: string, omit?: readonly string[]): string[];
 /** Is this path ignored by any rule file the repo applies? */
 export declare function isIgnoredPath(projectRoot: string, rel: string): boolean;
+/**
+ * True when `content` holds a managed block removal would actually delete.
+ * Shared by the remove plan and discovery so neither promises a removal that
+ * `removeManagedBlock` skips as malformed.
+ */
+export declare function hasRemovableManagedBlock(content: string): boolean;
 /**
  * Paths the user opted out of ignoring at init, read from the block-header
  * skip line. Update honors them so a later run never re-adds what the user
@@ -58,7 +72,7 @@ export declare function ensureGitignoreEntries(projectRoot: string, opts?: {
     removed: string[];
 };
 /**
- * Remove the managed block (uninstall). Block-external lines are preserved
+ * Remove the managed block (the `remove` command). Block-external lines are preserved
  * byte-for-byte — no blank-run collapsing, no leading/trailing whitespace
  * trims (review F5); the file's original trailing-newline state is kept.
  * A file left with no content at all is deleted. No well-formed block →
@@ -68,6 +82,7 @@ export declare function ensureGitignoreEntries(projectRoot: string, opts?: {
 export declare function removeManagedBlock(projectRoot: string): {
     removed: boolean;
     fileDeleted: boolean;
+    tooLarge?: boolean;
 };
 /** Normalize EOL helper re-exported for callers comparing file content. */
 export { normalizeEol };

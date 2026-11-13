@@ -176,11 +176,15 @@ openspec-pw doctor        # 检查前置条件 (Node, Playwright, OpenSpec, 配�
 openspec-pw audit         # 检查测试文件是否有孤儿文件和配置问题（--gate 有问题时退出码 1）
 openspec-pw coverage      # 分析 spec 与测试之间的覆盖率（--fail-under <pct> 低于阈值时退出码 1；--plan <file> 要求 delta spec 的每条 scenario 都出现在该测试计划中，否则退出码 1）
 openspec-pw flake         # 检测测试文件中的不稳定模式（静态模式 + 被调大的超时）
-openspec-pw gate [change]  # 跑全部质量检查，退出码 0 / 1 / 2（通过 / 不达标 / 无法判定）
+openspec-pw gate [change]  # 跑全部质量检查，退出码 0 / 1 / 2（通过 / 不达标 / 无法判定；--repeat N 重跑失败的 E2E 以区分 flaky 与真失败）
 openspec-pw migrate       # 迁移旧测试文件到新目录结构
 openspec-pw explore       # 探索应用路由
-openspec-pw uninstall     # 移除项目中的集成
+openspec-pw remove        # 移除集成（--all 扫描 home 与 Windows 盘根；--yes 才执行）
 ```
+
+**`remove`** 清理当前项目的工具痕迹（非脚手架）：编辑器命令载体、`playwright-test` 与遗留 `playwright` 的 MCP 条目、规则文件标记块、`.gitignore` managed block、Stop hook、`openspec/schemas/playwright-e2e/`、lint 清单、vendored agents、legacy skill 目录，以及仍与内置模板字节一致的 `tests/README.md`、`.github/workflows/openspec-pw.yml`、`.github/workflows/openspec-auto.yml`、工具生成的 `eslint.config.mjs` 与 ruff managed block。用户数据永不删除（`tests/**`、`credentials.yaml`、`openspec/specs`），被改过的工具文件保留并提示。符号链接解析到项目外的路径一律不删不写，官方 OpenSpec 的 `OPENSPEC:` 块不视为本工具产物。init 写入 OpenCode `instructions` 的 `AGENTS.md` 条目保留——无法与用户自己添加的条目区分；需要你编辑的脚手架文件（`playwright.config.ts`、`tests/playwright/seed.spec.ts`、`auth.setup.ts`、`pages/`、`test-plan.template.md`）保留；只剩空容器的配置文件（`{"mcpServers":{}}`）也保留——无法证明归属。**BREAKING**：`uninstall` 已改名为 `remove`，旧名不再保留。
+
+`remove --all` 扫描本机带 openspec-pw 痕迹的项目——编辑器命令文件、schema 目录、标记块、`.gitignore` managed block，或工具拥有的残留（`tests/README.md`、lint 清单、生成的 CI workflow、工具生成的 ESLint/ruff 配置、遗留 skill 目录、工具拥有的 vendored agents、Stop hook）任一命中即可。单独的 MCP 条目不作为发现信号（`playwright-test` 也是 Playwright 官方 agent 初始化写入的 server 名），只有显式单项目 `remove` 会清理它；批量模式只清理 `playwright-test`，遗留 `playwright` 不处理。默认扫描根是 home 目录，Windows 上再加所有存在的盘根。**默认只列计划不删除**：打印每个项目与将删除的产物组；加 `--yes` 才执行；`--root <dir>`（可重复，支持 `~`）替换默认扫描根——显式给出 `--root` 时扫描范围就是这些根，不再并入当前项目；路径不存在或是 UNC 路径时退出 2。不传 `--root` 时，当前项目包含在计划中并排在首位。单个项目失败不阻断其余项目；因权限不可写的项目记为 skipped，其他错误记为 failed；结束时打印 `removed N / skipped M / failed K`（项目数），有失败则退出码非零。
 
 `openspec-pw gate` 是其余所有环节共用的唯一裁决入口——Claude Code 的 Stop hook 与生成的 CI 工作流都调用它，不再各自维护一份检查清单。它按「validate → lint → typecheck → test → flake → e2e」的顺序执行（廉价在前，默认首败即停，`--keep-going` 跑完全部），退出码三值：`0` 全部通过、`1` 有检查不达标、`2` 无法判定（工具缺失、超时、变更名有歧义）。
 
@@ -191,7 +195,9 @@ openspec-pw uninstall     # 移除项目中的集成
 
 改动 lint 配置、`tsconfig*.json`、Playwright 或 Vitest 配置，或把测试文件里的超时调大（`timeout: N` / `test.setTimeout(N)`），都会出现在裁决的 `flags` 中。只报告不判失败：放宽配置或延长超时有时正当，但评审者需要知道尺子被挪过——调大超时只会让失败的测试变绿，并没有修掉它撞上的竞态。
 
-**Stop hook。** `openspec-pw init --hook` 会向 `.claude/settings.json` 合并一个 `Stop` 钩子，调用 `openspec-pw gate --hook`。门禁为红时钩子以退出码 2 结束、把失败项写到 stderr，agent 必须继续修而不是宣布完成。两档：`static`（默认——validate、lint、typecheck、单元测试）与 `full`（额外含 flake 与 e2e）。`full` 只在该变更的 E2E 测试已存在后再用：此前「有 scenario 无测试」护栏会让每回合都判红，把进展正常的活儿卡住。每回合最多阻断一次（读取 Claude Code 的 `stop_hook_active`），并按工作树指纹缓存结论，工作树没变就不重复检查。`--no-hook` 或 `openspec-pw uninstall` 可移除；同一文件里你自己的钩子不会被改动。
+**运行时 flake 证据。** `gate --repeat <N>` 只重跑首跑失败的 E2E 用例（`--last-failed`），并带 `--retries=N`。重跑期间至少通过一次的用例进入裁决的 `flaky` 明细（`--json` 中给出通过/失败次数与失败尝试的 trace），所有尝试都失败的仍是真失败。flaky 默认只报告，加 `--strict-flake` 才判失败，首跑偶发失败不再直接把门禁变红。该功能默认关闭，不修改 `playwright.config.*`；Playwright 产物落在 `tmp/gate-flake-<pid>-<timestamp>/`（`tmp/` 未被忽略时改用系统临时目录）。它是概率性检测：只覆盖首跑失败、重跑通过的用例。Stop hook 不传 `--repeat`；`--hook` 与 `--repeat` 同时使用会被拒绝（退出码 2）。
+
+**Stop hook。** `openspec-pw init --hook` 会向 `.claude/settings.json` 合并一个 `Stop` 钩子，调用 `openspec-pw gate --hook`。门禁为红时钩子以退出码 2 结束、把失败项写到 stderr，agent 必须继续修而不是宣布完成。两档：`static`（默认——validate、lint、typecheck、单元测试）与 `full`（额外含 flake 与 e2e）。`full` 只在该变更的 E2E 测试已存在后再用：此前「有 scenario 无测试」护栏会让每回合都判红，把进展正常的活儿卡住。每回合最多阻断一次（读取 Claude Code 的 `stop_hook_active`），并按工作树指纹缓存结论，工作树没变就不重复检查。`--no-hook` 或 `openspec-pw remove` 可移除；同一文件里你自己的钩子不会被改动。
 
 **全自动流水线。** `openspec-pw init --auto-pipeline` 生成 `.github/workflows/openspec-auto.yml`，只写一次、之后不再覆盖。两种触发是刻意的：每个 PR 只跑 `gate`——请把该 job 设为**必需状态检查**，否则门禁为红的 PR 仍能合并；`openspec:auto` 标签或手动触发才起无头 agent（apply → 静态门禁 → 生成 E2E → 全量门禁）并开 PR。需要 secret：`ANTHROPIC_API_KEY`。阶段按「便宜的在前」排列：apply 用 `gate --skip e2e` 自证（此时该变更的 E2E 测试还不存在，「有 scenario 无测试」护栏会让全量 gate 判红——那是个永远不会结束的循环），随后是零 token 的静态门禁，再到需要浏览器的 E2E 阶段，最后才用全量 gate 作作业侧裁决。apply 的完成度以 `openspec list --json` 的任务计数判定，因为无头运行停下来提问时退出码同样是 0。末尾的 `/opsx:verify` 只作 advisory——报告与各阶段 `total_cost_usd` 写进 PR 正文，不拦截流程。E2E 步骤以 `/opsx:e2e --auto` 运行：人工确认测试计划改为 `openspec-pw coverage --plan`，所有原本「等用户」的节点改为结构化中止并以非零码退出。CI 是 checkout 仓库跑的，所以流水线项目里 `openspec/` 不进受管 `.gitignore` 块——规格与变更必须提交，否则 agent 无可应用；块外自己写的忽略规则只提示、不改写。
 
@@ -261,7 +267,7 @@ audit **只报告、绝不删除**——测试退役永远是人工决策。存�
 
 1. 检测项目中的受支持编辑器（Claude Code 和/或 OpenCode 和/或 Cline 和/或 Cursor 和/或 Pi 和/或 Oh My Pi 和/或 CodeBuddy CLI 和/或 MiniMax Code 和/或 DeepSeek Harness；Pi、Oh My Pi、MiniMax Code 与 DeepSeek Harness 也会通过全局配置目录 `~/.pi/agent/` / `~/.omp/agent/` / `~/.minimax-code/` / `~/.dsh/` 检测）
 2. 为每个检测到的编辑器安装 E2E 命令（Claude Code / CodeBuddy CLI 用 `/opsx:e2e`，OpenCode / Cline / Cursor / Pi / Oh My Pi / MiniMax Code / DeepSeek Harness 用 `/opsx-e2e`；Cursor 另装 Agent Skill，MiniMax Code 与 DeepSeek Harness 的唯一命令工件即 Agent Skill）
-3. 生成 `tests/playwright/seed.spec.ts`、`auth.setup.ts`、`credentials.yaml`、`app-knowledge.md`、`pages/BasePage.ts`，以及项目根的 `lint-guidelines.md` 吞错与文档注释 lint 清单（未手改时由 `update` 刷新，`uninstall` 清理）
+3. 生成 `tests/playwright/seed.spec.ts`、`auth.setup.ts`、`credentials.yaml`、`app-knowledge.md`、`pages/BasePage.ts`，以及项目根的 `lint-guidelines.md` 吞错与文档注释 lint 清单（未手改时由 `update` 刷新，`remove` 清理）
 
 > **`--lint-config`（opt-in）**：项目声明 eslint 9+ 且项目及祖先目录（至 git 根）均无 ESLint 配置时生成最小 `eslint.config.mjs`（TypeScript 项目接入已声明的 parser——`typescript-eslint` 或 `@typescript-eslint/parser`——并写入 `files`/`languageOptions`）；ruff 侧按 `.ruff.toml` > `ruff.toml` > `pyproject.toml` 的优先级（ruff 自身规则）创建或追加受管 `extend-select = ["B904"]` 块。已有配置绝不编辑——只打印可粘贴片段。重复运行幂等；受管块被手改时保留原样。
 4. 检测前端信号（分层检测：框架配置文件 → 前端框架依赖 → dev 命令关键词，含 monorepo workspace 成员检测——前端在 `apps/*` 的 pnpm/npm workspace 也能识别）；未检测到时在 Summary 打印引导提示——monorepo 去应用目录运行 `openspec-pw init`，纯 API 项目用 Playwright `request` fixture
@@ -309,7 +315,7 @@ audit **只报告、绝不删除**——测试退役永远是人工决策。存�
 
 如果你的应用需要登录，配置一次凭证后，所有测试自动以已登录状态运行。
 
-> **凭据自动忽略**：init 和 update 会在 `.gitignore` 尾部维护一个标记块，忽略 `tests/playwright/credentials.yaml`、其 `.bak`、`tests/playwright/test-results/` 和探索截图（`tests/playwright/screenshots/`——随开发过时，本地留档）——以及 auth storageState（`playwright/.auth/`，已登录会话 cookie）、MCP 配置（`.mcp.json`——用户自加的 server 常在 env/headers 里放 API key）、工具本地数据（`.codegraph/`、`.playwright-mcp/`）、第一层名如 `.claude/`、`.cursor/`、`.codebuddy/`、`.agents/skills/opsx-e2e/`、`.dsh/skills/opsx-e2e/`、`openspec/`、`AGENTS.md`、`CLAUDE.md`、`CODEBUDDY.md`（生成的产物按设计留在本地）。标记块幂等、不碰你自己的规则，`uninstall` 时自动清理。无法写入时会降级为警告并列出未覆盖路径。注意：ignore 规则对已被 git 追踪的文件无效——若凭据曾提交过，请执行 `git rm --cached tests/playwright/credentials.yaml`。也可以改用 `E2E_USERNAME` / `E2E_PASSWORD` 环境变量。
+> **凭据自动忽略**：init 和 update 会在 `.gitignore` 尾部维护一个标记块，忽略 `tests/playwright/credentials.yaml`、其 `.bak`、`tests/playwright/test-results/` 和探索截图（`tests/playwright/screenshots/`——随开发过时，本地留档）——以及 auth storageState（`playwright/.auth/`，已登录会话 cookie）、MCP 配置（`.mcp.json`——用户自加的 server 常在 env/headers 里放 API key）、工具本地数据（`.codegraph/`、`.playwright-mcp/`）、第一层名如 `.claude/`、`.cursor/`、`.codebuddy/`、`.agents/skills/opsx-e2e/`、`.dsh/skills/opsx-e2e/`、`openspec/`、`AGENTS.md`、`CLAUDE.md`、`CODEBUDDY.md`（生成的产物按设计留在本地）。标记块幂等、不碰你自己的规则，`remove` 时自动清理。无法写入时会降级为警告并列出未覆盖路径。注意：ignore 规则对已被 git 追踪的文件无效——若凭据曾提交过，请执行 `git rm --cached tests/playwright/credentials.yaml`。也可以改用 `E2E_USERNAME` / `E2E_PASSWORD` 环境变量。
 
 ```bash
 # 1. 编辑凭证
@@ -362,7 +368,7 @@ CLI (openspec-pw)
   ├── flake      → 检测测试文件中的不稳定模式（静态 + 被调大的超时）
   ├── doctor     → 检查前置条件
   ├── explore    → 探索应用路由
-  └── uninstall  → 移除项目中的集成
+  └── remove     → 移除集成（--all：扫描 home 与 Windows 盘根；--yes 才执行）
 
 编辑器（由 openspec-pw init 自动检测）
   ├── Claude Code (/opsx:e2e)

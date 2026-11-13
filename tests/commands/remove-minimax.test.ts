@@ -22,29 +22,25 @@ vi.mock("../../src/shared/index.js", async (importOriginal) => {
   })) };
 });
 
-import { uninstall } from "../../src/commands/uninstall.js";
+import { removeInProject } from "../../src/commands/remove.js";
 
 // Real detection on purpose: this suite proves the MiniMax Code skill
-// artifact alone is enough for uninstall to find the editor.
+// artifact alone is enough for the remove command to find the editor.
 let tmp: string;
-let cwd: string;
 
 beforeEach(() => {
-  tmp = mkdtempSync(join(tmpdir(), "ospw-uninstall-minimax-"));
-  cwd = process.cwd();
-  process.chdir(tmp);
+  tmp = mkdtempSync(join(tmpdir(), "ospw-remove-minimax-"));
   vi.spyOn(console, "log").mockImplementation(() => {});
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
-  process.chdir(cwd);
   rmSync(tmp, { recursive: true, force: true });
 });
 
 const SKILL = join(".agents", "skills", "opsx-e2e", "SKILL.md");
 
-describe("uninstall() removes MiniMax Code artifacts", () => {
+describe("removeInProject() removes MiniMax Code artifacts", () => {
   it("removes the skill and the shared MCP entry, keeps user entries and sibling skills", async () => {
     mkdirSync(join(tmp, ".agents", "skills", "opsx-e2e"), { recursive: true });
     writeFileSync(join(tmp, SKILL), "---\nname: opsx-e2e\n---\n\nbody\n");
@@ -65,7 +61,7 @@ describe("uninstall() removes MiniMax Code artifacts", () => {
       "user content\n\n<!-- OPENSPEC-PW:START -->\nstandards\n<!-- OPENSPEC-PW:END -->\n",
     );
 
-    await uninstall();
+    await removeInProject(tmp);
 
     // The openspec-pw skill is gone…
     expect(existsSync(join(tmp, SKILL))).toBe(false);

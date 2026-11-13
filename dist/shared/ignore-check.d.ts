@@ -7,6 +7,12 @@ export declare const CREDENTIALS_RELPATHS: string[];
  */
 export declare function credentialsIgnoreHint(unignored: string[]): string;
 /**
+ * Whether the project's ignore rules cover `relPath`, independent of whether
+ * the path exists yet. `findUnignoredFiles` cannot answer this: it skips
+ * paths that are not on disk, which makes a not-yet-created `tmp/` look safe.
+ */
+export declare function isPathIgnored(projectRoot: string, relPath: string): boolean;
+/**
  * Return the subset of `relPaths` that exist on disk but are NOT covered
  * by the project's ignore rules. Empty result = fully covered.
  *

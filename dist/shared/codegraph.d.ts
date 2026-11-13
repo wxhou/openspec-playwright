@@ -1,5 +1,5 @@
 /**
- * Shared CodeGraph detection driving doctor / init / update / uninstall.
+ * Shared CodeGraph detection driving doctor / init / update / remove.
  *
  * - CLI presence on PATH (`which`/`where codegraph`, moved here from init.ts)
  * - project has a `.codegraph/` index

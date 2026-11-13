@@ -6,11 +6,13 @@
 import {
   existsSync,
   lstatSync,
+  realpathSync,
   rmSync,
   readFileSync,
+  statSync,
   writeFileSync,
 } from "fs";
-import { join, basename } from "path";
+import { dirname, join, basename } from "path";
 import chalk from "chalk";
 // The marker constants hold no regex metacharacters, so they are safe to
 // interpolate into the RegExp below.
@@ -75,9 +77,24 @@ export function installOpenSpecBlock(
   const markerStart = OPENSPEC_START;
   const markerEnd = OPENSPEC_END;
 
+  // A symlinked rules file (dotfiles checkout) belongs to the user: writing
+  // through it would edit a file outside the project. lstat also catches a
+  // dangling link, which existsSync reports as missing.
+  let destIsLink = false;
+  try {
+    destIsLink = lstatSync(dest).isSymbolicLink();
+  } catch {
+    // Missing file — the normal create path.
+  }
+  if (destIsLink) {
+    console.log(
+      chalk.gray(`  - ${fileLabel} is a symlink — skipping (would write through to its target)`),
+    );
+    return;
+  }
+
   if (!existsSync(dest)) {
-    const projName = projectRoot.split("/").pop() ?? "Project";
-    const content = `# ${projName}\n\n${markerStart}\n\n${standardsContent.trim()}\n\n${markerEnd}\n`;
+    const content = `# ${rulesFileTitle(projectRoot)}\n\n${markerStart}\n\n${standardsContent.trim()}\n\n${markerEnd}\n`;
     writeFileSync(dest, content);
     console.log(
       chalk.green(`  ✓ ${fileLabel}: created with employee-grade standards`),
@@ -315,63 +332,284 @@ export function installProjectRules(
   }
 }
 
-/** Remove all OpenSpec marker blocks from AGENTS.md (always) and the adapter's wrapper file (claude/codebuddy). */
-export function cleanProjectRules(adapter: EditorAdapter, projectRoot: string): void {
-  // AGENTS.md always has the employee standards (SSOT)
-  removeMarkersFromFile(join(projectRoot, "AGENTS.md"), "AGENTS.md");
+/**
+ * Remove all OpenSpec marker blocks from AGENTS.md (always) and the adapter's
+ * wrapper file (claude/codebuddy). Returns whether any file changed.
+ * `onChanged` fires after each successful file change, so a caller tracking
+ * progress for batch accounting knows about the first write even when a later
+ * file fails.
+ */
+export function cleanProjectRules(
+  adapter: EditorAdapter,
+  projectRoot: string,
+  options: { agents?: boolean; onChanged?: () => void } = {},
+): boolean {
+  let changed = false;
+  // One project has one AGENTS.md — callers looping over adapters pass
+  // agents:false after the first pass so skip notices are not repeated.
+  if (options.agents !== false) {
+    // A symlinked rules file (e.g. a dotfiles checkout) belongs to the user:
+    // rewriting it would edit a file outside the project.
+    const agents = join(projectRoot, "AGENTS.md");
+    if (isSymlink(agents)) {
+      console.log(
+        chalk.gray("  - AGENTS.md is a symlink — skipping (would write through to its target)"),
+      );
+    } else {
+      // Deleting the whole file would dangle a wrapper symlinked to it, so keep
+      // the heading in that documented setup and strip markers only.
+      const linked = getAllAdapters().some((a) =>
+        wrapperLinksToAgents(projectRoot, a),
+      );
+      const removedAgents = removeMarkersFromFile(
+        agents,
+        "AGENTS.md",
+        linked ? undefined : (bundledStandardsContent() ?? undefined),
+      );
+      if (removedAgents) options.onChanged?.();
+      changed = removedAgents || changed;
+    }
+  }
 
   // Wrapper files (CLAUDE.md / CODEBUDDY.md) may carry the wrapper import
   const wrapper = wrapperRulesFile(adapter, projectRoot);
   if (wrapper) {
-    removeMarkersFromFile(wrapper, basename(wrapper));
+    if (isSymlink(wrapper)) {
+      console.log(
+        chalk.gray(
+          `  - ${basename(wrapper)} is a symlink — skipping (would write through to its target)`,
+        ),
+      );
+    } else {
+      const removedWrapper = removeMarkersFromFile(
+        wrapper,
+        basename(wrapper),
+        claudeWrapperStandardsContent(),
+      );
+      if (removedWrapper) options.onChanged?.();
+      changed = removedWrapper || changed;
+    }
   }
+  return changed;
+}
+
+function isSymlink(path: string): boolean {
+  try {
+    return lstatSync(path).isSymbolicLink();
+  } catch {
+    return false;
+  }
+}
+
+/** True when a wrapper file is a symlink resolving to this project's AGENTS.md. */
+export function wrapperLinksToAgents(projectRoot: string, adapter: EditorAdapter): boolean {
+  const wrapper = wrapperRulesFile(adapter, projectRoot);
+  if (!wrapper) return false;
+  try {
+    if (!lstatSync(wrapper).isSymbolicLink()) return false;
+    return realpathSync(wrapper) === realpathSync(join(projectRoot, "AGENTS.md"));
+  } catch {
+    return false;
+  }
+}
+
+/** Bundled employee standards, or null when the file cannot be read. */
+function bundledStandardsContent(): string | null {
+  try {
+    return readFileSync(
+      new URL("../../../employee-standards.md", import.meta.url),
+      "utf-8",
+    );
+  } catch {
+    return null;
+  }
+}
+
+/** Heading install writes into a rules file it creates (shared with the pristine check). */
+function rulesFileTitle(projectRoot: string): string {
+  return basename(projectRoot) || "Project";
+}
+
+/**
+ * True when `content` is exactly what `installOpenSpecBlock` writes for a
+ * fresh file: the generated title plus the marker block around `body`. Lets
+ * removal delete the file instead of leaving a title-only shell.
+ */
+function isPristineRulesFile(dest: string, content: string, body: string): boolean {
+  const title = `# ${rulesFileTitle(dirname(dest))}`;
+  const expected = `${title}\n\n${OPENSPEC_START}\n\n${body.trim()}\n\n${OPENSPEC_END}\n`;
+  return content.replace(/\r\n/g, "\n") === expected.replace(/\r\n/g, "\n");
+}
+
+/**
+ * True when every START marker is followed by exactly one END before the next
+ * START. A malformed sequence (`START … START … END`, orphan `END`) means the
+ * regex below would swallow user text between markers — such files are left
+ * untouched.
+ */
+function markersPaired(content: string, start: string, end: string): boolean {
+  const pattern = new RegExp(`${start}|${end}`, "g");
+  let expectStart = true;
+  for (const match of content.matchAll(pattern)) {
+    if ((match[0] === start) !== expectStart) return false;
+    expectStart = !expectStart;
+  }
+  return expectStart;
 }
 
 /**
  * Remove openspec-pw marker blocks (both namespaces) from a single file,
- * deleting the file entirely when it empties out. Exported for the init
- * deselect-removal flow (CLAUDE.md wrapper cleanup); cleanProjectRules
- * wraps it for the uninstall context.
+ * deleting the file entirely when it empties out. `pristineBody`, when given,
+ * is the block body the tool writes on creation: a file matching that exact
+ * generated form is deleted whole rather than left as a title-only shell.
+ * Exported for the init deselect-removal flow (CLAUDE.md wrapper cleanup);
+ * cleanProjectRules wraps it for the remove command's context.
  */
-export function removeMarkersFromFile(dest: string, fileLabel: string): void {
+export function removeMarkersFromFile(
+  dest: string,
+  fileLabel: string,
+  pristineBody?: string,
+): boolean {
   if (!existsSync(dest)) {
     console.log(chalk.gray(`  - ${fileLabel} not found, skipping`));
-    return;
+    return false;
+  }
+  // Single entry point for both cleanProjectRules and init's deselect flow:
+  // a symlinked rules file belongs to the user (dotfiles checkout) and must
+  // never be rewritten through.
+  if (isSymlink(dest)) {
+    console.log(
+      chalk.gray(`  - ${fileLabel} is a symlink — skipping (would write through to its target)`),
+    );
+    return false;
   }
   const existing = readFileSync(dest, "utf-8");
 
+  if (pristineBody !== undefined && isPristineRulesFile(dest, existing, pristineBody)) {
+    rmSync(dest);
+    console.log(chalk.green(`  ✓ Removed ${fileLabel}`));
+    return true;
+  }
+
   // Both namespaces: our OPENSPEC-PW block and any surviving legacy
-  // OPENSPEC: block (pre-migration installs). Uninstall must clean both.
-  if (!existing.includes(OPENSPEC_START) && !hasLegacyTerritoryStart(existing)) {
-    console.log(chalk.gray(`  - No OpenSpec markers found in ${fileLabel}`));
-    return;
+  // OPENSPEC: block (pre-migration installs). Removal must clean both, but a
+  // legacy block is only ours when it carries our content signature — the
+  // official @fission-ai/openspec CLI writes the same OPENSPEC:START/END
+  // markers, and that block must survive. Ownership is judged per block: a
+  // file can hold ours and an official one side by side.
+  if (
+    !markersPaired(existing, OPENSPEC_START, OPENSPEC_END) ||
+    !markersPaired(existing, LEGACY_OPENSPEC_START, LEGACY_OPENSPEC_END)
+  ) {
+    console.log(chalk.yellow(`  ⚠ ${fileLabel}: marker block is unclosed — skipping`));
+    return false;
+  }
+  const hasPwBlock = new RegExp(
+    `${OPENSPEC_START}[\\s\\S]*?${OPENSPEC_END}`,
+  ).test(existing);
+  const legacyMatches = [
+    ...existing.matchAll(
+      new RegExp(
+        `${LEGACY_OPENSPEC_START}[\\s\\S]*?${LEGACY_OPENSPEC_END}`,
+        "g",
+      ),
+    ),
+  ];
+  const legacyOwned = legacyMatches.some((match) =>
+    LEGACY_WRAPPER_SIGNATURES.some((signature) => match[0].includes(signature)),
+  );
+  const hasLegacyBlock = legacyMatches.length > 0;
+
+  if (!hasPwBlock && !legacyOwned) {
+    if (hasLegacyBlock) {
+      console.log(
+        chalk.gray(`  - ${fileLabel}: OPENSPEC block is not openspec-pw-owned — skipping`),
+      );
+    } else {
+      console.log(chalk.gray(`  - No OpenSpec markers found in ${fileLabel}`));
+    }
+    return false;
   }
 
   // Remove markers and their content, consuming surrounding whitespace.
   // Then collapse runs of 3+ blank lines to at most 2 for a clean result.
-  let updated = existing
-    .replace(
+  let updated = existing;
+  if (hasPwBlock) {
+    updated = updated.replace(
       new RegExp(`\\s*${OPENSPEC_START}[\\s\\S]*?${OPENSPEC_END}\\s*`, "g"),
       "\n\n",
-    )
-    .replace(
+    );
+  }
+  if (legacyOwned) {
+    updated = updated.replace(
       new RegExp(
         `\\s*${LEGACY_OPENSPEC_START}[\\s\\S]*?${LEGACY_OPENSPEC_END}\\s*`,
         "g",
       ),
-      "\n\n",
-    )
-    .replace(/\n{3,}/g, "\n\n").trim();
+      (match) =>
+        LEGACY_WRAPPER_SIGNATURES.some((signature) => match.includes(signature))
+          ? "\n\n"
+          : match,
+    );
+  }
+  updated = updated.replace(/\n{3,}/g, "\n\n").trim();
 
   // Delete empty file rather than leaving a ghost.
   if (updated === "") {
     rmSync(dest);
     console.log(chalk.green(`  ✓ Removed empty ${fileLabel}`));
-    return;
+    return true;
   }
 
   writeFileSync(dest, updated + "\n");
   console.log(chalk.green(`  ✓ Removed OpenSpec markers from ${fileLabel}`));
+  return true;
+}
+
+/**
+ * True when `content` holds a marker block removals may clear: our
+ * OPENSPEC-PW block, or a legacy OPENSPEC: block carrying our signature.
+ * Official openspec blocks are not territory. Shared by the remove command's
+ * dry-run plan so it lists only what execution would really delete.
+ */
+export function hasCleanableMarkers(content: string): boolean {
+  if (
+    !markersPaired(content, OPENSPEC_START, OPENSPEC_END) ||
+    !markersPaired(content, LEGACY_OPENSPEC_START, LEGACY_OPENSPEC_END)
+  ) {
+    return false;
+  }
+  if (new RegExp(`${OPENSPEC_START}[\\s\\S]*?${OPENSPEC_END}`).test(content)) {
+    return true;
+  }
+  for (const match of content.matchAll(
+    new RegExp(
+      `${LEGACY_OPENSPEC_START}[\\s\\S]*?${LEGACY_OPENSPEC_END}`,
+      "g",
+    ),
+  )) {
+    if (
+      LEGACY_WRAPPER_SIGNATURES.some((signature) => match[0].includes(signature))
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * True when the project's AGENTS.md carries a marker block removal would
+ * clear. Init's deselect confirmation list uses this so an unclosed marker or
+ * a symlinked file is not listed as "will be removed".
+ */
+export function agentsFileHasCleanableMarkers(projectRoot: string): boolean {
+  const agents = join(projectRoot, "AGENTS.md");
+  try {
+    if (!existsSync(agents) || lstatSync(agents).isSymbolicLink()) return false;
+    return hasCleanableMarkers(readFileSync(agents, "utf-8"));
+  } catch {
+    return false;
+  }
 }
 
 /** Read the employee-grade standards source file (empty string if missing). */
@@ -426,7 +664,7 @@ function migrateLegacyMarkersInContent(content: string, signatures: string[]): s
  * Migrate legacy OPENSPEC markers in AGENTS.md (and CLAUDE.md wrapper) to the
  * OPENSPEC-PW namespace. Gates:
  *   - hasPwArtifacts: without openspec-pw command artifacts the legacy block
- *     is an official relic, not our territory — untouched (uninstall removes it).
+ *     is an official relic, not our territory — untouched (remove cleans it).
  *   - claudeAuthorized: the CLAUDE.md wrapper is only touched for claude.
  *   - signature: block content must match ours (see signatures above).
  * Returns true when any file was migrated.
@@ -441,7 +679,9 @@ export function migrateLegacyMarkers(
   let migrated = false;
 
   const agentsPath = join(projectRoot, "AGENTS.md");
-  if (existsSync(agentsPath)) {
+  // A symlinked rules file (dotfiles checkout) belongs to the user — the
+  // wrapper branch below already skips these.
+  if (existsSync(agentsPath) && !lstatSync(agentsPath).isSymbolicLink()) {
     const content = readFileSync(agentsPath, "utf-8");
     const next = migrateLegacyMarkersInContent(content, [LEGACY_MAIN_SIGNATURE]);
     if (next !== null) {
@@ -490,7 +730,10 @@ export function migrateLegacyMarkers(
  * block proves the project is ours (design D5 / init-minimal-mode).
  * Enumerates AGENTS.md plus every registered editor's wrapper file.
  */
-export function hasRuleFileMarkers(projectRoot: string): boolean {
+export function hasRuleFileMarkers(
+  projectRoot: string,
+  maxBytes = Number.POSITIVE_INFINITY,
+): boolean {
   const files = new Set<string>([join(projectRoot, "AGENTS.md")]);
   for (const adapter of getAllAdapters()) {
     const wrapper = wrapperRulesFile(adapter, projectRoot);
@@ -498,7 +741,24 @@ export function hasRuleFileMarkers(projectRoot: string): boolean {
   }
   for (const path of files) {
     if (!existsSync(path)) continue;
-    const content = readFileSync(path, "utf-8");
+    // Discovery over arbitrary trees skips oversized files rather than
+    // reading them whole; init/update keep the default (no limit). A
+    // partially mocked fs (tests) can omit statSync — fall through to the
+    // content-length check below.
+    try {
+      if (statSync(path).size > maxBytes) continue;
+    } catch {
+      // stat unavailable — decide from the loaded content instead.
+    }
+    let content: string;
+    try {
+      content = readFileSync(path, "utf-8");
+    } catch {
+      // Unreadable rules file — treat as no markers. Discovery scans arbitrary
+      // trees where a permission error must not abort the parent directory.
+      continue;
+    }
+    if (Buffer.byteLength(content, "utf-8") > maxBytes) continue;
     if (content.includes(OPENSPEC_START)) return true;
     if (hasLegacyTerritoryStart(content) && content.includes(LEGACY_MAIN_SIGNATURE)) return true;
   }

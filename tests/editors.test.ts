@@ -10,7 +10,6 @@ import {
   writeFileSync,
 } from "fs";
 import { tmpdir } from "os";
-import { fileURLToPath } from "url";
 import { join } from "path";
 import {
   blockMatchesExpected,
@@ -34,6 +33,8 @@ import {
   getPiCommandPath,
   getOmpCommandPath,
   hasClaudeCode,
+  hasCleanableMarkers,
+  agentsFileHasCleanableMarkers,
   hasOpenCode,
   hasPi,
   hasOmp,
@@ -45,6 +46,7 @@ import {
   piAdapter,
   ompAdapter,
   readOpenSpecBlock,
+  removeMarkersFromFile,
   transformToHyphenCommands,
 } from "../src/commands/editors.js";
 
@@ -859,19 +861,137 @@ describe("cleanProjectRules", () => {
     );
   });
 
-  it("uninstall also removes a surviving legacy OPENSPEC: block (pre-migration project)", () => {
+  it("removeInProject also removes a surviving legacy OPENSPEC: block (pre-migration project)", () => {
     // MARKER_BLOCK writes the new OPENSPEC-PW namespace; this fixture keeps
-    // the legacy one on purpose — uninstall must clean both namespaces.
+    // the legacy one on purpose — the remove command must clean both
+    // namespaces when the block carries our content signature.
     writeFileSync(
       join(tmpRoot, "AGENTS.md"),
-      `# Project\n\n<!-- OPENSPEC:START -->\nold standards body\n<!-- OPENSPEC:END -->\n\nuser tail\n`,
+      `# Project\n\n<!-- OPENSPEC:START -->\nold Employee-Grade Standards body\n<!-- OPENSPEC:END -->\n\nuser tail\n`,
     );
     cleanProjectRules(claudeAdapter, tmpRoot);
     const agents = readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8");
     expect(agents).not.toContain("OPENSPEC:START");
-    expect(agents).not.toContain("old standards body");
+    expect(agents).not.toContain("old Employee-Grade Standards body");
     expect(agents).toContain("# Project");
     expect(agents).toContain("user tail");
+  });
+
+  it("keeps an official openspec OPENSPEC: block with no openspec-pw signature", () => {
+    const official =
+      "# Project\n\n<!-- OPENSPEC:START -->\nOfficial openspec instructions.\n<!-- OPENSPEC:END -->\n";
+    writeFileSync(join(tmpRoot, "AGENTS.md"), official);
+    expect(cleanProjectRules(claudeAdapter, tmpRoot)).toBe(false);
+    expect(readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8")).toBe(official);
+  });
+
+  it("does not report removal for an unclosed OPENSPEC-PW marker", () => {
+    const broken = "# Project\n\n<!-- OPENSPEC-PW:START -->\nstandards body\n";
+    writeFileSync(join(tmpRoot, "AGENTS.md"), broken);
+    expect(cleanProjectRules(claudeAdapter, tmpRoot)).toBe(false);
+    expect(readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8")).toBe(broken);
+  });
+
+  it("leaves the file untouched when a stray START precedes a complete block", () => {
+    const broken =
+      "# Project\n\n<!-- OPENSPEC-PW:START -->\nuser text\n" +
+      "<!-- OPENSPEC-PW:START -->\nstandards\n<!-- OPENSPEC-PW:END -->\n";
+    writeFileSync(join(tmpRoot, "AGENTS.md"), broken);
+
+    expect(cleanProjectRules(claudeAdapter, tmpRoot)).toBe(false);
+    expect(readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8")).toBe(broken);
+    expect(hasCleanableMarkers(broken)).toBe(false);
+  });
+
+  it("agentsFileHasCleanableMarkers ignores unclosed markers", () => {
+    writeFileSync(
+      join(tmpRoot, "AGENTS.md"),
+      "<!-- OPENSPEC-PW:START -->\n\n<!-- OPENSPEC-PW:END -->\n",
+    );
+    expect(agentsFileHasCleanableMarkers(tmpRoot)).toBe(true);
+
+    writeFileSync(join(tmpRoot, "AGENTS.md"), "<!-- OPENSPEC-PW:START -->\n");
+    expect(agentsFileHasCleanableMarkers(tmpRoot)).toBe(false);
+  });
+
+  it("agentsFileHasCleanableMarkers ignores a symlinked AGENTS.md", () => {
+    if (process.platform === "win32") return;
+    const outside = mkdtempSync(join(tmpdir(), "openspec-pw-outside-"));
+    try {
+      const external = join(outside, "AGENTS.md");
+      writeFileSync(
+        external,
+        "<!-- OPENSPEC-PW:START -->\n\n<!-- OPENSPEC-PW:END -->\n",
+      );
+      symlinkSync(external, join(tmpRoot, "AGENTS.md"));
+
+      expect(agentsFileHasCleanableMarkers(tmpRoot)).toBe(false);
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
+  });
+
+  it("hasCleanableMarkers requires the legacy signature", () => {
+    expect(
+      hasCleanableMarkers("<!-- OPENSPEC-PW:START -->\n\n<!-- OPENSPEC-PW:END -->"),
+    ).toBe(true);
+    expect(
+      hasCleanableMarkers("<!-- OPENSPEC-PW:START -->\n\n"),
+    ).toBe(false);
+    expect(
+      hasCleanableMarkers("<!-- OPENSPEC:START -->\nOfficial\n<!-- OPENSPEC:END -->"),
+    ).toBe(false);
+    expect(
+      hasCleanableMarkers(
+        "<!-- OPENSPEC:START -->\nEmployee-Grade Standards\n<!-- OPENSPEC:END -->",
+      ),
+    ).toBe(true);
+  });
+
+  it("removes only our legacy block when an official block follows it", () => {
+    writeFileSync(
+      join(tmpRoot, "AGENTS.md"),
+      "# Project\n\n" +
+        "<!-- OPENSPEC:START -->\nEmployee-Grade Standards\n<!-- OPENSPEC:END -->\n\n" +
+        "<!-- OPENSPEC:START -->\nOfficial instructions.\n<!-- OPENSPEC:END -->\n",
+    );
+    cleanProjectRules(claudeAdapter, tmpRoot);
+    const agents = readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8");
+    expect(agents).not.toContain("Employee-Grade Standards");
+    expect(agents).toContain("Official instructions.");
+  });
+
+  it("removes only our legacy block when an official block precedes it", () => {
+    writeFileSync(
+      join(tmpRoot, "AGENTS.md"),
+      "# Project\n\n" +
+        "<!-- OPENSPEC:START -->\nOfficial instructions.\n<!-- OPENSPEC:END -->\n\n" +
+        "<!-- OPENSPEC:START -->\nEmployee-Grade Standards\n<!-- OPENSPEC:END -->\n",
+    );
+    cleanProjectRules(claudeAdapter, tmpRoot);
+    const agents = readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8");
+    expect(agents).not.toContain("Employee-Grade Standards");
+    expect(agents).toContain("Official instructions.");
+  });
+
+  it("removeMarkersFromFile refuses a symlinked rules file", () => {
+    if (process.platform === "win32") return;
+    const outside = mkdtempSync(join(tmpdir(), "openspec-pw-outside-"));
+    try {
+      const external = join(outside, "AGENTS.md");
+      writeFileSync(
+        external,
+        "user\n\n<!-- OPENSPEC-PW:START -->\nstandards\n<!-- OPENSPEC-PW:END -->\n",
+      );
+      symlinkSync(external, join(tmpRoot, "AGENTS.md"));
+
+      expect(removeMarkersFromFile(join(tmpRoot, "AGENTS.md"), "AGENTS.md")).toBe(
+        false,
+      );
+      expect(readFileSync(external, "utf-8")).toContain("OPENSPEC-PW:START");
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
   });
 
   it("collapses surrounding blank lines instead of leaving 3+ gaps", () => {
@@ -891,6 +1011,59 @@ describe("cleanProjectRules", () => {
     writeFileSync(join(tmpRoot, "AGENTS.md"), `${MARKER_BLOCK("only this")}\n`);
     cleanProjectRules(claudeAdapter, tmpRoot);
     expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(false);
+  });
+
+  it("deletes untouched files the tool created, generated title included", () => {
+    const standards = readFileSync(
+      new URL("../employee-standards.md", import.meta.url),
+      "utf-8",
+    );
+    installProjectRules(tmpRoot, standards, [claudeAdapter]);
+    expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(true);
+    expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(true);
+
+    cleanProjectRules(claudeAdapter, tmpRoot);
+
+    expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(false);
+    expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(false);
+  });
+
+  it("keeps AGENTS.md when a wrapper is a symlink to it", () => {
+    const standards = readFileSync(
+      new URL("../employee-standards.md", import.meta.url),
+      "utf-8",
+    );
+    installProjectRules(tmpRoot, standards, [claudeAdapter]);
+    rmSync(join(tmpRoot, "CLAUDE.md"));
+    try {
+      symlinkSync("AGENTS.md", join(tmpRoot, "CLAUDE.md"));
+    } catch {
+      // Environment cannot create symlinks (Windows without privileges).
+      return;
+    }
+
+    cleanProjectRules(claudeAdapter, tmpRoot);
+
+    // Deleting the pristine AGENTS.md would leave CLAUDE.md dangling.
+    expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(true);
+    expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(true);
+  });
+
+  it("does not rewrite a symlinked rules file", () => {
+    const target = join(tmpRoot, "shared-rules.md");
+    writeFileSync(
+      target,
+      `# shared\n\n${MARKER_BLOCK("@AGENTS.md")}\n`,
+    );
+    try {
+      symlinkSync("shared-rules.md", join(tmpRoot, "CLAUDE.md"));
+    } catch {
+      return;
+    }
+
+    cleanProjectRules(claudeAdapter, tmpRoot);
+
+    expect(readFileSync(target, "utf-8")).toContain("OPENSPEC-PW:START");
   });
 
   it("is idempotent — second call is a no-op", () => {
@@ -1301,27 +1474,5 @@ describe.skipIf(
     expect(agents).toContain("FULL STANDARDS");
     expect(agents).not.toContain("@AGENTS.md");
     expect(lstatSync(join(tmpRoot, "CLAUDE.md")).isSymbolicLink()).toBe(true);
-  });
-});
-
-describe("update.ts: symlinked CLAUDE.md drift check (source guard)", () => {
-  it("drift check skips a symlinked CLAUDE.md before comparing to the wrapper", () => {
-    const src = readFileSync(
-      fileURLToPath(new URL("../src/commands/update.ts", import.meta.url)),
-      "utf-8",
-    );
-    expect(src).toMatch(
-      /existsSync\(wrapperPath\) && lstatSync\(wrapperPath\)\.isSymbolicLink\(\)/,
-    );
-  });
-
-  it("doctor reports standards-claude as covered when CLAUDE.md is a symlink", () => {
-    const src = readFileSync(
-      fileURLToPath(new URL("../src/commands/doctor.ts", import.meta.url)),
-      "utf-8",
-    );
-    expect(src).toMatch(
-      /existsSync\(wrapperFile\) && lstatSync\(wrapperFile\)\.isSymbolicLink\(\)/,
-    );
   });
 });

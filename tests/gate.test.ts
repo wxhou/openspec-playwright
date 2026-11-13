@@ -7,9 +7,11 @@ import {
   DEFAULT_CHECKS,
   computeVerdict,
   countScenarios,
+  defaultExecutor,
   exitCodeForVerdict,
   gate,
   isCheckConfigFile,
+  parsePlaywrightReport,
   selectChecks,
   type ExecResult,
   type Executor,
@@ -526,6 +528,21 @@ describe("stop-hook mode", () => {
     expect(lines.lines.join("\n")).toContain("fail");
   });
 
+  it("rejects --repeat in hook mode before running any check", async () => {
+    const exec = makeExec();
+    const lines = capture();
+    const code = await gate(
+      "demo",
+      { hook: true, only: "lint", repeat: "2" },
+      { cwd: root, exec, err: lines.out, hookPayload: {} },
+    );
+    expect(code).toBe(2);
+    expect(lintCalls(exec)).toBe(0);
+    expect(lines.lines.join("\n")).toContain(
+      "--repeat is not supported with --hook",
+    );
+  });
+
   it("writes a cache entry and reuses it when the tree is unchanged", async () => {
     const exec = makeExec();
     const lines = capture();
@@ -563,6 +580,468 @@ describe("stop-hook mode", () => {
     );
     expect(second).toBe(2);
     expect(lintCalls(exec)).toBe(before);
+  });
+});
+
+describe("runtime flake evidence", () => {
+  beforeEach(() => {
+    write(".gitignore", "tmp/\n");
+  });
+
+  function callsOf(exec: Executor): string[] {
+    return (exec as unknown as { calls: string[] }).calls;
+  }
+
+  function reportWith(
+    results: Array<{
+      status: string;
+      attachments?: Array<{ name: string; path: string }>;
+    }>,
+    errors: unknown[] = [],
+  ) {
+    return {
+      suites: [
+        {
+          specs: [
+            {
+              title: "one",
+              file: "tests/playwright/changes/demo/demo.spec.ts",
+              tests: [{ status: "expected", results }],
+            },
+          ],
+        },
+      ],
+      errors,
+    };
+  }
+
+  function flakeExec(options: {
+    report?: unknown;
+    rawReport?: string;
+    first?: ExecResult;
+    retry?: ExecResult;
+    writeLastRun?: boolean;
+    failedIds?: string[];
+  } = {}): Executor {
+    const calls: string[] = [];
+    const exec: Executor = (cmd, args, opts) => {
+      calls.push([cmd, ...args].join(" "));
+      if (cmd === "npx" && args.includes("--last-failed")) {
+        const reportPath = opts.env?.PLAYWRIGHT_JSON_OUTPUT_FILE;
+        if (reportPath) {
+          const body =
+            options.rawReport ??
+            JSON.stringify(options.report ?? reportWith([{ status: "failed" }]));
+          writeFileSync(reportPath, body);
+        }
+        return options.retry ?? { exitCode: 1, stdout: "", stderr: "still failing" };
+      }
+      if (cmd === "npx" && args[0] === "playwright") {
+        const at = args.indexOf("--output");
+        if (at >= 0) {
+          const dir = args[at + 1];
+          mkdirSync(dir, { recursive: true });
+          if (options.writeLastRun !== false) {
+            writeFileSync(
+              join(dir, ".last-run.json"),
+              JSON.stringify({ failedTests: options.failedIds ?? ["t1"] }),
+            );
+          }
+        }
+        return options.first ?? { exitCode: 1, stdout: "", stderr: "boom" };
+      }
+      if (cmd === "openspec" && args[0] === "list") return CHANGES(["demo"]);
+      return OK;
+    };
+    (exec as unknown as { calls: string[] }).calls = calls;
+    return exec;
+  }
+
+  it("merges env instead of replacing the process environment", () => {
+    const res = defaultExecutor(
+      process.execPath,
+      [
+        "-e",
+        "process.stdout.write((process.env.PW_TEST_ENV ?? '') + String(!!process.env.PATH))",
+      ],
+      { cwd: root, timeoutMs: 10_000, env: { PW_TEST_ENV: "ok" } },
+    );
+    expect(res.failure).toBeUndefined();
+    expect(res.stdout).toBe("oktrue");
+  });
+
+  it("rejects invalid repeat counts and strict-flake without repeat", async () => {
+    for (const options of [
+      { repeat: "0" },
+      { repeat: "-1" },
+      { repeat: "abc" },
+      { strictFlake: true },
+    ]) {
+      const exec = flakeExec();
+      const code = await gate(
+        "demo",
+        { only: "e2e", ...options },
+        { cwd: root, exec, out: () => {} },
+      );
+      expect(code).toBe(2);
+      expect(callsOf(exec)).toHaveLength(0);
+    }
+  });
+
+  it("does not rerun when the first run passes", async () => {
+    const exec = flakeExec({ first: OK });
+    const lines = capture();
+    const code = await gate(
+      "demo",
+      { only: "e2e", repeat: "2", json: true },
+      { cwd: root, exec, out: lines.out },
+    );
+    expect(code).toBe(0);
+    expect(callsOf(exec).some((c) => c.includes("--last-failed"))).toBe(false);
+    const report = JSON.parse(lines.lines.join("\n"));
+    expect(report.flaky).toBeUndefined();
+    expect(report.flakeRunDir.startsWith(join(root, "tmp"))).toBe(true);
+  });
+
+  it("reports a first-attempt pass on rerun as flaky and exits 0", async () => {
+    const exec = flakeExec({ report: reportWith([{ status: "passed" }]) });
+    const lines = capture();
+    const code = await gate(
+      "demo",
+      { only: "e2e", repeat: "2", json: true },
+      { cwd: root, exec, out: lines.out },
+    );
+    expect(code).toBe(0);
+    const report = JSON.parse(lines.lines.join("\n"));
+    expect(report.checks.find((c: { name: string }) => c.name === "e2e").status).toBe("pass");
+    expect(report.flaky).toEqual([
+      {
+        title: "one",
+        file: "tests/playwright/changes/demo/demo.spec.ts",
+        passed: 1,
+        failed: 0,
+      },
+    ]);
+    const calls = callsOf(exec);
+    const firstCall = calls.find((c) => c.startsWith("npx playwright test"));
+    expect(firstCall).toContain("--output");
+    expect(firstCall?.endsWith("first")).toBe(true);
+    const retryCall = calls.find((c) => c.includes("--last-failed"));
+    expect(retryCall).toContain("--last-failed-file");
+    expect(retryCall).toContain("--retries 2");
+    expect(retryCall).toContain("--reporter=json");
+    expect(retryCall).toContain("--trace=on");
+    expect(existsSync(join(report.flakeRunDir, "retry", "last-run-input.json"))).toBe(true);
+  });
+
+  it("lists flaky tests in the human verdict", async () => {
+    const exec = flakeExec({ report: reportWith([{ status: "passed" }]) });
+    const lines = capture();
+    await gate("demo", { only: "e2e", repeat: "2" }, { cwd: root, exec, out: lines.out });
+    const text = lines.lines.join("\n");
+    expect(text).toContain("Flaky E2E tests");
+    expect(text).toContain("1 pass / 0 fail");
+  });
+
+  it("gives each run its own artifact directory", async () => {
+    const dirs: string[] = [];
+    for (let i = 0; i < 2; i++) {
+      const exec = flakeExec({ first: OK });
+      const lines = capture();
+      await gate(
+        "demo",
+        { only: "e2e", repeat: "2", json: true },
+        { cwd: root, exec, out: lines.out },
+      );
+      dirs.push(JSON.parse(lines.lines.join("\n")).flakeRunDir);
+    }
+    expect(dirs[0]).not.toBe(dirs[1]);
+  });
+
+  it("keeps the failed attempt's trace on a retry-recovered test", async () => {
+    const exec = flakeExec({
+      report: reportWith([
+        {
+          status: "failed",
+          attachments: [{ name: "trace", path: "/tmp/trace.zip" }],
+        },
+        { status: "passed" },
+      ]),
+    });
+    const lines = capture();
+    const code = await gate(
+      "demo",
+      { only: "e2e", repeat: "2", json: true },
+      { cwd: root, exec, out: lines.out },
+    );
+    expect(code).toBe(0);
+    const report = JSON.parse(lines.lines.join("\n"));
+    expect(report.flaky[0]).toMatchObject({ passed: 1, failed: 1, trace: "/tmp/trace.zip" });
+  });
+
+  it("turns flaky into a failure with --strict-flake", async () => {
+    const exec = flakeExec({ report: reportWith([{ status: "passed" }]) });
+    const lines = capture();
+    const code = await gate(
+      "demo",
+      { only: "e2e", repeat: "2", strictFlake: true, json: true },
+      { cwd: root, exec, out: lines.out },
+    );
+    expect(code).toBe(1);
+    const report = JSON.parse(lines.lines.join("\n"));
+    expect(report.checks.find((c: { name: string }) => c.name === "e2e").status).toBe("fail");
+  });
+
+  it("keeps real failures failing and lists no flaky tests", async () => {
+    const exec = flakeExec({
+      report: reportWith([{ status: "failed" }, { status: "failed" }]),
+    });
+    const lines = capture();
+    const code = await gate(
+      "demo",
+      { only: "e2e", repeat: "2", json: true },
+      { cwd: root, exec, out: lines.out },
+    );
+    expect(code).toBe(1);
+    const report = JSON.parse(lines.lines.join("\n"));
+    expect(report.flaky).toBeUndefined();
+    expect(report.checks.find((c: { name: string }) => c.name === "e2e").status).toBe("fail");
+  });
+
+  it("does not rerun without a failed-test list and keeps the red", async () => {
+    const exec = flakeExec({ writeLastRun: false });
+    const lines = capture();
+    const code = await gate(
+      "demo",
+      { only: "e2e", repeat: "2", json: true },
+      { cwd: root, exec, out: lines.out },
+    );
+    expect(code).toBe(1);
+    expect(callsOf(exec).some((c) => c.includes("--last-failed"))).toBe(false);
+    const report = JSON.parse(lines.lines.join("\n"));
+    expect(report.checks[0].reason).toContain("evidence unavailable");
+  });
+
+  it("treats a rerun that covers fewer tests than the failed list as evidence unavailable", async () => {
+    const exec = flakeExec({
+      failedIds: ["t1", "t2"],
+      report: reportWith([{ status: "passed" }]),
+    });
+    const lines = capture();
+    const code = await gate(
+      "demo",
+      { only: "e2e", repeat: "2", json: true },
+      { cwd: root, exec, out: lines.out },
+    );
+    expect(code).toBe(1);
+    const report = JSON.parse(lines.lines.join("\n"));
+    expect(report.checks[0].reason).toContain("evidence unavailable");
+  });
+
+  it("returns 2 when the rerun times out", async () => {
+    const exec = flakeExec({
+      retry: {
+        exitCode: null,
+        stdout: "",
+        stderr: "",
+        failure: { kind: "timeout", message: "timed out after 600s" },
+      },
+    });
+    const code = await gate(
+      "demo",
+      { only: "e2e", repeat: "2", json: true },
+      { cwd: root, exec, out: () => {} },
+    );
+    expect(code).toBe(2);
+  });
+
+  it("treats an unparsable report or fatal errors as evidence unavailable", async () => {
+    for (const exec of [
+      flakeExec({ rawReport: "" }),
+      flakeExec({ rawReport: "{not json" }),
+      flakeExec({ report: reportWith([{ status: "passed" }], [{}]) }),
+      flakeExec({ report: { suites: [{ specs: [] }] } }),
+    ]) {
+      const lines = capture();
+      const code = await gate(
+        "demo",
+        { only: "e2e", repeat: "2", json: true },
+        { cwd: root, exec, out: lines.out },
+      );
+      expect(code).toBe(1);
+      const report = JSON.parse(lines.lines.join("\n"));
+      expect(report.checks[0].reason).toContain("evidence unavailable");
+    }
+  });
+
+  it("leaves the plain E2E command untouched without --repeat", async () => {
+    const exec = makeExec();
+    const lines = capture();
+    const code = await gate(
+      "demo",
+      { only: "e2e", json: true },
+      { cwd: root, exec, out: lines.out },
+    );
+    expect(code).toBe(0);
+    // Windows builds the path with backslashes — compare separator-normalized.
+    expect(callsOf(exec).map((c) => c.replace(/\\/g, "/"))).toContain(
+      "npx playwright test tests/playwright/changes/demo",
+    );
+    expect(callsOf(exec).some((c) => c.includes("--output"))).toBe(false);
+    const report = JSON.parse(lines.lines.join("\n"));
+    expect(report.flakeRunDir).toBeUndefined();
+  });
+
+  it("falls back to the OS temp dir when tmp/ is not ignored", async () => {
+    rmSync(join(root, ".gitignore"));
+    const exec = flakeExec({ first: OK });
+    const lines = capture();
+    const code = await gate(
+      "demo",
+      { only: "e2e", repeat: "2", json: true },
+      { cwd: root, exec, out: lines.out },
+    );
+    expect(code).toBe(0);
+    const report = JSON.parse(lines.lines.join("\n"));
+    expect(report.flakeRunDir.startsWith(tmpdir())).toBe(true);
+    rmSync(report.flakeRunDir, { recursive: true, force: true });
+  });
+});
+
+describe("parsePlaywrightReport", () => {
+  it("classifies a first-attempt pass on rerun as flaky", () => {
+    const summary = parsePlaywrightReport(
+      JSON.stringify({
+        suites: [
+          {
+            specs: [
+              {
+                title: "one",
+                file: "a.spec.ts",
+                tests: [{ status: "expected", results: [{ status: "passed" }] }],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    expect("error" in summary).toBe(false);
+    if ("error" in summary) return;
+    expect(summary.flaky).toEqual([
+      { title: "one", file: "a.spec.ts", passed: 1, failed: 0, trace: undefined },
+    ]);
+    expect(summary.realFailures).toHaveLength(0);
+  });
+
+  it("classifies all-failed attempts as real failures", () => {
+    const summary = parsePlaywrightReport(
+      JSON.stringify({
+        suites: [
+          {
+            specs: [
+              {
+                title: "one",
+                tests: [
+                  { results: [{ status: "failed" }, { status: "timedOut" }] },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    expect("error" in summary).toBe(false);
+    if ("error" in summary) return;
+    expect(summary.flaky).toHaveLength(0);
+    expect(summary.realFailures).toEqual(["one"]);
+  });
+
+  it("treats an unexpected pass of a test.fail() as a real failure", () => {
+    const summary = parsePlaywrightReport(
+      JSON.stringify({
+        suites: [
+          {
+            specs: [
+              {
+                title: "one",
+                tests: [
+                  { expectedStatus: "failed", results: [{ status: "passed" }] },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    expect("error" in summary).toBe(false);
+    if ("error" in summary) return;
+    expect(summary.flaky).toHaveLength(0);
+    expect(summary.realFailures).toEqual(["one"]);
+  });
+
+  it("treats an expected failure on rerun as recovered, not a real failure", () => {
+    const summary = parsePlaywrightReport(
+      JSON.stringify({
+        suites: [
+          {
+            specs: [
+              {
+                title: "one",
+                tests: [
+                  { expectedStatus: "failed", results: [{ status: "failed" }] },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    expect("error" in summary).toBe(false);
+    if ("error" in summary) return;
+    expect(summary.flaky).toHaveLength(1);
+    expect(summary.realFailures).toHaveLength(0);
+  });
+
+  it("counts skipped tests separately from executed ones", () => {
+    const summary = parsePlaywrightReport(
+      JSON.stringify({
+        suites: [
+          {
+            specs: [
+              { title: "skipped", tests: [{ results: [{ status: "skipped" }] }] },
+              { title: "ran", tests: [{ results: [{ status: "passed" }] }] },
+            ],
+          },
+        ],
+      }),
+    );
+    expect("error" in summary).toBe(false);
+    if ("error" in summary) return;
+    expect(summary.skipped).toBe(1);
+    expect(summary.total).toBe(1);
+  });
+
+  it("rejects reports without suites", () => {
+    expect(parsePlaywrightReport("{}")).toEqual({ error: "report has no suites" });
+  });
+
+  it("reports malformed nested shapes as errors instead of throwing", () => {
+    const malformed = [
+      { suites: [null] },
+      { suites: [{ specs: {} }] },
+      { suites: [{ specs: [{ tests: {} }] }] },
+      { suites: [{ specs: [{ tests: [{ results: {} }] }] }] },
+      { suites: [{ specs: [{ tests: [{ results: [null] }] }] }] },
+      { suites: [{ specs: [{ tests: [{ results: [{ attachments: {} }] }] }] }] },
+      { suites: [{ suites: {} }] },
+    ];
+    for (const report of malformed) {
+      const summary = parsePlaywrightReport(JSON.stringify(report));
+      if (!("error" in summary)) {
+        throw new Error(`expected an error for ${JSON.stringify(report)}`);
+      }
+      expect(summary.error).toMatch(/^report has /);
+    }
   });
 });
 

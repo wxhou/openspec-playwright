@@ -18,6 +18,8 @@ import { join } from "path";
 import ignore from "ignore";
 import { normalizeEol } from "../commands/editors/agents.js";
 import { execFileSync } from "./exec.js";
+import { readTextFileCapped } from "./file-read.js";
+import { isPathInsideProjectRoot } from "./path-guard.js";
 /** Managed paths (user-decided artifacts/config + credentials + regenerable local data). */
 export const MANAGED_GITIGNORE_PATHS = [
     ".claude/",
@@ -71,7 +73,7 @@ export function skippableManagedPaths(omit = []) {
  * file is skipped — "not covered by that file's rules" — so detectors
  * built on this never throw while degrading an advisory.
  */
-function loadIgnoreRules(projectRoot) {
+export function loadIgnoreRules(projectRoot) {
     const ig = ignore();
     for (const ruleFile of [join(".git", "info", "exclude"), ".gitignore"]) {
         const abs = join(projectRoot, ruleFile);
@@ -112,7 +114,7 @@ function toLines(content) {
  * (before any other BEGIN) is an END. An orphan BEGIN followed by another
  * BEGIN means the pair is malformed — reported as absent (review F3:
  * a malformed pair must never swallow user lines between its markers,
- * on write or on uninstall). */
+ * on write or on remove). */
 function locateBlock(lines) {
     for (let b = 0; b < lines.length; b++) {
         if (lines[b].trim() !== GITIGNORE_BLOCK_BEGIN)
@@ -126,6 +128,14 @@ function locateBlock(lines) {
         }
     }
     return [-1, -1];
+}
+/**
+ * True when `content` holds a managed block removal would actually delete.
+ * Shared by the remove plan and discovery so neither promises a removal that
+ * `removeManagedBlock` skips as malformed.
+ */
+export function hasRemovableManagedBlock(content) {
+    return locateBlock(toLines(content))[0] !== -1;
 }
 /** Paths recorded on a skip line; `undefined` line → none. */
 function parseSkipLine(line) {
@@ -249,7 +259,7 @@ export function ensureGitignoreEntries(projectRoot, opts = {}) {
     return { changed: true, added, removed };
 }
 /**
- * Remove the managed block (uninstall). Block-external lines are preserved
+ * Remove the managed block (the `remove` command). Block-external lines are preserved
  * byte-for-byte — no blank-run collapsing, no leading/trailing whitespace
  * trims (review F5); the file's original trailing-newline state is kept.
  * A file left with no content at all is deleted. No well-formed block →
@@ -260,7 +270,23 @@ export function removeManagedBlock(projectRoot) {
     const gitignorePath = join(projectRoot, ".gitignore");
     if (!existsSync(gitignorePath))
         return { removed: false, fileDeleted: false };
-    const raw = readFileSync(gitignorePath, "utf-8");
+    // A symlinked .gitignore (dotfiles checkout) resolves outside the project:
+    // rewriting it would edit a file the project does not own.
+    if (!isPathInsideProjectRoot(projectRoot, gitignorePath)) {
+        return { removed: false, fileDeleted: false };
+    }
+    const read = readTextFileCapped(gitignorePath);
+    if (read.kind === "missing")
+        return { removed: false, fileDeleted: false };
+    if (read.kind === "too-large") {
+        return { removed: false, fileDeleted: false, tooLarge: true };
+    }
+    if (read.kind === "unreadable") {
+        throw new Error(`cannot read ${gitignorePath} to remove the managed block`, {
+            cause: read.error,
+        });
+    }
+    const raw = read.content;
     const hadTrailingNewline = raw.endsWith("\n");
     const body = hadTrailingNewline ? raw.slice(0, -1) : raw;
     const lines = toLines(body);

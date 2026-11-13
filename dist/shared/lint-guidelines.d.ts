@@ -27,10 +27,11 @@ export declare function computeChecklistChecksum(body: string): string;
 export declare function isChecklistUnmodified(content: string): boolean;
 export type ChecklistDisposition = "created" | "unchanged" | "refreshed" | "kept-modified";
 /** Uninstall-side disposition for the checklist file. */
-export type ChecklistRemovalDisposition = "removed" | "kept-modified" | "absent";
+export type ChecklistRemovalDisposition = "removed" | "kept-modified" | "kept-unsafe" | "kept-too-large" | "absent";
 /**
  * Uninstall the checklist: tool-owned (checksum intact) → remove;
- * user-modified → keep and report; missing → nothing to do.
+ * user-modified → keep and report; missing → nothing to do. A path that
+ * resolves outside the project (symlinked parent or file) is never touched.
  */
 export declare function removeChecklist(projectRoot: string): ChecklistRemovalDisposition;
 /**
@@ -113,3 +114,38 @@ export interface LintConfigResult {
  * managed block, and never outside the project directory.
  */
 export declare function installLintConfig(projectRoot: string): LintConfigResult[];
+/** Deterministic body of the generated `eslint.config.mjs` (three shapes, version-free). */
+export declare function buildGeneratedEslintConfig(tsParser: {
+    importLine: string;
+    parserExpr: string;
+} | null): string;
+/** All tool-generatable eslint config bodies, for ownership comparison at removal time. */
+export declare function generatedEslintConfigVariants(): string[];
+/** True when the content is byte-identical (EOL-normalized) to a tool-generated shape. */
+export declare function isToolGeneratedEslintConfig(content: string): boolean;
+export type EslintConfigRemovalStatus = "removed" | "kept-modified" | "kept-unsafe" | "kept-too-large" | "not-generated" | "absent";
+/** Remove the generated `eslint.config.mjs` when it is still tool-owned; never touches user files. */
+export declare function removeGeneratedEslintConfig(projectRoot: string): {
+    status: EslintConfigRemovalStatus;
+    file: string;
+};
+/**
+ * Remove the ruff managed block from `pyproject.toml` / `.ruff.toml` / `ruff.toml`.
+ * Bytes outside the block are preserved verbatim; a file left empty by the
+ * removal (tool-created `ruff.toml` holding only the block) is deleted.
+ */
+export type RuffBlockRemovalStatus = "removed" | "kept-modified" | "kept-unsafe" | "kept-too-large" | "unreadable";
+/** True when the file's managed block is exactly what install writes (owned). */
+export declare function isToolOwnedRuffBlock(content: string): boolean;
+/**
+ * Remove the ruff managed block from `pyproject.toml` / `.ruff.toml` / `ruff.toml`.
+ *
+ * Ownership matches install: only the exact block `buildRuffManagedBlock`
+ * writes is deleted. A block the user edited is kept and reported — install
+ * already refuses to overwrite it, so deleting it here would lose their edit.
+ */
+export declare function removeRuffManagedBlock(projectRoot: string, onRemoved?: (file: string) => void): {
+    file: string;
+    status: RuffBlockRemovalStatus;
+    error?: unknown;
+}[];

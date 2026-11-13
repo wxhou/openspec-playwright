@@ -210,12 +210,12 @@ export async function update(options) {
                         console.log(chalk.gray(`  - ${adapter.label}: not configured in this project (run "openspec-pw init --tools ${adapter.id}" to add)`));
                         continue;
                     }
-                    if (isTestRunnerMcpInstalled(adapter)) {
+                    if (isTestRunnerMcpInstalled(adapter, projectRoot)) {
                         console.log(chalk.green(`  ✓ ${adapter.label}: Test-runner MCP already installed`));
                         continue;
                     }
                     try {
-                        ensureTestRunnerMcp(adapter);
+                        ensureTestRunnerMcp(adapter, projectRoot);
                         if (adapter.supportsMcp !== false) {
                             console.log(chalk.gray(`  (Restart ${adapter.label} to activate)`));
                         }
@@ -445,7 +445,7 @@ export function syncEmployeeStandards(tmpDir, projectRoot, claudeAuthorized, has
                 console.log(chalk.yellow("    This can happen when the official `openspec update` legacy cleanup removes"));
                 console.log(chalk.yellow("    blocks wrapped in plain OPENSPEC:START/END markers (shared namespace)."));
                 console.log(chalk.yellow('    Restore: run "openspec-pw init".'));
-                console.log(chalk.yellow('    If the removal was intentional, run "openspec-pw uninstall" to stop these warnings.'));
+                console.log(chalk.yellow('    If the removal was intentional, run "openspec-pw remove" to stop these warnings.'));
             }
             else {
                 console.log(chalk.gray('  - AGENTS.md has no OPENSPEC block — run "openspec-pw init" to install employee standards'));

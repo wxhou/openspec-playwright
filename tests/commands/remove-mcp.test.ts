@@ -15,12 +15,19 @@ vi.mock("fs", () => ({
   rmSync: vi.fn(),
   readdirSync: vi.fn(),
   rmdirSync: vi.fn(),
+  realpathSync: vi.fn((path: string) => path),
+  lstatSync: vi.fn(() => ({ isSymbolicLink: () => false })),
 }));
 
 import { execFileSync } from "../../src/shared/exec.js";
 import { existsSync, readFileSync } from "fs";
 import { claudeAdapter } from "../../src/commands/editors.js";
 import { removePlaywrightMcp } from "../../src/shared/mcp.js";
+
+// path-guard resolves the project root with the host platform's path rules;
+// on Windows a POSIX "/proj" resolves onto the current drive and would never
+// match the mocked realpath.
+const PROJ = process.platform === "win32" ? "C:\\proj" : "/proj";
 
 describe("removePlaywrightMcp", () => {
   const readFileSyncMock = vi.mocked(readFileSync);
@@ -39,7 +46,7 @@ describe("removePlaywrightMcp", () => {
     );
 
     const consoleSpy = vi.spyOn(console, "log");
-    removePlaywrightMcp(claudeAdapter);
+    removePlaywrightMcp(claudeAdapter, PROJ);
     expect(consoleSpy).toHaveBeenCalledWith("  ✓ claude: playwright MCP removed");
     consoleSpy.mockRestore();
 
@@ -56,7 +63,7 @@ describe("removePlaywrightMcp", () => {
     });
 
     const consoleSpy = vi.spyOn(console, "log");
-    removePlaywrightMcp(claudeAdapter);
+    removePlaywrightMcp(claudeAdapter, PROJ);
     expect(consoleSpy).toHaveBeenCalledWith("  - claude: playwright MCP not installed (nothing to remove)");
     consoleSpy.mockRestore();
     expect(execFileSync).not.toHaveBeenCalled();
@@ -71,7 +78,7 @@ describe("removePlaywrightMcp", () => {
     });
 
     const consoleSpy = vi.spyOn(console, "warn");
-    removePlaywrightMcp(claudeAdapter);
+    removePlaywrightMcp(claudeAdapter, PROJ);
     expect(consoleSpy).toHaveBeenCalledWith("  ⚠ claude: failed to remove playwright MCP");
     consoleSpy.mockRestore();
   });
@@ -106,7 +113,7 @@ describe("removeTestRunnerMcp", () => {
     );
 
     const consoleSpy = vi.spyOn(console, "log");
-    removeTestRunnerMcp(claudeAdapter);
+    removeTestRunnerMcp(claudeAdapter, PROJ);
     expect(consoleSpy).toHaveBeenCalledWith(
       "  ✓ claude: playwright-test MCP removed",
     );
@@ -125,7 +132,7 @@ describe("removeTestRunnerMcp", () => {
     );
 
     const consoleSpy = vi.spyOn(console, "log");
-    removeTestRunnerMcp(claudeAdapter);
+    removeTestRunnerMcp(claudeAdapter, PROJ);
     expect(consoleSpy).toHaveBeenCalledWith(
       "  - claude: playwright-test MCP not installed (nothing to remove)",
     );

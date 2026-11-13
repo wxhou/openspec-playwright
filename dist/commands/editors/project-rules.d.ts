@@ -84,15 +84,41 @@ export declare function installCodebuddyWrapper(projectRoot: string): void;
  * wrapper needed.
  */
 export declare function installProjectRules(projectRoot: string, standardsContent: string, detected: EditorAdapter[]): void;
-/** Remove all OpenSpec marker blocks from AGENTS.md (always) and the adapter's wrapper file (claude/codebuddy). */
-export declare function cleanProjectRules(adapter: EditorAdapter, projectRoot: string): void;
+/**
+ * Remove all OpenSpec marker blocks from AGENTS.md (always) and the adapter's
+ * wrapper file (claude/codebuddy). Returns whether any file changed.
+ * `onChanged` fires after each successful file change, so a caller tracking
+ * progress for batch accounting knows about the first write even when a later
+ * file fails.
+ */
+export declare function cleanProjectRules(adapter: EditorAdapter, projectRoot: string, options?: {
+    agents?: boolean;
+    onChanged?: () => void;
+}): boolean;
+/** True when a wrapper file is a symlink resolving to this project's AGENTS.md. */
+export declare function wrapperLinksToAgents(projectRoot: string, adapter: EditorAdapter): boolean;
 /**
  * Remove openspec-pw marker blocks (both namespaces) from a single file,
- * deleting the file entirely when it empties out. Exported for the init
- * deselect-removal flow (CLAUDE.md wrapper cleanup); cleanProjectRules
- * wraps it for the uninstall context.
+ * deleting the file entirely when it empties out. `pristineBody`, when given,
+ * is the block body the tool writes on creation: a file matching that exact
+ * generated form is deleted whole rather than left as a title-only shell.
+ * Exported for the init deselect-removal flow (CLAUDE.md wrapper cleanup);
+ * cleanProjectRules wraps it for the remove command's context.
  */
-export declare function removeMarkersFromFile(dest: string, fileLabel: string): void;
+export declare function removeMarkersFromFile(dest: string, fileLabel: string, pristineBody?: string): boolean;
+/**
+ * True when `content` holds a marker block removals may clear: our
+ * OPENSPEC-PW block, or a legacy OPENSPEC: block carrying our signature.
+ * Official openspec blocks are not territory. Shared by the remove command's
+ * dry-run plan so it lists only what execution would really delete.
+ */
+export declare function hasCleanableMarkers(content: string): boolean;
+/**
+ * True when the project's AGENTS.md carries a marker block removal would
+ * clear. Init's deselect confirmation list uses this so an unclosed marker or
+ * a symlinked file is not listed as "will be removed".
+ */
+export declare function agentsFileHasCleanableMarkers(projectRoot: string): boolean;
 /** Read the employee-grade standards source file (empty string if missing). */
 export declare function readEmployeeStandards(srcPath: string): string;
 /** Our content signatures inside legacy blocks — an official legacy init
@@ -110,7 +136,7 @@ export declare const LEGACY_MAIN_SIGNATURE = "Employee-Grade Standards";
  * Migrate legacy OPENSPEC markers in AGENTS.md (and CLAUDE.md wrapper) to the
  * OPENSPEC-PW namespace. Gates:
  *   - hasPwArtifacts: without openspec-pw command artifacts the legacy block
- *     is an official relic, not our territory — untouched (uninstall removes it).
+ *     is an official relic, not our territory — untouched (remove cleans it).
  *   - claudeAuthorized: the CLAUDE.md wrapper is only touched for claude.
  *   - signature: block content must match ours (see signatures above).
  * Returns true when any file was migrated.
@@ -126,4 +152,4 @@ export declare function migrateLegacyMarkers(projectRoot: string, hasPwArtifacts
  * block proves the project is ours (design D5 / init-minimal-mode).
  * Enumerates AGENTS.md plus every registered editor's wrapper file.
  */
-export declare function hasRuleFileMarkers(projectRoot: string): boolean;
+export declare function hasRuleFileMarkers(projectRoot: string, maxBytes?: number): boolean;

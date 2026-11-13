@@ -186,7 +186,7 @@ describe("syncEmployeeStandards", () => {
     expect(logText()).toContain("⚠ AGENTS.md has no OPENSPEC-PW block");
     expect(logText()).toContain("openspec update` legacy cleanup");
     expect(logText()).toContain('Restore: run "openspec-pw init"');
-    expect(logText()).toContain("openspec-pw uninstall");
+    expect(logText()).toContain("openspec-pw remove");
     expect(installOpenSpecBlockMock).not.toHaveBeenCalled();
     expect(installClaudeWrapperMock).not.toHaveBeenCalled();
   });

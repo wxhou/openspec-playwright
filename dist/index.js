@@ -79,13 +79,23 @@ program
     await checkForUpdate(pkg.version);
 });
 program
-    .command("uninstall")
-    .description("Remove OpenSpec + Playwright E2E integration from the current project")
-    .action(async () => {
-    const { uninstall } = await import("./commands/uninstall.js");
+    .command("remove")
+    .description("Remove OpenSpec + Playwright E2E integration (current project, or every project with --all)")
+    .option("--all", "Discover projects on this machine and print the removal plan (dry run)")
+    .option("--yes", "With --all: actually remove (without it, --all only prints the plan)")
+    .option("--root <dir>", "With --all: scan root (repeatable; replaces the default home scan)", (value, previous = []) => [...previous, value], [])
+    .action(async (opts) => {
+    const { removeOptionError, removeSingle, runRemoveAll } = await import("./commands/remove.js");
+    const usageError = removeOptionError(opts);
+    if (usageError) {
+        console.error(`  ${usageError}`);
+        process.exitCode = 2;
+        return;
+    }
+    const code = opts.all ? await runRemoveAll(opts) : await removeSingle();
     const { checkForUpdate } = await import("./shared/version-check.js");
-    await uninstall();
     await checkForUpdate(pkg.version);
+    process.exitCode = code;
 });
 program
     .command("audit")
@@ -129,6 +139,8 @@ program
     .option("--only <checks>", "Comma-separated checks to run (validate,lint,typecheck,test,flake,e2e,coverage,audit)")
     .option("--skip <checks>", "Comma-separated checks to skip")
     .option("--coverage-min <pct>", "Coverage threshold; without it the coverage check reports skipped")
+    .option("--repeat <n>", "Rerun failed E2E tests up to N times to tell flaky tests from real failures")
+    .option("--strict-flake", "Treat flaky E2E tests as failures (requires --repeat)")
     .option("--hook", "Stop-hook mode: read the Claude Code payload from stdin, block with exit 2, cache by working-tree fingerprint")
     .action(async (changeName, opts) => {
     const { gate } = await import("./commands/gate.js");

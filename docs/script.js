@@ -54,7 +54,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🟡 引用作依据的文件先通读再断言；未通读就下的结论显式标注低置信，不冒充已充分验证
 - 🟡 重命名/挪动覆盖：调用、类型、字符串、import（含 CJS require）、barrel file、测试 mock、文档与配置中的同名引用，不得假设一次覆盖；抽出/搬移到其他文件时其 import 随迁；静态模块级 import 一律置文件顶部——豁免仅限：循环依赖、可选依赖、按需加载、运行顺序依赖（如 django.setup()），例外须行内注明缘由
 - 🟡 编辑 → 重新读取确认 → lint+typecheck（含 auto-fix 循环）→ 仍失败则回退到编辑前内容，输出失败日志并明示已回退
-- 🟡 变更完成只报确实存在的盲点（实际触及却未验证的部分，如没跑过 gate 的改动），不报猜测的风险清单
+- 🟡 变更完成只报确实存在的盲点（实际触及却未验证的部分，如没跑过 gate 的改动），不报猜测的风险清单；改动清单以实际 diff 为准，不凭记忆归纳
 - 🔴 禁止用经 shell 就地或重定向改写已有文件的命令（\`sed -i\`/awk/\`node -e\`/python -c/\`perl -pi\`/重定向等；不改文件内容的纯管道查询不计）改写项目内已有文件——源码/文档/测试/配置同算；确需批量改写，先征得用户同意
 - 🔴 破坏性/不可逆命令（\`git clean -fdx\`、\`git reset --hard\`、\`rm -rf\` 等）执行前声明影响范围并取得明确同意；本任务自有临时产物清理除外；「清理/重置」等宽泛指令不构成授权
 - 🟡 不主动推送，除非用户明确要求
@@ -64,6 +64,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 ## 大规模任务
 - 🔴 跨多个文件的代码修改（纯文档、注释、格式除外），或架构级变更（如新增服务/API 契约/数据模型重构，非穷举）必须走 OpenSpec 提案流程，禁止直接修改；命中 → 停下建议用户运行该流程（行数不作触发依据）
 - 🟡 执行中发现走偏（方案不成立、前提变化、验证反复失败）或转场检查不通过（失败、需求歧义、写入超出声明范围）→ 立即停下重新评估并汇报；同一会话的「继续」从停下阶段续跑，跨会话需重新表达完成意图；修复预算按同一失败最多 2 轮（不同失败分别计；连续 3 轮修复失败项未减少即停；e2e heal 用模板自身预算）
+- 🟡 用户已请求的工作完成前不得自行收尾——普通障碍（报错、超时、空结果）先诊断，能用现有权限处理就继续，不要把剩余工作列成清单后等用户开口；需求或方案不清先问；刻意阻断（禁改文件、撤回的访问、安全护栏）照实说明并另找安全路径；修复预算、走偏、授权与高风险确认不变。
 
 ## 工作流参考
 - 🔴 提案范围须用户确认，AI 不得自行确认；commit/push/merge/release/archive 须用户授权，一次授权只覆盖明确指定的动作，未授权动作不得自行执行
@@ -176,7 +177,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🟡 Read every file you cite as evidence end-to-end before asserting; conclusions drawn from partial reads are marked low-confidence explicitly, never presented as verified
 - 🟡 Renaming/moving must cover: calls, types, strings, imports (incl. CJS require), barrel files, test mocks, plus same-name references in docs/config — don't assume one pass covers everything; when code moves to another file its imports migrate with it; static module-level imports always sit at the file top — exemptions only for: circular deps, optional deps, on-demand loading, runtime-order deps (e.g. django.setup()), annotated inline with its reason
 - 🟡 Edit → re-read to confirm → lint+typecheck (incl. its auto-fix loop) → if still failing, roll back to pre-edit content, output the failure log, and state the rollback explicitly
-- 🟡 After changes, report only blind spots that actually exist (parts actually touched but not verified, e.g. edits without a gate run), never a speculative risk list
+- 🟡 After changes, report only blind spots that actually exist (parts actually touched but not verified, e.g. edits without a gate run), never a speculative risk list; report the change list from the actual diff, never from memory
 - 🔴 No shell in-place/redirect rewriting of existing files (\`sed -i\`, awk, \`node -e\`, python -c, \`perl -pi\`, output redirection; plain query pipelines that don't write are fine) — source, docs, tests, config all count; for bulk rewrites, get user consent first
 - 🔴 Destructive/irreversible commands (\`git clean -fdx\`, \`git reset --hard\`, \`rm -rf\`, etc.): state the blast radius and get explicit consent before running; cleanup of this task's own temp artifacts is exempt; a vague "clean up" or "reset" is not authorization
 - 🟡 No push unless explicitly requested
@@ -186,6 +187,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 ## Large-Scale Tasks
 - 🔴 Code changes across multiple files (docs, comments and formatting excepted), or architecture changes (e.g. new services/API contracts/data model refactors — not exhaustive) must go through the OpenSpec proposal flow, no direct edits; on a hit, stop and suggest the user run that flow (line count is not a trigger)
 - 🟡 If execution goes off track (plan untenable, premises changed, verification repeatedly failing) or a transition check fails (failure, ambiguity, out-of-scope writes), stop immediately, re-evaluate, and report; "continue" in the same session resumes from the stopped phase, while a new session requires renewed completion intent; repair budget is at most 2 rounds per identical failure (different failures count separately; stop after 3 consecutive rounds with no reduction in failing items; e2e heals use the template's own budget)
+- 🟡 Do not wrap up before the work the user requested is done — diagnose ordinary obstacles (errors, timeouts, empty results) and continue with the access you have; do not list what remains and wait for the user to speak. Ask first when the requirement or approach is unclear. For a deliberate blocker (a file marked not to be touched, access deliberately withheld, a safety guardrail), say plainly what you found and look for another safe way. The repair budget, off-track stop, authorization and high-risk confirmation rules are unchanged.
 
 ## Workflow Reference
 - 🔴 Proposal scope is confirmed by the user, never self-confirmed; commit/push/merge/release/archive require user authorization, and one authorization covers only the explicitly specified action; unauthorized actions must never be performed

@@ -26,7 +26,7 @@ vi.mock("../src/shared/exec.js", () => ({
 }));
 
 import { init } from "../src/commands/init.js";
-import { uninstall } from "../src/commands/uninstall.js";
+import { removeInProject } from "../src/commands/remove.js";
 import { doctor, isOptionalCheck } from "../src/commands/doctor.js";
 import {
   claudeAdapter,
@@ -406,7 +406,7 @@ describe("deselection removal with agents", () => {
   });
 });
 
-describe("uninstall with agents", () => {
+describe("remove with agents", () => {
   let tmpRoot: string;
   let cwdSpy: ReturnType<typeof vi.spyOn>;
 
@@ -427,9 +427,19 @@ describe("uninstall with agents", () => {
     const plannerRel = AGENT_RELS[0];
     writeFileSync(join(tmpRoot, plannerRel), "# my custom planner");
 
-    await uninstall();
+    await removeInProject(tmpRoot);
 
     expect(existsSync(join(tmpRoot, plannerRel))).toBe(true);
+  });
+
+  it("deletes an untouched owned agent", async () => {
+    installOptionalArtifacts(claudeAdapter, tmpRoot, true);
+    const plannerRel = AGENT_RELS[0];
+    expect(existsSync(join(tmpRoot, plannerRel))).toBe(true);
+
+    await removeInProject(tmpRoot);
+
+    expect(existsSync(join(tmpRoot, plannerRel))).toBe(false);
   });
 });
 

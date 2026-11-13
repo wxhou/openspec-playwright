@@ -16,18 +16,19 @@
  * These artifacts deliberately stay OUT of listCommandArtifactPaths: they
  * never confer configured status, pre-selection, or write authorization.
  * Removal happens only through the agents-aware primitives in removal.ts,
- * called from init's deselection flow and uninstall.
+ * called from init's deselection flow and remove.
  */
 import { createHash } from "crypto";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
+import { readTextFileCapped } from "../../shared/file-read.js";
 export const VENDORED_AGENT_ROLES = ["planner"];
 /**
  * Roles we used to vendor and no longer ship. Their hashes live in
  * manifest.json historicalHashes so older installs' clean copies still
- * classify as tool-owned (removable on uninstall/deselect) — the paths are
+ * classify as tool-owned (removable on remove/deselect) — the paths are
  * derived from the manifest, never installed or refreshed.
  */
 export const RETIRED_AGENT_ROLES = ["generator", "healer"];
@@ -40,6 +41,13 @@ function retiredAgentRelPath(role) {
 }
 export function vendoredAgentRelPaths() {
     return VENDORED_AGENT_ROLES.map(vendoredAgentRelPath);
+}
+/** Every project-relative agent path this tool has ever installed. */
+export function knownAgentRelPaths() {
+    return [
+        ...VENDORED_AGENT_ROLES.map(vendoredAgentRelPath),
+        ...RETIRED_AGENT_ROLES.map(retiredAgentRelPath),
+    ];
 }
 /** Directory of the installed package's agents templates (dist-relative). */
 export function installedAgentsSnapshotDir() {
@@ -100,7 +108,12 @@ export function classifyAgentFile(projectRoot, relPath, snapshotContents, manife
     const abs = join(projectRoot, relPath);
     if (!existsSync(abs))
         return "missing";
-    const existing = readFileSync(abs, "utf-8");
+    const read = readTextFileCapped(abs);
+    // Unreadable or oversized content cannot be a known snapshot: report it as
+    // user-owned so removal/refresh never guesses (§7 bounded read).
+    if (read.kind !== "ok")
+        return "modified";
+    const existing = read.content;
     if (snapshotContents && normalizeEol(existing) === normalizeEol(snapshotContents)) {
         return "owned";
     }
@@ -108,7 +121,7 @@ export function classifyAgentFile(projectRoot, relPath, snapshotContents, manife
     if (!role)
         return "modified";
     // Retired roles have no live snapshot — only the historical chain decides.
-    // Their clean copies stay tool-owned so uninstall/deselect can reclaim them;
+    // Their clean copies stay tool-owned so remove/deselect can reclaim them;
     // edited copies are user-owned and never touched.
     if (manifest.historicalHashes?.[role]?.includes(sha256Contents(existing))) {
         return "owned";
@@ -182,7 +195,7 @@ export function syncVendoredAgents(dir, projectRoot, claudeAuthorized) {
     for (const role of RETIRED_AGENT_ROLES) {
         const relPath = retiredAgentRelPath(role);
         if (inventory.owned.includes(relPath)) {
-            console.log(chalk.gray(`  - claude: ${relPath} is retired (no longer installed by --agents) — run "openspec-pw uninstall" to remove it`));
+            console.log(chalk.gray(`  - claude: ${relPath} is retired (no longer installed by --agents) — run "openspec-pw remove" to remove it`));
         }
     }
 }

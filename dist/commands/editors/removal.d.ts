@@ -3,12 +3,12 @@ import { CLAUDE_LEGACY_SKILL_REL } from "./shared.js";
 /**
  * The Playwright MCP servers openspec-pw manages. `playwright-test` is the
  * official test-runner server installed today; `playwright` is the legacy
- * @playwright/mcp entry older versions wrote (uninstall removes both).
+ * @playwright/mcp entry older versions wrote (the remove command deletes both).
  * Literals here rather than importing shared/mcp.ts, which imports the
  * editors facade that re-exports this module (import cycle).
  */
 export declare const OPENSPEC_PW_MCP_SERVERS: readonly ["playwright-test", "playwright"];
-/** Re-exported for uninstall's fixed historical cleanup and the facade. */
+/** Re-exported for the remove command's fixed historical cleanup and the facade. */
 export { CLAUDE_LEGACY_SKILL_REL };
 export interface AdapterArtifactInventory {
     /** Existing openspec-pw command/skill artifact paths (project-relative). */
@@ -55,13 +55,13 @@ export declare function isInventoryEmpty(inv: AdapterArtifactInventory): boolean
  */
 export declare function removeAdapterMcp(adapter: EditorAdapter, projectRoot: string, servers: readonly string[], retainedFiles?: ReadonlySet<string>): void;
 /** Delete one editor's openspec-pw command/skill files. Returns the removed project-relative paths. */
-export declare function removeAdapterCommandArtifacts(adapter: EditorAdapter, projectRoot: string): string[];
+export declare function removeAdapterCommandArtifacts(adapter: EditorAdapter, projectRoot: string, onRemoved?: (relPath: string) => void): string[];
 /**
  * Remove the tool-owned vendored Playwright agent files (claude; init
- * deselection + uninstall). User-owned files are never deleted — each is
+ * deselection + remove). User-owned files are never deleted — each is
  * reported as kept-modified. Returns the removed project-relative paths.
  */
-export declare function removeOwnedVendoredAgents(projectRoot: string, adapter: EditorAdapter): string[];
+export declare function removeOwnedVendoredAgents(projectRoot: string, adapter: EditorAdapter, onRemoved?: (relPath: string) => void): string[];
 /**
  * Delete one legacy artifact directory declared by the adapter. Returns the
  * removed project-relative path, or null when it does not exist.
@@ -75,7 +75,7 @@ export declare function removeLegacyArtifact(adapter: EditorAdapter, projectRoot
  */
 export declare function removeWrapper(adapter: EditorAdapter, projectRoot: string): string | null;
 /**
- * Delete empty directories up to (not including) `stopAt`. Moved here from
- * uninstall.ts so both the section loop and the per-editor removals share it.
+ * Delete empty directories up to (not including) `stopAt`. Shared by the
+ * section loop and the per-editor removals.
  */
 export declare function cleanupEmptyDirs(dir: string, stopAt: string): void;

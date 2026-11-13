@@ -5,7 +5,7 @@ import { isMcpInstalled } from "./mcp.js";
 import { execFileSync } from "./exec.js";
 
 /**
- * Shared CodeGraph detection driving doctor / init / update / uninstall.
+ * Shared CodeGraph detection driving doctor / init / update / remove.
  *
  * - CLI presence on PATH (`which`/`where codegraph`, moved here from init.ts)
  * - project has a `.codegraph/` index
@@ -36,7 +36,7 @@ export function detectCodeGraphStatus(
   }
 
   const mcpInstalledAdapters = detectAdapters(projectRoot, homeDir)
-    .filter((adapter) => isMcpInstalled(adapter, CODEGRAPH_MCP_SERVER))
+    .filter((adapter) => isMcpInstalled(adapter, projectRoot, CODEGRAPH_MCP_SERVER))
     .map((adapter) => adapter.label);
 
   return {

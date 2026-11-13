@@ -40,6 +40,14 @@ export declare function installStopHook(projectRoot: string, tier: HookTier): {
 } | {
     error: string;
 };
+/** True when the project carries our Stop hook — the detection predicate. */
+export declare function isStopHookInstalled(projectRoot: string): boolean;
+/**
+ * True when the hook is installed and its settings file is inside the project.
+ * The remove plan uses this so it does not promise a removal that the write
+ * guard will refuse (a symlinked `.claude/` checkout).
+ */
+export declare function isStopHookRemovable(projectRoot: string): boolean;
 export declare function uninstallStopHook(projectRoot: string): {
     path: string;
     removed: boolean;

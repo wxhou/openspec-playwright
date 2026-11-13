@@ -1,7 +1,7 @@
 /**
  * Compiles a declarative `AdapterDeclaration` into the runtime
  * `EditorAdapter` surface. Keeping the runtime interface stable means every
- * consumer (registry, shared/mcp, init/update/doctor/uninstall) is untouched
+ * consumer (registry, shared/mcp, init/update/doctor/remove) is untouched
  * by the contract refactor — only the declaration sites change.
  */
 import { existsSync, readdirSync } from "fs";

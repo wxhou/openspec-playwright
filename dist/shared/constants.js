@@ -1,6 +1,9 @@
 /**
  * Shared constants for openspec-playwright CLI.
  */
+import { join } from "path";
+/** Generated CI workflow (init --ci); tool-owned by content. */
+export const GITHUB_WORKFLOW_REL = join(".github", "workflows", "openspec-pw.yml");
 /** Template files that ship with the package (not user specs). */
 export const SHARED_FILE_NAMES = new Set([
     "seed.spec.ts",
