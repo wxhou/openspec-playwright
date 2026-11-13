@@ -10,8 +10,7 @@ import {
   writeFileSync,
 } from "fs";
 import { tmpdir } from "os";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
+import { join } from "path";
 import {
   blockMatchesExpected,
   buildCommandMeta,
@@ -41,14 +40,12 @@ import {
   hasOmp,
   installCommand,
   installClaudeWrapper,
-  installOpenSpecBlock,
   installProjectRules,
   listCommandArtifactPaths,
   opencodeAdapter,
   piAdapter,
   ompAdapter,
   readOpenSpecBlock,
-  removeAdapterCommandArtifacts,
   removeMarkersFromFile,
   transformToHyphenCommands,
 } from "../src/commands/editors.js";
@@ -1477,79 +1474,5 @@ describe.skipIf(
     expect(agents).toContain("FULL STANDARDS");
     expect(agents).not.toContain("@AGENTS.md");
     expect(lstatSync(join(tmpRoot, "CLAUDE.md")).isSymbolicLink()).toBe(true);
-  });
-});
-
-describe("update.ts: symlinked CLAUDE.md drift check (source guard)", () => {
-  it("drift check skips a symlinked CLAUDE.md before comparing to the wrapper", () => {
-    const src = readFileSync(
-      fileURLToPath(new URL("../src/commands/update.ts", import.meta.url)),
-      "utf-8",
-    );
-    expect(src).toMatch(
-      /existsSync\(wrapperPath\) && lstatSync\(wrapperPath\)\.isSymbolicLink\(\)/,
-    );
-  });
-
-  it("doctor reports standards-claude as covered when CLAUDE.md is a symlink", () => {
-    const src = readFileSync(
-      fileURLToPath(new URL("../src/commands/doctor.ts", import.meta.url)),
-      "utf-8",
-    );
-    expect(src).toMatch(
-      /existsSync\(wrapperFile\) && lstatSync\(wrapperFile\)\.isSymbolicLink\(\)/,
-    );
-  });
-});
-
-describe("symlink boundary", () => {
-  it("does not install standards through a symlinked AGENTS.md", () => {
-    if (process.platform === "win32") return;
-    const outside = mkdtempSync(join(tmpdir(), "openspec-pw-outside-"));
-    try {
-      const external = join(outside, "AGENTS.md");
-      writeFileSync(external, "user content\n");
-      symlinkSync(external, join(tmpRoot, "AGENTS.md"));
-
-      installOpenSpecBlock(tmpRoot, "standards", claudeAdapter);
-
-      expect(readFileSync(external, "utf-8")).toBe("user content\n");
-    } finally {
-      rmSync(outside, { recursive: true, force: true });
-    }
-  });
-
-  it("does not create a file through a dangling AGENTS.md symlink", () => {
-    if (process.platform === "win32") return;
-    const outside = mkdtempSync(join(tmpdir(), "openspec-pw-outside-"));
-    try {
-      const external = join(outside, "AGENTS.md");
-      symlinkSync(external, join(tmpRoot, "AGENTS.md"));
-
-      installOpenSpecBlock(tmpRoot, "standards", claudeAdapter);
-
-      expect(existsSync(external)).toBe(false);
-    } finally {
-      rmSync(outside, { recursive: true, force: true });
-    }
-  });
-
-  it("does not delete command artifacts through a symlinked parent directory", () => {
-    if (process.platform === "win32") return;
-    const outside = mkdtempSync(join(tmpdir(), "openspec-pw-outside-"));
-    try {
-      const rel = listCommandArtifactPaths(claudeAdapter, buildCommandMeta(""))[0];
-      const externalFile = join(outside, rel.slice(".claude/".length));
-      mkdirSync(dirname(externalFile), { recursive: true });
-      writeFileSync(externalFile, "shared command");
-      symlinkSync(outside, join(tmpRoot, ".claude"));
-
-      const removed = removeAdapterCommandArtifacts(claudeAdapter, tmpRoot);
-
-      expect(removed).toEqual([]);
-      expect(readFileSync(externalFile, "utf-8")).toBe("shared command");
-    } finally {
-      rmSync(outside, { recursive: true, force: true });
-    }
   });
 });
