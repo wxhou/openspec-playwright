@@ -431,6 +431,16 @@ describe("remove with agents", () => {
 
     expect(existsSync(join(tmpRoot, plannerRel))).toBe(true);
   });
+
+  it("deletes an untouched owned agent", async () => {
+    installOptionalArtifacts(claudeAdapter, tmpRoot, true);
+    const plannerRel = AGENT_RELS[0];
+    expect(existsSync(join(tmpRoot, plannerRel))).toBe(true);
+
+    await removeInProject(tmpRoot);
+
+    expect(existsSync(join(tmpRoot, plannerRel))).toBe(false);
+  });
 });
 
 describe("syncVendoredAgents (update phase)", () => {

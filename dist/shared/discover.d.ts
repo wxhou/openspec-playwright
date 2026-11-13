@@ -27,3 +27,4 @@ export declare function hasOpenspecPwTerritory(projectRoot: string): boolean;
 export declare function discoverProjects(options?: DiscoverOptions): DiscoverResult;
 /** Default roots: home; on Windows, home plus every drive letter that exists. */
 export declare function defaultScanRoots(homeDir: string, platform: NodeJS.Platform, driveExists: (path: string) => boolean): string[];
+export declare function expandTilde(path: string, homeDir: string): string;

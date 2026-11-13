@@ -11,6 +11,7 @@ import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync, } from "n
 import { dirname, extname, join, sep } from "node:path";
 import { bundledTemplatePath } from "./drift.js";
 import { normalizeEol } from "../commands/editors/agents.js";
+import { isPathInsideProjectRoot } from "./path-guard.js";
 export const LINT_GUIDELINE_RULES = [
     {
         id: "no-empty",
@@ -166,12 +167,15 @@ export function isChecklistUnmodified(content) {
 }
 /**
  * Uninstall the checklist: tool-owned (checksum intact) → remove;
- * user-modified → keep and report; missing → nothing to do.
+ * user-modified → keep and report; missing → nothing to do. A path that
+ * resolves outside the project (symlinked parent or file) is never touched.
  */
 export function removeChecklist(projectRoot) {
     const dest = join(projectRoot, LINT_GUIDELINES_RELPATH);
     if (!existsSync(dest))
         return "absent";
+    if (!isPathInsideProjectRoot(projectRoot, dest))
+        return "kept-unsafe";
     if (isChecklistUnmodified(readFileSync(dest, "utf-8"))) {
         rmSync(dest);
         return "removed";
@@ -565,6 +569,9 @@ export function removeGeneratedEslintConfig(projectRoot) {
     const file = join(projectRoot, LINT_ESLINT_CONFIG_FILE);
     if (!existsSync(file))
         return { status: "absent", file };
+    if (!isPathInsideProjectRoot(projectRoot, file)) {
+        return { status: "kept-unsafe", file };
+    }
     const content = readFileSync(file, "utf-8");
     if (!content.startsWith(LINT_ESLINT_GENERATED_MARKER)) {
         return { status: "not-generated", file };
@@ -591,12 +598,16 @@ export function isToolOwnedRuffBlock(content) {
  * writes is deleted. A block the user edited is kept and reported — install
  * already refuses to overwrite it, so deleting it here would lose their edit.
  */
-export function removeRuffManagedBlock(projectRoot) {
+export function removeRuffManagedBlock(projectRoot, onRemoved) {
     const candidates = ["pyproject.toml", ".ruff.toml", "ruff.toml"].map((f) => join(projectRoot, f));
     const results = [];
     for (const file of candidates) {
         if (!existsSync(file))
             continue;
+        if (!isPathInsideProjectRoot(projectRoot, file)) {
+            results.push({ file, status: "kept-unsafe" });
+            continue;
+        }
         let content;
         try {
             content = readFileSync(file, "utf-8");
@@ -620,6 +631,7 @@ export function removeRuffManagedBlock(projectRoot) {
             writeFileSync(file, spliced);
         }
         results.push({ file, status: "removed" });
+        onRemoved?.(file);
     }
     return results;
 }

@@ -18,6 +18,7 @@ import { join } from "path";
 import ignore from "ignore";
 import { normalizeEol } from "../commands/editors/agents.js";
 import { execFileSync } from "./exec.js";
+import { isPathInsideProjectRoot } from "./path-guard.js";
 /** Managed paths (user-decided artifacts/config + credentials + regenerable local data). */
 export const MANAGED_GITIGNORE_PATHS = [
     ".claude/",
@@ -126,6 +127,14 @@ function locateBlock(lines) {
         }
     }
     return [-1, -1];
+}
+/**
+ * True when `content` holds a managed block removal would actually delete.
+ * Shared by the remove plan and discovery so neither promises a removal that
+ * `removeManagedBlock` skips as malformed.
+ */
+export function hasRemovableManagedBlock(content) {
+    return locateBlock(toLines(content))[0] !== -1;
 }
 /** Paths recorded on a skip line; `undefined` line → none. */
 function parseSkipLine(line) {
@@ -260,6 +269,11 @@ export function removeManagedBlock(projectRoot) {
     const gitignorePath = join(projectRoot, ".gitignore");
     if (!existsSync(gitignorePath))
         return { removed: false, fileDeleted: false };
+    // A symlinked .gitignore (dotfiles checkout) resolves outside the project:
+    // rewriting it would edit a file the project does not own.
+    if (!isPathInsideProjectRoot(projectRoot, gitignorePath)) {
+        return { removed: false, fileDeleted: false };
+    }
     const raw = readFileSync(gitignorePath, "utf-8");
     const hadTrailingNewline = raw.endsWith("\n");
     const body = hadTrailingNewline ? raw.slice(0, -1) : raw;

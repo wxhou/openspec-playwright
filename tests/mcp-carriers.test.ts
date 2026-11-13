@@ -68,8 +68,9 @@ describe("opencode-json carrier", () => {
   it("installs under mcp.<server> and removes it", () => {
     const mcp = buildMcpRuntime({ kind: "opencode-json" });
     expect(mcp.supportsMcp).toBe(true);
-    // Exclusive file — never a shared-retention candidate.
-    expect(mcp.mcpConfigPath).toBeUndefined();
+    // Path is exposed for the remove plan's boundary check; no other adapter
+    // shares this file, so shared-file retention never applies.
+    expect(mcp.mcpConfigPath!(root)).toBe(join(root, "opencode.jsonc"));
 
     mcp.installMcp(root, "playwright-test", COMMAND);
     const parsed = JSON.parse(

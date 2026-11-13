@@ -17,11 +17,11 @@
  */
 import { existsSync, lstatSync, readFileSync, readdirSync, rmSync, rmdirSync } from "fs";
 import { dirname, join, basename } from "path";
+import { isPathInsideProjectRoot } from "../../shared/path-guard.js";
 import chalk from "chalk";
 import { buildCommandMeta } from "./types.js";
 import { listCommandArtifactPaths } from "./registry.js";
-import { claudeWrapperStandardsContent, removeMarkersFromFile, wrapperRulesFile, } from "./project-rules.js";
-import { LEGACY_OPENSPEC_START, OPENSPEC_START } from "../../shared/drift.js";
+import { claudeWrapperStandardsContent, hasCleanableMarkers, removeMarkersFromFile, wrapperRulesFile, } from "./project-rules.js";
 import { enumerateVendoredAgents, installedAgentsSnapshotDir } from "./agents.js";
 import { CLAUDE_LEGACY_SKILL_REL } from "./shared.js";
 // ─── MCP server names owned by openspec-pw ───────────────────────────────
@@ -76,7 +76,7 @@ function wrapperFileHasMarkersForRemoval(adapter, projectRoot) {
     if (lstatSync(dest).isSymbolicLink())
         return false;
     const content = readFileSync(dest, "utf-8");
-    return content.includes(OPENSPEC_START) || content.includes(LEGACY_OPENSPEC_START);
+    return hasCleanableMarkers(content);
 }
 /**
  * Enumerate the openspec-pw artifacts one editor owns in this project —
@@ -87,9 +87,17 @@ function wrapperFileHasMarkersForRemoval(adapter, projectRoot) {
  */
 export function enumerateAdapterArtifacts(adapter, projectRoot, retainedFiles) {
     const meta = buildCommandMeta("");
-    const commandPaths = listCommandArtifactPaths(adapter, meta).filter((rel) => existsSync(join(projectRoot, rel)));
-    const legacyArtifacts = (adapter.declaration?.legacyArtifacts ?? []).filter((rel) => existsSync(join(projectRoot, rel)));
-    const installedMcpServers = adapter.supportsMcp === false
+    const commandPaths = listCommandArtifactPaths(adapter, meta).filter((rel) => {
+        const abs = join(projectRoot, rel);
+        return existsSync(abs) && isPathInsideProjectRoot(projectRoot, abs);
+    });
+    const legacyArtifacts = (adapter.declaration?.legacyArtifacts ?? []).filter((rel) => {
+        const abs = join(projectRoot, rel);
+        return existsSync(abs) && isPathInsideProjectRoot(projectRoot, abs);
+    });
+    const mcpConfigPath = adapter.mcpConfigPath?.(projectRoot);
+    const mcpConfigSafe = !mcpConfigPath || isPathInsideProjectRoot(projectRoot, mcpConfigPath);
+    const installedMcpServers = adapter.supportsMcp === false || !mcpConfigSafe
         ? []
         : OPENSPEC_PW_MCP_SERVERS.filter((server) => adapter.isMcpInstalled(projectRoot, server));
     // An MCP entry in a shared config file is kept while another selected
@@ -140,17 +148,22 @@ export function removeAdapterMcp(adapter, projectRoot, servers, retainedFiles) {
     }
 }
 /** Delete one editor's openspec-pw command/skill files. Returns the removed project-relative paths. */
-export function removeAdapterCommandArtifacts(adapter, projectRoot) {
+export function removeAdapterCommandArtifacts(adapter, projectRoot, onRemoved) {
     const meta = buildCommandMeta("");
     const removed = [];
     for (const relPath of listCommandArtifactPaths(adapter, meta)) {
         const absPath = join(projectRoot, relPath);
-        if (existsSync(absPath)) {
-            rmSync(absPath);
-            cleanupEmptyDirs(dirname(absPath), projectRoot);
-            console.log(chalk.green(`  ✓ ${adapter.label}: ${relPath}`));
-            removed.push(relPath);
+        if (!existsSync(absPath))
+            continue;
+        if (!isPathInsideProjectRoot(projectRoot, absPath)) {
+            console.log(chalk.gray(`  - ${adapter.label}: ${relPath} resolves outside the project — skipping`));
+            continue;
         }
+        rmSync(absPath);
+        cleanupEmptyDirs(dirname(absPath), projectRoot);
+        console.log(chalk.green(`  ✓ ${adapter.label}: ${relPath}`));
+        removed.push(relPath);
+        onRemoved?.(relPath);
     }
     return removed;
 }
@@ -159,7 +172,7 @@ export function removeAdapterCommandArtifacts(adapter, projectRoot) {
  * deselection + remove). User-owned files are never deleted — each is
  * reported as kept-modified. Returns the removed project-relative paths.
  */
-export function removeOwnedVendoredAgents(projectRoot, adapter) {
+export function removeOwnedVendoredAgents(projectRoot, adapter, onRemoved) {
     if (!adapter.optionalArtifacts)
         return [];
     const { owned, modified } = enumerateVendoredAgents(projectRoot, installedAgentsSnapshotDir());
@@ -168,10 +181,15 @@ export function removeOwnedVendoredAgents(projectRoot, adapter) {
         const absPath = join(projectRoot, relPath);
         if (!existsSync(absPath))
             continue;
+        if (!isPathInsideProjectRoot(projectRoot, absPath)) {
+            console.log(chalk.gray(`  - ${adapter.label}: ${relPath} resolves outside the project — skipping`));
+            continue;
+        }
         rmSync(absPath);
         cleanupEmptyDirs(dirname(absPath), projectRoot);
         console.log(chalk.green(`  ✓ ${adapter.label}: ${relPath}`));
         removed.push(relPath);
+        onRemoved?.(relPath);
     }
     for (const relPath of modified) {
         console.log(chalk.gray(`  - ${adapter.label}: ${relPath} kept (differs from the bundled snapshot — not openspec-pw-owned)`));
@@ -186,6 +204,10 @@ export function removeLegacyArtifact(adapter, projectRoot, relPath) {
     const absPath = join(projectRoot, relPath);
     if (!existsSync(absPath))
         return null;
+    if (!isPathInsideProjectRoot(projectRoot, absPath)) {
+        console.log(chalk.gray(`  - ${adapter.label}: ${relPath}/ resolves outside the project — skipping`));
+        return null;
+    }
     rmSync(absPath, { recursive: true, force: true });
     cleanupEmptyDirs(dirname(absPath), projectRoot);
     console.log(chalk.green(`  ✓ ${adapter.label}: ${relPath}/`));
@@ -208,8 +230,9 @@ export function removeWrapper(adapter, projectRoot) {
         console.log(chalk.gray(`  - ${basename(wrapper)} is a symlink — skipping wrapper cleanup (would write through to AGENTS.md)`));
         return null;
     }
-    removeMarkersFromFile(dest, basename(wrapper), claudeWrapperStandardsContent());
-    return basename(wrapper);
+    return removeMarkersFromFile(dest, basename(wrapper), claudeWrapperStandardsContent())
+        ? basename(wrapper)
+        : null;
 }
 /**
  * Delete empty directories up to (not including) `stopAt`. Shared by the
@@ -217,6 +240,10 @@ export function removeWrapper(adapter, projectRoot) {
  */
 export function cleanupEmptyDirs(dir, stopAt) {
     while (dir !== stopAt && dir.length > stopAt.length) {
+        // A symlinked parent resolves outside the project — stop instead of
+        // removing directories the project does not own.
+        if (!isPathInsideProjectRoot(stopAt, dir))
+            break;
         try {
             const entries = readdirSync(dir);
             if (entries.length === 0) {

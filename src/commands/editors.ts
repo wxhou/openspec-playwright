@@ -197,6 +197,8 @@ export {
   migrateLegacyMarkers,
   cleanProjectRules,
   removeMarkersFromFile,
+  hasCleanableMarkers,
+  agentsFileHasCleanableMarkers,
   readEmployeeStandards,
   hasRuleFileMarkers,
   wrapperRulesFile,

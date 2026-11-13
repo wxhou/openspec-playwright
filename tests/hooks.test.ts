@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from "fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync, symlinkSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import {
@@ -10,6 +10,7 @@ import {
   readSettings,
   removeStopHook,
   uninstallStopHook,
+  isStopHookRemovable,
   type ClaudeSettings,
 } from "../src/commands/hooks.js";
 
@@ -78,6 +79,15 @@ describe("mergeStopHook", () => {
 });
 
 describe("removeStopHook", () => {
+  it("ignores malformed (null) hook entries instead of crashing", () => {
+    const settings = {
+      hooks: { Stop: [{ hooks: [null as unknown as { type: "command"; command: string }] }] },
+    };
+    const { removed } = removeStopHook(settings);
+    expect(removed).toBe(false);
+    expect(isOwnHook(null as unknown as { type: "command"; command: string })).toBe(false);
+  });
+
   it("removes only our entry and keeps the user's", () => {
     const settings = mergeStopHook(
       {
@@ -138,6 +148,47 @@ describe("install / remove on disk", () => {
       readFileSync(join(root, ".claude", "settings.json"), "utf-8"),
     );
     expect(after).toEqual({});
+  });
+
+  it("refuses to rewrite settings that resolve outside the project", () => {
+    if (process.platform === "win32") return;
+    const outside = mkdtempSync(join(tmpdir(), "hooks-outside-"));
+    try {
+      const settings = mergeStopHook({}, buildHookEntry("static"));
+      const external = join(outside, "settings.json");
+      writeFileSync(external, JSON.stringify(settings, null, 2) + "\n");
+      symlinkSync(outside, join(root, ".claude"));
+
+      const result = uninstallStopHook(root);
+
+      expect("error" in result).toBe(true);
+      expect(readFileSync(external, "utf-8")).toContain(
+        "openspec-pw gate --hook",
+      );
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
+  });
+
+  it("reports the hook removable only when settings stay inside the project", () => {
+    if (process.platform === "win32") return;
+    installStopHook(root, "static");
+    expect(isStopHookRemovable(root)).toBe(true);
+
+    const outside = mkdtempSync(join(tmpdir(), "hooks-outside-"));
+    try {
+      const settings = mergeStopHook({}, buildHookEntry("static"));
+      writeFileSync(
+        join(outside, "settings.json"),
+        JSON.stringify(settings, null, 2) + "\n",
+      );
+      rmSync(join(root, ".claude"), { recursive: true, force: true });
+      symlinkSync(outside, join(root, ".claude"));
+
+      expect(isStopHookRemovable(root)).toBe(false);
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
   });
 
   it("preserves the existing codegraph-style UserPromptSubmit hook", () => {

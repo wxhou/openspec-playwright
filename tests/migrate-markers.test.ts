@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdirSync, rmSync, writeFileSync, readFileSync, symlinkSync } from "fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync, readFileSync, symlinkSync } from "fs";
+import { tmpdir } from "os";
 import { join } from "path";
 import {
   migrateLegacyMarkers,
@@ -107,5 +108,20 @@ describe("migrateLegacyMarkers", () => {
     expect(migrateLegacyMarkers(tmpDir, true, true)).toBe(true); // AGENTS.md migrated
     // AGENTS.md now carries the new markers, so the symlink target is correct.
     expect(readAgents()).toContain(OPENSPEC_START);
+  });
+
+  it("symlinked AGENTS.md (dotfiles checkout) is not rewritten through the link", () => {
+    if (process.platform === "win32") return;
+    const outsideDir = mkdtempSync(join(tmpdir(), "migrate-outside-"));
+    try {
+      const external = join(outsideDir, "AGENTS.md");
+      writeFileSync(external, legacyBlock);
+      symlinkSync(external, join(tmpDir, "AGENTS.md"));
+
+      expect(migrateLegacyMarkers(tmpDir, true, false)).toBe(false);
+      expect(readFileSync(external, "utf-8")).toBe(legacyBlock);
+    } finally {
+      rmSync(outsideDir, { recursive: true, force: true });
+    }
   });
 });

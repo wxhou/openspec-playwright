@@ -84,8 +84,17 @@ export declare function installCodebuddyWrapper(projectRoot: string): void;
  * wrapper needed.
  */
 export declare function installProjectRules(projectRoot: string, standardsContent: string, detected: EditorAdapter[]): void;
-/** Remove all OpenSpec marker blocks from AGENTS.md (always) and the adapter's wrapper file (claude/codebuddy). */
-export declare function cleanProjectRules(adapter: EditorAdapter, projectRoot: string): void;
+/**
+ * Remove all OpenSpec marker blocks from AGENTS.md (always) and the adapter's
+ * wrapper file (claude/codebuddy). Returns whether any file changed.
+ * `onChanged` fires after each successful file change, so a caller tracking
+ * progress for batch accounting knows about the first write even when a later
+ * file fails.
+ */
+export declare function cleanProjectRules(adapter: EditorAdapter, projectRoot: string, options?: {
+    agents?: boolean;
+    onChanged?: () => void;
+}): boolean;
 /**
  * Remove openspec-pw marker blocks (both namespaces) from a single file,
  * deleting the file entirely when it empties out. `pristineBody`, when given,
@@ -94,7 +103,20 @@ export declare function cleanProjectRules(adapter: EditorAdapter, projectRoot: s
  * Exported for the init deselect-removal flow (CLAUDE.md wrapper cleanup);
  * cleanProjectRules wraps it for the remove command's context.
  */
-export declare function removeMarkersFromFile(dest: string, fileLabel: string, pristineBody?: string): void;
+export declare function removeMarkersFromFile(dest: string, fileLabel: string, pristineBody?: string): boolean;
+/**
+ * True when `content` holds a marker block removals may clear: our
+ * OPENSPEC-PW block, or a legacy OPENSPEC: block carrying our signature.
+ * Official openspec blocks are not territory. Shared by the remove command's
+ * dry-run plan so it lists only what execution would really delete.
+ */
+export declare function hasCleanableMarkers(content: string): boolean;
+/**
+ * True when the project's AGENTS.md carries a marker block removal would
+ * clear. Init's deselect confirmation list uses this so an unclosed marker or
+ * a symlinked file is not listed as "will be removed".
+ */
+export declare function agentsFileHasCleanableMarkers(projectRoot: string): boolean;
 /** Read the employee-grade standards source file (empty string if missing). */
 export declare function readEmployeeStandards(srcPath: string): string;
 /** Our content signatures inside legacy blocks — an official legacy init

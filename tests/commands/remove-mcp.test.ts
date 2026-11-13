@@ -15,6 +15,8 @@ vi.mock("fs", () => ({
   rmSync: vi.fn(),
   readdirSync: vi.fn(),
   rmdirSync: vi.fn(),
+  realpathSync: vi.fn((path: string) => path),
+  lstatSync: vi.fn(() => ({ isSymbolicLink: () => false })),
 }));
 
 import { execFileSync } from "../../src/shared/exec.js";

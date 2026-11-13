@@ -55,13 +55,13 @@ export declare function isInventoryEmpty(inv: AdapterArtifactInventory): boolean
  */
 export declare function removeAdapterMcp(adapter: EditorAdapter, projectRoot: string, servers: readonly string[], retainedFiles?: ReadonlySet<string>): void;
 /** Delete one editor's openspec-pw command/skill files. Returns the removed project-relative paths. */
-export declare function removeAdapterCommandArtifacts(adapter: EditorAdapter, projectRoot: string): string[];
+export declare function removeAdapterCommandArtifacts(adapter: EditorAdapter, projectRoot: string, onRemoved?: (relPath: string) => void): string[];
 /**
  * Remove the tool-owned vendored Playwright agent files (claude; init
  * deselection + remove). User-owned files are never deleted — each is
  * reported as kept-modified. Returns the removed project-relative paths.
  */
-export declare function removeOwnedVendoredAgents(projectRoot: string, adapter: EditorAdapter): string[];
+export declare function removeOwnedVendoredAgents(projectRoot: string, adapter: EditorAdapter, onRemoved?: (relPath: string) => void): string[];
 /**
  * Delete one legacy artifact directory declared by the adapter. Returns the
  * removed project-relative path, or null when it does not exist.

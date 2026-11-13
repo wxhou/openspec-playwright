@@ -1,6 +1,5 @@
-/**
- * Shared constants for openspec-playwright CLI.
- */
+/** Generated CI workflow (init --ci); tool-owned by content. */
+export declare const GITHUB_WORKFLOW_REL: string;
 /** Template files that ship with the package (not user specs). */
 export declare const SHARED_FILE_NAMES: Set<string>;
 /** Timeout values in milliseconds. */

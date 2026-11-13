@@ -1,5 +1,14 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -14,6 +23,7 @@ vi.mock("../../src/shared/index.js", async (importOriginal) => {
       mcpInstalledAdapters: [],
     })),
     removeChecklist: vi.fn(actual.removeChecklist),
+    removeMcp: vi.fn(actual.removeMcp),
   };
 });
 
@@ -23,16 +33,19 @@ vi.mock("../../src/commands/editors.js", async (importOriginal) => {
   return { ...actual, detectAdapters: vi.fn() };
 });
 
-import { removeChecklist } from "../../src/shared/index.js";
+import { removeChecklist, removeMcp } from "../../src/shared/index.js";
 import {
   LINT_GUIDELINES_RELPATH,
   installOrRefreshChecklist,
+  removeChecklist as realRemoveChecklist,
 } from "../../src/shared/lint-guidelines.js";
+import { removeMcp as realRemoveMcp } from "../../src/shared/mcp.js";
 import { detectAdapters, cursorAdapter } from "../../src/commands/editors.js";
 import { removeOptionError, runRemoveAll } from "../../src/commands/remove.js";
 
 const mockedDetectAdapters = vi.mocked(detectAdapters);
 const mockedRemoveChecklist = vi.mocked(removeChecklist);
+const mockedRemoveMcp = vi.mocked(removeMcp);
 
 const MARKERS =
   "user\n\n<!-- OPENSPEC-PW:START -->\nstandards\n<!-- OPENSPEC-PW:END -->\n";
@@ -57,6 +70,9 @@ beforeEach(() => {
   mockedDetectAdapters.mockReset();
   mockedDetectAdapters.mockReturnValue([]);
   mockedRemoveChecklist.mockClear();
+  mockedRemoveChecklist.mockImplementation(realRemoveChecklist);
+  mockedRemoveMcp.mockClear();
+  mockedRemoveMcp.mockImplementation(realRemoveMcp);
   vi.spyOn(console, "log").mockImplementation(() => {});
 });
 
@@ -76,6 +92,12 @@ describe("removeOptionError", () => {
   it("rejects --yes and --root without --all", () => {
     expect(removeOptionError({ yes: true })).toContain("require --all");
     expect(removeOptionError({ root: ["/tmp/x"] })).toContain("require --all");
+  });
+
+  it("rejects UNC roots", () => {
+    expect(removeOptionError({ all: true, root: ["\\\\server\\share"] })).toContain(
+      "UNC",
+    );
   });
 });
 
@@ -136,7 +158,92 @@ describe("runRemoveAll --yes", () => {
 
     expect(code).toBe(1);
     const out = vi.mocked(console.log).mock.calls.map((c) => String(c[0])).join("\n");
-    expect(out).toContain("removed 0 / skipped 1 / failed 1");
+    // A non-permission failure is never a skip, even when nothing was
+    // changed yet — "skipped" would hide a broken project or a tool bug.
+    expect(out).toContain("removed 0 / skipped 0 / failed 2");
+  });
+
+  it("counts a project that cannot be written as skipped", async () => {
+    mockedRemoveChecklist.mockImplementation(() => {
+      const err = Object.assign(new Error("EACCES: permission denied"), {
+        code: "EACCES",
+      });
+      throw err;
+    });
+
+    const code = await runRemoveAll({ root: [roots], cwd: emptyCwd, yes: true });
+
+    expect(code).toBe(0);
+    const out = vi.mocked(console.log).mock.calls.map((c) => String(c[0])).join("\n");
+    expect(out).toContain("removed 0 / skipped 2 / failed 0");
+  });
+
+  it("fails a project when a later rules file cannot be written", async () => {
+    if (process.platform === "win32") return;
+    const claude = join(projectA, "CLAUDE.md");
+    writeFileSync(
+      claude,
+      "preamble\n<!-- OPENSPEC-PW:START -->\nwrapper\n<!-- OPENSPEC-PW:END -->\n",
+    );
+    chmodSync(claude, 0o444);
+    try {
+      const code = await runRemoveAll({ root: [roots], cwd: emptyCwd, yes: true });
+
+      expect(code).toBe(1);
+      const out = vi.mocked(console.log).mock.calls.map((c) => String(c[0])).join("\n");
+      expect(out).toContain("failed 1");
+      // AGENTS.md was cleaned before the wrapper write failed — a partial
+      // success must count as failed, never as skipped.
+      expect(readFileSync(join(projectA, "AGENTS.md"), "utf-8")).not.toContain(
+        "OPENSPEC-PW:START",
+      );
+    } finally {
+      chmodSync(claude, 0o644);
+    }
+  });
+
+  it("counts an unwritable MCP config as skipped", async () => {
+    // Unclosed marker = discovered but no removable change before the MCP
+    // failure recheck.
+    writeFileSync(
+      join(projectA, "AGENTS.md"),
+      "# P\n\n<!-- OPENSPEC-PW:START -->\nunclosed\n",
+    );
+    writeFileSync(
+      join(projectA, ".mcp.json"),
+      JSON.stringify({
+        mcpServers: { "playwright-test": { command: "npx" } },
+      }),
+    );
+    const original = mockedRemoveMcp.getMockImplementation();
+    const permissionError = Object.assign(
+      new Error("EACCES: permission denied"),
+      { code: "EACCES" },
+    );
+    mockedRemoveMcp.mockReturnValue({
+      removed: false,
+      error: permissionError,
+    });
+    try {
+      const code = await runRemoveAll({ root: [roots], cwd: emptyCwd, yes: true });
+
+      expect(code).toBe(0);
+      const out = vi.mocked(console.log).mock.calls.map((c) => String(c[0])).join("\n");
+      expect(out).toContain("removed 1 / skipped 1 / failed 0");
+    } finally {
+      if (original) mockedRemoveMcp.mockImplementation(original);
+    }
+  });
+
+  it("rejects a --root that is a file", async () => {
+    const file = join(base, "not-a-dir");
+    writeFileSync(file, "x");
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect(await runRemoveAll({ root: [file], cwd: emptyCwd })).toBe(2);
+    } finally {
+      err.mockRestore();
+    }
   });
 
   it("lists the lint checklist only when the project copy is unmodified", async () => {
@@ -155,9 +262,7 @@ describe("runRemoveAll --yes", () => {
     expect(out.split("lint checklist").length - 1).toBe(1);
   });
 
-  it("finds and cleans a project whose only leftover is an MCP entry", async () => {
-    // A previous test installs a throwing implementation; this case exercises
-    // the happy path and has no checklist on disk.
+  it("does not target a project whose only leftover is an MCP entry", async () => {
     mockedRemoveChecklist.mockImplementation(() => "absent");
     const projectC = join(roots, "proj-c");
     mkdirSync(projectC, { recursive: true });
@@ -174,8 +279,36 @@ describe("runRemoveAll --yes", () => {
     const code = await runRemoveAll({ root: [roots], cwd: emptyCwd, yes: true });
 
     expect(code).toBe(0);
-    expect(logs.join("\n")).toContain("removed 3 / skipped 0 / failed 0");
-    expect(readFileSync(opencode, "utf-8")).not.toContain("playwright-test");
+    // The same server name is written by Playwright's own agent init, so a
+    // lone entry is not evidence this project used openspec-pw.
+    expect(logs.join("\n")).not.toContain(`─── ${projectC} ───`);
+    expect(readFileSync(opencode, "utf-8")).toContain("playwright-test");
+  });
+
+  it("counts a discovered project with nothing removable as skipped", async () => {
+    if (process.platform === "win32") return;
+    const projectC = join(roots, "proj-c");
+    mkdirSync(projectC, { recursive: true });
+    const target = join(base, "shared-agents.md");
+    writeFileSync(target, MARKERS);
+    try {
+      symlinkSync(target, join(projectC, "AGENTS.md"));
+    } catch {
+      return;
+    }
+    const logs: string[] = [];
+    vi.mocked(console.log).mockImplementation((msg?: unknown) =>
+      logs.push(String(msg)),
+    );
+
+    await runRemoveAll({ root: [roots], cwd: emptyCwd });
+    expect(logs.join("\n")).toContain("(nothing detected — will be skipped)");
+
+    logs.length = 0;
+    const code = await runRemoveAll({ root: [roots], cwd: emptyCwd, yes: true });
+
+    expect(code).toBe(0);
+    expect(logs.join("\n")).toContain("skipped 1");
   });
 
   it("lists the stop hook only when it is this tool's hook", async () => {
@@ -239,7 +372,9 @@ describe("runRemoveAll --yes", () => {
 
     await runRemoveAll({ root: [roots], cwd: emptyCwd });
 
-    expect(logs.join("\n")).toContain("MCP 2");
+    // One shared file, one counted entry — not three (claude/codebuddy/minimax).
+    // The legacy `playwright` entry is not part of the batch plan.
+    expect(logs.join("\n")).toContain("MCP 1");
   });
 
   it("omits the gitignore group when the managed block is malformed", async () => {
@@ -252,6 +387,17 @@ describe("runRemoveAll --yes", () => {
     await runRemoveAll({ root: [roots], cwd: emptyCwd });
 
     expect(logs.join("\n")).not.toContain(".gitignore block");
+  });
+
+  it("rejects a --root that does not exist", async () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect(
+        await runRemoveAll({ root: [join(base, "missing-root")], cwd: emptyCwd }),
+      ).toBe(2);
+    } finally {
+      err.mockRestore();
+    }
   });
 
   it("does not add the cwd project when --root defines the scope", async () => {

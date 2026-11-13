@@ -6,7 +6,7 @@ import { readFile } from "fs/promises";
 import { execFileSync } from "../shared/exec.js";
 import { installStopHook, isHookTier, uninstallStopHook } from "./hooks.js";
 import { BRANCH_PROTECTION_HINT, generateAutoPipeline, pipelineGitignoreOmit, PIPELINE_TRACKED_PATHS, } from "./pipeline.js";
-import { buildCommandMeta, detectAdapters, detectProjectAdapters, preselectAdapters, getAdapter, getAllAdapters, installCommand, installOptionalArtifacts, installProjectRules, migrateLegacyMarkers, readEmployeeStandards, resolveToolsArg, slashCommandForAdapter, enumerateAdapterArtifacts, enumerateVendoredAgents, installedAgentsSnapshotDir, isInventoryEmpty, removeAdapterMcp, retainedMcpConfigFiles, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, removeLegacyArtifact, removeWrapper, removeMarkersFromFile, normalizeEol, } from "./editors.js";
+import { buildCommandMeta, detectAdapters, detectProjectAdapters, preselectAdapters, getAdapter, getAllAdapters, installCommand, installOptionalArtifacts, installProjectRules, migrateLegacyMarkers, readEmployeeStandards, resolveToolsArg, slashCommandForAdapter, enumerateAdapterArtifacts, enumerateVendoredAgents, installedAgentsSnapshotDir, isInventoryEmpty, removeAdapterMcp, retainedMcpConfigFiles, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, removeLegacyArtifact, removeWrapper, removeMarkersFromFile, agentsFileHasCleanableMarkers, normalizeEol, } from "./editors.js";
 import { isEditorConfigured, agentsFileHasMarkers, } from "./editors/configured.js";
 import { ensureTestRunnerMcp, isTestRunnerMcpInstalled, TEST_RUNNER_MCP_SERVER, hasFrontendSignal, explainFrontendSignal, detectCodeGraphStatus, codegraphHintLines, ensureGitignoreEntries, findUncoveredManagedPaths, skippableManagedPaths, readManagedSkips, detectTrackedFiles, isIgnoredPath, managedBlockAdvisoryHint, installOrRefreshChecklist, installLintConfig, LINT_ESLINT_SNIPPET, LINT_GUIDELINES_RELPATH, } from "../shared/index.js";
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
@@ -358,7 +358,7 @@ export async function init(options, deps = {}) {
         // same confirmation list as a per-editor item (otherwise a project
         // whose per-editor artifacts were hand-deleted would remove the shared
         // block without ever asking).
-        const agentsHasBlock = selectedIds.length === 0 && agentsFileHasMarkers(projectRoot);
+        const agentsHasBlock = selectedIds.length === 0 && agentsFileHasCleanableMarkers(projectRoot);
         if (inventories.length > 0 || agentsHasBlock) {
             console.log(chalk.blue("\n─── Removing Deselected Editors ───"));
             console.log(chalk.yellow("  The following openspec-pw artifacts will be removed:"));
@@ -414,8 +414,8 @@ export async function init(options, deps = {}) {
                         removeWrapper(adapter, projectRoot);
                     }
                 }
-                if (agentsHasBlock) {
-                    removeMarkersFromFile(join(projectRoot, "AGENTS.md"), "AGENTS.md");
+                if (agentsHasBlock &&
+                    removeMarkersFromFile(join(projectRoot, "AGENTS.md"), "AGENTS.md", readEmployeeStandards(EMPLOYEE_STANDARDS_SRC))) {
                     console.log(chalk.green("  ✓ AGENTS.md: shared openspec-pw block removed"));
                 }
             }

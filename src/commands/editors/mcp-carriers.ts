@@ -23,6 +23,7 @@ import {
 } from "jsonc-parser";
 import { TIMEOUT } from "../../shared/constants.js";
 import { execFileSync } from "../../shared/exec.js";
+import { isPathInsideProjectRoot } from "../../shared/path-guard.js";
 import type { McpSpec } from "./types.js";
 import {
   installMcpServerInFile,
@@ -62,7 +63,11 @@ export function buildMcpRuntime(spec: McpSpec): McpRuntime {
           installMcpServerInFile(spec.path(root), serverName, command);
         },
         removeMcp(root, serverName) {
-          removeMcpServerFromFile(spec.path(root), serverName);
+          const path = spec.path(root);
+          if (!isPathInsideProjectRoot(root, path)) {
+            throw new Error(`${path} resolves outside the project (symlink)`);
+          }
+          removeMcpServerFromFile(path, serverName);
         },
       };
 
@@ -90,6 +95,10 @@ export function buildMcpRuntime(spec: McpSpec): McpRuntime {
           );
         },
         removeMcp(root, serverName) {
+          const path = spec.configPath(root);
+          if (existsSync(path) && !isPathInsideProjectRoot(root, path)) {
+            throw new Error(`${path} resolves outside the project (symlink)`);
+          }
           execFileSync(
             "claude",
             ["mcp", "remove", "--scope", "project", serverName],
@@ -107,7 +116,10 @@ export function buildMcpRuntime(spec: McpSpec): McpRuntime {
       return {
         supportsMcp: true,
         // opencode.json(c) is exclusive to OpenCode, so no other adapter can
-        // share its entries — the retention guard never applies.
+        // share its entries — the retention guard never applies. The path is
+        // exposed for the remove plan's boundary check.
+        mcpConfigPath: (root) =>
+          findOpenCodeConfig(root)?.path ?? join(root, "opencode.jsonc"),
         isMcpInstalled(root, serverName) {
           const config = findOpenCodeConfig(root);
           if (!config) return false;
@@ -122,6 +134,9 @@ export function buildMcpRuntime(spec: McpSpec): McpRuntime {
         removeMcp(root, serverName) {
           const config = findOpenCodeConfig(root);
           if (!config) return;
+          if (!isPathInsideProjectRoot(root, config.path)) {
+            throw new Error(`${config.path} resolves outside the project (symlink)`);
+          }
           const value = readOpenCodeValue(config.text, ["mcp", serverName]);
           if (value === undefined) return;
           const current = readOpenCodeValue(config.text, ["mcp"]);

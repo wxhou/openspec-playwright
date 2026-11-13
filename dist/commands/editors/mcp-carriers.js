@@ -16,6 +16,7 @@ import { join } from "path";
 import { applyEdits, findNodeAtLocation, getNodeValue, modify, parseTree as parseJsonc, } from "jsonc-parser";
 import { TIMEOUT } from "../../shared/constants.js";
 import { execFileSync } from "../../shared/exec.js";
+import { isPathInsideProjectRoot } from "../../shared/path-guard.js";
 import { installMcpServerInFile, isMcpServerInFile, removeMcpServerFromFile, } from "./shared.js";
 const noop = () => { };
 export function buildMcpRuntime(spec) {
@@ -38,7 +39,11 @@ export function buildMcpRuntime(spec) {
                     installMcpServerInFile(spec.path(root), serverName, command);
                 },
                 removeMcp(root, serverName) {
-                    removeMcpServerFromFile(spec.path(root), serverName);
+                    const path = spec.path(root);
+                    if (!isPathInsideProjectRoot(root, path)) {
+                        throw new Error(`${path} resolves outside the project (symlink)`);
+                    }
+                    removeMcpServerFromFile(path, serverName);
                 },
             };
         case "claude-cli":
@@ -61,6 +66,10 @@ export function buildMcpRuntime(spec) {
                     });
                 },
                 removeMcp(root, serverName) {
+                    const path = spec.configPath(root);
+                    if (existsSync(path) && !isPathInsideProjectRoot(root, path)) {
+                        throw new Error(`${path} resolves outside the project (symlink)`);
+                    }
                     execFileSync("claude", ["mcp", "remove", "--scope", "project", serverName], {
                         encoding: "utf-8",
                         timeout: TIMEOUT.MCP_LIST,
@@ -73,7 +82,9 @@ export function buildMcpRuntime(spec) {
             return {
                 supportsMcp: true,
                 // opencode.json(c) is exclusive to OpenCode, so no other adapter can
-                // share its entries — the retention guard never applies.
+                // share its entries — the retention guard never applies. The path is
+                // exposed for the remove plan's boundary check.
+                mcpConfigPath: (root) => findOpenCodeConfig(root)?.path ?? join(root, "opencode.jsonc"),
                 isMcpInstalled(root, serverName) {
                     const config = findOpenCodeConfig(root);
                     if (!config)
@@ -90,6 +101,9 @@ export function buildMcpRuntime(spec) {
                     const config = findOpenCodeConfig(root);
                     if (!config)
                         return;
+                    if (!isPathInsideProjectRoot(root, config.path)) {
+                        throw new Error(`${config.path} resolves outside the project (symlink)`);
+                    }
                     const value = readOpenCodeValue(config.text, ["mcp", serverName]);
                     if (value === undefined)
                         return;

@@ -18,6 +18,7 @@ import {
 import { dirname, extname, join, sep } from "node:path";
 import { bundledTemplatePath } from "./drift.js";
 import { normalizeEol } from "../commands/editors/agents.js";
+import { isPathInsideProjectRoot } from "./path-guard.js";
 
 export interface LintRuleEntry {
   /** Rule id as written in linter config/docs. */
@@ -198,17 +199,23 @@ export type ChecklistDisposition =
   | "kept-modified";
 
 /** Uninstall-side disposition for the checklist file. */
-export type ChecklistRemovalDisposition = "removed" | "kept-modified" | "absent";
+export type ChecklistRemovalDisposition =
+  | "removed"
+  | "kept-modified"
+  | "kept-unsafe"
+  | "absent";
 
 /**
  * Uninstall the checklist: tool-owned (checksum intact) → remove;
- * user-modified → keep and report; missing → nothing to do.
+ * user-modified → keep and report; missing → nothing to do. A path that
+ * resolves outside the project (symlinked parent or file) is never touched.
  */
 export function removeChecklist(
   projectRoot: string,
 ): ChecklistRemovalDisposition {
   const dest = join(projectRoot, LINT_GUIDELINES_RELPATH);
   if (!existsSync(dest)) return "absent";
+  if (!isPathInsideProjectRoot(projectRoot, dest)) return "kept-unsafe";
   if (isChecklistUnmodified(readFileSync(dest, "utf-8"))) {
     rmSync(dest);
     return "removed";
@@ -675,6 +682,7 @@ export function isToolGeneratedEslintConfig(content: string): boolean {
 export type EslintConfigRemovalStatus =
   | "removed"
   | "kept-modified"
+  | "kept-unsafe"
   | "not-generated"
   | "absent";
 
@@ -685,6 +693,9 @@ export function removeGeneratedEslintConfig(projectRoot: string): {
 } {
   const file = join(projectRoot, LINT_ESLINT_CONFIG_FILE);
   if (!existsSync(file)) return { status: "absent", file };
+  if (!isPathInsideProjectRoot(projectRoot, file)) {
+    return { status: "kept-unsafe", file };
+  }
   const content = readFileSync(file, "utf-8");
   if (!content.startsWith(LINT_ESLINT_GENERATED_MARKER)) {
     return { status: "not-generated", file };
@@ -701,7 +712,7 @@ export function removeGeneratedEslintConfig(projectRoot: string): {
  * Bytes outside the block are preserved verbatim; a file left empty by the
  * removal (tool-created `ruff.toml` holding only the block) is deleted.
  */
-export type RuffBlockRemovalStatus = "removed" | "kept-modified";
+export type RuffBlockRemovalStatus = "removed" | "kept-modified" | "kept-unsafe";
 
 /** True when the file's managed block is exactly what install writes (owned). */
 export function isToolOwnedRuffBlock(content: string): boolean {
@@ -719,7 +730,10 @@ export function isToolOwnedRuffBlock(content: string): boolean {
  * writes is deleted. A block the user edited is kept and reported — install
  * already refuses to overwrite it, so deleting it here would lose their edit.
  */
-export function removeRuffManagedBlock(projectRoot: string): {
+export function removeRuffManagedBlock(
+  projectRoot: string,
+  onRemoved?: (file: string) => void,
+): {
   file: string;
   status: RuffBlockRemovalStatus;
 }[] {
@@ -729,6 +743,10 @@ export function removeRuffManagedBlock(projectRoot: string): {
   const results: { file: string; status: RuffBlockRemovalStatus }[] = [];
   for (const file of candidates) {
     if (!existsSync(file)) continue;
+    if (!isPathInsideProjectRoot(projectRoot, file)) {
+      results.push({ file, status: "kept-unsafe" });
+      continue;
+    }
     let content: string;
     try {
       content = readFileSync(file, "utf-8");
@@ -748,6 +766,7 @@ export function removeRuffManagedBlock(projectRoot: string): {
       writeFileSync(file, spliced);
     }
     results.push({ file, status: "removed" });
+    onRemoved?.(file);
   }
   return results;
 }

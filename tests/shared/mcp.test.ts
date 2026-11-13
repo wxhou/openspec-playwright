@@ -16,6 +16,7 @@ import {
   clineAdapter,
 } from "../../src/commands/editors.js";
 import {
+  removeMcp,
   removePlaywrightMcp,
 } from "../../src/shared/mcp.js";
 
@@ -191,6 +192,29 @@ describe("test-runner MCP (playwright-test)", () => {
       expect(cwdCfg.mcpServers["playwright-test"]).toBeDefined();
     } finally {
       rmSync(otherRoot, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("removeMcp result", () => {
+  it("carries the adapter error when removal fails", () => {
+    const failure = new Error("EACCES");
+    const adapter = {
+      id: "fake",
+      label: "fake",
+      supportsMcp: true,
+      isMcpInstalled: () => true,
+      removeMcp: () => {
+        throw failure;
+      },
+    } as unknown as Parameters<typeof removeMcp>[0];
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const result = removeMcp(adapter, tmp, "playwright-test");
+      expect(result.removed).toBe(false);
+      expect(result.error).toBe(failure);
+    } finally {
+      warn.mockRestore();
     }
   });
 });

@@ -228,6 +228,19 @@ describe("removeWrapper", () => {
   it("returns null when CLAUDE.md does not exist", () => {
     expect(removeWrapper(claudeAdapter, projectRoot)).toBeNull();
   });
+
+  it("does not claim an official OPENSPEC: block in the wrapper", () => {
+    const dest = join(projectRoot, "CLAUDE.md");
+    const official =
+      "# Title\n\n<!-- OPENSPEC:START -->\nOfficial instructions.\n<!-- OPENSPEC:END -->\n";
+    writeFileSync(dest, official);
+
+    expect(enumerateAdapterArtifacts(claudeAdapter, projectRoot).hasWrapper).toBe(
+      false,
+    );
+    expect(removeWrapper(claudeAdapter, projectRoot)).toBeNull();
+    expect(readFileSync(dest, "utf-8")).toBe(official);
+  });
 });
 
 /** First removed path joined back to the project root, for existence checks. */

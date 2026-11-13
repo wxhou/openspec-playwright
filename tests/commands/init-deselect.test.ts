@@ -9,7 +9,7 @@ import {
   writeFileSync,
 } from "fs";
 import { tmpdir } from "os";
-import { join } from "path";
+import { basename, join } from "path";
 
 // init shells `npx openspec --version`, `node --version`, `npm --version`
 // during prerequisites — stub the command wrapper so hermetic runs don't depend on PATH.
@@ -127,6 +127,31 @@ describe("init deselect-removal: cursor deselected and confirmed", () => {
     expect(sawPrompt).toBe(true);
     expect(readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8")).not.toContain("standards");
     expect(readFileSync(join(tmpRoot, "AGENTS.md"), "utf-8")).toContain("user content");
+  });
+
+  it("deletes a pristine tool-created AGENTS.md whole when everything is deselected", async () => {
+    // Same shape installOpenSpecBlock writes: generated title + markers +
+    // the bundled standards. remove does whole-file deletion here (7.9), and
+    // the init deselection path must not leave a title-only shell.
+    const standards = readFileSync(
+      new URL("../../employee-standards.md", import.meta.url),
+      "utf-8",
+    );
+    writeFileSync(
+      join(tmpRoot, "AGENTS.md"),
+      `# ${basename(tmpRoot)}\n\n<!-- OPENSPEC-PW:START -->\n\n${standards.trim()}\n\n<!-- OPENSPEC-PW:END -->\n`,
+    );
+
+    await init(
+      { mcp: false },
+      {
+        isTTY: true,
+        prompt: async () => [],
+        confirm: async () => true,
+      },
+    );
+
+    expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(false);
   });
 
   it("per-editor artifacts gone but shared block present → still asks, removal happens", async () => {

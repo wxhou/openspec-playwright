@@ -17,15 +17,16 @@
  */
 import { existsSync, lstatSync, readFileSync, readdirSync, rmSync, rmdirSync } from "fs";
 import { dirname, join, basename } from "path";
+import { isPathInsideProjectRoot } from "../../shared/path-guard.js";
 import chalk from "chalk";
 import { buildCommandMeta, type EditorAdapter } from "./types.js";
 import { listCommandArtifactPaths } from "./registry.js";
 import {
   claudeWrapperStandardsContent,
+  hasCleanableMarkers,
   removeMarkersFromFile,
   wrapperRulesFile,
 } from "./project-rules.js";
-import { LEGACY_OPENSPEC_START, OPENSPEC_START } from "../../shared/drift.js";
 import { enumerateVendoredAgents, installedAgentsSnapshotDir } from "./agents.js";
 import { CLAUDE_LEGACY_SKILL_REL } from "./shared.js";
 
@@ -109,7 +110,7 @@ function wrapperFileHasMarkersForRemoval(
   // enumeration follows the same guard the removal does.
   if (lstatSync(dest).isSymbolicLink()) return false;
   const content = readFileSync(dest, "utf-8");
-  return content.includes(OPENSPEC_START) || content.includes(LEGACY_OPENSPEC_START);
+  return hasCleanableMarkers(content);
 }
 
 /**
@@ -125,14 +126,21 @@ export function enumerateAdapterArtifacts(
   retainedFiles?: ReadonlySet<string>,
 ): AdapterArtifactInventory {
   const meta = buildCommandMeta("");
-  const commandPaths = listCommandArtifactPaths(adapter, meta).filter((rel) =>
-    existsSync(join(projectRoot, rel)),
-  );
+  const commandPaths = listCommandArtifactPaths(adapter, meta).filter((rel) => {
+    const abs = join(projectRoot, rel);
+    return existsSync(abs) && isPathInsideProjectRoot(projectRoot, abs);
+  });
   const legacyArtifacts = (adapter.declaration?.legacyArtifacts ?? []).filter(
-    (rel) => existsSync(join(projectRoot, rel)),
+    (rel) => {
+      const abs = join(projectRoot, rel);
+      return existsSync(abs) && isPathInsideProjectRoot(projectRoot, abs);
+    },
   );
+  const mcpConfigPath = adapter.mcpConfigPath?.(projectRoot);
+  const mcpConfigSafe =
+    !mcpConfigPath || isPathInsideProjectRoot(projectRoot, mcpConfigPath);
   const installedMcpServers =
-    adapter.supportsMcp === false
+    adapter.supportsMcp === false || !mcpConfigSafe
       ? []
       : OPENSPEC_PW_MCP_SERVERS.filter((server) =>
           adapter.isMcpInstalled(projectRoot, server),
@@ -202,17 +210,26 @@ export function removeAdapterMcp(
 export function removeAdapterCommandArtifacts(
   adapter: EditorAdapter,
   projectRoot: string,
+  onRemoved?: (relPath: string) => void,
 ): string[] {
   const meta = buildCommandMeta("");
   const removed: string[] = [];
   for (const relPath of listCommandArtifactPaths(adapter, meta)) {
     const absPath = join(projectRoot, relPath);
-    if (existsSync(absPath)) {
-      rmSync(absPath);
-      cleanupEmptyDirs(dirname(absPath), projectRoot);
-      console.log(chalk.green(`  ✓ ${adapter.label}: ${relPath}`));
-      removed.push(relPath);
+    if (!existsSync(absPath)) continue;
+    if (!isPathInsideProjectRoot(projectRoot, absPath)) {
+      console.log(
+        chalk.gray(
+          `  - ${adapter.label}: ${relPath} resolves outside the project — skipping`,
+        ),
+      );
+      continue;
     }
+    rmSync(absPath);
+    cleanupEmptyDirs(dirname(absPath), projectRoot);
+    console.log(chalk.green(`  ✓ ${adapter.label}: ${relPath}`));
+    removed.push(relPath);
+    onRemoved?.(relPath);
   }
   return removed;
 }
@@ -225,6 +242,7 @@ export function removeAdapterCommandArtifacts(
 export function removeOwnedVendoredAgents(
   projectRoot: string,
   adapter: EditorAdapter,
+  onRemoved?: (relPath: string) => void,
 ): string[] {
   if (!adapter.optionalArtifacts) return [];
   const { owned, modified } = enumerateVendoredAgents(
@@ -235,10 +253,19 @@ export function removeOwnedVendoredAgents(
   for (const relPath of owned) {
     const absPath = join(projectRoot, relPath);
     if (!existsSync(absPath)) continue;
+    if (!isPathInsideProjectRoot(projectRoot, absPath)) {
+      console.log(
+        chalk.gray(
+          `  - ${adapter.label}: ${relPath} resolves outside the project — skipping`,
+        ),
+      );
+      continue;
+    }
     rmSync(absPath);
     cleanupEmptyDirs(dirname(absPath), projectRoot);
     console.log(chalk.green(`  ✓ ${adapter.label}: ${relPath}`));
     removed.push(relPath);
+    onRemoved?.(relPath);
   }
   for (const relPath of modified) {
     console.log(
@@ -261,6 +288,12 @@ export function removeLegacyArtifact(
 ): string | null {
   const absPath = join(projectRoot, relPath);
   if (!existsSync(absPath)) return null;
+  if (!isPathInsideProjectRoot(projectRoot, absPath)) {
+    console.log(
+      chalk.gray(`  - ${adapter.label}: ${relPath}/ resolves outside the project — skipping`),
+    );
+    return null;
+  }
   rmSync(absPath, { recursive: true, force: true });
   cleanupEmptyDirs(dirname(absPath), projectRoot);
   console.log(chalk.green(`  ✓ ${adapter.label}: ${relPath}/`));
@@ -286,8 +319,13 @@ export function removeWrapper(adapter: EditorAdapter, projectRoot: string): stri
     );
     return null;
   }
-  removeMarkersFromFile(dest, basename(wrapper), claudeWrapperStandardsContent());
-  return basename(wrapper);
+  return removeMarkersFromFile(
+    dest,
+    basename(wrapper),
+    claudeWrapperStandardsContent(),
+  )
+    ? basename(wrapper)
+    : null;
 }
 
 /**
@@ -296,6 +334,9 @@ export function removeWrapper(adapter: EditorAdapter, projectRoot: string): stri
  */
 export function cleanupEmptyDirs(dir: string, stopAt: string): void {
   while (dir !== stopAt && dir.length > stopAt.length) {
+    // A symlinked parent resolves outside the project — stop instead of
+    // removing directories the project does not own.
+    if (!isPathInsideProjectRoot(stopAt, dir)) break;
     try {
       const entries = readdirSync(dir);
       if (entries.length === 0) {

@@ -44,21 +44,39 @@ export function ensureMcp(
   }
 }
 
-/** Remove an MCP server from this editor for `projectRoot`. Does not throw if missing. */
-export function removeMcp(adapter: EditorAdapter, projectRoot: string, serverName: string): void {
+export interface McpRemovalResult {
+  /** True only when an entry was actually removed. */
+  removed: boolean;
+  /** Error thrown by the adapter when removal was attempted and failed. */
+  error?: unknown;
+}
+
+/**
+ * Remove an MCP server from this editor for `projectRoot`. Does not throw if
+ * missing; returns `removed: true` only when an entry was actually removed.
+ * A failed attempt carries the adapter error so callers can tell an
+ * unwritable config from a logic failure.
+ */
+export function removeMcp(
+  adapter: EditorAdapter,
+  projectRoot: string,
+  serverName: string,
+): McpRemovalResult {
   if (adapter.supportsMcp === false) {
     console.log(`  - ${adapter.label}: ${serverName} MCP not supported (nothing to remove)`);
-    return;
+    return { removed: false };
   }
   if (!isMcpInstalled(adapter, projectRoot, serverName)) {
     console.log(`  - ${adapter.label}: ${serverName} MCP not installed (nothing to remove)`);
-    return;
+    return { removed: false };
   }
   try {
     adapter.removeMcp(projectRoot, serverName);
     console.log(`  ✓ ${adapter.label}: ${serverName} MCP removed`);
-  } catch {
+    return { removed: true };
+  } catch (error) {
     console.warn(`  ⚠ ${adapter.label}: failed to remove ${serverName} MCP`);
+    return { removed: false, error };
   }
 }
 

@@ -8,6 +8,7 @@
  */
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import { dirname, join } from "path";
+import { isPathInsideProjectRoot } from "../shared/path-guard.js";
 /** Any command containing this fragment belongs to us. */
 const OWN_MARKER = "openspec-pw gate";
 const TIER_CHECKS = {
@@ -30,7 +31,12 @@ export function buildHookEntry(tier) {
     };
 }
 export function isOwnHook(hook) {
-    return typeof hook.command === "string" && hook.command.includes(OWN_MARKER);
+    // Settings files are user-editable; a null entry in a Stop group is valid
+    // JSON and must not crash detection.
+    return (typeof hook === "object" &&
+        hook !== null &&
+        typeof hook.command === "string" &&
+        hook.command.includes(OWN_MARKER));
 }
 /**
  * Insert or refresh our hook. Idempotent: a second call leaves one entry.
@@ -41,8 +47,9 @@ export function mergeStopHook(settings, entry) {
     const stop = Array.isArray(hooks.Stop) ? [...hooks.Stop] : [];
     let replaced = false;
     const nextStop = stop.map((group) => {
-        if (!Array.isArray(group.hooks))
+        if (!group || typeof group !== "object" || !Array.isArray(group.hooks)) {
             return group;
+        }
         const hooksInGroup = group.hooks.map((h) => {
             if (isOwnHook(h)) {
                 replaced = true;
@@ -68,8 +75,9 @@ export function removeStopHook(settings) {
     let removed = false;
     const nextStop = stop
         .map((group) => {
-        if (!Array.isArray(group.hooks))
+        if (!group || typeof group !== "object" || !Array.isArray(group.hooks)) {
             return group;
+        }
         const kept = group.hooks.filter((h) => {
             if (isOwnHook(h)) {
                 removed = true;
@@ -79,7 +87,10 @@ export function removeStopHook(settings) {
         });
         return { ...group, hooks: kept };
     })
-        .filter((group) => !Array.isArray(group.hooks) || group.hooks.length > 0);
+        .filter((group) => !group ||
+        typeof group !== "object" ||
+        !Array.isArray(group.hooks) ||
+        group.hooks.length > 0);
     if (nextStop.length > 0)
         hooks.Stop = nextStop;
     else
@@ -126,22 +137,40 @@ export function installStopHook(projectRoot, tier) {
     writeSettings(projectRoot, merged);
     return { path: settingsPath(projectRoot), tier };
 }
-/** True when the project carries our Stop hook — the removal predicate. */
+/** True when the project carries our Stop hook — the detection predicate. */
 export function isStopHookInstalled(projectRoot) {
     const read = readSettings(projectRoot);
     if ("error" in read)
         return false;
     const stop = read.settings.hooks?.Stop;
     return (Array.isArray(stop) &&
-        stop.some((group) => Array.isArray(group.hooks) && group.hooks.some(isOwnHook)));
+        stop.some((group) => !!group &&
+            typeof group === "object" &&
+            Array.isArray(group.hooks) &&
+            group.hooks.some(isOwnHook)));
+}
+/**
+ * True when the hook is installed and its settings file is inside the project.
+ * The remove plan uses this so it does not promise a removal that the write
+ * guard will refuse (a symlinked `.claude/` checkout).
+ */
+export function isStopHookRemovable(projectRoot) {
+    return (isStopHookInstalled(projectRoot) &&
+        isPathInsideProjectRoot(projectRoot, settingsPath(projectRoot)));
 }
 export function uninstallStopHook(projectRoot) {
     const read = readSettings(projectRoot);
     if ("error" in read)
         return read;
     const { settings, removed } = removeStopHook(read.settings);
-    if (removed)
+    if (removed) {
+        if (!isPathInsideProjectRoot(projectRoot, settingsPath(projectRoot))) {
+            return {
+                error: `${settingsPath(projectRoot)} resolves outside the project (symlink) — refusing to write`,
+            };
+        }
         writeSettings(projectRoot, settings);
+    }
     return { path: settingsPath(projectRoot), removed };
 }
 //# sourceMappingURL=hooks.js.map

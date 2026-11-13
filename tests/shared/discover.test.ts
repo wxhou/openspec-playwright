@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import {
   defaultScanRoots,
   discoverProjects,
@@ -74,27 +74,29 @@ describe("hasOpenspecPwTerritory", () => {
     }
   });
 
-  it("detects an MCP config carrying playwright-test alone", () => {
+  it("does not treat a lone playwright-test entry as territory", () => {
     const root = makeTemp("ospw-discover-mcp-");
     try {
       writeFileSync(
         join(root, ".mcp.json"),
         JSON.stringify({ mcpServers: { "playwright-test": { command: "npx" } } }),
       );
-      expect(hasOpenspecPwTerritory(root)).toBe(true);
+      // The official Playwright agent init writes the same server name.
+      expect(hasOpenspecPwTerritory(root)).toBe(false);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
   });
 
-  it("detects a legacy playwright MCP entry alone", () => {
+  it("does not treat a bare legacy playwright entry as territory", () => {
     const root = makeTemp("ospw-discover-legacy-mcp-");
     try {
       writeFileSync(
         join(root, ".mcp.json"),
         JSON.stringify({ mcpServers: { playwright: { command: "npx" } } }),
       );
-      expect(hasOpenspecPwTerritory(root)).toBe(true);
+      // Indistinguishable from a user's own @playwright/mcp server.
+      expect(hasOpenspecPwTerritory(root)).toBe(false);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -157,6 +159,30 @@ describe("discoverProjects", () => {
     }
   });
 
+  it("does not scan an overlapping root twice", () => {
+    const root = makeTemp("ospw-discover-overlap-");
+    try {
+      const home = join(root, "home");
+      const project = join(home, "proj");
+      makeProject(project);
+
+      const broad = discoverProjects({ roots: [root], cwd: undefined });
+      const overlapped = discoverProjects({
+        roots: [home, root],
+        cwd: undefined,
+      });
+
+      expect(overlapped.projects).toContain(project);
+      expect(
+        overlapped.projects.filter((p) => p === project),
+      ).toHaveLength(1);
+      // The nested root is visited once, not once per containing root.
+      expect(overlapped.scannedDirs).toBe(broad.scannedDirs);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("keeps scanning a subtree when a file in the parent is unreadable", () => {
     if (process.platform === "win32") return;
     const root = makeTemp("ospw-discover-unreadable-");
@@ -209,6 +235,24 @@ describe("discoverProjects", () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
       rmSync(outside, { recursive: true, force: true });
+    }
+  });
+
+  it("resolves a relative root to an absolute project path", () => {
+    const root = makeTemp("ospw-discover-rel-");
+    try {
+      const project = join(root, "proj");
+      makeProject(project);
+      const rel = relative(process.cwd(), root);
+
+      const result = discoverProjects({
+        roots: [rel],
+        cwd: join(root, "none"),
+      });
+
+      expect(result.projects).toEqual([project]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
     }
   });
 

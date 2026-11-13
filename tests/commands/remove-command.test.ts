@@ -5,6 +5,7 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "fs";
 import { tmpdir } from "os";
@@ -228,6 +229,8 @@ describe("removeInProject() CI workflow", () => {
     await removeInProject(tmp);
 
     expect(existsSync(join(tmp, ".github", "workflows", "openspec-pw.yml"))).toBe(false);
+    // The empty .github/workflows chain is cleaned too.
+    expect(existsSync(join(tmp, ".github"))).toBe(false);
   });
 
   it("keeps a user-modified workflow with a notice", async () => {
@@ -274,6 +277,34 @@ describe("removeInProject() CI workflow", () => {
     await removeInProject(tmp);
 
     expect(existsSync(join(tmp, ".github", "workflows", "openspec-auto.yml"))).toBe(true);
+  });
+});
+
+// ─── MCP ownership ──────────────────────────────────────────────────────
+
+describe("removeInProject() MCP ownership", () => {
+  it("removes a lone playwright-test entry when invoked explicitly", async () => {
+    const opencode = join(tmp, "opencode.json");
+    writeFileSync(
+      opencode,
+      JSON.stringify({ mcp: { "playwright-test": { type: "local", command: ["npx"] } } }),
+    );
+
+    await removeInProject(tmp);
+
+    expect(readFileSync(opencode, "utf-8")).not.toContain("playwright-test");
+  });
+
+  it("leaves the ambiguous legacy playwright entry alone in batch mode", async () => {
+    const mcp = join(tmp, ".mcp.json");
+    writeFileSync(
+      mcp,
+      JSON.stringify({ mcpServers: { playwright: { command: "npx" } } }),
+    );
+
+    await removeInProject(tmp, { all: true });
+
+    expect(readFileSync(mcp, "utf-8")).toContain("playwright");
   });
 });
 
@@ -431,5 +462,106 @@ describe("removeInProject() mixed project: cursor detected, claude wrapper only"
     expect(agentsAfter).not.toContain("OPENSPEC-PW:START");
     expect(claudeAfter).not.toContain("OPENSPEC-PW:START");
     expect(claudeAfter).toContain("preamble");
+  });
+});
+
+describe("removeInProject() symlink safety", () => {
+  it("does not recurse into a symlinked skills directory", async () => {
+    if (process.platform === "win32") return;
+    const outside = mkdtempSync(join(tmpdir(), "ospw-outside-"));
+    try {
+      const skill = join(outside, "skills", "openspec-e2e");
+      mkdirSync(skill, { recursive: true });
+      writeFileSync(join(skill, "keep.md"), "user file");
+      symlinkSync(outside, join(tmp, ".claude"));
+
+      await removeInProject(tmp);
+
+      expect(readFileSync(join(skill, "keep.md"), "utf-8")).toBe("user file");
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
+  });
+
+  it("does not rewrite a symlinked .gitignore", async () => {
+    if (process.platform === "win32") return;
+    const outside = mkdtempSync(join(tmpdir(), "ospw-outside-"));
+    try {
+      const external = join(outside, ".gitignore");
+      const original =
+        "node_modules\n" +
+        "# openspec-pw: begin managed block\n" +
+        "/tests/playwright/changes/\n" +
+        "# openspec-pw: end managed block\n";
+      writeFileSync(external, original);
+      symlinkSync(external, join(tmp, ".gitignore"));
+
+      await removeInProject(tmp);
+
+      expect(readFileSync(external, "utf-8")).toBe(original);
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps an official OPENSPEC: block written by the openspec CLI", async () => {
+    const official =
+      "# Project\n\n<!-- OPENSPEC:START -->\nOfficial instructions.\n<!-- OPENSPEC:END -->\n";
+    writeFileSync(join(tmp, "AGENTS.md"), official);
+
+    await removeInProject(tmp);
+
+    expect(readFileSync(join(tmp, "AGENTS.md"), "utf-8")).toBe(official);
+  });
+
+  it("skips an MCP config that resolves outside the project", async () => {
+    if (process.platform === "win32") return;
+    const outside = mkdtempSync(join(tmpdir(), "ospw-outside-"));
+    try {
+      const external = join(outside, ".mcp.json");
+      const config = JSON.stringify({
+        mcpServers: { "playwright-test": { command: "npx" } },
+      });
+      writeFileSync(external, config);
+      symlinkSync(external, join(tmp, ".mcp.json"));
+
+      const modified = await removeInProject(tmp);
+
+      expect(modified.some((marker) => marker.startsWith("mcp:"))).toBe(false);
+      expect(readFileSync(external, "utf-8")).toBe(config);
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
+  });
+
+  it("skips a Stop hook whose settings resolve outside the project", async () => {
+    if (process.platform === "win32") return;
+    const outside = mkdtempSync(join(tmpdir(), "ospw-outside-"));
+    try {
+      const settings = {
+        hooks: {
+          Stop: [
+            {
+              hooks: [
+                { type: "command", command: "openspec-pw gate --hook --only validate" },
+              ],
+            },
+          ],
+        },
+      };
+      const external = join(outside, "settings.json");
+      const original = JSON.stringify(settings, null, 2) + "\n";
+      writeFileSync(external, original);
+      symlinkSync(outside, join(tmp, ".claude"));
+
+      const modified = await removeInProject(tmp);
+
+      expect(modified.some((marker) => marker.endsWith("settings.json"))).toBe(
+        false,
+      );
+      expect(readFileSync(external, "utf-8")).toBe(original);
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
   });
 });

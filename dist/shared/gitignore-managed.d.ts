@@ -33,6 +33,12 @@ export declare function findUncoveredManagedPaths(projectRoot: string, omit?: re
 /** Is this path ignored by any rule file the repo applies? */
 export declare function isIgnoredPath(projectRoot: string, rel: string): boolean;
 /**
+ * True when `content` holds a managed block removal would actually delete.
+ * Shared by the remove plan and discovery so neither promises a removal that
+ * `removeManagedBlock` skips as malformed.
+ */
+export declare function hasRemovableManagedBlock(content: string): boolean;
+/**
  * Paths the user opted out of ignoring at init, read from the block-header
  * skip line. Update honors them so a later run never re-adds what the user
  * chose to commit. Unreadable .gitignore propagates — the caller degrades to

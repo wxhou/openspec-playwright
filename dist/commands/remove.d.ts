@@ -1,12 +1,16 @@
 /**
- * A removal that failed after some files were already changed. `modified`
- * lets the batch orchestrator tell "nothing touchable" (skipped) from
- * "half-cleaned" (failed) without a writability precheck, which is
- * unreliable on Windows.
+ * A removal that failed. `modified` tells the batch orchestrator how far the
+ * cleanup got; `unwritable` marks a permission failure, which the batch counts
+ * as skipped only when nothing changed (no writability precheck — it is
+ * unreliable on Windows). The original error is kept as `cause`.
  */
 export declare class RemoveError extends Error {
     readonly modified: string[];
-    constructor(message: string, modified: string[]);
+    /** True when the failure was a filesystem permission error (project not writable). */
+    readonly unwritable: boolean;
+    constructor(message: string, modified: string[], 
+    /** True when the failure was a filesystem permission error (project not writable). */
+    unwritable?: boolean, cause?: unknown);
 }
 /**
  * Remove every openspec-pw product from one project. Tool-owned artifacts
@@ -14,10 +18,15 @@ export declare class RemoveError extends Error {
  * (credentials, tests, openspec specs) is never touched. Idempotent: an
  * already-clean project produces only skip lines.
  *
+ * `all` is the batch mode: it skips the legacy `playwright` entry, whose name
+ * cannot be told apart from a user's own server.
+ *
  * Returns the project-relative paths (and coarse markers like `mcp:…`) that
  * were changed, so a failed run can report how far it got.
  */
-export declare function removeInProject(projectRoot: string): Promise<string[]>;
+export declare function removeInProject(projectRoot: string, options?: {
+    all?: boolean;
+}): Promise<string[]>;
 /** Single-project entry: returns the process exit code (0 ok, 1 failed). */
 export declare function removeSingle(projectRoot?: string): Promise<number>;
 export interface RemoveAllOptions {

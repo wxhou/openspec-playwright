@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-- **BREAKING feat(cli): `uninstall` 改名 `remove`，并支持全机批量清理**. `remove` 清理当前项目（含新增的 CI workflow 与 `--auto-pipeline` 的 `openspec-auto.yml`、生成的 `eslint.config.mjs` 与 ruff managed block，均按所有权判断；规则文件与工具创建时字节一致则整文件删除，否则只删标记块；只剩 MCP 条目的项目同样会被发现并清理）；`remove --all` 扫描本机装过本工具的项目，默认只列计划，`--yes` 才执行，计划按同一所有权规则列出真正会删除的产物组，`--root` 可重复限定扫描根（显式给出时范围即这些根，不并入当前项目；Windows 覆盖所有存在的盘根）；旧命令 `uninstall` 不再保留。
+- **BREAKING feat(cli): `uninstall` 改名 `remove`，并支持全机批量清理**. `remove` 清理当前项目（含新增的 CI workflow 与 `--auto-pipeline` 的 `openspec-auto.yml`、生成的 `eslint.config.mjs` 与 ruff managed block，均按所有权判断；规则文件与工具创建时字节一致则整文件删除，否则只删标记块；官方 OpenSpec 的 `OPENSPEC:` 块、未闭合标记与符号链接指向项目外的产物一律保留，init/update 也不再写穿符号链接的规则文件）；`remove --all` 扫描本机装过本工具的项目（单独 MCP 条目不算发现信号），默认只列计划，`--yes` 才执行，计划按同一所有权规则列出真正会删除的产物组；批量汇总区分「权限不可写 → skipped」与真实失败（failed，退出码 1）；`--root` 可重复限定扫描根（显式给出时范围即这些根，不并入当前项目；路径不存在或为 UNC 时退出 2；Windows 覆盖所有存在的盘根）；旧命令 `uninstall` 不再保留。
   - `src/index.ts`、`src/commands/remove.ts`（原 `uninstall.ts`）、`src/shared/discover.ts`、`src/shared/mcp.ts`、`src/shared/lint-guidelines.ts`、`src/shared/codegraph.ts`、`src/shared/index.ts`、`src/commands/{init,update,doctor}.ts`、`src/commands/editors/*`、测试、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
 - **feat(gate): 加入运行时 flake 证据**. `gate --repeat <N>` 只重跑首跑失败的 E2E 用例，按尝试记录区分 flaky 与真失败；flaky 默认只报告，`--strict-flake` 才判失败；产物写入隔离的 tmp 目录，未开启时不改变现有行为。
   - `src/commands/gate.ts`、`src/index.ts`、`src/shared/ignore-check.ts`、`tests/gate.test.ts`、`tests/hooks.test.ts`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`

@@ -8,23 +8,25 @@
  */
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import {
   buildCommandMeta,
   getAllAdapters,
   hasRuleFileMarkers,
   listCommandArtifactPaths,
   normalizeEol,
-  OPENSPEC_PW_MCP_SERVERS,
 } from "../commands/editors.js";
 import { isStopHookInstalled } from "../commands/hooks.js";
 import { AUTO_PIPELINE_REL } from "../commands/pipeline.js";
-import { GITIGNORE_BLOCK_BEGIN, GITIGNORE_BLOCK_END } from "./gitignore-managed.js";
+import { hasRemovableManagedBlock } from "./gitignore-managed.js";
 import {
   isChecklistUnmodified,
   isToolGeneratedEslintConfig,
   isToolOwnedRuffBlock,
+  LINT_ESLINT_CONFIG_FILE,
+  LINT_GUIDELINES_RELPATH,
 } from "./lint-guidelines.js";
+import { GITHUB_WORKFLOW_REL } from "./constants.js";
 
 export const SCAN_MAX_DEPTH = 6;
 export const SCAN_MAX_DIRS = 50_000;
@@ -101,26 +103,16 @@ export function hasOpenspecPwTerritory(projectRoot: string): boolean {
   const gitignore = join(projectRoot, ".gitignore");
   if (isSmallFile(gitignore)) {
     const text = readFileSync(gitignore, "utf-8");
-    const begin = text.indexOf(GITIGNORE_BLOCK_BEGIN);
-    if (begin !== -1 && text.indexOf(GITIGNORE_BLOCK_END, begin) !== -1) {
+    if (hasRemovableManagedBlock(text)) {
       return true;
     }
   }
 
-  // Ask each adapter itself: the opencode carrier keeps its entries in
-  // opencode.json(c) and declares no mcpConfigPath, so a path-based scan
-  // would miss an OpenCode-only leftover. Both server names count — a legacy
-  // install may only have the old `playwright` entry left.
-  for (const adapter of getAllAdapters()) {
-    if (adapter.supportsMcp === false) continue;
-    for (const serverName of OPENSPEC_PW_MCP_SERVERS) {
-      try {
-        if (adapter.isMcpInstalled(projectRoot, serverName)) return true;
-      } catch {
-        // Unreadable config for this editor — try the next one.
-      }
-    }
-  }
+  // An MCP entry alone is NOT a signal: `playwright-test` is also the server
+  // name Playwright's own agent init writes, and the legacy `playwright` name
+  // is indistinguishable from a user-configured server. Projects that carry
+  // other openspec-pw territory are found regardless; a lone entry is left
+  // for the explicit single-project `remove`.
 
   // Content-owned leftovers carry no markers or MCP entries but are still
   // removable — without these signals `--all` would skip such projects.
@@ -154,16 +146,16 @@ function hasContentOwnedTerritory(projectRoot: string): boolean {
     }
   }
 
-  const checklist = readSmall(join(projectRoot, "lint-guidelines.md"));
+  const checklist = readSmall(join(projectRoot, LINT_GUIDELINES_RELPATH));
   if (checklist !== null && isChecklistUnmodified(checklist)) return true;
 
   // Filenames below are tool-specific, so existence is signal enough.
-  if (existsSync(join(projectRoot, ".github", "workflows", "openspec-pw.yml"))) {
+  if (existsSync(join(projectRoot, GITHUB_WORKFLOW_REL))) {
     return true;
   }
   if (existsSync(join(projectRoot, AUTO_PIPELINE_REL))) return true;
 
-  const eslint = readSmall(join(projectRoot, "eslint.config.mjs"));
+  const eslint = readSmall(join(projectRoot, LINT_ESLINT_CONFIG_FILE));
   if (eslint !== null && isToolGeneratedEslintConfig(eslint)) return true;
 
   for (const name of ["pyproject.toml", ".ruff.toml", "ruff.toml"]) {
@@ -191,16 +183,22 @@ export function discoverProjects(options: DiscoverOptions = {}): DiscoverResult 
     });
 
   const roots = options.roots?.length
-    ? dedupe(options.roots.map((r) => expandTilde(r, homeDir)))
+    ? dedupe(options.roots.map((r) => resolve(expandTilde(r, homeDir))))
     : defaultScanRoots(homeDir, platform, driveExists);
 
   const found = new Map<string, string>();
+  const visited = new Set<string>();
   let scannedDirs = 0;
   let unreadableDirs = 0;
   let truncated = false;
 
   const visit = (dir: string, depth: number): void => {
     if (truncated || depth > maxDepth) return;
+    // Overlapping roots (Windows: home inside C:\) must not scan a subtree
+    // twice — the duplicate would burn the directory budget.
+    const key = safeRealpath(dir) ?? resolve(dir);
+    if (visited.has(key)) return;
+    visited.add(key);
     if (++scannedDirs > maxDirs) {
       truncated = true;
       return;
@@ -248,7 +246,7 @@ export function discoverProjects(options: DiscoverOptions = {}): DiscoverResult 
   }
 
   const projects = [...found.values()];
-  const cwd = options.cwd;
+  const cwd = options.cwd ? resolve(options.cwd) : undefined;
   // An explicit `--root` defines the whole scope: merging the cwd project
   // would let `--yes` clean a project the user did not ask about.
   if (cwd && !options.roots?.length) {
@@ -304,7 +302,7 @@ export function defaultScanRoots(
   return roots;
 }
 
-function expandTilde(path: string, homeDir: string): string {
+export function expandTilde(path: string, homeDir: string): string {
   if (path === "~") return homeDir;
   if (path.startsWith("~/") || path.startsWith("~\\")) {
     return join(homeDir, path.slice(2));
