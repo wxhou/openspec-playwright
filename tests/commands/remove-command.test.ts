@@ -339,6 +339,20 @@ describe("removeInProject() minimal-mode project (standards only, no command art
     expect(agentsAfter).not.toContain("standards");
   });
 
+  it("cleans a rules file larger than the discovery signal cap", async () => {
+    const filler = "x".repeat(1024 * 1024 + 16);
+    writeFileSync(
+      join(tmp, "AGENTS.md"),
+      `user\n\n${filler}\n\n<!-- OPENSPEC-PW:START -->\nstandards\n<!-- OPENSPEC-PW:END -->\n`,
+    );
+
+    await removeInProject(tmp);
+
+    const after = readFileSync(join(tmp, "AGENTS.md"), "utf-8");
+    expect(after).not.toContain("OPENSPEC-PW:START");
+    expect(after).toContain("user");
+  });
+
   it("keeps a user-modified tests/README.md with a notice", async () => {
     mkdirSync(join(tmp, "tests"), { recursive: true });
     writeFileSync(join(tmp, "tests", "README.md"), "# my own readme");

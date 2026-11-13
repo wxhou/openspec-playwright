@@ -126,6 +126,15 @@ export function installStopHook(projectRoot, tier) {
     writeSettings(projectRoot, merged);
     return { path: settingsPath(projectRoot), tier };
 }
+/** True when the project carries our Stop hook — the removal predicate. */
+export function isStopHookInstalled(projectRoot) {
+    const read = readSettings(projectRoot);
+    if ("error" in read)
+        return false;
+    const stop = read.settings.hooks?.Stop;
+    return (Array.isArray(stop) &&
+        stop.some((group) => Array.isArray(group.hooks) && group.hooks.some(isOwnHook)));
+}
 export function uninstallStopHook(projectRoot) {
     const read = readSettings(projectRoot);
     if ("error" in read)

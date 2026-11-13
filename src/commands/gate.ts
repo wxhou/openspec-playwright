@@ -1150,6 +1150,10 @@ export async function gate(
           status: "skipped",
           reason: "change has no scenarios",
         };
+        // The check never ran for this change — flake evidence from an earlier
+        // run would describe a check the report now says was skipped.
+        flakyEntries = [];
+        flakeRunDir = undefined;
       }
     }
   }

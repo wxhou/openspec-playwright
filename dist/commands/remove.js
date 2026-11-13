@@ -2,12 +2,12 @@ import { existsSync, readFileSync, rmSync, rmdirSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
-import { uninstallStopHook } from "./hooks.js";
-import { buildCommandMeta, CLAUDE_LEGACY_SKILL_REL, cleanProjectRules, claudeAdapter, codebuddyAdapter, detectAdapters, listCommandArtifactPaths, OPENSPEC_PW_MCP_SERVERS, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, hasRuleFileMarkers, normalizeEol, } from "./editors.js";
+import { uninstallStopHook, isStopHookInstalled } from "./hooks.js";
+import { buildCommandMeta, CLAUDE_LEGACY_SKILL_REL, cleanProjectRules, claudeAdapter, codebuddyAdapter, detectAdapters, enumerateVendoredAgents, getAllAdapters, installedAgentsSnapshotDir, listCommandArtifactPaths, OPENSPEC_PW_MCP_SERVERS, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, hasRuleFileMarkers, normalizeEol, } from "./editors.js";
 import { removePlaywrightMcp, removeTestRunnerMcp, detectCodeGraphStatus, removeManagedBlock, removeChecklist, removeGeneratedEslintConfig, removeRuffManagedBlock, isChecklistUnmodified, isToolGeneratedEslintConfig, findRuffManagedBlock, LINT_ESLINT_CONFIG_FILE, LINT_GUIDELINES_RELPATH, } from "../shared/index.js";
 import { discoverProjects } from "../shared/discover.js";
+import { GITIGNORE_BLOCK_BEGIN } from "../shared/gitignore-managed.js";
 const WORKFLOW_REL = join(".github", "workflows", "openspec-pw.yml");
-const SIGNAL_MAX_BYTES = 1024 * 1024;
 /**
  * A removal that failed after some files were already changed. `modified`
  * lets the batch orchestrator tell "nothing touchable" (skipped) from
@@ -41,14 +41,22 @@ export async function removeInProject(projectRoot) {
         const detected = detectAdapters(projectRoot);
         // Body unused — only need paths from commandFilePath / extraArtifacts
         const meta = buildCommandMeta("");
-        // 1. Remove Playwright MCP servers for each detected editor — both the
-        // browser-control server and the official test-runner server.
+        // 1. Remove Playwright MCP servers — both the browser-control server and
+        // the official test-runner server. Every adapter, not only detected ones:
+        // an editor can carry a project MCP entry (e.g. opencode.json) without its
+        // marker directory, and detection would otherwise report a no-op project
+        // as cleaned while the entry stays behind.
         console.log(chalk.blue("\n─── Removing Playwright MCP ───"));
-        for (const adapter of detected) {
+        for (const adapter of getAllAdapters()) {
             if (adapter.supportsMcp !== false) {
                 for (const serverName of OPENSPEC_PW_MCP_SERVERS) {
-                    if (adapter.isMcpInstalled(projectRoot, serverName)) {
-                        track(`mcp:${adapter.id}:${serverName}`);
+                    try {
+                        if (adapter.isMcpInstalled(projectRoot, serverName)) {
+                            track(`mcp:${adapter.id}:${serverName}`);
+                        }
+                    }
+                    catch {
+                        // Unreadable MCP config for this editor — skip its probe.
                     }
                 }
             }
@@ -213,7 +221,7 @@ export async function removeInProject(projectRoot) {
         }
         // 5. Clean rules file markers for each detected editor
         console.log(chalk.blue("\n─── Cleaning Rules Files ───"));
-        if (hasRuleFileMarkers(projectRoot, SIGNAL_MAX_BYTES))
+        if (hasRuleFileMarkers(projectRoot))
             track("rules-markers");
         for (const adapter of detected) {
             cleanProjectRules(adapter, projectRoot);
@@ -225,10 +233,10 @@ export async function removeInProject(projectRoot) {
         // editor is not among the detected editors but our territory is present;
         // removeMarkersFromFile stays quiet-ish (gray info lines) when the files
         // carry no markers.
-        if (!detected.some((a) => a.id === "claude") && hasRuleFileMarkers(projectRoot, SIGNAL_MAX_BYTES)) {
+        if (!detected.some((a) => a.id === "claude") && hasRuleFileMarkers(projectRoot)) {
             cleanProjectRules(claudeAdapter, projectRoot);
         }
-        if (!detected.some((a) => a.id === "codebuddy") && hasRuleFileMarkers(projectRoot, SIGNAL_MAX_BYTES)) {
+        if (!detected.some((a) => a.id === "codebuddy") && hasRuleFileMarkers(projectRoot)) {
             cleanProjectRules(codebuddyAdapter, projectRoot);
         }
         // 5b. Remove the managed .gitignore block. Idempotent — no block is a
@@ -362,18 +370,22 @@ function describePlan(projectRoot) {
     const detected = detectAdapters(projectRoot);
     const meta = buildCommandMeta("");
     let commands = 0;
-    let mcp = 0;
     for (const adapter of detected) {
         commands += listCommandArtifactPaths(adapter, meta).filter((rel) => existsSync(join(projectRoot, rel))).length;
-        if (adapter.supportsMcp !== false) {
-            for (const serverName of OPENSPEC_PW_MCP_SERVERS) {
-                try {
-                    if (adapter.isMcpInstalled(projectRoot, serverName))
-                        mcp++;
-                }
-                catch {
-                    // Unreadable MCP config — leave it out of the plan.
-                }
+    }
+    // MCP entries are removed for every adapter (an editor can carry a project
+    // entry without its marker directory), so the plan must count them the same way.
+    let mcp = 0;
+    for (const adapter of getAllAdapters()) {
+        if (adapter.supportsMcp === false)
+            continue;
+        for (const serverName of OPENSPEC_PW_MCP_SERVERS) {
+            try {
+                if (adapter.isMcpInstalled(projectRoot, serverName))
+                    mcp++;
+            }
+            catch {
+                // Unreadable MCP config — leave it out of the plan.
             }
         }
     }
@@ -390,7 +402,7 @@ function describePlan(projectRoot) {
     if (isPristineCopy(projectRoot, join("tests", "README.md"), "tests-readme.md")) {
         groups.push("tests/README.md");
     }
-    if (hasRuleFileMarkers(projectRoot, SIGNAL_MAX_BYTES))
+    if (hasRuleFileMarkers(projectRoot))
         groups.push("rules markers");
     try {
         const checklistPath = join(projectRoot, LINT_GUIDELINES_RELPATH);
@@ -417,13 +429,12 @@ function describePlan(projectRoot) {
     catch {
         // Unreadable file — skip the group rather than aborting the plan.
     }
-    const agentFiles = (claudeAdapter.optionalArtifacts?.(true) ?? []).map((extra) => extra.relativePath);
-    if (agentFiles.some((rel) => existsSync(join(projectRoot, rel)))) {
+    const agents = enumerateVendoredAgents(projectRoot, installedAgentsSnapshotDir());
+    if (agents.owned.length > 0)
         groups.push("vendored agents");
-    }
     if (hasManagedGitignoreBlock(projectRoot))
         groups.push(".gitignore block");
-    if (hasStopHook(projectRoot))
+    if (isStopHookInstalled(projectRoot))
         groups.push("stop hook");
     if (groups.length === 0)
         groups.push("(nothing detected — will be skipped)");
@@ -458,19 +469,7 @@ function hasManagedGitignoreBlock(projectRoot) {
     try {
         if (!existsSync(file))
             return false;
-        const text = readFileSync(file, "utf-8");
-        return text.includes("# openspec-pw: begin managed block");
-    }
-    catch {
-        return false;
-    }
-}
-function hasStopHook(projectRoot) {
-    const file = join(projectRoot, ".claude", "settings.json");
-    try {
-        if (!existsSync(file))
-            return false;
-        return readFileSync(file, "utf-8").includes("gate --hook");
+        return readFileSync(file, "utf-8").includes(GITIGNORE_BLOCK_BEGIN);
     }
     catch {
         return false;

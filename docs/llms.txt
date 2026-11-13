@@ -40,7 +40,7 @@ npx playwright install --with-deps
 - `openspec-pw audit` — Audit tests for orphaned specs and issues
 - `openspec-pw migrate` — Migrate old test files to new structure
 - `openspec-pw explore` — Explore routes in parallel with Playwright
-- `openspec-pw remove` — Remove integration from the current project (`--all` sweeps every project on the machine; dry-run unless `--yes`)
+- `openspec-pw remove` — Remove integration from the current project (`--all` scans your home directory, plus every drive on Windows; add `--root <dir>` to scan elsewhere; dry-run unless `--yes`)
 
 ## Links
 

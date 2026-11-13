@@ -40,6 +40,8 @@ export declare function installStopHook(projectRoot: string, tier: HookTier): {
 } | {
     error: string;
 };
+/** True when the project carries our Stop hook — the removal predicate. */
+export declare function isStopHookInstalled(projectRoot: string): boolean;
 export declare function uninstallStopHook(projectRoot: string): {
     path: string;
     removed: boolean;
