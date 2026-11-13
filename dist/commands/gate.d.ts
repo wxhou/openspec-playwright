@@ -112,6 +112,8 @@ export interface PlaywrightReportSummary {
     flaky: FlakyEntry[];
     realFailures: string[];
     total: number;
+    /** Tests Playwright skipped in this run (conditional skips, did-not-run). */
+    skipped: number;
     fatalErrors: number;
 }
 /**

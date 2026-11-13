@@ -133,7 +133,17 @@ export declare function removeGeneratedEslintConfig(projectRoot: string): {
  * Bytes outside the block are preserved verbatim; a file left empty by the
  * removal (tool-created `ruff.toml` holding only the block) is deleted.
  */
+export type RuffBlockRemovalStatus = "removed" | "kept-modified";
+/** True when the file's managed block is exactly what install writes (owned). */
+export declare function isToolOwnedRuffBlock(content: string): boolean;
+/**
+ * Remove the ruff managed block from `pyproject.toml` / `.ruff.toml` / `ruff.toml`.
+ *
+ * Ownership matches install: only the exact block `buildRuffManagedBlock`
+ * writes is deleted. A block the user edited is kept and reported — install
+ * already refuses to overwrite it, so deleting it here would lose their edit.
+ */
 export declare function removeRuffManagedBlock(projectRoot: string): {
     file: string;
-    removed: boolean;
+    status: RuffBlockRemovalStatus;
 }[];

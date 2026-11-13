@@ -1,7 +1,7 @@
 import type { ArtifactSpec, CommandMeta } from "./types.js";
 /**
  * The claude-only skill directory retired installs (pre-0.3.74) left
- * behind. Declared by the claude adapter and reused by uninstall's fixed
+ * behind. Declared by the claude adapter and reused by remove's fixed
  * historical cleanup.
  */
 export declare const CLAUDE_LEGACY_SKILL_REL: string;

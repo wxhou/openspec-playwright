@@ -71,7 +71,7 @@ export function skippableManagedPaths(omit = []) {
  * file is skipped — "not covered by that file's rules" — so detectors
  * built on this never throw while degrading an advisory.
  */
-function loadIgnoreRules(projectRoot) {
+export function loadIgnoreRules(projectRoot) {
     const ig = ignore();
     for (const ruleFile of [join(".git", "info", "exclude"), ".gitignore"]) {
         const abs = join(projectRoot, ruleFile);
@@ -112,7 +112,7 @@ function toLines(content) {
  * (before any other BEGIN) is an END. An orphan BEGIN followed by another
  * BEGIN means the pair is malformed — reported as absent (review F3:
  * a malformed pair must never swallow user lines between its markers,
- * on write or on uninstall). */
+ * on write or on remove). */
 function locateBlock(lines) {
     for (let b = 0; b < lines.length; b++) {
         if (lines[b].trim() !== GITIGNORE_BLOCK_BEGIN)
@@ -249,7 +249,7 @@ export function ensureGitignoreEntries(projectRoot, opts = {}) {
     return { changed: true, added, removed };
 }
 /**
- * Remove the managed block (uninstall). Block-external lines are preserved
+ * Remove the managed block (the `remove` command). Block-external lines are preserved
  * byte-for-byte — no blank-run collapsing, no leading/trailing whitespace
  * trims (review F5); the file's original trailing-newline state is kept.
  * A file left with no content at all is deleted. No well-formed block →

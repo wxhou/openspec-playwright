@@ -575,10 +575,21 @@ export function removeGeneratedEslintConfig(projectRoot) {
     rmSync(file);
     return { status: "removed", file };
 }
+/** True when the file's managed block is exactly what install writes (owned). */
+export function isToolOwnedRuffBlock(content) {
+    const body = findRuffManagedBlock(content);
+    if (body === null)
+        return false;
+    return ["[tool.ruff.lint]", "[lint]"]
+        .map((header) => buildRuffManagedBlock(header).split("\n").slice(1, -1).join("\n"))
+        .includes(body);
+}
 /**
  * Remove the ruff managed block from `pyproject.toml` / `.ruff.toml` / `ruff.toml`.
- * Bytes outside the block are preserved verbatim; a file left empty by the
- * removal (tool-created `ruff.toml` holding only the block) is deleted.
+ *
+ * Ownership matches install: only the exact block `buildRuffManagedBlock`
+ * writes is deleted. A block the user edited is kept and reported — install
+ * already refuses to overwrite it, so deleting it here would lose their edit.
  */
 export function removeRuffManagedBlock(projectRoot) {
     const candidates = ["pyproject.toml", ".ruff.toml", "ruff.toml"].map((f) => join(projectRoot, f));
@@ -593,6 +604,12 @@ export function removeRuffManagedBlock(projectRoot) {
         catch {
             continue;
         }
+        if (findRuffManagedBlock(content) === null)
+            continue;
+        if (!isToolOwnedRuffBlock(content)) {
+            results.push({ file, status: "kept-modified" });
+            continue;
+        }
         const spliced = spliceRuffManagedBlock(content);
         if (spliced === null)
             continue;
@@ -602,7 +619,7 @@ export function removeRuffManagedBlock(projectRoot) {
         else {
             writeFileSync(file, spliced);
         }
-        results.push({ file, removed: true });
+        results.push({ file, status: "removed" });
     }
     return results;
 }

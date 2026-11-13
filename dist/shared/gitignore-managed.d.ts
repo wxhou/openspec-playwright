@@ -1,3 +1,4 @@
+import ignore from "ignore";
 import { normalizeEol } from "../commands/editors/agents.js";
 /** Managed paths (user-decided artifacts/config + credentials + regenerable local data). */
 export declare const MANAGED_GITIGNORE_PATHS: readonly [".claude/", ".cursor/", ".opencode/", ".cline/", ".pi/", ".omp/", ".codebuddy/", ".agents/skills/opsx-e2e/", ".dsh/skills/opsx-e2e/", ".codegraph/", ".playwright-mcp/", "openspec/", "AGENTS.md", "CLAUDE.md", "CODEBUDDY.md", "app-exploration.md", "opencode.json", ".mcp.json", "tmp/", "playwright/.auth/", "tests/playwright/test-results/", "tests/playwright/screenshots/", "tests/playwright/credentials.yaml", "tests/playwright/credentials.yaml.bak"];
@@ -11,6 +12,13 @@ export declare const GITIGNORE_BLOCK_END = "# openspec-pw: end managed block";
 export declare const LOCKED_GITIGNORE_PATHS: readonly ["AGENTS.md", "CLAUDE.md", "CODEBUDDY.md"];
 /** Candidates for the init selection prompt: managed paths minus locked/omitted. */
 export declare function skippableManagedPaths(omit?: readonly string[]): string[];
+/**
+ * Load the run directory's ignore rules (.git/info/exclude first, then
+ * .gitignore). Per-file read tolerance (review F1): an unreadable rule
+ * file is skipped — "not covered by that file's rules" — so detectors
+ * built on this never throw while degrading an advisory.
+ */
+export declare function loadIgnoreRules(projectRoot: string): ReturnType<typeof ignore>;
 /**
  * Managed paths NOT yet covered by any ignore rule — existence-independent
  * (a path that does not exist on disk is exactly the forward-looking case
@@ -58,7 +66,7 @@ export declare function ensureGitignoreEntries(projectRoot: string, opts?: {
     removed: string[];
 };
 /**
- * Remove the managed block (uninstall). Block-external lines are preserved
+ * Remove the managed block (the `remove` command). Block-external lines are preserved
  * byte-for-byte — no blank-run collapsing, no leading/trailing whitespace
  * trims (review F5); the file's original trailing-newline state is kept.
  * A file left with no content at all is deleted. No well-formed block →

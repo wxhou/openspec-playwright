@@ -31,7 +31,7 @@ export type VendoredAgentRole = (typeof VENDORED_AGENT_ROLES)[number];
 /**
  * Roles we used to vendor and no longer ship. Their hashes live in
  * manifest.json historicalHashes so older installs' clean copies still
- * classify as tool-owned (removable on uninstall/deselect) — the paths are
+ * classify as tool-owned (removable on remove/deselect) — the paths are
  * derived from the manifest, never installed or refreshed.
  */
 export const RETIRED_AGENT_ROLES = ["generator", "healer"] as const;
@@ -137,7 +137,7 @@ export function classifyAgentFile(
   const role = roleForRelPath(relPath);
   if (!role) return "modified";
   // Retired roles have no live snapshot — only the historical chain decides.
-  // Their clean copies stay tool-owned so uninstall/deselect can reclaim them;
+  // Their clean copies stay tool-owned so remove/deselect can reclaim them;
   // edited copies are user-owned and never touched.
   if (manifest.historicalHashes?.[role]?.includes(sha256Contents(existing))) {
     return "owned";

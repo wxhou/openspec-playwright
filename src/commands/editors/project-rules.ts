@@ -6,6 +6,7 @@
 import {
   existsSync,
   lstatSync,
+  realpathSync,
   rmSync,
   readFileSync,
   statSync,
@@ -77,8 +78,7 @@ export function installOpenSpecBlock(
   const markerEnd = OPENSPEC_END;
 
   if (!existsSync(dest)) {
-    const projName = basename(projectRoot) || "Project";
-    const content = `# ${projName}\n\n${markerStart}\n\n${standardsContent.trim()}\n\n${markerEnd}\n`;
+    const content = `# ${rulesFileTitle(projectRoot)}\n\n${markerStart}\n\n${standardsContent.trim()}\n\n${markerEnd}\n`;
     writeFileSync(dest, content);
     console.log(
       chalk.green(`  ✓ ${fileLabel}: created with employee-grade standards`),
@@ -318,17 +318,34 @@ export function installProjectRules(
 
 /** Remove all OpenSpec marker blocks from AGENTS.md (always) and the adapter's wrapper file (claude/codebuddy). */
 export function cleanProjectRules(adapter: EditorAdapter, projectRoot: string): void {
-  // AGENTS.md always has the employee standards (SSOT)
+  // AGENTS.md always has the employee standards (SSOT). Deleting the whole
+  // file would dangle a wrapper symlinked to it, so keep the heading in that
+  // documented setup and strip markers only.
+  const linked = getAllAdapters().some((a) =>
+    wrapperLinksToAgents(projectRoot, a),
+  );
   removeMarkersFromFile(
     join(projectRoot, "AGENTS.md"),
     "AGENTS.md",
-    bundledStandardsContent() ?? undefined,
+    linked ? undefined : (bundledStandardsContent() ?? undefined),
   );
 
   // Wrapper files (CLAUDE.md / CODEBUDDY.md) may carry the wrapper import
   const wrapper = wrapperRulesFile(adapter, projectRoot);
   if (wrapper) {
     removeMarkersFromFile(wrapper, basename(wrapper), claudeWrapperStandardsContent());
+  }
+}
+
+/** True when a wrapper file is a symlink resolving to this project's AGENTS.md. */
+function wrapperLinksToAgents(projectRoot: string, adapter: EditorAdapter): boolean {
+  const wrapper = wrapperRulesFile(adapter, projectRoot);
+  if (!wrapper) return false;
+  try {
+    if (!lstatSync(wrapper).isSymbolicLink()) return false;
+    return realpathSync(wrapper) === realpathSync(join(projectRoot, "AGENTS.md"));
+  } catch {
+    return false;
   }
 }
 
@@ -344,13 +361,18 @@ function bundledStandardsContent(): string | null {
   }
 }
 
+/** Heading install writes into a rules file it creates (shared with the pristine check). */
+function rulesFileTitle(projectRoot: string): string {
+  return basename(projectRoot) || "Project";
+}
+
 /**
  * True when `content` is exactly what `installOpenSpecBlock` writes for a
  * fresh file: the generated title plus the marker block around `body`. Lets
  * removal delete the file instead of leaving a title-only shell.
  */
 function isPristineRulesFile(dest: string, content: string, body: string): boolean {
-  const title = `# ${basename(dirname(dest))}`;
+  const title = `# ${rulesFileTitle(dirname(dest))}`;
   const expected = `${title}\n\n${OPENSPEC_START}\n\n${body.trim()}\n\n${OPENSPEC_END}\n`;
   return content.replace(/\r\n/g, "\n") === expected.replace(/\r\n/g, "\n");
 }
@@ -466,7 +488,7 @@ function migrateLegacyMarkersInContent(content: string, signatures: string[]): s
  * Migrate legacy OPENSPEC markers in AGENTS.md (and CLAUDE.md wrapper) to the
  * OPENSPEC-PW namespace. Gates:
  *   - hasPwArtifacts: without openspec-pw command artifacts the legacy block
- *     is an official relic, not our territory — untouched (uninstall removes it).
+ *     is an official relic, not our territory — untouched (remove cleans it).
  *   - claudeAuthorized: the CLAUDE.md wrapper is only touched for claude.
  *   - signature: block content must match ours (see signatures above).
  * Returns true when any file was migrated.
@@ -550,7 +572,14 @@ export function hasRuleFileMarkers(
     } catch {
       // stat unavailable — decide from the loaded content instead.
     }
-    const content = readFileSync(path, "utf-8");
+    let content: string;
+    try {
+      content = readFileSync(path, "utf-8");
+    } catch {
+      // Unreadable rules file — treat as no markers. Discovery scans arbitrary
+      // trees where a permission error must not abort the parent directory.
+      continue;
+    }
     if (Buffer.byteLength(content, "utf-8") > maxBytes) continue;
     if (content.includes(OPENSPEC_START)) return true;
     if (hasLegacyTerritoryStart(content) && content.includes(LEGACY_MAIN_SIGNATURE)) return true;

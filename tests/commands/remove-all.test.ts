@@ -222,6 +222,38 @@ describe("runRemoveAll --yes", () => {
     expect(out.split("vendored agents").length - 1).toBe(1);
   });
 
+  it("counts a shared MCP config file once per entry", async () => {
+    writeFileSync(
+      join(projectA, ".mcp.json"),
+      JSON.stringify({
+        mcpServers: {
+          playwright: { command: "npx" },
+          "playwright-test": { command: "npx" },
+        },
+      }),
+    );
+    const logs: string[] = [];
+    vi.mocked(console.log).mockImplementation((msg?: unknown) =>
+      logs.push(String(msg)),
+    );
+
+    await runRemoveAll({ root: [roots], cwd: emptyCwd });
+
+    expect(logs.join("\n")).toContain("MCP 2");
+  });
+
+  it("omits the gitignore group when the managed block is malformed", async () => {
+    writeFileSync(join(projectA, ".gitignore"), "# openspec-pw: begin managed block\n");
+    const logs: string[] = [];
+    vi.mocked(console.log).mockImplementation((msg?: unknown) =>
+      logs.push(String(msg)),
+    );
+
+    await runRemoveAll({ root: [roots], cwd: emptyCwd });
+
+    expect(logs.join("\n")).not.toContain(".gitignore block");
+  });
+
   it("puts the cwd project first in the plan", async () => {
     const outside = join(base, "outside-proj");
     mkdirSync(outside, { recursive: true });

@@ -964,6 +964,48 @@ describe("parsePlaywrightReport", () => {
     expect(summary.realFailures).toEqual(["one"]);
   });
 
+  it("treats an expected failure on rerun as recovered, not a real failure", () => {
+    const summary = parsePlaywrightReport(
+      JSON.stringify({
+        suites: [
+          {
+            specs: [
+              {
+                title: "one",
+                tests: [
+                  { expectedStatus: "failed", results: [{ status: "failed" }] },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    expect("error" in summary).toBe(false);
+    if ("error" in summary) return;
+    expect(summary.flaky).toHaveLength(1);
+    expect(summary.realFailures).toHaveLength(0);
+  });
+
+  it("counts skipped tests separately from executed ones", () => {
+    const summary = parsePlaywrightReport(
+      JSON.stringify({
+        suites: [
+          {
+            specs: [
+              { title: "skipped", tests: [{ results: [{ status: "skipped" }] }] },
+              { title: "ran", tests: [{ results: [{ status: "passed" }] }] },
+            ],
+          },
+        ],
+      }),
+    );
+    expect("error" in summary).toBe(false);
+    if ("error" in summary) return;
+    expect(summary.skipped).toBe(1);
+    expect(summary.total).toBe(1);
+  });
+
   it("rejects reports without suites", () => {
     expect(parsePlaywrightReport("{}")).toEqual({ error: "report has no suites" });
   });

@@ -1,12 +1,12 @@
 import { existsSync, readFileSync, rmSync, rmdirSync } from "fs";
-import { join, dirname } from "path";
+import { join, dirname, relative } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { uninstallStopHook, isStopHookInstalled } from "./hooks.js";
 import { buildCommandMeta, CLAUDE_LEGACY_SKILL_REL, cleanProjectRules, claudeAdapter, codebuddyAdapter, detectAdapters, enumerateVendoredAgents, getAllAdapters, installedAgentsSnapshotDir, listCommandArtifactPaths, OPENSPEC_PW_MCP_SERVERS, removeAdapterCommandArtifacts, removeOwnedVendoredAgents, hasRuleFileMarkers, normalizeEol, } from "./editors.js";
-import { removePlaywrightMcp, removeTestRunnerMcp, detectCodeGraphStatus, removeManagedBlock, removeChecklist, removeGeneratedEslintConfig, removeRuffManagedBlock, isChecklistUnmodified, isToolGeneratedEslintConfig, findRuffManagedBlock, LINT_ESLINT_CONFIG_FILE, LINT_GUIDELINES_RELPATH, } from "../shared/index.js";
+import { removeMcp, detectCodeGraphStatus, removeManagedBlock, removeChecklist, removeGeneratedEslintConfig, removeRuffManagedBlock, isChecklistUnmodified, isToolGeneratedEslintConfig, isToolOwnedRuffBlock, LINT_ESLINT_CONFIG_FILE, LINT_GUIDELINES_RELPATH, } from "../shared/index.js";
 import { discoverProjects } from "../shared/discover.js";
-import { GITIGNORE_BLOCK_BEGIN } from "../shared/gitignore-managed.js";
+import { GITIGNORE_BLOCK_BEGIN, GITIGNORE_BLOCK_END } from "../shared/gitignore-managed.js";
 const WORKFLOW_REL = join(".github", "workflows", "openspec-pw.yml");
 /**
  * A removal that failed after some files were already changed. `modified`
@@ -26,7 +26,7 @@ export class RemoveError extends Error {
  * Remove every openspec-pw product from one project. Tool-owned artifacts
  * are deleted, user-modified copies are kept with a notice, and user data
  * (credentials, tests, openspec specs) is never touched. Idempotent: an
- * uninstalled project produces only skip lines.
+ * already-clean project produces only skip lines.
  *
  * Returns the project-relative paths (and coarse markers like `mcp:…`) that
  * were changed, so a failed run can report how far it got.
@@ -45,23 +45,43 @@ export async function removeInProject(projectRoot) {
         // the official test-runner server. Every adapter, not only detected ones:
         // an editor can carry a project MCP entry (e.g. opencode.json) without its
         // marker directory, and detection would otherwise report a no-op project
-        // as cleaned while the entry stays behind.
+        // as cleaned while the entry stays behind. Silent for editors that are not
+        // detected and hold nothing, so batch runs stay readable.
         console.log(chalk.blue("\n─── Removing Playwright MCP ───"));
+        const detectedIds = new Set(detected.map((adapter) => adapter.id));
+        const trackedMcp = new Set();
         for (const adapter of getAllAdapters()) {
-            if (adapter.supportsMcp !== false) {
-                for (const serverName of OPENSPEC_PW_MCP_SERVERS) {
-                    try {
-                        if (adapter.isMcpInstalled(projectRoot, serverName)) {
-                            track(`mcp:${adapter.id}:${serverName}`);
-                        }
-                    }
-                    catch {
-                        // Unreadable MCP config for this editor — skip its probe.
-                    }
+            if (adapter.supportsMcp === false) {
+                if (detectedIds.has(adapter.id)) {
+                    console.log(chalk.gray(`  - ${adapter.label}: MCP not supported (nothing to remove)`));
                 }
+                continue;
             }
-            removePlaywrightMcp(adapter, projectRoot);
-            removeTestRunnerMcp(adapter, projectRoot);
+            const installed = OPENSPEC_PW_MCP_SERVERS.filter((serverName) => {
+                try {
+                    return adapter.isMcpInstalled(projectRoot, serverName);
+                }
+                catch {
+                    // Unreadable MCP config for this editor — treat as absent.
+                    return false;
+                }
+            });
+            if (installed.length === 0) {
+                if (detectedIds.has(adapter.id)) {
+                    console.log(chalk.gray(`  - ${adapter.label}: no Playwright MCP entries (nothing to remove)`));
+                }
+                continue;
+            }
+            for (const serverName of installed) {
+                // Editors sharing one config file (claude/codebuddy/minimax read the
+                // project .mcp.json) must not record the same physical entry twice.
+                const key = mcpEntryKey(adapter, projectRoot, serverName);
+                if (!trackedMcp.has(key)) {
+                    trackedMcp.add(key);
+                    track(key);
+                }
+                removeMcp(adapter, projectRoot, serverName);
+            }
         }
         // 2. Remove E2E command (+ extraArtifacts) for each detected editor —
         // delegates to the removal.ts primitive (same rm + empty-dir cascade +
@@ -154,9 +174,13 @@ export async function removeInProject(projectRoot) {
         if (ruffRemovals.length === 0) {
             console.log(chalk.gray("  - No ruff managed block found, skipping"));
         }
-        for (const { file } of ruffRemovals) {
-            track(file);
-            console.log(chalk.green(`  ✓ Removed ruff managed block from ${file}`));
+        for (const { file, status } of ruffRemovals) {
+            if (status === "kept-modified") {
+                console.log(chalk.yellow(`  ⚠ ${relative(projectRoot, file)} ruff block is locally modified — kept`));
+                continue;
+            }
+            track(relative(projectRoot, file));
+            console.log(chalk.green(`  ✓ Removed ruff managed block from ${relative(projectRoot, file)}`));
         }
         const eslintResult = removeGeneratedEslintConfig(projectRoot);
         if (eslintResult.status === "removed") {
@@ -260,8 +284,9 @@ export async function removeInProject(projectRoot) {
             console.log(chalk.yellow(`  ⚠ ${hookResult.error}`));
         }
         else if (hookResult.removed) {
-            track(hookResult.path);
-            console.log(chalk.green(`  ✓ Removed openspec-pw Stop hook from ${hookResult.path}`));
+            const hookRel = relative(projectRoot, hookResult.path);
+            track(hookRel);
+            console.log(chalk.green(`  ✓ Removed openspec-pw Stop hook from ${hookRel}`));
         }
         else {
             console.log(chalk.gray("  - No openspec-pw Stop hook found, skipping"));
@@ -375,20 +400,22 @@ function describePlan(projectRoot) {
     }
     // MCP entries are removed for every adapter (an editor can carry a project
     // entry without its marker directory), so the plan must count them the same way.
-    let mcp = 0;
+    const mcpKeys = new Set();
     for (const adapter of getAllAdapters()) {
         if (adapter.supportsMcp === false)
             continue;
         for (const serverName of OPENSPEC_PW_MCP_SERVERS) {
             try {
-                if (adapter.isMcpInstalled(projectRoot, serverName))
-                    mcp++;
+                if (adapter.isMcpInstalled(projectRoot, serverName)) {
+                    mcpKeys.add(mcpEntryKey(adapter, projectRoot, serverName));
+                }
             }
             catch {
                 // Unreadable MCP config — leave it out of the plan.
             }
         }
     }
+    const mcp = mcpKeys.size;
     if (commands > 0)
         groups.push(`commands ${commands}`);
     if (mcp > 0)
@@ -453,11 +480,16 @@ function isPristineCopy(projectRoot, relPath, templateFile) {
         return false;
     }
 }
+/** Identity of one physical MCP entry — shared config files count once. */
+function mcpEntryKey(adapter, projectRoot, serverName) {
+    const shared = adapter.mcpConfigPath?.(projectRoot);
+    return shared ? `mcp:${shared}:${serverName}` : `mcp:${adapter.id}:${serverName}`;
+}
 function hasRuffBlock(projectRoot) {
     return ["pyproject.toml", ".ruff.toml", "ruff.toml"].some((name) => {
         const file = join(projectRoot, name);
         try {
-            return existsSync(file) && findRuffManagedBlock(readFileSync(file, "utf-8")) !== null;
+            return existsSync(file) && isToolOwnedRuffBlock(readFileSync(file, "utf-8"));
         }
         catch {
             return false;
@@ -469,7 +501,9 @@ function hasManagedGitignoreBlock(projectRoot) {
     try {
         if (!existsSync(file))
             return false;
-        return readFileSync(file, "utf-8").includes(GITIGNORE_BLOCK_BEGIN);
+        const text = readFileSync(file, "utf-8");
+        const begin = text.indexOf(GITIGNORE_BLOCK_BEGIN);
+        return begin !== -1 && text.indexOf(GITIGNORE_BLOCK_END, begin) !== -1;
     }
     catch {
         return false;

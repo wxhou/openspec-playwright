@@ -14,6 +14,7 @@ import {
   getAllAdapters,
   hasRuleFileMarkers,
   listCommandArtifactPaths,
+  OPENSPEC_PW_MCP_SERVERS,
 } from "../commands/editors.js";
 import { GITIGNORE_BLOCK_BEGIN, GITIGNORE_BLOCK_END } from "./gitignore-managed.js";
 
@@ -100,13 +101,16 @@ export function hasOpenspecPwTerritory(projectRoot: string): boolean {
 
   // Ask each adapter itself: the opencode carrier keeps its entries in
   // opencode.json(c) and declares no mcpConfigPath, so a path-based scan
-  // would miss an OpenCode-only leftover.
+  // would miss an OpenCode-only leftover. Both server names count — a legacy
+  // install may only have the old `playwright` entry left.
   for (const adapter of getAllAdapters()) {
     if (adapter.supportsMcp === false) continue;
-    try {
-      if (adapter.isMcpInstalled(projectRoot, "playwright-test")) return true;
-    } catch {
-      // Unreadable config for this editor — try the next one.
+    for (const serverName of OPENSPEC_PW_MCP_SERVERS) {
+      try {
+        if (adapter.isMcpInstalled(projectRoot, serverName)) return true;
+      } catch {
+        // Unreadable config for this editor — try the next one.
+      }
     }
   }
 
@@ -149,10 +153,9 @@ export function discoverProjects(options: DiscoverOptions = {}): DiscoverResult 
     try {
       isProject = hasOpenspecPwTerritory(dir);
     } catch {
-      // Unreadable directory — count it so the batch summary can say the
-      // scan was incomplete, then keep scanning its siblings.
+      // One unreadable file must not hide the whole subtree — note it and
+      // keep scanning.
       unreadableDirs++;
-      return;
     }
     // A detected project is scanned as one unit: do not descend into its
     // fixtures. Scan roots themselves may also be projects (e.g. init run

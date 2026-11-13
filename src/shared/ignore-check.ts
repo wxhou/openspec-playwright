@@ -6,9 +6,9 @@
  * Shared single source for init and update: both print the hint text from
  * here so the wording cannot drift between commands.
  */
-import { existsSync, readFileSync } from "fs";
+import { existsSync } from "fs";
 import { join } from "path";
-import ignore from "ignore";
+import { loadIgnoreRules } from "./gitignore-managed.js";
 
 /** Credential file paths whose git-ignored status matters (relative). */
 export const CREDENTIALS_RELPATHS = [
@@ -29,22 +29,13 @@ export function credentialsIgnoreHint(unignored: string[]): string {
   );
 }
 
-function loadIgnore(projectRoot: string) {
-  const ig = ignore();
-  for (const ruleFile of [join(".git", "info", "exclude"), ".gitignore"]) {
-    const abs = join(projectRoot, ruleFile);
-    if (existsSync(abs)) ig.add(readFileSync(abs, "utf-8"));
-  }
-  return ig;
-}
-
 /**
  * Whether the project's ignore rules cover `relPath`, independent of whether
  * the path exists yet. `findUnignoredFiles` cannot answer this: it skips
  * paths that are not on disk, which makes a not-yet-created `tmp/` look safe.
  */
 export function isPathIgnored(projectRoot: string, relPath: string): boolean {
-  const ig = loadIgnore(projectRoot);
+  const ig = loadIgnoreRules(projectRoot);
   const clean = relPath.replace(/\/+$/, "");
   // Directory rules such as `tmp/` match only the trailing-slash form.
   return ig.ignores(clean) || ig.ignores(`${clean}/`);
@@ -64,7 +55,7 @@ export function findUnignoredFiles(
   projectRoot: string,
   relPaths: string[],
 ): string[] {
-  const ig = loadIgnore(projectRoot);
+  const ig = loadIgnoreRules(projectRoot);
   return relPaths.filter(
     (rel) => existsSync(join(projectRoot, rel)) && !ig.ignores(rel),
   );

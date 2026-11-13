@@ -538,6 +538,8 @@ export interface PlaywrightReportSummary {
   flaky: FlakyEntry[];
   realFailures: string[];
   total: number;
+  /** Tests Playwright skipped in this run (conditional skips, did-not-run). */
+  skipped: number;
   fatalErrors: number;
 }
 
@@ -572,6 +574,7 @@ export function parsePlaywrightReport(
   const flaky: FlakyEntry[] = [];
   const realFailures: string[] = [];
   let total = 0;
+  let skippedTests = 0;
 
   const walk = (suite: PlaywrightSuite): void => {
     for (const spec of suite.specs ?? []) {
@@ -579,27 +582,26 @@ export function parsePlaywrightReport(
       const title = spec.title ?? "";
       for (const test of spec.tests ?? []) {
         const results = test.results ?? [];
+        // test.fail()/test.fixme(): a failed attempt is the expected outcome,
+        // and an unexpected pass is a failure in its own right.
+        const expectsFailure =
+          test.expectedStatus !== undefined && test.expectedStatus !== "passed";
+        const isFailureStatus = (status: string | undefined) =>
+          status === "failed" || status === "timedOut" || status === "interrupted";
         const passed = results.filter((r) => r.status === "passed").length;
-        const failed = results.filter(
-          (r) =>
-            r.status === "failed" ||
-            r.status === "timedOut" ||
-            r.status === "interrupted",
-        ).length;
-        if (passed + failed === 0) continue;
+        const failed = results.filter((r) => isFailureStatus(r.status)).length;
+        const unexpectedPasses = expectsFailure ? passed : 0;
+        const ok = expectsFailure ? failed : passed;
+        if (passed + failed === 0) {
+          // Counted so callers can tell "did not run" from "not covered".
+          if (results.some((r) => r.status === "skipped")) skippedTests++;
+          continue;
+        }
         total++;
-        // test.fail()/test.fixme() expectations: an unexpected pass is a
-        // failure in its own right, not flakiness.
-        if (
-          passed > 0 &&
-          test.expectedStatus !== undefined &&
-          test.expectedStatus !== "passed"
-        ) {
+        if (ok === 0 || unexpectedPasses > 0) {
           realFailures.push(title || file);
-        } else if (passed > 0) {
-          flaky.push({ title, file, passed, failed, trace: traceFromResults(results) });
         } else {
-          realFailures.push(title || file);
+          flaky.push({ title, file, passed, failed, trace: traceFromResults(results) });
         }
       }
     }
@@ -611,6 +613,7 @@ export function parsePlaywrightReport(
     flaky,
     realFailures,
     total,
+    skipped: skippedTests,
     fatalErrors: Array.isArray(report.errors) ? report.errors.length : 0,
   };
 }
@@ -767,7 +770,7 @@ function runE2eWithRepeat(
   if ("error" in summary) return unavailable(summary.error);
   if (summary.fatalErrors > 0) return unavailable(`${summary.fatalErrors} fatal error(s) in rerun`);
   if (summary.total === 0) return unavailable("rerun executed no tests");
-  if (summary.total < failedIds.length) {
+  if (summary.total + summary.skipped < failedIds.length) {
     return unavailable(
       `rerun covered ${summary.total} of ${failedIds.length} failed test(s)`,
     );

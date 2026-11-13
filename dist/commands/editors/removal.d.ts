@@ -75,7 +75,7 @@ export declare function removeLegacyArtifact(adapter: EditorAdapter, projectRoot
  */
 export declare function removeWrapper(adapter: EditorAdapter, projectRoot: string): string | null;
 /**
- * Delete empty directories up to (not including) `stopAt`. Moved here from
- * uninstall.ts so both the section loop and the per-editor removals share it.
+ * Delete empty directories up to (not including) `stopAt`. Shared by the
+ * section loop and the per-editor removals.
  */
 export declare function cleanupEmptyDirs(dir: string, stopAt: string): void;

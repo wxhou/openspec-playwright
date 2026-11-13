@@ -893,6 +893,27 @@ describe("removeRuffManagedBlock", () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it("keeps a user-modified block, matching install's ownership rule", () => {
+    const root = mkdtempSync(join(tmpdir(), "ospw-ruff-remove-modified-"));
+    try {
+      const file = join(root, "pyproject.toml");
+      const original = `[project]\nname = "x"\n\n${[
+        LINT_RUFF_BLOCK_BEGIN,
+        "[tool.ruff.lint]",
+        'extend-select = ["B904", "E501"]',
+        LINT_RUFF_BLOCK_END,
+      ].join("\n")}\n`;
+      writeFileSync(file, original);
+
+      const results = removeRuffManagedBlock(root);
+
+      expect(results).toEqual([{ file, status: "kept-modified" }]);
+      expect(readFileSync(file, "utf-8")).toBe(original);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("generated eslint config ownership", () => {

@@ -18,7 +18,7 @@ export const OPENSPEC_START = "<!-- OPENSPEC-PW:START -->";
 export const OPENSPEC_END = "<!-- OPENSPEC-PW:END -->";
 // Pre-migration markers shared with the official CLI (it deletes them as
 // "legacy"). Direct references are allowed ONLY in the migration code,
-// uninstall cleanup, and tests — detection predicates go through the helpers
+// remove cleanup, and tests — detection predicates go through the helpers
 // below so no other call site needs to know the legacy strings.
 export const LEGACY_OPENSPEC_START = "<!-- OPENSPEC:START -->";
 export const LEGACY_OPENSPEC_END = "<!-- OPENSPEC:END -->";

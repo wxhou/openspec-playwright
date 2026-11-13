@@ -701,20 +701,43 @@ export function removeGeneratedEslintConfig(projectRoot: string): {
  * Bytes outside the block are preserved verbatim; a file left empty by the
  * removal (tool-created `ruff.toml` holding only the block) is deleted.
  */
+export type RuffBlockRemovalStatus = "removed" | "kept-modified";
+
+/** True when the file's managed block is exactly what install writes (owned). */
+export function isToolOwnedRuffBlock(content: string): boolean {
+  const body = findRuffManagedBlock(content);
+  if (body === null) return false;
+  return (["[tool.ruff.lint]", "[lint]"] as const)
+    .map((header) => buildRuffManagedBlock(header).split("\n").slice(1, -1).join("\n"))
+    .includes(body);
+}
+
+/**
+ * Remove the ruff managed block from `pyproject.toml` / `.ruff.toml` / `ruff.toml`.
+ *
+ * Ownership matches install: only the exact block `buildRuffManagedBlock`
+ * writes is deleted. A block the user edited is kept and reported — install
+ * already refuses to overwrite it, so deleting it here would lose their edit.
+ */
 export function removeRuffManagedBlock(projectRoot: string): {
   file: string;
-  removed: boolean;
+  status: RuffBlockRemovalStatus;
 }[] {
   const candidates = ["pyproject.toml", ".ruff.toml", "ruff.toml"].map((f) =>
     join(projectRoot, f),
   );
-  const results: { file: string; removed: boolean }[] = [];
+  const results: { file: string; status: RuffBlockRemovalStatus }[] = [];
   for (const file of candidates) {
     if (!existsSync(file)) continue;
     let content: string;
     try {
       content = readFileSync(file, "utf-8");
     } catch {
+      continue;
+    }
+    if (findRuffManagedBlock(content) === null) continue;
+    if (!isToolOwnedRuffBlock(content)) {
+      results.push({ file, status: "kept-modified" });
       continue;
     }
     const spliced = spliceRuffManagedBlock(content);
@@ -724,7 +747,7 @@ export function removeRuffManagedBlock(projectRoot: string): {
     } else {
       writeFileSync(file, spliced);
     }
-    results.push({ file, removed: true });
+    results.push({ file, status: "removed" });
   }
   return results;
 }

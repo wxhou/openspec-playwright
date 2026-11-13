@@ -112,7 +112,7 @@ export declare const LEGACY_MAIN_SIGNATURE = "Employee-Grade Standards";
  * Migrate legacy OPENSPEC markers in AGENTS.md (and CLAUDE.md wrapper) to the
  * OPENSPEC-PW namespace. Gates:
  *   - hasPwArtifacts: without openspec-pw command artifacts the legacy block
- *     is an official relic, not our territory — untouched (uninstall removes it).
+ *     is an official relic, not our territory — untouched (remove cleans it).
  *   - claudeAuthorized: the CLAUDE.md wrapper is only touched for claude.
  *   - signature: block content must match ours (see signatures above).
  * Returns true when any file was migrated.

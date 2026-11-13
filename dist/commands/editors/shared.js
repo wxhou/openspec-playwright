@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 /**
  * The claude-only skill directory retired installs (pre-0.3.74) left
- * behind. Declared by the claude adapter and reused by uninstall's fixed
+ * behind. Declared by the claude adapter and reused by remove's fixed
  * historical cleanup.
  */
 export const CLAUDE_LEGACY_SKILL_REL = join(".claude", "skills", "openspec-e2e");

@@ -291,8 +291,8 @@ export function removeWrapper(adapter: EditorAdapter, projectRoot: string): stri
 }
 
 /**
- * Delete empty directories up to (not including) `stopAt`. Moved here from
- * uninstall.ts so both the section loop and the per-editor removals share it.
+ * Delete empty directories up to (not including) `stopAt`. Shared by the
+ * section loop and the per-editor removals.
  */
 export function cleanupEmptyDirs(dir: string, stopAt: string): void {
   while (dir !== stopAt && dir.length > stopAt.length) {

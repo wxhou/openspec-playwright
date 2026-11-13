@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  chmodSync,
   mkdirSync,
   mkdtempSync,
   rmSync,
@@ -86,6 +87,19 @@ describe("hasOpenspecPwTerritory", () => {
     }
   });
 
+  it("detects a legacy playwright MCP entry alone", () => {
+    const root = makeTemp("ospw-discover-legacy-mcp-");
+    try {
+      writeFileSync(
+        join(root, ".mcp.json"),
+        JSON.stringify({ mcpServers: { playwright: { command: "npx" } } }),
+      );
+      expect(hasOpenspecPwTerritory(root)).toBe(true);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("returns false for a plain directory", () => {
     const root = makeTemp("ospw-discover-plain-");
     try {
@@ -157,6 +171,25 @@ describe("discoverProjects", () => {
       expect(result.projects).not.toContain(link);
     } finally {
       rmSync(target, { recursive: true, force: true });
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps scanning a subtree when a file in the parent is unreadable", () => {
+    if (process.platform === "win32") return;
+    const root = makeTemp("ospw-discover-unreadable-");
+    const file = join(root, "CLAUDE.md");
+    try {
+      writeFileSync(file, MARKERS);
+      chmodSync(file, 0o000);
+      const nested = join(root, "nested");
+      makeProject(nested);
+
+      const result = discoverProjects({ roots: [root], cwd: join(root, "none") });
+
+      expect(result.projects).toContain(nested);
+    } finally {
+      chmodSync(file, 0o644);
       rmSync(root, { recursive: true, force: true });
     }
   });

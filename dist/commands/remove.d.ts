@@ -12,7 +12,7 @@ export declare class RemoveError extends Error {
  * Remove every openspec-pw product from one project. Tool-owned artifacts
  * are deleted, user-modified copies are kept with a notice, and user data
  * (credentials, tests, openspec specs) is never touched. Idempotent: an
- * uninstalled project produces only skip lines.
+ * already-clean project produces only skip lines.
  *
  * Returns the project-relative paths (and coarse markers like `mcp:…`) that
  * were changed, so a failed run can report how far it got.

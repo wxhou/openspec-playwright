@@ -908,6 +908,27 @@ describe("cleanProjectRules", () => {
     expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(false);
   });
 
+  it("keeps AGENTS.md when a wrapper is a symlink to it", () => {
+    const standards = readFileSync(
+      new URL("../employee-standards.md", import.meta.url),
+      "utf-8",
+    );
+    installProjectRules(tmpRoot, standards, [claudeAdapter]);
+    rmSync(join(tmpRoot, "CLAUDE.md"));
+    try {
+      symlinkSync("AGENTS.md", join(tmpRoot, "CLAUDE.md"));
+    } catch {
+      // Environment cannot create symlinks (Windows without privileges).
+      return;
+    }
+
+    cleanProjectRules(claudeAdapter, tmpRoot);
+
+    // Deleting the pristine AGENTS.md would leave CLAUDE.md dangling.
+    expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(true);
+    expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(true);
+  });
+
   it("is idempotent — second call is a no-op", () => {
     writeFileSync(
       join(tmpRoot, "AGENTS.md"),

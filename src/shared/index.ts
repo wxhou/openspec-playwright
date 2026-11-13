@@ -1,5 +1,6 @@
 export { SHARED_FILE_NAMES, TIMEOUT } from "./constants.js";
 export {
+  removeMcp,
   removePlaywrightMcp,
   TEST_RUNNER_MCP_SERVER,
   isTestRunnerMcpInstalled,
@@ -33,7 +34,9 @@ export {
   isToolGeneratedEslintConfig,
   removeGeneratedEslintConfig,
   removeRuffManagedBlock,
+  isToolOwnedRuffBlock,
   type EslintConfigRemovalStatus,
+  type RuffBlockRemovalStatus,
   type ChecklistDisposition,
   type ChecklistRemovalDisposition,
   type LintRuleEntry,
