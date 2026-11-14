@@ -61,16 +61,16 @@ Before each release action, confirm the target version has already been explicit
 - [ ] `git log --oneline` shows expected changes
 - [ ] Check `npm view openspec-playwright version` to verify the target version is not already published. **Do not change the version number to work around a conflict.** If the requested version already exists or publish fails, wait for explicit user instruction before taking any versioning action.
 
-**`npm run release` does:**
-1. `npm version patch` — bumps version in `package.json` + creates git commit
-2. `node scripts/bump-docs.js` — auto-updates `docs/index.html` version badge
+**`npm run release` does (patch-bump path only):**
+1. `npm version patch` — bumps `package.json` and commits
+2. `node scripts/bump-docs.js` — updates the `docs/index.html` badge
 3. `npm run build` — compiles TypeScript
-4. `git add docs/index.html && git push` — pushes docs update
-5. `git push --tags` — pushes tags → **CI pipeline handles npm publish**
+4. `git add docs/index.html CHANGELOG.md` — stages the badge and changelog; commits if either changed
+5. `git push && git push --tags` — pushes main + tag → CI publishes
 
 > ⚠️ **Publish via CI only — never run `npm publish` manually.** A local npm publish conflicts with the CI publish ("cannot publish over the previously published versions"). Release flow: `git push --tags` locally → CI verify passes → CI publishes to npm + creates the GitHub Release.
 
-**Important**: Do not use `npm run release` when the version must remain fixed. This project may only publish the version the user explicitly asked for; automatic patch bumps are forbidden unless the user requests a new version.
+**Important**: When the user named an exact version, pin it (`npm version <x.y.z> --no-git-tag-version`), update `CHANGELOG.md`, then commit and tag manually — do not run this script.
 
 **Key rules:**
 - CI workflow must NEVER modify git history (no amend, no force-push)

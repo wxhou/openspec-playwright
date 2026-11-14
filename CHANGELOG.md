@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+- **docs(standards): §3 结构移动，选型规则归位 §1**. 「新功能先跑通最小端到端」「架构决策不留临时方案」合并移入 §1 选型与设计；「本节优先于 skill 收尾建议」并入 §3 开头并压缩为一句；删除竞态防护条中已失效的 §3 指针。ZH/EN 副本同步。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`CHANGELOG.md`
+- **docs(standards): 自动链改为提案后自动审查**. 删除「唯一触发 / 仅确认范围不触发」；用户确认范围后自动 apply，收尾同一回合 verify；重复的门禁与测试提醒回落到 §3、§6 原有条款；ZH/EN 副本与锚点同步。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
+
 ## [0.3.116] - 2026-11-13
 - **docs(standards): 修复预算上移 §0，自动链重排**. 全局条统一「同一失败最多修复 2 轮、不同失败分别计、连续 3 轮失败项未减少即停」；§1 lint 条与 §3 删除重复轮次与指针，任务验证条保留 2 轮口径，e2e 预算留给模板；自动链拆为触发/收尾/范围/停止/测试五条；ZH/EN 副本与锚点同步。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`

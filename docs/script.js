@@ -19,9 +19,10 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🟡 gate 异常不造假：linter/typechecker 不存在（如该栈适用）→ 告知用户并建议安装，装上之前每次编辑后对改动自查并在响应中注明结果；检查未运行 → 标注「未运行」；装上后仍失败 → 完整输出错误日志并停止
 - 🟡 关键假设（外部数据源/接口、环境可运行、依赖版本、已装依赖能力）动手前逐条验证——断言现成依赖缺少某能力、或准备自行实现该能力前，先查其文档、类型定义或已装源码（按已装版本）；无法确认 → 不自行实现，先提问；其余理解不清或有可见风险 → 先提问再执行。更简单方案提出并坚持——用户已否决 → 按用户方案执行，不再重提
 - 🟡 多步任务每步带验证，循环验证直到成功（任务验证的同一检查修复 2 轮后仍失败 → 记录失败并停，停前用一句话写出各次尝试共同依赖的假设，改掉该假设之前不再重试）
+- 🟡 架构决策不留「先这样以后再换」的临时方案；新功能先跑通最小端到端路径，再增量扩展；确需妥协时写明天花板与升级路径
 - 🟡 只写被要求的：不加用户未要求的扩展点（"灵活"/"可配置"之类，不限词面）、单次使用抽象，不主动为想象中的场景写防御
 - 🟡 在「并发与事务」之外新增竞态防护，或处于信任边界的极端情况，若复现、事故记录、项目威胁模型、合规要求四项都不存在 → 先说明再动手：给出失败模式、量级依据、复杂度代价；未获同意或用户不可达 → 不加并报告
-  - 基线安全实践（参数化查询、输出编码、CSRF 防护）本就应存在，无须额外论证；例外按「简化有边界」处理，架构方向按「大规模任务」节
+  - 基线安全实践（参数化查询、输出编码、CSRF 防护）本就应存在，无须额外论证
 - 新增或改写的界面不写冗余文案：只保留用户明确要求或信息/操作必需的部分——不写用户未要求的介绍性/营销性文案（次级标签、副标题、逐项说明、slogan 等）；改动范围内任何文案删后信息/操作仍完整即冗余，删（用户明确要求的除外）；能用既有布局/层级消解的不加文案，不为省文案新增或重排布局元素（信息/操作必需文本与无障碍基础除外）
 - 🟡 简化有边界，永不简化掉：信任边界的输入校验、防数据丢失的错误处理、安全措施、无障碍基础、用户明确要求的东西；刻意砍角且有已知天花板的简化（全局锁、O(n²) 扫描、朴素启发式）用 \`debt:\` 注释标明天花板和升级路径——debt 只属性能取舍，不豁免性能节已标 🔴 的无界类禁令与正确性/安全措施
 - 🔴 过时的直接删（过时=因本次改动而不再被引用或不再为真）：删除/修改时不留兼容层/迁移/fallback（仅限本次触及的范围）；与「保持既有测试通过」冲突时按测试红的分类分流
@@ -63,9 +64,10 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🔴 密钥与 \`.env\`（含 .env.* 变体；\`.env.example\` 除外）不入版本控制。示例用占位符（如 \`YOUR_API_KEY\`）。调试日志不打印凭据
 
 ## 大规模任务
+- 🟡 本节阶段边界与停止条件优先于 OpenSpec skill 的收尾建议。
 - 🔴 跨多个文件的代码修改（纯文档、注释、格式除外），或架构级变更（如新增服务/API 契约/数据模型重构，非穷举）必须走 OpenSpec 提案流程，禁止直接修改；命中 → 停下建议用户运行该流程（行数不作触发依据）
 - 🟡 执行中发现走偏（方案不成立、前提变化、验证反复失败）或转场检查不通过（失败、需求歧义、写入超出声明范围）→ 立即停下重新评估并汇报；同一会话的「继续」从停下阶段续跑，跨会话需重新表达完成意图
-- 🟡 用户已请求的工作完成前不得自行收尾——普通障碍（报错、超时、空结果）先诊断，能用现有权限处理就继续，不要把剩余工作列成清单后等用户开口；需求或方案不清先问；刻意阻断（禁改文件、撤回的访问、安全护栏）照实说明并另找安全路径；修复预算、走偏、授权与高风险确认不变。
+- 🟡 用户已请求的工作完成前不得自行收尾——普通障碍（报错、超时、空结果）先诊断，能用现有权限处理就继续，不要把剩余工作列成清单后等用户开口；刻意阻断（禁改文件、撤回的访问、安全护栏）照实说明并另找安全路径。
 
 ## 工作流参考
 - 🔴 提案范围须用户确认，AI 不得自行确认；commit/push/merge/release/archive 须用户授权，一次授权只覆盖明确指定的动作，未授权动作不得自行执行
@@ -73,16 +75,13 @@ const CLAUDE_MD_ZH = `# 项目规范
   - 第 1 轮（所有提案）：对抗审查——对照目标/约束/specs，检查完整性、一致性、正确性与范围蔓延并修正
   - 第 2 轮：高风险或架构级提案换独立视角复检全部制品（子代理 → 独立上下文；否则重读并输出「需求/场景 → 证据(file:line) → 结论」表，不复用上轮自评）；普通提案在同一上下文复检修订后的制品
   - 审查内不中途等确认；结束后列出修正并请求范围确认：仍有阻断则停在提案阶段，仅非阻断项记录后确认；自修不得增删需求，需增删时列入待确认
-- 🟡 自动链唯一触发：用户明确要求完成该变更（「实现/做到绿/走完」）或 \`/opsx:apply\`；仅确认范围不触发，意图不明 → 按未触发处理，一句话向用户确认
-  - 收尾：勾完最后一项任务，同一回合调用 \`/opsx:verify\`；跑测试或自查不等于 verify，\`opsx:apply\` 的「可归档」收尾语不豁免
-  - 范围：适用于任何经 \`/opsx:apply\` 的变更，不受规模门槛限制；e2e 不在自动链内，「做到绿」不含 e2e，仅在用户显式调用时执行
-  - 停止：只说「改这个」或单独调用 propose/verify/e2e 等单阶段命令 → 该阶段结束即停
-  - 测试：不得以修改断言/期望值绕过失败
+- 🟡 自动链：提案后自动审查，用户确认范围后自动 apply，收尾同一回合 verify（跑测试/自查不算，「可归档」收尾语不豁免）；显式「实现/做到绿/走完」或 \`/opsx:apply\` 同样触发
+  - 停止：单独调用 verify/e2e 等单阶段命令 → 该阶段结束即停
+  - 范围：e2e 不在链内，「做到绿」不含 e2e
 - 🟡 verify 之后：CRITICAL → 按修复预算修复并复跑 verify；需增删范围或预算耗尽仍有 CRITICAL → 停下汇报；WARNING/SUGGESTION → 记录后交用户裁决
 - 🟡 高风险变更（公共 API/CLI 契约、数据模型/迁移、鉴权与安全、跨模块架构；不确定按高风险）在动手前（无论是否走提案流程）汇报设计要点、影响面与回滚方式并等待确认
-- 🟡 仅当用户明确要求「自动归档」，且 tasks 全勾无 blocked、verify 无 CRITICAL、e2e（如运行）无 active App Bug、commit/merge 已授权并完成时才自动执行；skipped 与 WARNING 列出交用户裁决；手动归档不受此限
+- 🟡 仅当用户明确要求「自动归档」，且 tasks 全勾无 blocked、verify 无 CRITICAL、e2e（如运行）无 active App Bug、commit/merge 已授权并完成时才自动执行；skipped 列出交用户裁决；手动归档不受此限
 - 🟡 在 tasks.md 末尾维护「## 状态」：当前阶段、提案审查结论、最后停止原因、e2e 未运行或运行结果、待裁决项；每次停下或上下文压缩前更新
-- 🟡 本节优先于 OpenSpec skill 的阶段收尾建议：技能收尾语不改变本节的阶段边界；人工保留点（如高风险设计确认）与停止条件不变
 
 ## 数据编撰
 - 🔴 严禁主动编撰模拟现实实体或外部系统形态的数据——mock 用户/手机号/邮箱/ID、凭空捏造配置默认值、假装存在的接口/字段/枚举值、编造测试期望值等，同类情形与改写措辞同判；算法演示的字面量输入不在禁区
@@ -144,9 +143,10 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🟡 Gate anomalies are never faked: linter/typechecker missing (if applicable to the stack) → tell the user and suggest installing; until then, self-check the changes after every edit and note the result in the reply; unexecuted checks are explicitly marked "not run"; still failing after installation → output the full error log and stop
 - 🟡 Verify key assumptions before coding (external data sources & API fields, runnable environment, dependency availability, and whether an installed dependency provides a capability) — before asserting an installed dependency lacks a capability, or preparing to implement that capability yourself, check its documentation, type definitions, or installed source for the installed version; if you cannot confirm → do not hand-roll it, ask first; otherwise, if unclear or risks are visible → ask before acting. Suggest simpler approaches and insist — if already rejected, follow the user's plan, don't re-raise
 - 🟡 Multi-step tasks: verify every step, loop until verified (if the same task-verification check still fails after 2 repair rounds → record the failure and stop; before stopping, state in one sentence the assumption every attempt relied on — no further retry until that assumption changes)
+- 🟡 No "keep it this way for now, swap it later" temporary architecture decisions; prove a new feature's minimal end-to-end path first, then extend incrementally; when a compromise is truly needed, state its ceiling and upgrade path
 - 🟡 Write only what's requested: no un-requested extension points (flexibility/configurability — wording aside), no single-use abstractions, no proactive defensive code for imagined scenarios
 - 🟡 For new race protection beyond the concurrency and transactions rule, or an extreme case at a trust boundary, if all four are absent (reproduction, incident record, project threat model, compliance requirement), explain it and get consent before acting: state the failure mode, its magnitude and basis, and the complexity cost; without consent or if the user is unreachable → do not add it and report
-  - Baseline security practice (parameterized queries, output encoding, CSRF protection) is already owed, no extra justification needed; exemptions follow the simplification-boundaries rule, architecture direction by the Large-Scale Tasks section
+  - Baseline security practice (parameterized queries, output encoding, CSRF protection) is already owed, no extra justification needed.
 - New or rewritten interfaces carry no redundant secondary labels, subtitles, or item-by-item descriptions, and no un-requested slogans — keep only what the user explicitly requested or what information/actions require; within the scope of this change, any copy whose removal leaves information/actions intact is redundant, delete it unless the user explicitly requested that copy; resolve with existing layout/hierarchy instead of adding copy, and never add or rearrange layout elements just to save copy (text required for information/actions and accessibility basics are exempt)
 - 🟡 Simplification has boundaries, never simplify away: input validation at trust boundaries, error handling that prevents data loss, security measures, accessibility basics, anything the user explicitly asked for; deliberate corner-cutting with a known ceiling (global locks, O(n²) scans, naive heuristics) gets a \`debt:\` comment marking the ceiling and upgrade path — debt is a performance trade-off only, it never exempts the 🔴 unbounded-resource bans in the Performance section or correctness/security measures
 - 🔴 Delete obsolete code outright (obsolete = no longer referenced or no longer true because of this change): no compat layers, migrations, or fallbacks when removing/editing (within the scope of the current change only); when deadlocked with "keep existing tests passing", route through the red-test triage in the Testing section
@@ -188,9 +188,10 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🔴 Secrets & \`.env\` (including .env.* variants; \`.env.example\` exempt) out of version control. Use placeholders (e.g. \`YOUR_API_KEY\`). No credentials in debug logs
 
 ## Large-Scale Tasks
+- 🟡 This section's phase boundaries and stop conditions take precedence over OpenSpec skill end-of-phase suggestions.
 - 🔴 Code changes across multiple files (docs, comments and formatting excepted), or architecture changes (e.g. new services/API contracts/data model refactors — not exhaustive) must go through the OpenSpec proposal flow, no direct edits; on a hit, stop and suggest the user run that flow (line count is not a trigger)
 - 🟡 If execution goes off track (plan untenable, premises changed, verification repeatedly failing) or a transition check fails (failure, ambiguity, out-of-scope writes), stop immediately, re-evaluate, and report; "continue" in the same session resumes from the stopped phase, while a new session requires renewed completion intent
-- 🟡 Do not wrap up before the work the user requested is done — diagnose ordinary obstacles (errors, timeouts, empty results) and continue with the access you have; do not list what remains and wait for the user to speak. Ask first when the requirement or approach is unclear. For a deliberate blocker (a file marked not to be touched, access deliberately withheld, a safety guardrail), say plainly what you found and look for another safe way. The repair budget, off-track stop, authorization and high-risk confirmation rules are unchanged.
+- 🟡 Do not wrap up before the work the user requested is done — diagnose ordinary obstacles (errors, timeouts, empty results) and continue with the access you have; do not list what remains and wait for the user to speak. For a deliberate blocker (a file marked not to be touched, access deliberately withheld, a safety guardrail), say plainly what you found and look for another safe way.
 
 ## Workflow Reference
 - 🔴 Proposal scope is confirmed by the user, never self-confirmed; commit/push/merge/release/archive require user authorization, and one authorization covers only the explicitly specified action; unauthorized actions must never be performed
@@ -198,16 +199,13 @@ const CLAUDE_MD_EN = `# Project Guidelines
   - Round 1 (all proposals): adversarial review — check goals/constraints/existing specs for completeness, consistency, correctness and scope creep, and fix findings
   - Round 2: high-risk or architecture-level proposals get an independent re-check of all artifacts (subagents → independent context; otherwise re-read and output a "requirement/scenario → evidence (file:line) → conclusion" table, never reuse the previous self-assessment); ordinary proposals re-check the revised artifacts in the same context
   - Do not pause between rounds; afterwards list fixes and request scope confirmation: blocking issues → stop at the proposal stage; non-blocking items are recorded, then confirmation. Fixes never add or remove requirements; proposed scope changes are listed for final confirmation
-- 🟡 The auto-chain's only trigger: the user explicitly asks to complete the change ("implement / make it green / run this change through"), or invokes \`/opsx:apply\`; confirming scope alone does not trigger it; when intent is unclear → treat it as not triggered and confirm with the user in one line
-  - Close-out: the moment the last task is checked, invoke \`/opsx:verify\` in the same turn; running tests or a self-check is not verify, and the \`opsx:apply\` "you can archive" closing line does not justify skipping it
-  - Scope: applies to every change run through \`/opsx:apply\`, and is not gated by the size threshold; e2e is not part of the auto-chain and runs only when the user explicitly invokes it ("make it green" does not authorize e2e)
-  - Stop: a bare "change this" or invoking propose/verify/e2e alone stops after that phase
-  - Testing: never weaken assertions or expected values to force a green run — resolve conflicts per the Testing section
+- 🟡 Auto-chain: review runs automatically after the proposal; once the user confirms the scope, apply runs automatically, and verify runs in the same turn at close-out (running tests or a self-check is not verify; the \`opsx:apply\` "you can archive" closing line does not justify skipping it); an explicit "implement / make it green / run this change through" or \`/opsx:apply\` also triggers it
+  - Stop: invoking verify/e2e alone stops after that phase
+  - Scope: e2e is not part of the chain, and "make it green" does not include e2e
 - 🟡 After verify: CRITICAL → fix within the repair budget and re-run verify; if scope must change or CRITICAL remains after the budget → stop and report; WARNING/SUGGESTION → record and hand to the user
 - 🟡 High-risk changes (public API/CLI contracts, data models/migrations, auth & security, cross-module architecture; when unsure, treat as high-risk) report design essentials, impact and rollback before implementation (even outside the proposal flow) and wait for confirmation
-- 🟡 Auto-archive only when explicitly requested ("auto archive") and all tasks are checked with no blocked item, verify has no CRITICAL, e2e (if run) has no active App Bug, and commit/merge are authorized and completed; list skipped tests and WARNINGs for the user to decide — manual archive is exempt
+- 🟡 Auto-archive only when explicitly requested ("auto archive") and all tasks are checked with no blocked item, verify has no CRITICAL, e2e (if run) has no active App Bug, and commit/merge are authorized and completed; list skipped tests for the user to decide — manual archive is exempt
 - 🟡 Maintain a "## Status" section at the end of tasks.md: current phase, proposal review conclusion, last stop reason, e2e not run or its result, pending decisions; update it before every stop or context compaction
-- 🟡 This section overrides OpenSpec skill end-of-phase suggestions: a skill's closing line does not move this section's phase boundary; human gates (e.g. high-risk design confirmation) and stop conditions stay unchanged
 
 ## Data Fabrication
 - 🔴 Never fabricate data simulating real entities or external systems — mock users/phones/emails/IDs, imaginary config defaults, pretended APIs/fields/enum values, fabricated test expectations, etc., same-kind cases and rewordings count the same; literal inputs for algorithm demos are not in scope
