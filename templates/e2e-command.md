@@ -36,8 +36,6 @@
 2. **Phase 3 escalation becomes an abort.** There is no user to decide — apply the healer guardrails, then abort with a structured failure.
 3. **Every HARD STOP becomes `E2E ABORTED: <reason>`.**
 
-The healer guardrails are unchanged and non-negotiable: never loosen an assertion, edit an expected value, or delete a check to make a run green.
-
 **Mode × step matrix** (where the two modes diverge — everywhere else both modes run the step):
 
 | Step | Change mode | All mode |
@@ -65,7 +63,7 @@ Never switch tools to gain or reuse state — a persistent-profile login is not 
 
 ## Testing Principles
 
-**UI first.** Every assertion about visible UI state must use `page.getByTestId/ByRole/ByLabel/ByText + expect()`. `page.request` is acceptable only for precondition setup or HTTP-level mocking via `page.route()`.
+**UI first.** Assertions about visible UI state use `page.getByTestId/ByRole/ByLabel/ByText + expect()`; `page.request` is for precondition setup or HTTP-level mocking via `page.route()`. Selectors locate elements; assertions check what the user can see — avoid asserting internal DOM structure so a refactor does not break the test. An action is not an outcome: every meaningful interaction needs an assertion on the resulting state — a click or navigation alone is not a test.
 
 **Selector priority (single source of truth)**: verified selector from app-exploration.md > `[data-testid]` (getByTestId) > getByRole > getByLabel > getByText > CSS id/class > positional. The Step 4 element table, Phase 2-5 repair ladder, and app-knowledge.md conventions all defer to this order.
 
@@ -75,7 +73,7 @@ Can user SEE this on screen?
   → No  → Record reason → page.request acceptable
 ```
 
-**Business logic assertion rule**: computed/counted values (balance, total, count, percentage) MUST use API assertion. UI assertions verify rendering, not calculation.
+**Business logic assertion rule**: computed/counted values (balance, total, count, percentage) are better asserted through the API; UI assertions verify rendering, not calculation. A success toast or an agent saying it finished is not evidence — confirm the resulting state from the API or an independent read.
 
 **Mock data rule**: Frontend mocking forbidden (no JS stubs, module stubs). API mocking via `page.route()` allowed for 4xx/5xx, edge cases, third-party failures — with user consent and at HTTP level only. Never mock below HTTP (DB, backend service).
 
@@ -162,9 +160,9 @@ If seed test fails → **HARD STOP**. Report the failing check output to the use
 | Auth required, no credentials | Continue — skip protected routes, explore login page |
 | API 4xx/5xx | Continue — mark `⚠️ API error` |
 
-**Redirect/Refresh loop detection**: After the page settles, sample the URL every 1s for 5s. Loop = the URL alternates between ≥2 addresses ≥3 times, the browser reports `ERR_TOO_MANY_REDIRECTS`, or a ready signal never appears. A single post-load URL change (SPA client-side routing, query params) is normal — not a loop. On a real loop: skip route, record as App Bug.
+**Redirect/Refresh loop detection**: the URL repeatedly alternates between addresses, the browser reports `ERR_TOO_MANY_REDIRECTS`, or a ready signal never appears → treat as a loop. A single post-load URL change (SPA routing, query params) is normal. On a real loop: skip route, record as App Bug.
 
-**Wait strategy (applies to test code written in Step 6)**: prefer the route's Ready Signal from app-exploration.md (`waitForSelector(readySignal)`); fall back to `waitForLoadState('networkidle')` only when no ready signal exists. During MCP exploration, rely on the browser tool's built-in settle plus a short wait before snapshotting.
+**Wait strategy (applies to test code written in Step 6)**: wait for a meaningful ready signal from app-exploration.md (`waitForSelector(readySignal)`), not a fixed sleep; a timeout is an upper bound, not a wait duration. Prefer a signal that the next step is ready over a spinner disappearing; for a value, poll deterministically (`expect.poll`) instead of re-snapshotting. Fall back to `waitForLoadState('networkidle')` only when no ready signal exists; if nothing observable exists, use the shortest wait and note why in the report. During MCP exploration, rely on the browser tool's built-in settle plus a short wait before snapshotting.
 
 **Element extraction from snapshot**:
 
@@ -194,7 +192,7 @@ Record findings in `app-exploration.md`. Output path:
 
 **Idempotency**: If `app-exploration.md` exists → read, verify routes, update only changed/new routes. **Route Snapshot Hash**: Navigate to sitemap.xml → hash content → if unchanged since last exploration, skip re-exploration entirely. Store hash in `app-knowledge.md` → `Exploration State`.
 
-**Session state**: the `playwright-test` browser tools drive the **paused test's fixture context** — every `planner_setup_page` / test run launches a fresh context with empty storage. That is correct E2E isolation, not a configuration problem. To explore logged-in flows, wire the login once via the storageState chain: `auth.setup.ts` (Step 7) writes `playwright/.auth/user.json`, and `playwright.config.ts` feeds it into every test context (`use.storageState` + `dependencies: ['setup']`). Do not try to save/restore state through storage tools mid-session — `browser_storage_state`-class tools are listed by the test-runner MCP but rejected by its paused-test session (the storage capability is not enabled there) — and never treat another tool's persistent-profile login as a test precondition (see Browser tool routing).
+**Session state**: the `playwright-test` browser tools drive the **paused test's fixture context** — every `planner_setup_page` / test run launches a fresh context with empty storage. That is correct E2E isolation, not a configuration problem. To explore logged-in flows, wire the login once via the storageState chain: `auth.setup.ts` (Step 7) writes `playwright/.auth/user.json`, and `playwright.config.ts` feeds it into every test context (`use.storageState` + `dependencies: ['setup']`). Do not treat another tool's persistent-profile login as a test precondition (see Browser tool routing).
 
 **4.3. Update shared knowledge**: Extract project-level findings to `tests/playwright/app-knowledge.md`. Auto-de-duplicate by key.
 
@@ -207,6 +205,8 @@ Record findings in `app-exploration.md`. Output path:
 Create `openspec/changes/<name>/specs/playwright/test-plan.md`. Read inputs: specs, app-exploration.md, app-knowledge.md. Create test cases (functional requirement → test case, with `@role` and `@auth` tags). Reference verified selectors from exploration.
 
 **State mutual exclusion**: before each test case, identify state boundaries and which elements disappear/appear. Assert mutual exclusion explicitly.
+
+**Test data**: each case prepares the data it needs and cleans up with the same mechanism (UI or API); no dependence on another test's leftovers, so it can run alone, be retried, or run in parallel.
 
 **Idempotency**: If test-plan.md exists → read and supplement missing cases, never regenerate.
 
@@ -223,6 +223,8 @@ Create `openspec/changes/<name>/specs/playwright/test-plan.md`. Read inputs: spe
 **All mode**: Build Page Objects for future tests. **Change mode**: Generate `tests/playwright/changes/<name>/<name>.spec.ts`.
 
 **Generation scope**: Generate tests only for routes that have exploration data. If auth-protected routes were skipped in Step 4, do NOT hand-write selectors for them — list them as "pending post-auth exploration" and generate their tests after Step 7's re-exploration.
+
+**Test shape**: name each test by the user behavior it proves; keep generation, download, and email as separate tests when they are separate flows — a failure should point at one behavior. For downloads and emails, assert the artifact itself, not the preview or the toast.
 
 **Spec idempotency**: If the .spec.ts exists → read it first. Add tests for requirements not yet covered; update tests whose source requirement changed; keep existing passing tests (confirm with the user before deleting any). Never wholesale-regenerate. Each test() carries one **spec anchor** comment line above it: `// spec: <capability>#<requirement-title-verbatim>` (the delta requirement's exact `### Requirement:` title text, no slug conversion) — this is how `openspec-pw audit` later finds tests whose behavior was deleted from the main spec. One anchor per test; describe blocks carry none. The first segment is the **capability dir** under `openspec/specs/` — never the change/proposal name (`// spec: user-auth#Login timeout` ✓, `// spec: add-dark-mode#Login timeout` ✗ — `add-dark-mode` is a change).
 
@@ -276,7 +278,7 @@ Always use env vars, never hardcode. If auth.setup.ts exists → verify, update 
 
 ### 8. Configure playwright.config.ts
 
-If missing → generate minimal config with webServer, projects, reporters. If exists → preserve all fields, add only missing webServer block.
+If missing → generate minimal config with webServer, projects, reporters, `trace: 'on-first-retry'`, and `screenshot: 'only-on-failure'`. If exists → preserve all fields; add only the missing webServer block, plus `trace`/`screenshot` when they are unset — evidence on failure without bloating every run.
 
 **BASE_URL auto-detect**: process.env.BASE_URL → seed.spec.ts → vite.config.ts → package.json scripts → fallback `http://localhost:3000`.
 
@@ -312,7 +314,7 @@ When tests fail → **Healer** (3 phases):
 
 2-1. **Navigate + snapshot**: ASSERTION vs ACTUAL comparison. Safe to fix without Phase 3 (selector-level only): selector typo, moved element, selector drift — the assertion's expected value is unchanged and the test still asserts the same behavior. **Never fix without Phase 3** (human decision — options (b)/(c) below): behavior changed after an action, data values differ, elements missing after interaction, or requirement drift (the OpenSpec requirement changed and the assertion now contradicts it — the assertion update itself is always a Phase 3 decision).
 
-2-5. **Selector repair**: Pick per the selector priority (Testing Principles — single source of truth): verified selector from app-exploration.md > `[data-testid]` (getByTestId) > getByRole > getByLabel > getByText > CSS id/class > positional. If the `playwright-test` MCP exposes `browser_generate_locator`, use it to generate and validate the candidate against the live page before rewriting.
+2-5. **Selector repair**: Follow the Testing Principles selector order. If the `playwright-test` MCP exposes `browser_generate_locator`, use it to generate and validate the candidate against the live page before rewriting.
 
 2-6. **Fix + verify**: Apply fix → verify via the test-runner MCP tools when available (`test_list` → `test_debug` (pass the test id from `test_list`) → repair → `test_run` with `locations` scoped to the single test file for structured results; fall back to `npx playwright test --grep "<test-name>"` if the playwright-test MCP server is not configured or its test tools fail) → if passes, log to app-knowledge.md (Selector Fixes / Assertion Fixes). Max 3 heal attempts per test. **One error per round**: fix a single error, re-run, then address the next.
 
@@ -339,21 +341,22 @@ Repairs attempted: <n>
 
 and end the turn non-zero. Aborting is the correct outcome; a green run bought by weakening an assertion is worse than a red one.
 
-**Healer guardrails** (non-negotiable during autonomous repair; aligned with the official Playwright healer):
+**Healer guardrails** (non-negotiable during autonomous repair):
 - **One error per round**: fix a single error, re-run (`test_run` or `npx playwright test --grep`), then move to the next. Never batch multiple repairs.
 - **Honest failure exit**: if the test logic is verified correct and the failure persists, the product behavior is wrong — mark the test `test.fixme()` with a comment before the failing step explaining ACTUAL vs EXPECTED behavior. During autonomous repair, **never** loosen assertions, edit expected values, or delete checks to make a failing test pass. (Updating assertions or specs remains a legitimate *human* Phase 3 decision — option (c) below.)
 - **No subagent delegation for repair**: never delegate the repair phase to the `playwright-test-healer` subagent, even when installed — its prompt allows editing assertions and expected values without asking. Repair inside this workflow runs only through Phases 1–3 above. (Delegating the Planner/Generator steps IS allowed — see Steps 5–6; you remain accountable for verifying their output against this workflow's rules.)
 
-**Post-heal**: After all Phase 2 tests healed, re-run the healed test file (change mode: `npx playwright test tests/playwright/changes/<name>/<name>.spec.ts`) to confirm the suite is green before reporting. Full regression stays opt-in per the rule at the top of this document.
+**Post-heal**: After all Phase 2 tests healed, re-run the healed test file (change mode: `npx playwright test tests/playwright/changes/<name>/<name>.spec.ts`) to confirm the suite is green before reporting.
 
 ### 10. Report results
 
 **All mode**: report routes, Page Objects, and the seed result only — omit Healer sections.
 
-Compile from `playwright-e2e-<name>-<timestamp>.md` and Phase 1–3 output:
+Compile into `openspec/reports/playwright-e2e-<name>-<timestamp>.md` from Phase 1–3 output:
 - Summary table (App Bugs / Test Bugs healed / Flaky-RAFT / Escalations)
 - App Bug Summary (with accumulation warning if ≥3 active)
 - Failure Classification table
+- Failure evidence: trace / screenshot / console excerpts, when available
 - Auto-heal log
 - RAFT Summary
 - Human Escalations
@@ -390,8 +393,6 @@ Compile from `playwright-e2e-<name>-<timestamp>.md` and Phase 1–3 output:
 | ---- | --- |
 | Read specs as source of truth | Generated tests must match requirements |
 | Step 4 before Step 6 | Real DOM data → accurate selectors |
-| Never contradict specs | E2E validates implementation, not design |
 | Cap heal at 3 attempts per test | Prevents infinite loops |
-| Write runnable code, not TODOs | Placeholders fail CI |
 
 **Write scope**: `tests/playwright/` (specs, Page Objects, auth, credentials, app-knowledge.md, screenshots), `playwright/.auth/` (storageState written by auth.setup.ts), `openspec/changes/<name>/specs/playwright/` (exploration, test plan), `<root>/app-exploration.md` (all mode), `openspec/reports/` (reports, bug registry), `playwright.config.ts`, `auth.setup.ts`. **Never write to any other directory.**

@@ -15,6 +15,7 @@ Generated from: `openspec/changes/<change-name>/specs/`
 - **Route**: `/<page>`
 - **Role**: `@role(<role>)`
 - **Auth**: `@auth(required|none)`
+- **Data**: prepare via `<UI|API>`: ...; cleanup via `<UI|API>`: ...
 
 **Happy path:**
 - Step 1: ...

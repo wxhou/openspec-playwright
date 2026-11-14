@@ -170,6 +170,7 @@ export default defineConfig({
   use: {
     baseURL: baseUrl,
     trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
   },
 
   // Dev server lifecycle - Playwright starts/stops automatically.

@@ -65,5 +65,6 @@ jobs:
           name: playwright-report
           path: |
             test-results/
+            tests/playwright/test-results/
             openspec/reports/
           retention-days: 7
