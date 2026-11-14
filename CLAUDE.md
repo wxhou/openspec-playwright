@@ -109,6 +109,13 @@ templates/e2e-command.md test-data reminder references §6.
 
 Tests: 197/197 pass. No version bump.
 ```
+
+## CHANGELOG Style
+
+- `[Unreleased]` entries use one short sentence each; no diff narration.
+- Merge related changes into one entry — do not split the same pattern (for example, two untracking chores) into separate entries.
+- Keep the `- **scope(area): summary**.` line plus an optional file list.
+
 <!-- OPENSPEC-PW:START -->
 
 @AGENTS.md

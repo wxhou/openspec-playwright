@@ -43,7 +43,7 @@ npm install -g openspec-playwright@latest
 **必需：**
 
 1. **Node.js >= 20**
-2. **Claude Code**（带 `.claude/` 目录）和/或 **OpenCode**（带 `.opencode/` 目录）和/或 **Cline**（带 `.cline/` 或 `.clinerules/` 目录）和/或 **Cursor**（带 `.cursor/` 目录）和/或 **Pi**（项目 `.pi/` 或全局 `~/.pi/agent/`）和/或 **Oh My Pi**（项目 `.omp/` 或全局 `~/.omp/agent/`）和/或 **CodeBuddy CLI**（带 `.codebuddy/` 目录）和/或 **MiniMax Code CLI**（`mcode`；项目 `.minimax/` 或全局 `~/.minimax-code/`，或已安装的 `.agents/skills/opsx-e2e/` 技能）和/或 **DeepSeek Harness**（`dsh`；项目 `.dsh/` 或全局 `~/.dsh/`）
+2. **至少一个受支持编辑器** — 见 [支持的 AI 编码助手](#支持的-ai-编码助手) 表。Pi、Oh My Pi、MiniMax Code 与 DeepSeek Harness 也会通过全局配置目录（`~/.pi/agent/`、`~/.omp/agent/`、`~/.minimax-code/`、`~/.dsh/`）检测。
 3. **OpenSpec** 已初始化：`npm install -g @fission-ai/openspec@latest && openspec init`
 4. **Playwright MCP**（用于测试执行 + Healer）— `openspec-pw init` 会在检测到前端信号时按编辑器自动安装（纯 API 项目跳过——API 测试用 `request` fixture），**全部项目级**（写入项目内文件；Claude Code 用 `--scope project` 写项目根 `.mcp.json`，不碰全局 `~/.claude.json`）。安装**单个** server，与 Playwright 官方 `playwright init-agents` 布局一致：
    - `playwright-test` — 官方 test-runner server（`npx playwright run-test-mcp-server`，`playwright` 包自带）。是 `@playwright/mcp` 的**超集**：一个条目同时暴露 `browser_*` 浏览器工具（探索 + Healer 页面检查）和结构化的 `test_run` / `test_debug` / `test_list` 工作流工具（Healer 闭环）。
@@ -56,7 +56,7 @@ npm install -g openspec-playwright@latest
    - **MiniMax Code**：合并到项目根 `.mcp.json` 的 `mcpServers["playwright-test"] = { "command": "npx", "args": ["playwright", "run-test-mcp-server"] }`（直接文件读写——MiniMax Code 自动加载项目根 `.mcp.json`）
    - **Pi**：无 MCP 客户端，跳过安装 — 浏览器探索改用 `openspec-pw explore`
 
-> **旧版本迁移**：早期版本把 Claude Code 的 Playwright MCP 装到全局 user 域（`~/.claude.json`）。若你用旧版 `openspec-pw` 初始化过，全局残留仍会对所有项目生效，清理一次即可：`claude mcp remove playwright`（user 域）。注意：项目级 server 首次交互使用时 Claude Code 会弹出批准提示（`claude mcp reset-project-choices` 可重置选择）。
+> 项目级 server 首次交互使用时 Claude Code 会弹出批准提示（`claude mcp reset-project-choices` 可重置选择）。
 
 > **server 名 `playwright-test` 的来历**：这是 Playwright 官方 `playwright init-agents` CLI 的产物名——同名、同 transport（`npx playwright run-test-mcp-server`，`playwright` 包内置子命令）。它**不是** `@playwright/mcp`（独立 npm 包，注册名 `playwright`，约 67 个 `browser_*` 工具）；test-runner 是它的**超集**（约 80 个工具：完整 `browser_*` 集 + Healer 闭环用的结构化 `test_run` / `test_debug` / `test_list` 工作流工具）。两个 server 名字不同、可共存；搜「Playwright MCP」通常先看到的是 `@playwright/mcp` 的文档。
 
@@ -70,7 +70,7 @@ openspec init              # 初始化 OpenSpec
 openspec-pw init          # 安装 Playwright E2E 集成（--tools 选编辑器，--agents 加装官方 agents）
 ```
 
-> **注意**：运行 `openspec-pw init` 后，手动安装 Playwright 浏览器：`npx playwright install --with-deps`
+> **注意**：运行 `openspec-pw init` 后，手动安装 Chromium 浏览器：`npx playwright install chromium`
 
 ## 支持的 AI 编码助手
 
@@ -141,22 +141,38 @@ init 打印两种输出信号：预选提示行（仅未传 `--tools` 时出现�
 
 </details>
 
+### 初始化模式：frontend 与 minimal
+
+`openspec-pw init` 根据前端信号选择安装模式（`vite/next/nuxt/...` 配置文件 > 框架依赖 > `dev` 脚本关键词 > monorepo workspace 成员）：
+
+- **frontend 模式**（命中信号）：完整 Playwright 脚手架——e2e 命令、seed 测试、`BasePage`、测试计划、`playwright.config.ts`、auth setup、credentials、MCP 门控、agents 门控。行为与模式出现之前的版本一致。
+- **minimal 模式**（无信号，或 `package.json` 不可读，例如 Python/Go 后端）：只有描述验收测试契约的 `tests/README.md`（对真实运行的服务发真实请求，框架自选）加员工级规范块。无 Playwright 脚手架、无 e2e 命令、无 MCP、无 agents。
+
+Summary 会打印模式与依据（`Mode: frontend (signal: vite.config.ts)` / `Mode: minimal (no frontend signal)`），误判当场可见。检测盲区（前端在未纳入跟踪的子目录；`vite.config.ts` 只服务 vitest）可用显式覆盖：
+
+```bash
+openspec-pw init --frontend      # 无信号时强制完整脚手架
+openspec-pw init --no-frontend   # 有信号时强制 minimal
+```
+
+后续升级：项目出现前端信号（或传 `--frontend`）后，重跑 `init` 会增量安装完整脚手架，并清理工具拥有的 `tests/README.md`（被修改过的保留并提示）。minimal 模式项目是一等公民：`update` 同步其规范块与 wrapper，`doctor` 检查时不因缺少 Playwright 失败，`remove` 清理 README 与标记。
+
 ### 官方 Playwright Agents
 
 <details>
 <summary>opt-in <code>--agents</code> —— 装哪些、归属规则、与工作流的分工</summary>
 
 ```bash
-openspec-pw init --tools claude --agents   # 额外安装官方三个 agent 定义
+openspec-pw init --tools claude --agents   # 额外安装官方 planner agent 定义
 ```
 
-`--agents`（默认关）把 Playwright 官方 `playwright init-agents`（claude loop）生成的三个 agent 定义**逐字快照**装进 `.claude/agents/`：
+`--agents`（默认关）把 Playwright 官方 `playwright init-agents`（claude loop）生成的、适合本工具管道的一个 agent 定义**逐字快照**装进 `.claude/agents/`：
 
-- `playwright-test-planner.md` — 探索应用、产出测试计划
-- `playwright-test-generator.md` — 生成测试代码
-- `playwright-test-healer.md` — 调试并修复失败测试
+- `playwright-test-planner.md` — 探索应用、产出测试计划（`/opsx:e2e` Step 5 的委托目标，用于上下文隔离）
 
-它们的 `tools:` frontmatter 引用的正是 `playwright-test` MCP server——本工具装好的那一条目，MCP 前提天然满足。交互式 init 会在编辑器确认后追加一个默认 **No** 的确认项；纯 API 项目与 MCP 一起跳过（该相位跟随同一前端信号门控——agent 的工具全是 MCP 工具）。归属按内容判定：与内置快照一致的文件（上游基线见 `templates/agents/SOURCE.md`）归本工具所有——`update` 在快照升级时刷新、移除路径一并删除；你手改过的（或用新版官方 init-agents 刷过的）文件**永不覆盖、永不删除**，仅提示。`doctor` 报告其存在、归属状态，并在 `playwright-test` MCP 条目缺失时给出非阻断 ⚠。
+官方 `generator` 与 `healer` agent 不 vendoring：生成在 `/opsx:e2e` 管道内完成（录制流），带上了委托子 agent 不会继承的工作流规则；官方 healer 会修改断言/期望值来强行让测试变绿——与本管道的诚实失败出口相反。旧版安装保留这些文件：未修改的副本仍视为工具所有（`doctor` 列出，`remove` 删除），修改过的归用户所有，永不触碰。
+
+它的 `tools:` frontmatter 引用的正是 `playwright-test` MCP server——本工具装好的那一条目，MCP 前提天然满足。交互式 init 会在编辑器确认后追加一个默认 **No** 的确认项；minimal 模式项目与 MCP 一起跳过（该相位跟随同一前端信号门控——agent 的工具全是 MCP 工具）。归属按内容判定：与内置快照一致的文件（上游基线见 `templates/agents/SOURCE.md`）归本工具所有——`update` 在快照升级时刷新、移除路径一并删除；你手改过的（或用新版官方 init-agents 刷过的）文件**永不覆盖、永不删除**，仅提示。`doctor` 报告其存在、归属状态，并在 `playwright-test` MCP 条目缺失时给出非阻断 ⚠。
 
 **与 `/opsx:e2e` 的分工**：命令模板是 OpenSpec 锚定的完整管道（计划 → 生成 → 带 App Bug Registry 的治疗闭环 → Phase 3 人工升级）；vendored agents 是无 change 在飞时可单独召唤的子 agent。工作流内部，Planner 与 Generator 两个阶段在子 agent 已安装时可委托执行（规则随委托提示词传递，产物由主 agent 核验）；Healer 阶段**永不委托**——管道护栏取代官方 healer 的自主改断言行为。项目 AGENTS.md §6 约束一切来源的 agent。
 
@@ -170,7 +186,7 @@ openspec-pw init --tools claude --agents   # 额外安装官方三个 agent 定�
 
 ```bash
 openspec-pw -v            # 打印版本（也支持 -V / --version）
-openspec-pw init          # 初始化集成（--tools all|none|ids… 可选编辑器；--agents 加装官方 agents；--lint-config 生成/扩展吞错清单的 ESLint 与 ruff 配置；--hook[=static|full] 安装 Claude Code Stop hook；--auto-pipeline 生成无头 CI 工作流）
+openspec-pw init          # 初始化集成（--tools all|none|ids… 可选编辑器；--agents 加装官方 agents；--frontend/--no-frontend 强制安装模式；--lint-config 生成/扩展吞错清单的 ESLint 与 ruff 配置；--hook[=static|full] 安装 Claude Code Stop hook；--auto-pipeline 生成无头 CI 工作流）
 openspec-pw update        # 更新 CLI 和命令到最新版本
 openspec-pw doctor        # 检查前置条件 (Node, Playwright, OpenSpec, 配置, 测试) + 应用服务器诊断
 openspec-pw audit         # 检查测试文件是否有孤儿文件和配置问题（--gate 有问题时退出码 1）
@@ -182,7 +198,7 @@ openspec-pw explore       # 探索应用路由
 openspec-pw remove        # 移除集成（--all 扫描 home 与 Windows 盘根；--yes 才执行）
 ```
 
-**`remove`** 清理当前项目的工具痕迹（非脚手架）：编辑器命令载体、`playwright-test` 与遗留 `playwright` 的 MCP 条目、规则文件标记块、`.gitignore` managed block、Stop hook、`openspec/schemas/playwright-e2e/`、lint 清单、vendored agents、legacy skill 目录，以及仍与内置模板字节一致的 `tests/README.md`、`.github/workflows/openspec-pw.yml`、`.github/workflows/openspec-auto.yml`、工具生成的 `eslint.config.mjs` 与 ruff managed block。用户数据永不删除（`tests/**`、`credentials.yaml`、`openspec/specs`），被改过的工具文件保留并提示。符号链接解析到项目外的路径一律不删不写，官方 OpenSpec 的 `OPENSPEC:` 块不视为本工具产物。init 写入 OpenCode `instructions` 的 `AGENTS.md` 条目保留——无法与用户自己添加的条目区分；需要你编辑的脚手架文件（`playwright.config.ts`、`tests/playwright/seed.spec.ts`、`auth.setup.ts`、`pages/`、`test-plan.template.md`）保留；只剩空容器的配置文件（`{"mcpServers":{}}`）也保留——无法证明归属。**BREAKING**：`uninstall` 已改名为 `remove`，旧名不再保留。
+**`remove`** 清理当前项目的工具痕迹（非脚手架）：编辑器命令载体、`playwright-test` 与遗留 `playwright` 的 MCP 条目、规则文件标记块、`.gitignore` managed block、Stop hook、`openspec/schemas/playwright-e2e/`、lint 清单、vendored agents、legacy skill 目录，以及仍与内置模板字节一致的 `tests/README.md`、`.github/workflows/openspec-pw.yml`、`.github/workflows/openspec-auto.yml`、工具生成的 `eslint.config.mjs` 与 ruff managed block。用户数据永不删除（`tests/**`、`credentials.yaml`、`openspec/specs`），被改过的工具文件保留并提示。符号链接解析到项目外的路径一律不删不写，官方 OpenSpec 的 `OPENSPEC:` 块不视为本工具产物。init 写入 OpenCode `instructions` 的 `AGENTS.md` 条目保留——无法与用户自己添加的条目区分；需要你编辑的脚手架文件（`playwright.config.ts`、`tests/playwright/seed.spec.ts`、`auth.setup.ts`、`pages/`、`test-plan.template.md`）保留；只剩空容器的配置文件（`{"mcpServers":{}}`）也保留——无法证明归属。
 
 `remove --all` 扫描本机带 openspec-pw 痕迹的项目——编辑器命令文件、schema 目录、标记块、`.gitignore` managed block，或工具拥有的残留（`tests/README.md`、lint 清单、生成的 CI workflow、工具生成的 ESLint/ruff 配置、遗留 skill 目录、工具拥有的 vendored agents、Stop hook）任一命中即可。单独的 MCP 条目不作为发现信号（`playwright-test` 也是 Playwright 官方 agent 初始化写入的 server 名），只有显式单项目 `remove` 会清理它；批量模式只清理 `playwright-test`，遗留 `playwright` 不处理。默认扫描根是 home 目录，Windows 上再加所有存在的盘根。**默认只列计划不删除**：打印每个项目与将删除的产物组；加 `--yes` 才执行；`--root <dir>`（可重复，支持 `~`）替换默认扫描根——显式给出 `--root` 时扫描范围就是这些根，不再并入当前项目；路径不存在或是 UNC 路径时退出 2。不传 `--root` 时，当前项目包含在计划中并排在首位。单个项目失败不阻断其余项目；因权限不可写的项目记为 skipped，其他错误记为 failed；结束时打印 `removed N / skipped M / failed K`（项目数），有失败则退出码非零。
 
@@ -225,7 +241,7 @@ test('coupon expires after 7 days', async ({ page }) => { ... });
 audit **只报告、绝不删除**——测试退役永远是人工决策。存量无锚测试不迁移，随新测试自然带锚而逐步退役。MCP 录制流（`generator_write_test`）产物按操作步骤切、天然无锚，模板 review 清单含补锚步骤。
 
 <details>
-<summary><strong>工作流树</strong> —— 从 change 选择到报告共 11 步</summary>
+<summary><strong>工作流树</strong> —— 从 change 选择到报告共 10 步</summary>
 
 ```
 # 由 /opsx:e2e <change-name>（Claude Code / CodeBuddy CLI）或 /opsx-e2e <change-name>（OpenCode/Cline/Cursor/Pi/Oh My Pi/MiniMax Code/DeepSeek Harness）触发
@@ -255,19 +271,18 @@ audit **只报告、绝不删除**——测试退役永远是人工决策。存�
   ├── 8. 配置 playwright → playwright.config.ts
   │
   ├── 9. 执行测试 → npx playwright test
+  │       └─ Healer（如需要）→ 通过 MCP 自动修复失败
   │
-  ├── 10. Healer（如需要）→ 通过 MCP 自动修复失败
-  │
-  └── 11. 报告 → openspec/reports/playwright-e2e-<name>-<timestamp>.md
+  └── 10. 报告 → openspec/reports/playwright-e2e-<name>-<timestamp>.md
 ```
 
 </details>
 
 ## `openspec-pw init` 做了什么
 
-1. 检测项目中的受支持编辑器（Claude Code 和/或 OpenCode 和/或 Cline 和/或 Cursor 和/或 Pi 和/或 Oh My Pi 和/或 CodeBuddy CLI 和/或 MiniMax Code 和/或 DeepSeek Harness；Pi、Oh My Pi、MiniMax Code 与 DeepSeek Harness 也会通过全局配置目录 `~/.pi/agent/` / `~/.omp/agent/` / `~/.minimax-code/` / `~/.dsh/` 检测）
-2. 为每个检测到的编辑器安装 E2E 命令（Claude Code / CodeBuddy CLI 用 `/opsx:e2e`，OpenCode / Cline / Cursor / Pi / Oh My Pi / MiniMax Code / DeepSeek Harness 用 `/opsx-e2e`；Cursor 另装 Agent Skill，MiniMax Code 与 DeepSeek Harness 的唯一命令工件即 Agent Skill）
-3. 生成 `tests/playwright/seed.spec.ts`、`auth.setup.ts`、`credentials.yaml`、`app-knowledge.md`、`pages/BasePage.ts`，以及项目根的 `lint-guidelines.md` 吞错与文档注释 lint 清单（未手改时由 `update` 刷新，`remove` 清理）
+1. 检测项目中的受支持编辑器（见 [支持的 AI 编码助手](#支持的-ai-编码助手) 表；Pi、Oh My Pi、MiniMax Code 与 DeepSeek Harness 也会通过全局配置目录 `~/.pi/agent/` / `~/.omp/agent/` / `~/.minimax-code/` / `~/.dsh/` 检测）
+2. 为每个选中的编辑器安装 E2E 命令或技能（路径见 [使用](#使用) 表）
+3. 生成 `tests/playwright/seed.spec.ts`、`auth.setup.ts`、`credentials.yaml`、`app-knowledge.md`、`test-plan.template.md`、`pages/BasePage.ts`，以及项目根的 `lint-guidelines.md` 吞错与文档注释 lint 清单（未手改时由 `update` 刷新，`remove` 清理）
 
 > **`--lint-config`（opt-in）**：项目声明 eslint 9+ 且项目及祖先目录（至 git 根）均无 ESLint 配置时生成最小 `eslint.config.mjs`（TypeScript 项目接入已声明的 parser——`typescript-eslint` 或 `@typescript-eslint/parser`——并写入 `files`/`languageOptions`）；ruff 侧按 `.ruff.toml` > `ruff.toml` > `pyproject.toml` 的优先级（ruff 自身规则）创建或追加受管 `extend-select = ["B904"]` 块。已有配置绝不编辑——只打印可粘贴片段。重复运行幂等；受管块被手改时保留原样。
 4. 检测前端信号（分层检测：框架配置文件 → 前端框架依赖 → dev 命令关键词，含 monorepo workspace 成员检测——前端在 `apps/*` 的 pnpm/npm workspace 也能识别）；未检测到时在 Summary 打印引导提示——monorepo 去应用目录运行 `openspec-pw init`，纯 API 项目用 Playwright `request` fixture
@@ -281,16 +296,17 @@ audit **只报告、绝不删除**——测试退役永远是人工决策。存�
 | 1. 安装 CLI | `npm install -g openspec-playwright@latest` | 检查 Node.js 版本 `node -v`（需 >= 20） |
 | 2. 安装 OpenSpec | `npm install -g @fission-ai/openspec@latest && openspec init` | `npm cache clean -f && npm install -g @fission-ai/openspec@latest` |
 | 3. 初始化 E2E | `openspec-pw init` | 运行 `openspec-pw doctor` 查看具体缺失项 |
-| 4. 安装 Playwright MCP | `claude mcp add --scope project playwright-test npx playwright run-test-mcp-server`（Claude，写入项目根 `.mcp.json`），或将 `mcp["playwright-test"]` 加入 `opencode.jsonc`（OpenCode），或将 `mcpServers["playwright-test"]` 加入 `.cline/mcp.json`（Cline）/ `.cursor/mcp.json`（Cursor）/ `.omp/mcp.json`（Oh My Pi），或合并进项目根 `.mcp.json`（CodeBuddy CLI 与 MiniMax Code，直接文件读写）；Pi 与 DeepSeek Harness 无简单 MCP 配置文件，跳过 | `cat .mcp.json`（Claude / CodeBuddy CLI / MiniMax Code，检查 `mcpServers["playwright-test"]`）/ `cat opencode.jsonc`（OpenCode）/ `cat .cline/mcp.json`（Cline）/ `cat .cursor/mcp.json`（Cursor）/ `cat .omp/mcp.json`（Oh My Pi）确认安装成功 |
-| 5. 安装浏览器 | `npx playwright install --with-deps` | macOS 可能需先运行 `xcode-select --install` |
-| 6. 启动开发服务器 | `npm run dev`（在另一个终端） | 确认端口，配置 `BASE_URL` |
-| 7. 验证环境 | `npx playwright test tests/playwright/seed.spec.ts` | 检查 `playwright.config.ts` 中的 `webServer` 配置 |
-| 8. 配置认证（如需要） | 见下方"认证配置" | `npx playwright test --project=setup` 调试 |
-| 9. 运行第一个 E2E | `/opsx:e2e <change-name>`（Claude / CodeBuddy CLI）或 `/opsx-e2e <change-name>`（OpenCode/Cline/Cursor/Pi/Oh My Pi/MiniMax Code/DeepSeek Harness） | 查看 `openspec/reports/` 中的报告 |
+| 4. 安装浏览器 | `npx playwright install chromium` | Linux CI 镜像可能需系统依赖：`npx playwright install --with-deps chromium`（macOS 可能需先运行 `xcode-select --install`） |
+| 5. 启动开发服务器 | `npm run dev`（在另一个终端） | 确认端口，配置 `BASE_URL` |
+| 6. 验证环境 | `npx playwright test tests/playwright/seed.spec.ts` | 检查 `playwright.config.ts` 中的 `webServer` 配置 |
+| 7. 配置认证（如需要） | 见下方"认证配置" | `npx playwright test --project=setup` 调试 |
+| 8. 运行第一个 E2E | `/opsx:e2e <change-name>`（Claude / CodeBuddy CLI）或 `/opsx-e2e <change-name>`（OpenCode/Cline/Cursor/Pi/Oh My Pi/MiniMax Code/DeepSeek Harness） | 查看 `openspec/reports/` 中的报告 |
+
+`openspec-pw init` 会为选中的编辑器安装 Playwright MCP server；`openspec-pw doctor` 负责校验。
 
 ### `openspec-pw doctor` 检查清单
 
-`openspec-pw doctor` 在 11 个类别中验证前置条件，**必需**项失败时退出码非零。
+`openspec-pw doctor` 验证前置条件，**必需**项失败时退出码非零。
 
 | 类别 | 必需检查项 | 可选检查项 |
 |---|---|---|
@@ -301,6 +317,7 @@ audit **只报告、绝不删除**——测试退役永远是人工决策。存�
 | **Playwright 浏览器** | CLI 版本、Chromium 二进制已下载 | — |
 | **Playwright 测试框架** | `@playwright/test` 已安装 | — |
 | **Playwright MCP** | 每个已授权（有命令工件）编辑器的 test-runner server 配置；未授权编辑器降为信息行（提示 `init --tools` 添加，不阻断） | `playwright-cli`（PATH 上的 @playwright/cli）——可选 ⚠，不阻断 |
+| **Cursor E2E** | Cursor 已授权时，命令与技能文件存在 | 未配置 → 信息行提示 `init --tools cursor` |
 | **Vendored Agents** | — | 官方 agents 快照的存在与归属（owned/modified）；依赖的 `playwright-test` MCP 缺失时 ⚠（不阻断） |
 | **Sync** | 已初始化时标准同步（漂移 → `openspec-pw update`；AGENTS.md 无标记视为未初始化，恒 ok:true） | 未初始化（闸门，不阻断） |
 | **测试目录** | `tests/playwright/` 目录存在 | `auth.setup.ts` 是否存在 · `storage-state` 完整性——config 声明 `storageState` 而 state 文件缺失 → ⚠ + `npx playwright test --project=setup`（不阻断） |
@@ -357,7 +374,7 @@ npx playwright test --project=setup
 
 ```
 模板（内置于 npm 包，安装到 tests/playwright/）
-  └── seed.spec.ts, auth.setup.ts, credentials.yaml, app-knowledge.md, pages/BasePage.ts
+  └── seed.spec.ts, auth.setup.ts, credentials.yaml, app-knowledge.md, test-plan.template.md, pages/BasePage.ts
 
 CLI (openspec-pw)
   ├── init       → 安装命令和模板
@@ -370,44 +387,8 @@ CLI (openspec-pw)
   ├── explore    → 探索应用路由
   └── remove     → 移除集成（--all：扫描 home 与 Windows 盘根；--yes 才执行）
 
-编辑器（由 openspec-pw init 自动检测）
-  ├── Claude Code (/opsx:e2e)
-  │   ├── .claude/commands/opsx/e2e.md    → 命令文件（从 templates/e2e-command.md 安装）
-  │   ├── playwright-test server         → Healer Agent 工具（通过 `claude mcp add --scope project playwright-test …`，写入项目根 `.mcp.json`）
-  │   ├── .claude/agents/playwright-test-*.md → 官方 agents 快照（opt-in `--agents`）
-  │   └── CLAUDE.md                       → 通过 `@AGENTS.md` 引入 AGENTS.md
-  ├── OpenCode (/opsx-e2e)
-  │   ├── .opencode/commands/opsx-e2e.md  → 命令文件（正文由 /opsx: 改写为 /opsx-）
-  │   ├── opencode.jsonc                  → Playwright MCP (mcp["playwright-test"]) + 指令路由
-  │   └── AGENTS.md                       → 员工级规范（单一数据源）
-  ├── Cline (/opsx-e2e)
-  │   ├── .cline/skills/opsx-e2e/SKILL.md → Skill 文件（正文由 /opsx: 改写为 /opsx-）
-  │   ├── .cline/mcp.json                 → Playwright MCP (mcpServers["playwright-test"])
-  │   └── AGENTS.md                       → 员工级规范（Cline 原生自动识别）
-  ├── Cursor (/opsx-e2e)
-  │   ├── .cursor/commands/opsx-e2e.md    → 斜杠命令（纯 MD，$1 = change 名）
-  │   ├── .cursor/skills/opsx-e2e/SKILL.md → Skill（disable-model-invocation: true）
-  │   ├── .cursor/mcp.json                → Playwright MCP (mcpServers["playwright-test"])
-  │   └── AGENTS.md                       → 员工级规范（Cursor 原生自动识别）
-  ├── Pi (/opsx-e2e)
-  │   ├── .pi/prompts/opsx-e2e.md         → 提示词模板（文件名 = 命令名）
-  │   └── AGENTS.md                       → 员工级规范（Pi 原生自动识别）
-  │       （无 MCP 客户端 — 探索改用 `openspec-pw explore`）
-  ├── Oh My Pi (/opsx-e2e)
-      ├── .omp/commands/opsx-e2e.md       → 命令文件（name + description frontmatter）
-      ├── .omp/mcp.json                   → Playwright MCP (mcpServers["playwright-test"])
-      └── AGENTS.md                       → 员工级规范（omp 原生自动识别）
-  ├── CodeBuddy CLI (/opsx:e2e)
-  │   ├── .codebuddy/commands/opsx/e2e.md → 命令文件（子目录冒号命名，无 `name` frontmatter）
-      ├── .mcp.json                       → Playwright MCP (mcpServers["playwright-test"，项目根])
-  │   └── CODEBUDDY.md                    → 通过 `@AGENTS.md` 引入 AGENTS.md
-  ├── MiniMax Code (/opsx-e2e)
-  │   ├── .agents/skills/opsx-e2e/SKILL.md → 技能文件（name + description frontmatter；MiniMax Code 不加载命令文件）
-  │   ├── .mcp.json                        → Playwright MCP（mcpServers["playwright-test"]，项目根）
-  │   └── AGENTS.md                        → 员工级规范（MiniMax Code 原生自动识别）
-  └── DeepSeek Harness (/opsx-e2e)
-      ├── .dsh/skills/opsx-e2e/SKILL.md    → 技能文件（kebab-case name + description；name 不合法时 dsh 直接丢弃该技能）
-      └── AGENTS.md                        → 员工级规范（dsh 原生自动识别）
+编辑器 → 命令/技能路径与 MCP 配置文件见上方「使用」与「前置条件」两节。
+```
 
 员工级规范统一存放在 **AGENTS.md** 中。Claude Code 通过 CLAUDE.md 的 `@AGENTS.md` 导入加载
 （Claude Code 官方记载的复用 AGENTS.md 机制，默认并不读取 AGENTS.md）。
@@ -420,15 +401,17 @@ thin CODEBUDDY.md wrapper，同样的 `@AGENTS.md` 导入（CodeBuddy 双文件�
 > **与官方 `@fission-ai/openspec` CLI 共存**：官方 `openspec update` 内置「legacy 清理」，会删除根
 > AGENTS.md/CLAUDE.md 中以普通 `OPENSPEC:START/END` 包裹的块（2026-08-28 曾因此误删本工具的规范块）。
 > openspec-pw 的块使用专属 `OPENSPEC-PW:` 命名空间，官方匹配器不可见（已对照官方 v1.11.0 实测）。
-> 本 change 之前安装的项目会在下次 `openspec-pw update`/`init` 时自动迁移标记；若块已被官方清掉，
+> 旧版项目会在下次 `openspec-pw update`/`init` 时自动迁移标记；若块已被官方清掉，
 > `openspec-pw update` 会黄色警告，跑 `openspec-pw init` 即可恢复。
 
+```
 测试资产 (tests/playwright/)
   ├── seed.spec.ts        → 环境验证
   ├── auth.setup.ts       → 会话录制
   ├── global.teardown.ts  → 测试后清理（可选）
   ├── credentials.yaml    → 测试用户
   ├── app-knowledge.md    → 项目级选择器模式（跨 change 复用）
+  ├── test-plan.template.md → 新 change 的测试计划结构
   └── pages/BasePage.ts   → 共享页面对象基类
 
 探索结果 (openspec/changes/<name>/specs/playwright/)
@@ -436,7 +419,7 @@ thin CODEBUDDY.md wrapper，同样的 `@AGENTS.md` 导入（CodeBuddy 双文件�
   └── test-plan.md       → 本次 change 的测试用例
 
 Healer Agent (playwright-test MCP server)
-  └── browser_snapshot, browser_navigate, browser_run_code 等
+  └── test_run / test_debug / test_list + browser_* 工具
 ```
 
 </details>

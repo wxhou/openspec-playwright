@@ -227,7 +227,6 @@ const CRITICAL_PACKAGE_FILES = [
   "templates/auth.setup.ts",
   "templates/credentials.yaml",
   "templates/playwright.config.ts",
-  "templates/e2e-test.ts",
   "templates/e2e-command.md",
   "templates/pages/BasePage.ts",
   "templates/github-workflow.yml",

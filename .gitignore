@@ -2,7 +2,7 @@
 node_modules/
 
 # Build output
-# dist/ is committed for npm install-from-git compatibility
+dist/
 *.tgz
 
 # Test coverage (vitest --coverage output)
@@ -66,6 +66,7 @@ openspec/
 opencode.jsonc
 playwright.config.ts
 tests/playwright/
+/tests/README.md
 
 # Temp files from tools (Chrome DevTools MCP, screenshots, logs, etc.)
 tmp/
@@ -76,6 +77,9 @@ research/
 
 # Local assistant tooling (workbuddy)
 .workbuddy/
+
+# Local MCP tool config (mcporter)
+/config/mcporter.json
 # openspec-pw: begin managed block
 .cursor/
 .codebuddy/
