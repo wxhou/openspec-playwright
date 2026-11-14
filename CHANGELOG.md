@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.118] - 2026-11-14
 - **feat(e2e): 按「引导而非限制」精简 e2e 模板**. 对齐 agentic-test 五条实践：补充测试数据自足、测试形状与失败证据（trace/截图、报告项），以及「动作不等于结果」「下载/邮件校验产物本身」「下一阶段就绪信号优先、值用 `expect.poll`」；合并会话状态、等待策略与选择器修复的重复说明；删除与其他条款重复的 healer 护栏句及两条通用护栏行。配套模板同步：config 默认采集失败截图、test-plan 增加 Data 字段、CI 上传测试产物目录、修正报告生成措辞；删除未接线的 `templates/report.md`。
   - `templates/e2e-command.md`、`templates/playwright.config.ts`、`templates/test-plan.md`、`templates/github-workflow.yml`、`templates/report.md`（删除）、`CHANGELOG.md`
 
