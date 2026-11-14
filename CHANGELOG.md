@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.117] - 2026-11-14
 - **docs(standards): §3 结构移动，选型规则归位 §1**. 「新功能先跑通最小端到端」「架构决策不留临时方案」合并移入 §1 选型与设计；「本节优先于 skill 收尾建议」并入 §3 开头并压缩为一句；删除竞态防护条中已失效的 §3 指针。ZH/EN 副本同步。
   - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`CHANGELOG.md`
 - **docs(standards): 自动链改为提案后自动审查**. 删除「唯一触发 / 仅确认范围不触发」；用户确认范围后自动 apply，收尾同一回合 verify；重复的门禁与测试提醒回落到 §3、§6 原有条款；ZH/EN 副本与锚点同步。
