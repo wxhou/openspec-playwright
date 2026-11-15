@@ -53,6 +53,21 @@ Step down only when the tool above is unavailable or failing; record the tool us
 
 Never switch tools to reuse state (see Session state).
 
+## Mini-program target
+
+**Target detection**: `tests/playwright/wxa-test.ts` exists, or `playwright.config.ts` contains `wxaProject`. When true, this section overrides every web-specific instruction below.
+
+- **Imports**: specs import `{ test, expect }` from `./wxa-test`, not `@playwright/test`.
+- **Navigation**: `await miniProgram.open('<page>?<query>')`; never `page.goto` or a URL.
+- **Rebuild**: after changing mini-program source, run the build script again before rerunning tests; the runner serves the build output, not the source.
+- **Selectors**: resolve inside `miniProgram.current` (the current page frame); the priority order is unchanged.
+- **Assertions**: `toHavePath`, `toHavePageData`, `waitForRequest`. Runtime errors are checked automatically (`wxaCheckErrors`); turning the check off requires a written reason.
+- **Exploration (Step 4)**: start `npx wxa-runner dev <wxaProject> --open`, then open `http://localhost:3000/?path=<page>`. If the browser MCP cannot read the page frame, drive a throwaway Playwright script under `tmp/`. Do not call `openspec-pw explore`.
+- **Route source (all mode)**: read `app.json` / `pages.json` / Taro `app.config` → `entryPagePath`, `pages`, `subPackages`; never sitemap.xml. If a spec names a page that is absent from the manifest, stop and report the missing page; never guess a path.
+- **Auth**: preset in `tests/playwright/wxa.setup.ts` (`storage` / `mock` / `network.routes`); never URL login, `storageState`, `auth.setup.ts`, or `credentials.yaml`.
+- **Write scope**: no `playwright/.auth/` or credentials; the rest is unchanged.
+- **Evidence**: screenshots are auxiliary only; page state must be asserted. Reports must state that results come from the browser run, not a real device.
+
 ## Testing Principles
 
 **UI first.** Assert visible results with `page.getByRole/ByLabel/ByPlaceholder/ByText/ByTestId + expect()`; use `page.request` only for setup, HTTP mocks (`page.route()`), or non-visible state. Assert user-visible outcomes, not DOM structure. A click or navigation is not an outcome — assert the resulting state.

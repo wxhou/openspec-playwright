@@ -58,6 +58,12 @@ import {
   TEST_RUNNER_MCP_SERVER,
   hasFrontendSignal,
   explainFrontendSignal,
+  resolveTemplateTarget,
+  resolveWxaProject,
+  resolvePageManifest,
+  resolveBuildScript,
+  renderWorkflowTemplate,
+  type TemplateTarget,
   detectCodeGraphStatus,
   codegraphHintLines,
   ensureGitignoreEntries,
@@ -99,6 +105,12 @@ export interface InitOptions {
    * mode, undefined lets the frontend signal decide (init-minimal-mode).
    */
   frontend?: boolean;
+  /**
+   * Target override: true forces the mini-program template set (and frontend
+   * mode), false forces web, undefined lets detection and generated
+   * artifacts decide.
+   */
+  miniprogram?: boolean;
   /**
    * Opt-in lint-config bootstrap (`--lint-config`): create missing ESLint/ruff
    * configs or append the managed ruff block; existing configs are never edited.
@@ -264,6 +276,7 @@ export function resolveInitMode(
   options: InitOptions,
   frontendSignal: boolean | null,
 ): "frontend" | "minimal" {
+  if (options.miniprogram === true) return "frontend";
   if (options.frontend === true) return "frontend";
   if (options.frontend === false) return "minimal";
   return frontendSignal === true ? "frontend" : "minimal";
@@ -364,6 +377,32 @@ function printLintConfigResult(
       );
       break;
   }
+}
+
+/**
+ * Files that make a project a Web scaffold. The mini-program target must not
+ * run against them: init skips existing files, so it would add `wxa-test.ts`
+ * (the e2e target marker) while leaving the Web config and BasePage in place.
+ */
+function webScaffoldConflicts(projectRoot: string): string[] {
+  const checks: Array<[string, string]> = [
+    ...["ts", "js", "mjs", "mts"].map(
+      (ext) => [`playwright.config.${ext}`, "wxaProject"] as [string, string],
+    ),
+    [join("tests", "playwright", "seed.spec.ts"), "./wxa-test"],
+    [join("tests", "playwright", "pages", "BasePage.ts"), "miniProgram"],
+  ];
+  const conflicts: string[] = [];
+  for (const [rel, marker] of checks) {
+    const abs = join(projectRoot, rel);
+    if (!existsSync(abs)) continue;
+    try {
+      if (!readFileSync(abs, "utf-8").includes(marker)) conflicts.push(rel);
+    } catch {
+      conflicts.push(rel);
+    }
+  }
+  return conflicts;
 }
 
 export async function init(options: InitOptions, deps: InitDeps = {}) {
@@ -679,6 +718,23 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   // (MCP, agents, scaffold, Summary) below.
   const frontendSignal = hasFrontendSignal(projectRoot);
   const mode = resolveInitMode(options, frontendSignal);
+  // Template target is orthogonal to mode: mini-program keeps the frontend
+  // gates but swaps the generated scaffold. Explicit --miniprogram also
+  // forces frontend mode (resolveInitMode), so a signal-less directory still
+  // gets a scaffold.
+  const target = resolveTemplateTarget(projectRoot, {
+    miniprogram: options.miniprogram,
+  });
+  if (target === "miniprogram") {
+    const conflicts = webScaffoldConflicts(projectRoot);
+    if (conflicts.length > 0) {
+      throw new Error(
+        `Existing web Playwright scaffold detected (${conflicts.join(", ")}). ` +
+          "Re-running init cannot convert it in place. Move or delete these files " +
+          "(keep your tests), then run `openspec-pw init --miniprogram` again.",
+      );
+    }
+  }
   // Set in the minimal scaffold phase; the Summary links the contract doc
   // only when this run generated it.
   let readmeGenerated = false;
@@ -827,20 +883,20 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     // minimal-mode run is an outdated marker — prune it (ownership-aware).
     console.log(chalk.blue("\n─── Generating Seed Test ───"));
     await pruneMinimalModeReadme(projectRoot);
-    await generateSeedTest(projectRoot);
+    await generateSeedTest(projectRoot, target);
 
     // 6b. Generate shared pages directory
     console.log(chalk.blue("\n─── Generating Shared Pages ───"));
-    await generateSharedPages(projectRoot);
-    await generateTestPlanTemplate(projectRoot);
+    await generateSharedPages(projectRoot, target);
+    await generateTestPlanTemplate(projectRoot, target);
 
     // 6c. Generate playwright.config.ts
     console.log(chalk.blue("\n─── Generating Playwright Config ───"));
-    await generatePlaywrightConfig(projectRoot);
+    await generatePlaywrightConfig(projectRoot, target);
 
     // 7. Generate app-knowledge.md
     console.log(chalk.blue("\n─── Generating App Knowledge ───"));
-    await generateAppKnowledge(projectRoot);
+    await generateAppKnowledge(projectRoot, target);
   }
 
   // 7z. Swallow-error lint checklist (lint-guidelines capability) — falls in
@@ -965,13 +1021,13 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   // the workflow runs Playwright, which minimal-mode projects don't have)
   if (options.ci && mode === "frontend") {
     console.log(chalk.blue("\n─── Generating CI Workflow ───"));
-    await generateGithubWorkflow(projectRoot);
+    await generateGithubWorkflow(projectRoot, target);
   }
 
   // 7c. Autonomous pipeline workflow (opt-in; never overwritten)
   if (options.autoPipeline) {
     console.log(chalk.blue("\n─── Generating Auto Pipeline ───"));
-    const pipeline = generateAutoPipeline(projectRoot);
+    const pipeline = generateAutoPipeline(projectRoot, target);
     if ("error" in pipeline) {
       console.log(chalk.yellow(`  ⚠ ${pipeline.error}`));
     } else if (pipeline.status === "exists") {
@@ -1049,31 +1105,61 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
 
   if (mode === "frontend") {
     const basis = explainFrontendSignal(projectRoot);
-    console.log(chalk.green(`  Mode: frontend${basis ? ` (signal: ${basis})` : ""}`));
+    const targetLabel = target === "miniprogram" ? " · target: miniprogram" : "";
+    console.log(chalk.green(`  Mode: frontend${basis ? ` (signal: ${basis})` : ""}${targetLabel}`));
     console.log(chalk.bold("Next steps:"));
-    console.log(
-      chalk.gray(
-        "  1. Install Playwright browsers: npx playwright install chromium",
-      ),
-    );
-    console.log(
-      chalk.gray(
-        "  2. Customize tests/playwright/credentials.yaml with your test user",
-      ),
-    );
-    console.log(
-      chalk.gray(
-        "  3. Set credentials: export E2E_USERNAME=xxx E2E_PASSWORD=yyy",
-      ),
-    );
-    console.log(
-      chalk.gray("  4. Run auth setup: npx playwright test --project=setup"),
-    );
-    console.log(
-      chalk.gray(
-        "  5. Page objects: extend tests/playwright/pages/BasePage.ts for shared selectors",
-      ),
-    );
+    if (target === "miniprogram") {
+      console.log(
+        chalk.gray(
+          "  1. Install deps: npm i -D @playwright/test@^1.65 @open-wxa/wxa-runner-playwright@^0.13 @open-wxa/wxa-runner-core@^0.13",
+        ),
+      );
+      console.log(
+        chalk.gray("  2. Install Google Chrome: npx playwright install chrome"),
+      );
+      const build = resolveBuildScript(projectRoot);
+      console.log(
+        chalk.gray(
+          build
+            ? `  3. Build the mini program: npm run ${build}`
+            : "  3. Build the mini program output (mp-weixin) before running tests",
+        ),
+      );
+      console.log(
+        chalk.gray(
+          "  4. Preset login state or mocks in tests/playwright/wxa.setup.ts",
+        ),
+      );
+      console.log(
+        chalk.gray(
+          "  5. Page objects: extend tests/playwright/pages/BasePage.ts for shared selectors",
+        ),
+      );
+    } else {
+      console.log(
+        chalk.gray(
+          "  1. Install Playwright browsers: npx playwright install chromium",
+        ),
+      );
+      console.log(
+        chalk.gray(
+          "  2. Customize tests/playwright/credentials.yaml with your test user",
+        ),
+      );
+      console.log(
+        chalk.gray(
+          "  3. Set credentials: export E2E_USERNAME=xxx E2E_PASSWORD=yyy",
+        ),
+      );
+      console.log(
+        chalk.gray("  4. Run auth setup: npx playwright test --project=setup"),
+      );
+      console.log(
+        chalk.gray(
+          "  5. Page objects: extend tests/playwright/pages/BasePage.ts for shared selectors",
+        ),
+      );
+    }
   } else {
     // The minimal-mode reason reflects reality: a signal miss vs an explicit
     // --no-frontend override (the signal may have actually hit).
@@ -1205,9 +1291,17 @@ export async function pruneMinimalModeReadme(projectRoot: string) {
   }
 }
 
-export async function generateSeedTest(projectRoot: string) {
+export async function generateSeedTest(
+  projectRoot: string,
+  target: TemplateTarget = "web",
+) {
   const testsDir = join(projectRoot, "tests", "playwright");
   mkdirSync(testsDir, { recursive: true });
+
+  if (target === "miniprogram") {
+    await generateMiniProgramScaffold(projectRoot, testsDir);
+    return;
+  }
 
   const seedPath = join(testsDir, "seed.spec.ts");
   if (existsSync(seedPath)) {
@@ -1251,8 +1345,70 @@ export async function generateSeedTest(projectRoot: string) {
   );
 }
 
-export async function generateAppKnowledge(projectRoot: string) {
-  const src = join(TEMPLATE_DIR, "app-knowledge.md");
+async function generateMiniProgramScaffold(projectRoot: string, testsDir: string) {
+  const manifest = resolvePageManifest(projectRoot);
+  const seedPath = join(testsDir, "seed.spec.ts");
+  if (existsSync(seedPath)) {
+    console.log(chalk.gray("  - seed.spec.ts already exists, skipping"));
+  } else {
+    const template = await readFile(
+      join(TEMPLATE_DIR, "miniprogram", "seed.spec.ts"),
+      "utf-8",
+    );
+    const homePage = manifest.homePage ?? "";
+    // A missing manifest must not turn into a guessed path: skip with the
+    // real reason instead of failing with "No tests found".
+    const skipLine = manifest.homePage
+      ? ""
+      : `test.skip(true, ${JSON.stringify(manifest.reason ?? "page manifest unavailable")});`;
+    const content = template
+      .replace("__HOME_PAGE__", homePage)
+      .replace("// __SKIP_LINE__", skipLine);
+    writeFileSync(seedPath, content);
+    console.log(chalk.green("  ✓ Generated: tests/playwright/seed.spec.ts"));
+    if (!manifest.homePage) {
+      console.log(
+        chalk.yellow(
+          `  ⚠ Page manifest unavailable — seed is skipped: ${manifest.reason}`,
+        ),
+      );
+    }
+  }
+
+  for (const [srcName, destName, label] of [
+    ["wxa-test.ts", "wxa-test.ts", "tests/playwright/wxa-test.ts"],
+    ["wxa.setup.ts", "wxa.setup.ts", "tests/playwright/wxa.setup.ts"],
+    ["tests-readme.md", "README.md", "tests/playwright/README.md"],
+  ] as const) {
+    const dest = join(testsDir, destName);
+    if (existsSync(dest)) {
+      console.log(chalk.gray(`  - ${label} already exists, skipping`));
+      continue;
+    }
+    writeFileSync(dest, readFileSync(join(TEMPLATE_DIR, "miniprogram", srcName)));
+    console.log(chalk.green(`  ✓ Generated: ${label}`));
+  }
+
+  console.log(
+    chalk.gray(
+      "  (Auth and login state live in wxa.setup.ts; no auth.setup.ts or credentials.yaml for this target)",
+    ),
+  );
+  console.log(
+    chalk.gray(
+      "  (Browser runs use base library 3.7.0 — passing here is not proof of real-device behavior)",
+    ),
+  );
+}
+
+export async function generateAppKnowledge(
+  projectRoot: string,
+  target: TemplateTarget = "web",
+) {
+  const src = join(
+    TEMPLATE_DIR,
+    ...(target === "miniprogram" ? ["miniprogram", "app-knowledge.md"] : ["app-knowledge.md"]),
+  );
   const dest = join(projectRoot, "tests", "playwright", "app-knowledge.md");
 
   if (existsSync(dest)) {
@@ -1273,8 +1429,14 @@ export async function generateAppKnowledge(projectRoot: string) {
  * reference template (app-exploration.md points here). Same lifecycle as
  * BasePage.ts: init creates it once, update refreshes it on drift.
  */
-export async function generateTestPlanTemplate(projectRoot: string) {
-  const src = join(TEMPLATE_DIR, "test-plan.md");
+export async function generateTestPlanTemplate(
+  projectRoot: string,
+  target: TemplateTarget = "web",
+) {
+  const src = join(
+    TEMPLATE_DIR,
+    ...(target === "miniprogram" ? ["miniprogram", "test-plan.md"] : ["test-plan.md"]),
+  );
   const dest = join(projectRoot, "tests", "playwright", "test-plan.template.md");
 
   if (existsSync(dest)) {
@@ -1290,11 +1452,17 @@ export async function generateTestPlanTemplate(projectRoot: string) {
   }
 }
 
-export async function generateSharedPages(projectRoot: string) {
+export async function generateSharedPages(
+  projectRoot: string,
+  target: TemplateTarget = "web",
+) {
   const pagesDir = join(projectRoot, "tests", "playwright", "pages");
   mkdirSync(pagesDir, { recursive: true });
 
-  const basePageSrc = join(TEMPLATE_DIR, "pages", "BasePage.ts");
+  const basePageSrc = join(
+    TEMPLATE_DIR,
+    ...(target === "miniprogram" ? ["miniprogram", "pages", "BasePage.ts"] : ["pages", "BasePage.ts"]),
+  );
   const basePageDest = join(pagesDir, "BasePage.ts");
   if (existsSync(basePageDest)) {
     console.log(chalk.gray("  - pages/BasePage.ts already exists, skipping"));
@@ -1311,7 +1479,10 @@ export async function generateSharedPages(projectRoot: string) {
   }
 }
 
-export async function generateGithubWorkflow(projectRoot: string) {
+export async function generateGithubWorkflow(
+  projectRoot: string,
+  target: TemplateTarget = "web",
+) {
   const workflowsDir = join(projectRoot, ".github", "workflows");
   mkdirSync(workflowsDir, { recursive: true });
 
@@ -1324,32 +1495,76 @@ export async function generateGithubWorkflow(projectRoot: string) {
   }
 
   if (existsSync(workflowSrc)) {
-    writeFileSync(workflowDest, readFileSync(workflowSrc));
+    const buildCommand = resolveBuildScript(projectRoot);
+    const rendered = renderWorkflowTemplate(readFileSync(workflowSrc, "utf-8"), {
+      target,
+      buildCommand,
+    });
+    writeFileSync(workflowDest, rendered);
     console.log(
       chalk.green("  ✓ Generated: .github/workflows/openspec-pw.yml"),
     );
-    console.log(
-      chalk.gray("  Set E2E_USERNAME, E2E_PASSWORD, BASE_URL secrets in repo settings."),
-    );
+    if (target === "miniprogram") {
+      console.log(
+        chalk.gray(
+          buildCommand
+            ? `  Mini-program target: workflow installs Google Chrome and runs npm run ${buildCommand} before tests.`
+            : "  Mini-program target: workflow installs Google Chrome; no build script found — add the build step manually before tests.",
+        ),
+      );
+    } else {
+      console.log(
+        chalk.gray("  Set E2E_USERNAME, E2E_PASSWORD, BASE_URL secrets in repo settings."),
+      );
+    }
   } else {
     console.log(chalk.gray("  - CI template not found in package"));
   }
 }
 
-export async function generatePlaywrightConfig(projectRoot: string) {
-  const configSrc = join(TEMPLATE_DIR, "playwright.config.ts");
+export async function generatePlaywrightConfig(
+  projectRoot: string,
+  target: TemplateTarget = "web",
+) {
+  const isMini = target === "miniprogram";
+  const configSrc = join(
+    TEMPLATE_DIR,
+    ...(isMini ? ["miniprogram", "playwright.config.ts"] : ["playwright.config.ts"]),
+  );
   const configDest = join(projectRoot, "playwright.config.ts");
 
   if (existsSync(configDest)) {
     console.log(chalk.gray("  - playwright.config.ts already exists, skipping"));
-    suggestPlaywrightConfigPatch(configDest);
+    if (!isMini) suggestPlaywrightConfigPatch(configDest);
     return;
   }
 
   if (existsSync(configSrc)) {
-    writeFileSync(configDest, readFileSync(configSrc));
-    console.log(chalk.green("  ✓ Generated: playwright.config.ts"));
-    console.log(chalk.gray("  Customize webServer command and port for your app."));
+    let content = readFileSync(configSrc, "utf-8");
+    if (isMini) {
+      const wxa = resolveWxaProject(projectRoot);
+      content = content.replace("__WXA_PROJECT__", wxa.projectPath);
+      writeFileSync(configDest, content);
+      console.log(chalk.green("  ✓ Generated: playwright.config.ts"));
+      console.log(chalk.gray(`  wxaProject: ${wxa.projectPath} (${wxa.source})`));
+      if (!wxa.exists) {
+        const build = resolveBuildScript(projectRoot);
+        console.log(
+          chalk.yellow(
+            `  ⚠ Mini-program output not found — build first${build ? `: npm run ${build}` : ""}`,
+          ),
+        );
+      }
+      console.log(
+        chalk.gray(
+          "  (Each worker starts its own wxa-runner server; no webServer block is needed)",
+        ),
+      );
+    } else {
+      writeFileSync(configDest, content);
+      console.log(chalk.green("  ✓ Generated: playwright.config.ts"));
+      console.log(chalk.gray("  Customize webServer command and port for your app."));
+    }
   } else {
     console.log(chalk.gray("  - Playwright config template not found in package"));
   }

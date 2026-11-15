@@ -33,6 +33,7 @@ import {
   ensureTestRunnerMcp,
   isTestRunnerMcpInstalled,
   hasFrontendSignal,
+  resolveProjectTarget,
   detectCodeGraphStatus,
   codegraphHintLines,
   findUncoveredManagedPaths,
@@ -733,18 +734,24 @@ export function syncEmployeeStandards(
 
 // Sync project-level templates
 export function syncProjectTemplates(tmpDir: string, projectRoot: string) {
+  const mini = resolveProjectTarget(projectRoot) === "miniprogram";
   // 0. tests/README.md — minimal-mode deliverable, independent of the
   // tests/playwright gate (minimal-mode projects have no tests/playwright).
   // Stateless asset: matching the bundled template → no-op; anything else is
   // user-owned (or an outdated tool copy) — never auto-overwritten, hinted
   // instead (asset-sync: no version tracking for a low-value static doc).
-  const readmeSrc = join(tmpDir, "templates", "tests-readme.md");
-  const readmeDest = join(projectRoot, "tests", "README.md");
+  // The mini-program target keeps its contract doc next to the tests.
+  const readmeRel = mini ? join("tests", "playwright", "README.md") : join("tests", "README.md");
+  const readmeTemplate = mini
+    ? join("templates", "miniprogram", "tests-readme.md")
+    : join("templates", "tests-readme.md");
+  const readmeSrc = join(tmpDir, readmeTemplate);
+  const readmeDest = join(projectRoot, readmeRel);
   if (existsSync(readmeSrc) && existsSync(readmeDest)) {
     if (normalizeEol(readFileSync(readmeDest, "utf-8")) !== normalizeEol(readFileSync(readmeSrc, "utf-8"))) {
       console.log(
         chalk.yellow(
-          "  ⚠ tests/README.md differs from the bundled template — update it manually, or delete it and re-run `openspec-pw init`",
+          `  ⚠ ${readmeRel} differs from the bundled template — update it manually, or delete it and re-run \`openspec-pw init\``,
         ),
       );
     }
@@ -775,7 +782,12 @@ export function syncProjectTemplates(tmpDir: string, projectRoot: string) {
   if (!existsSync(testsDir)) return;
 
   // 1. Sync BasePage.ts — always update if content differs
-  const basePageSrc = join(tmpDir, "templates", "pages", "BasePage.ts");
+  const basePageSrc = join(
+    tmpDir,
+    ...(mini
+      ? ["templates", "miniprogram", "pages", "BasePage.ts"]
+      : ["templates", "pages", "BasePage.ts"]),
+  );
   const basePageDest = join(testsDir, "pages", "BasePage.ts");
 
   if (existsSync(basePageSrc)) {
@@ -798,7 +810,10 @@ export function syncProjectTemplates(tmpDir: string, projectRoot: string) {
   }
 
   // 1b. Sync test-plan.template.md — always update if content differs
-  const testPlanSrc = join(tmpDir, "templates", "test-plan.md");
+  const testPlanSrc = join(
+    tmpDir,
+    ...(mini ? ["templates", "miniprogram", "test-plan.md"] : ["templates", "test-plan.md"]),
+  );
   const testPlanDest = join(testsDir, "test-plan.template.md");
 
   if (existsSync(testPlanSrc)) {
@@ -820,7 +835,12 @@ export function syncProjectTemplates(tmpDir: string, projectRoot: string) {
   }
 
   // 2. Sync app-knowledge.md — generate if missing
-  const appKnowledgeSrc = join(tmpDir, "templates", "app-knowledge.md");
+  const appKnowledgeSrc = join(
+    tmpDir,
+    ...(mini
+      ? ["templates", "miniprogram", "app-knowledge.md"]
+      : ["templates", "app-knowledge.md"]),
+  );
   const appKnowledgeDest = join(testsDir, "app-knowledge.md");
 
   if (existsSync(appKnowledgeSrc) && !existsSync(appKnowledgeDest)) {
@@ -830,11 +850,16 @@ export function syncProjectTemplates(tmpDir: string, projectRoot: string) {
     );
   }
 
-  // 3. Sync seed.spec.ts — warn if content differs (may have user customizations)
-  const seedSrc = join(tmpDir, "templates", "seed.spec.ts");
+  // 3. Sync seed.spec.ts — warn if content differs (may have user customizations).
+  // The mini-program seed is rendered with the resolved home page, so it can
+  // never match the raw template; init owns its (re)generation.
+  const seedSrc = join(
+    tmpDir,
+    ...(mini ? ["templates", "miniprogram", "seed.spec.ts"] : ["templates", "seed.spec.ts"]),
+  );
   const seedDest = join(testsDir, "seed.spec.ts");
 
-  if (existsSync(seedSrc) && existsSync(seedDest)) {
+  if (!mini && existsSync(seedSrc) && existsSync(seedDest)) {
     const existing = readFileSync(seedDest, "utf-8");
     const latest = readFileSync(seedSrc, "utf-8");
     if (existing !== latest) {
@@ -851,8 +876,23 @@ export function syncProjectTemplates(tmpDir: string, projectRoot: string) {
     }
   }
 
-  // 4. Sync credentials.yaml — preserve user credentials
-  syncCredentials(tmpDir, projectRoot);
+  // 3b. Mini-program import wrapper — tool-owned, refreshed on drift.
+  if (mini) {
+    const wrapperSrc = join(tmpDir, "templates", "miniprogram", "wxa-test.ts");
+    const wrapperDest = join(testsDir, "wxa-test.ts");
+    if (existsSync(wrapperSrc) && existsSync(wrapperDest)) {
+      const existing = readFileSync(wrapperDest, "utf-8");
+      const latest = readFileSync(wrapperSrc, "utf-8");
+      if (existing !== latest) {
+        writeFileSync(wrapperDest, latest);
+        console.log(chalk.green("  ✓ Updated: tests/playwright/wxa-test.ts"));
+      }
+    }
+  }
+
+  // 4. Sync credentials.yaml — preserve user credentials. The mini-program
+  // target has no credentials file; login state lives in wxa.setup.ts.
+  if (!mini) syncCredentials(tmpDir, projectRoot);
 
   // (Managed-block maintenance runs at the top of this function — before
   // the minimal-mode early return — see review F4.)

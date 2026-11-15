@@ -30,11 +30,13 @@
     "glob": "^13.0.6",
     "ignore": "^7.0.7",
     "jsonc-parser": "^3.3.1",
-    "playwright": "^1.50.0",
+    "playwright": "^1.65.1",
     "tar": "^7.5.16"
   },
   "devDependencies": {
-    "@playwright/test": "^1.50.0",
+    "@open-wxa/wxa-runner-core": "^0.13.1",
+    "@open-wxa/wxa-runner-playwright": "^0.13.1",
+    "@playwright/test": "^1.65.1",
     "@types/cross-spawn": "^6.0.6",
     "@types/glob": "^8.1.0",
     "@types/node": "^22.0.0",
@@ -52,7 +54,7 @@
     "nanoid": "^3.3.17"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "files": [
     "dist",

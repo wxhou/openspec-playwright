@@ -22,6 +22,8 @@ import {
   findEslintConfig,
   findRuffConfig,
   findSourceFile,
+  resolveProjectTarget,
+  resolveWxaProject,
 } from "../shared/index.js";
 import { bundledStandardsPath, compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
 import { hasRuleFileMarkers, wrapperRulesFile, wrapperHasMarkers } from "./editors/project-rules.js";
@@ -234,6 +236,98 @@ export function allEditorCommandHints(): string {
     .join("  or  ");
 }
 
+interface DoctorCheck {
+  category: string;
+  name: string;
+  ok: boolean;
+  message?: string;
+}
+
+function findGoogleChrome(): boolean {
+  if (process.platform === "darwin") {
+    return existsSync("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome");
+  }
+  if (process.platform === "win32") {
+    const roots = [process.env.PROGRAMFILES, process.env["PROGRAMFILES(X86)"], process.env.LOCALAPPDATA].filter(
+      (root): root is string => Boolean(root),
+    );
+    return roots.some((root) => existsSync(join(root, "Google", "Chrome", "Application", "chrome.exe")));
+  }
+  for (const bin of ["google-chrome", "google-chrome-stable"]) {
+    try {
+      execFileSync("which", [bin], { stdio: "pipe" });
+      return true;
+    } catch {
+      // try the next binary name
+    }
+  }
+  return false;
+}
+
+function playwrightTestVersion(projectRoot: string): string | null {
+  try {
+    const projectRequire = createRequire(join(projectRoot, "package.json"));
+    const pkgPath = projectRequire.resolve("@playwright/test/package.json");
+    return (JSON.parse(readFileSync(pkgPath, "utf-8")) as { version?: string }).version ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function miniProgramChecks(projectRoot: string): DoctorCheck[] {
+  const checks: DoctorCheck[] = [];
+
+  const chrome = findGoogleChrome();
+  checks.push({
+    category: "Mini Program",
+    name: "chrome",
+    ok: chrome,
+    message: chrome ? "Google Chrome installed" : "not found (run: npx playwright install chrome)",
+  });
+
+  const projectRequire = createRequire(join(projectRoot, "package.json"));
+  let fixtureOk = false;
+  try {
+    projectRequire.resolve("@open-wxa/wxa-runner-playwright");
+    fixtureOk = true;
+  } catch {
+    // missing
+  }
+  checks.push({
+    category: "Mini Program",
+    name: "wxa-fixture",
+    ok: fixtureOk,
+    message: fixtureOk
+      ? "installed"
+      : "not installed (npm i -D @open-wxa/wxa-runner-playwright@^0.13 @open-wxa/wxa-runner-core@^0.13)",
+  });
+
+  const pwVersion = playwrightTestVersion(projectRoot);
+  let versionOk = false;
+  if (pwVersion) {
+    const [major, minor] = pwVersion.split(".").map(Number);
+    versionOk = major > 1 || (major === 1 && minor >= 64);
+  }
+  checks.push({
+    category: "Mini Program",
+    name: "playwright-test-version",
+    ok: versionOk,
+    message: pwVersion
+      ? `${pwVersion}${versionOk ? "" : " (requires >=1.64)"}`
+      : "not installed",
+  });
+
+  const wxa = resolveWxaProject(projectRoot);
+  checks.push({
+    category: "Mini Program",
+    name: "wxa-project",
+    ok: wxa.exists,
+    message: `${wxa.projectPath} (${wxa.source})${wxa.exists ? "" : " — build first"}`,
+  });
+
+  return checks;
+}
+
 export async function doctor(options: DoctorOptions = {}) {
   const checks: Array<{
     category: string;
@@ -245,6 +339,7 @@ export async function doctor(options: DoctorOptions = {}) {
   }> = [];
 
   const projectRoot = process.cwd();
+  const target = resolveProjectTarget(projectRoot);
 
   let nodeMajor = 0;
   let nodeVersion = "";
@@ -463,6 +558,12 @@ export async function doctor(options: DoctorOptions = {}) {
     ok: hasPwTest,
     message: pwTestMsg,
   });
+  }
+
+  // Mini-program target: Chrome, the wxa fixture, @playwright/test >=1.64,
+  // and the compiled output directory. Each check is independent.
+  if (target === "miniprogram") {
+    for (const check of miniProgramChecks(projectRoot)) checks.push(check);
   }
 
   // Playwright MCP — check each detected editor adapter

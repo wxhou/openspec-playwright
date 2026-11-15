@@ -36,6 +36,9 @@ import {
   isToolOwnedRuffBlock,
   LINT_ESLINT_CONFIG_FILE,
   LINT_GUIDELINES_RELPATH,
+  resolveProjectTarget,
+  resolveBuildScript,
+  renderWorkflowTemplate,
 } from "../shared/index.js";
 import { discoverProjects, expandTilde } from "../shared/discover.js";
 import { readTextFileCapped } from "../shared/file-read.js";
@@ -289,6 +292,15 @@ export async function removeInProject(
     // 2d. Remove generated CI workflows — tool-named and tool-written, so a
     // byte-identical copy is tool-owned; an edited one is kept and named.
     console.log(chalk.blue("\n─── Removing CI Workflows ───"));
+    // A generated mini-program workflow is the rendered template, not the raw
+    // one; compare against the same rendering generate used.
+    const workflowTarget = resolveProjectTarget(projectRoot);
+    const workflowBuild = resolveBuildScript(projectRoot);
+    const renderForTarget = (content: string) =>
+      renderWorkflowTemplate(content, {
+        target: workflowTarget,
+        buildCommand: workflowBuild,
+      });
     for (const [rel, templateFile] of [
       [GITHUB_WORKFLOW_REL, WORKFLOW_TEMPLATE],
       [AUTO_PIPELINE_REL, AUTO_PIPELINE_TEMPLATE],
@@ -300,7 +312,7 @@ export async function removeInProject(
         console.log(
           chalk.yellow(`  ⚠ ${rel} resolves outside the project (symlink) — skipping`),
         );
-      } else if (isPristineCopy(projectRoot, rel, templateFile)) {
+      } else if (isPristineCopy(projectRoot, rel, templateFile, renderForTarget)) {
         rmSync(dest);
         cleanupEmptyDirs(dirname(dest), projectRoot);
         track(rel);
@@ -781,10 +793,19 @@ export async function runRemoveAll(options: RemoveAllOptions = {}): Promise<numb
 }
 
 /** Read-only summary of the tool-owned artifacts present in one project. */
-function describePlan(projectRoot: string): string[] {
+export function describePlan(projectRoot: string): string[] {
   const groups: string[] = [];
   const detected = detectAdapters(projectRoot);
   const meta = buildCommandMeta("");
+  // Plan and execution must render the same mini-program workflow, or the
+  // plan hides a file that --yes then deletes.
+  const workflowTarget = resolveProjectTarget(projectRoot);
+  const workflowBuild = resolveBuildScript(projectRoot);
+  const renderWorkflow = (content: string) =>
+    renderWorkflowTemplate(content, {
+      target: workflowTarget,
+      buildCommand: workflowBuild,
+    });
 
   let commands = 0;
   for (const adapter of detected) {
@@ -843,10 +864,10 @@ function describePlan(projectRoot: string): string[] {
       groups.push("lint checklist");
     }
   }
-  if (isPristineCopy(projectRoot, GITHUB_WORKFLOW_REL, WORKFLOW_TEMPLATE)) {
+  if (isPristineCopy(projectRoot, GITHUB_WORKFLOW_REL, WORKFLOW_TEMPLATE, renderWorkflow)) {
     groups.push("CI workflow");
   }
-  if (isPristineCopy(projectRoot, AUTO_PIPELINE_REL, AUTO_PIPELINE_TEMPLATE)) {
+  if (isPristineCopy(projectRoot, AUTO_PIPELINE_REL, AUTO_PIPELINE_TEMPLATE, renderWorkflow)) {
     groups.push("auto pipeline workflow");
   }
   if (hasRuffBlock(projectRoot)) groups.push("ruff managed block");
@@ -876,6 +897,7 @@ function isPristineCopy(
   projectRoot: string,
   relPath: string,
   templateFile: string,
+  transform?: (content: string) => string,
 ): boolean {
   const dest = join(projectRoot, relPath);
   if (!existsSync(dest) || !isPathInsideProjectRoot(projectRoot, dest)) {
@@ -897,7 +919,8 @@ function isPristineCopy(
   }
   // Templates are small; a larger file cannot be a byte-identical copy.
   if (read.kind === "too-large") return false;
-  return normalizeEol(read.content) === normalizeEol(template.content);
+  const expected = transform ? transform(template.content) : template.content;
+  return normalizeEol(read.content) === normalizeEol(expected);
 }
 
 /** Identity of one physical MCP entry — shared config files count once. */

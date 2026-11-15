@@ -33,9 +33,11 @@ import {
   detectCodeGraphStatus,
   removeChecklist,
   generatedEslintConfigVariants,
+  renderWorkflowTemplate,
 } from "../../src/shared/index.js";
 import { detectAdapters, cursorAdapter } from "../../src/commands/editors.js";
 import {
+  describePlan,
   removeInProject,
   removeSingle,
   RemoveError,
@@ -260,6 +262,47 @@ describe("removeInProject() CI workflow", () => {
     expect(existsSync(join(tmp, ".github", "workflows", "openspec-pw.yml"))).toBe(false);
     // The empty .github/workflows chain is cleaned too.
     expect(existsSync(join(tmp, ".github"))).toBe(false);
+  });
+
+  it("removes a mini-program workflow rendered for the target", async () => {
+    writeFileSync(join(tmp, "project.config.json"), "{}");
+    mkdirSync(join(tmp, "tests", "playwright"), { recursive: true });
+    writeFileSync(join(tmp, "tests", "playwright", "wxa-test.ts"), "export {};");
+    writeFileSync(
+      join(tmp, "package.json"),
+      JSON.stringify({
+        scripts: { dev: "uni", "build:mp-weixin": "uni build" },
+        devDependencies: { "@dcloudio/uni-app": "^3.0.0" },
+      }),
+    );
+    mkdirSync(join(tmp, ".github", "workflows"), { recursive: true });
+    writeFileSync(
+      join(tmp, ".github", "workflows", "openspec-pw.yml"),
+      renderWorkflowTemplate(template, { target: "miniprogram", buildCommand: "build:mp-weixin" }),
+    );
+
+    await removeInProject(tmp);
+
+    expect(existsSync(join(tmp, ".github", "workflows", "openspec-pw.yml"))).toBe(false);
+  });
+
+  it("dry-run plan lists the mini-program workflow that --yes would remove", () => {
+    mkdirSync(join(tmp, "tests", "playwright"), { recursive: true });
+    writeFileSync(join(tmp, "tests", "playwright", "wxa-test.ts"), "export {};");
+    writeFileSync(
+      join(tmp, "package.json"),
+      JSON.stringify({
+        scripts: { dev: "uni", "build:mp-weixin": "uni build" },
+        devDependencies: { "@dcloudio/uni-app": "^3.0.0" },
+      }),
+    );
+    mkdirSync(join(tmp, ".github", "workflows"), { recursive: true });
+    writeFileSync(
+      join(tmp, ".github", "workflows", "openspec-pw.yml"),
+      renderWorkflowTemplate(template, { target: "miniprogram", buildCommand: "build:mp-weixin" }),
+    );
+
+    expect(describePlan(tmp)).toContain("CI workflow");
   });
 
   it("keeps a user-modified workflow with a notice", async () => {

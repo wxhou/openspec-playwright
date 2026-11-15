@@ -5,7 +5,7 @@
 [![npm version](https://img.shields.io/npm/v/openspec-playwright.svg)](https://www.npmjs.com/package/openspec-playwright)
 [![npm downloads](https://img.shields.io/npm/dm/openspec-playwright.svg)](https://www.npmjs.com/package/openspec-playwright)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Node >= 20](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org)
+[![Node >= 22](https://img.shields.io/badge/node-%3E%3D22-brightgreen.svg)](https://nodejs.org)
 
 **OpenSpec projects get AI-driven E2E verification that lives where your code does.** One `/opsx:e2e <change>` command — nine editors supported — plans, generates, executes, and self-heals Playwright tests against the spec, with a per-change report and no manual harness wiring.
 
@@ -215,6 +215,51 @@ notice). Minimal-mode projects are first-class: `update` syncs their
 standards block and wrapper, `doctor` checks them without failing on
 missing Playwright, and `remove` cleans the README and markers.
 
+### Mini-Program Target
+
+`init` can scaffold E2E for a WeChat mini-program instead of a web app. The
+target is a separate dimension from the install mode: a mini-program project
+is always frontend mode.
+
+Detection runs in tiers. Strong signals — `project.config.json`, a built
+`mp-weixin` output directory, or `@tarojs/*` / `@dcloudio/*` dependencies —
+beat any web signal. A bare `app.json` is weak: it counts only when it has a
+`pages` array and a companion file (`app.wxss`, `sitemap.json`,
+`project.private.config.json`), so an Expo web app is not misread. Override
+either way:
+
+```bash
+openspec-pw init --miniprogram      # force the mini-program target
+openspec-pw init --no-miniprogram   # force the web target
+```
+
+After generation, `update` / `remove` / `doctor` follow the generated
+artifacts (`wxa-test.ts` or `wxaProject`) instead of re-detecting, so an
+existing web scaffold is never switched by a later `update`. Re-running
+`init --miniprogram` over an existing web scaffold stops with a migration
+instruction rather than leaving a half-converted project.
+
+The scaffold uses the official
+[`@open-wxa/wxa-runner-playwright`](https://open-wxa.github.io/wxa-runner/)
+fixture, which runs the build output in Chrome against the official base
+library. Generated files: `playwright.config.ts` (`channel: 'chrome'`,
+`wxaProject`, `wxaServerOptions.setup`), the `wxa-test.ts` re-export wrapper,
+`wxa.setup.ts`, `pages/BasePage.ts`, and a seed test that opens
+`entryPagePath` (or `pages[0]`) and asserts `toHavePath`. No `auth.setup.ts`
+and no `credentials.yaml` — login state belongs in `wxa.setup.ts`.
+
+Dependencies: `@playwright/test@^1.65`,
+`@open-wxa/wxa-runner-playwright@^0.13`,
+`@open-wxa/wxa-runner-core@^0.13`, and Google Chrome
+(`npx playwright install chrome`). For Taro the build script is `build:weapp`;
+for uni-app it is `build:mp-weixin`. Generated CI installs Chrome and runs
+that build before `npx playwright test`; `doctor` checks Chrome, the fixture,
+the Playwright version (>=1.64), and the `wxaProject` output directory.
+
+Limitations: tests run in headless Chrome, not WeChat DevTools. DevTools-only
+APIs (real login, payment, native components) are outside the harness. CI
+support targets x86-64 Linux; there is no WebKit or Firefox project.
+
 ### Official Playwright Agents
 
 <details>
@@ -278,9 +323,10 @@ into a `/opsx:e2e` delivery.
 
 ```bash
 openspec-pw -v            # Print version (also -V / --version)
-openspec-pw init          # Initialize integration (--tools all|none|ids… to select editors; --agents adds the official agents; --frontend/--no-frontend force the install mode; --lint-config generates/extends ESLint and ruff config for the swallow-error checklist; --hook[=static|full] installs a Claude Code Stop hook; --auto-pipeline generates the headless CI workflow)
+openspec-pw init          # Initialize integration (--tools all|none|ids… to select editors; --agents adds the official agents; --frontend/--no-frontend force the install mode; --miniprogram/--no-miniprogram select the mini-program target; --lint-config generates/extends ESLint and ruff config for the swallow-error checklist; --hook[=static|full] installs a Claude Code Stop hook; --auto-pipeline generates the headless CI workflow)
 openspec-pw update        # Update CLI and commands to latest version
 openspec-pw doctor        # Check prerequisites (Node, Playwright, OpenSpec, config, tests) + app server diagnostics
+openspec-pw install --claude # Install or verify Claude Code via the official native installer (default: print only; --run executes; --verify checks)
 openspec-pw audit         # Audit tests for orphaned specs and issues (--gate exits 1 when any issue is found)
 openspec-pw coverage      # Analyze spec–test coverage for changes (--fail-under <pct> exits 1 below it; --plan <file> exits 1 unless every delta-spec scenario appears in that plan)
 openspec-pw flake         # Detect flake patterns in test files (static patterns + raised timeouts)
@@ -289,6 +335,8 @@ openspec-pw migrate       # Migrate old test files to new structure
 openspec-pw explore       # Explore app routes with Playwright (--file <path> selects app-exploration.md)
 openspec-pw remove        # Remove integration (--all scans home + Windows drives; --yes executes)
 ```
+
+`install --claude` installs the Claude Code CLI binary; `init` installs project integration. It prints the official native installer command by default; `--run` executes it, `--verify` checks an existing install, `--channel stable|latest` selects the channel (default `latest`), and `--version x.y.z` pins a version. After a fresh native install, open a new terminal or add `~/.local/bin` to `PATH` if `claude` is not found. It uses official Anthropic channels only; it does not provide mirrors, proxies, or region workarounds.
 
 **`remove`** cleans the current project: editor command carriers, the `playwright-test` / legacy `playwright` MCP entries, rules-file marker blocks, the managed `.gitignore` block, the Stop hook, `openspec/schemas/playwright-e2e/`, the lint checklist, vendored agents, the legacy skill directory, and — when still byte-identical to the bundled templates — `tests/README.md`, `.github/workflows/openspec-pw.yml`, `.github/workflows/openspec-auto.yml`, the generated `eslint.config.mjs`, and the ruff managed block. User data is never touched (`tests/**`, `credentials.yaml`, `openspec/specs`), and edited tool files are kept with a notice. Paths that resolve outside the project through a symlink are never deleted or rewritten, and an official OpenSpec `OPENSPEC:` block is not treated as ours. The `AGENTS.md` entry that init adds to OpenCode's `instructions` list is left in place — it cannot be told apart from a user-added entry. Scaffold files you are expected to edit (`playwright.config.ts`, `tests/playwright/seed.spec.ts`, `auth.setup.ts`, `pages/`, `test-plan.template.md`) stay, and config files left as empty containers (`{"mcpServers":{}}`) are kept because their ownership cannot be proven.
 
@@ -376,7 +424,7 @@ Audit is **report-only** — it never deletes or edits tests; retiring a test is
 
 **Required:**
 
-1. **Node.js >= 20**
+1. **Node.js >= 22**
 2. **One or more supported editors** — see the [Supported AI Coding Assistants](#supported-ai-coding-assistants) table. Pi, Oh My Pi, MiniMax Code and DeepSeek Harness are also detected via their global config dirs (`~/.pi/agent/`, `~/.omp/agent/`, `~/.minimax-code/`, `~/.dsh/`).
 3. **OpenSpec** initialized: `npm install -g @fission-ai/openspec@latest && openspec init`
 4. **Playwright MCP** (for test execution + Healer) — installed automatically by `openspec-pw init` when a frontend signal is detected (skipped for API-only projects — API tests use the `request` fixture), **project-scoped** (written to a project file; Claude Code uses `--scope project` → project-root `.mcp.json`, never your global `~/.claude.json`). A single server matching the official `playwright init-agents` layout:
@@ -437,6 +485,7 @@ Run through these steps in order when using the E2E workflow for the first time:
 | **OpenSpec** | directory initialized | `.spec.md` specs count |
 | **Playwright Browsers** | CLI version, Chromium binary downloaded | — |
 | **Playwright Test** | `@playwright/test` framework installed | — |
+| **Mini Program** | Chrome, `@open-wxa/wxa-runner-playwright`, `@playwright/test` >=1.64, `wxaProject` output (mini-program target only) | — |
 | **Playwright MCP** | test-runner server configured for each **authorized** editor (command artifacts exist; unauthorized editors get an info line pointing at `init --tools <id>` — never a warning) | `playwright-cli` (@playwright/cli on PATH) — optional ⚠, never block |
 | **Cursor E2E** | command + skill files present when Cursor is authorized | not configured → info pointing at `init --tools cursor` |
 | **Vendored Agents** | — | official agent snapshots' presence + ownership (owned/modified); non-blocking ⚠ when their `playwright-test` MCP dependency is missing |

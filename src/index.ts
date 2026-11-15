@@ -21,7 +21,8 @@ program
   .name("openspec-pw")
   .description("OpenSpec + Playwright E2E verification setup tool")
   .version(pkg.version)
-  .option("-v", "output the version number (alias for --version)");
+  .option("-v", "output the version number (alias for --version)")
+  .enablePositionalOptions();
 
 program.on("option:v", () => {
   console.log(pkg.version);
@@ -53,6 +54,14 @@ program
     "force minimal mode (tests dir + employee standards only) even when a frontend signal is detected",
   )
   .option(
+    "--miniprogram",
+    "force the WeChat Mini Program target (wxa-runner scaffold) even when no mini-program signal is detected",
+  )
+  .option(
+    "--no-miniprogram",
+    "force the web target even when a mini-program signal is detected",
+  )
+  .option(
     "--lint-config",
     "generate/adjust ESLint and ruff config for the swallow-error checklist (opt-in)",
   )
@@ -66,6 +75,20 @@ program
     "generate .github/workflows/openspec-auto.yml (gate on PRs, headless agent on label/dispatch)",
   )
   .action(async (opts) => {
+    // Raw-argv check, before any import or write: commander's .conflicts()
+    // cannot tell --miniprogram from --no-miniprogram (same attribute) and
+    // exits 1, while the CLI contract for invalid flag combinations is 2.
+    const argv = process.argv.slice(2);
+    const bothMini = argv.includes("--miniprogram") && argv.includes("--no-miniprogram");
+    const miniNoFrontend = argv.includes("--miniprogram") && argv.includes("--no-frontend");
+    if (bothMini || miniNoFrontend) {
+      console.error(
+        chalk.red(
+          "\n  ✗ Conflicting flags: use either --miniprogram or --no-miniprogram, and do not combine --miniprogram with --no-frontend.\n",
+        ),
+      );
+      process.exit(2);
+    }
     const { init } = await import("./commands/init.js");
     const { checkForUpdate } = await import("./shared/version-check.js");
     try {
@@ -89,6 +112,33 @@ program
   });
 
 program
+  .command("install")
+  .description(
+    "Install or verify Claude Code via the official native installer",
+  )
+  .option(
+    "--claude",
+    "Target Claude Code (currently the only supported target)",
+  )
+  .option(
+    "--run",
+    "Run the official installer (default: print the command only)",
+  )
+  .option("--verify", "Verify an existing Claude Code installation")
+  .option(
+    "--channel <channel>",
+    'Install channel: "stable" or "latest" (default: latest)',
+  )
+  .option(
+    "--version <version>",
+    "Install a specific Claude Code version (x.y.z)",
+  )
+  .action(async (opts) => {
+    const { install } = await import("./commands/install.js");
+    process.exitCode = install(opts);
+  });
+
+program
   .command("update")
   .description("Update the CLI tool and commands to the latest version")
   .option("--no-cli", "skip CLI update")
@@ -105,10 +155,7 @@ program
   .description(
     "Migrate old-style change spec files to the new tests/playwright/changes/<name>/ structure",
   )
-  .option(
-    "-n, --dry-run",
-    "Show what would be migrated without moving files",
-  )
+  .option("-n, --dry-run", "Show what would be migrated without moving files")
   .option("-f, --force", "Overwrite existing files at the new location")
   .action(async (opts) => {
     const { migrate } = await import("./commands/migrate.js");
@@ -126,7 +173,10 @@ program
     "--all",
     "Discover projects on this machine and print the removal plan (dry run)",
   )
-  .option("--yes", "With --all: actually remove (without it, --all only prints the plan)")
+  .option(
+    "--yes",
+    "With --all: actually remove (without it, --all only prints the plan)",
+  )
   .option(
     "--root <dir>",
     "With --all: scan root (repeatable; replaces the default home scan)",
@@ -134,9 +184,8 @@ program
     [] as string[],
   )
   .action(async (opts: { all?: boolean; yes?: boolean; root?: string[] }) => {
-    const { removeOptionError, removeSingle, runRemoveAll } = await import(
-      "./commands/remove.js"
-    );
+    const { removeOptionError, removeSingle, runRemoveAll } =
+      await import("./commands/remove.js");
     const usageError = removeOptionError(opts);
     if (usageError) {
       console.error(`  ${usageError}`);
@@ -151,7 +200,9 @@ program
 
 program
   .command("audit")
-  .description("Audit test files for orphaned specs, missing auth, sitemap issues")
+  .description(
+    "Audit test files for orphaned specs, missing auth, sitemap issues",
+  )
   .option("--gate", "Exit non-zero when any issue is found")
   .action(async (opts) => {
     const { audit } = await import("./commands/audit.js");
@@ -164,7 +215,10 @@ program
   .command("coverage [change-name]")
   .description("Analyze spec–test coverage for OpenSpec changes")
   .option("--json", "Output results as JSON")
-  .option("--fail-under <pct>", "Exit non-zero when coverage is below this percentage")
+  .option(
+    "--fail-under <pct>",
+    "Exit non-zero when coverage is below this percentage",
+  )
   .option(
     "--plan <path>",
     "Check that every delta-spec scenario appears in this test plan (exit 1 if not)",
@@ -178,9 +232,14 @@ program
 
 program
   .command("flake [change-name]")
-  .description("Detect flake patterns in Playwright test files (static patterns + raised timeouts)")
+  .description(
+    "Detect flake patterns in Playwright test files (static patterns + raised timeouts)",
+  )
   .option("--json", "Output results as JSON")
-  .option("--gate <severity>", "Exit non-zero if findings meet severity (HIGH|MEDIUM|ALL)")
+  .option(
+    "--gate <severity>",
+    "Exit non-zero if findings meet severity (HIGH|MEDIUM|ALL)",
+  )
   .action(async (changeName, opts) => {
     const { flake } = await import("./commands/flake.js");
     await flake(changeName, opts);
@@ -195,7 +254,10 @@ program
     "Run every quality check for a change and exit 0 (pass) / 1 (fail) / 2 (cannot decide)",
   )
   .option("--json", "Output the verdict as JSON")
-  .option("--keep-going", "Run all checks instead of stopping at the first failure")
+  .option(
+    "--keep-going",
+    "Run all checks instead of stopping at the first failure",
+  )
   .option(
     "--only <checks>",
     "Comma-separated checks to run (validate,lint,typecheck,test,flake,e2e,coverage,audit)",
@@ -237,10 +299,7 @@ program
     "-f, --file <path>",
     "Path to app-exploration.md (default: ./app-exploration.md)",
   )
-  .option(
-    "-n, --dry-run",
-    "Show what would be explored without running",
-  )
+  .option("-n, --dry-run", "Show what would be explored without running")
   .action(async (opts) => {
     const { explore } = await import("./commands/explore.js");
     const { checkForUpdate } = await import("./shared/version-check.js");

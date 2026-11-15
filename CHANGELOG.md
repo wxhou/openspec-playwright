@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+- **feat(cli): 新增 `install --claude`**. 只包装官方 native installer：默认打印命令，`--run` 才执行，`--verify` 检查安装；默认 `latest`，支持 `stable` 与指定版本；不含镜像、代理或地区绕过。
+  - `src/index.ts`、`src/commands/install.ts`、`tests/commands/install.test.ts`、`tests/smoke.test.ts`、`README.md`、`README.zh-CN.md`、`docs/llms.txt`、`CHANGELOG.md`
+- **feat(cli): 新增小程序目标**. 检测强/弱小程序信号并支持 `--miniprogram` 强制；脚手架改用官方 `@open-wxa/wxa-runner-playwright` fixture，CI、doctor、update、remove 与 `/opsx:e2e` 同步支持；已存在小程序产物的项目会被重新判定为 frontend 模式。`update` / `remove` / `doctor` 只按生成物标记判定目标，既有 Web 脚手架不会被静默切换；`init --miniprogram` 遇到 Web 脚手架会拒绝半迁移。
+  - `src/index.ts`、`src/commands/{init,update,remove,pipeline,doctor}.ts`、`src/shared/{app-detect,miniprogram,workflow-render}.ts`、`templates/miniprogram/`、`templates/e2e-command.md`、`.claude/commands/opsx/e2e.md`、`package.json`、`package-lock.json`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
+- **chore(deps): 升级 Playwright 到 1.65.1**. `@playwright/test` 与 `playwright` 同步升到 `^1.65.1`；`engines.node` 提到 `>=22`，因为 Playwright 1.65 不再测试 Node 20。已装浏览器的项目需重跑 `npx playwright install`。
+  - `package.json`、`package-lock.json`、`README.md`、`README.zh-CN.md`、`docs/index.html`、`CHANGELOG.md`
+
 ## [0.3.119] - 2026-11-15
 - **fix(e2e): 修正认证检查与升级提示**. API/UI 的 `E2E_AUTH_CHECK_PATH` 检查禁用重定向，UI setup 也执行该检查；README 补旧 `auth.setup.ts`/workflow 的升级提示；skill 选择器表与 `docs/llms.txt` 的 explore 描述对齐。
   - `templates/auth.setup.ts`、`templates/e2e-command.md`、`docs/llms.txt`、`README.md`、`README.zh-CN.md`、`tests/init.test.ts`、`CHANGELOG.md`

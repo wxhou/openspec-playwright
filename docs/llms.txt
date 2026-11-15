@@ -37,6 +37,7 @@ npx playwright install --with-deps
 - `openspec-pw init` — Initialize integration (one-time setup; `--tools all|none|ids…` to select editors)
 - `openspec-pw update` — Update CLI and commands to latest version
 - `openspec-pw doctor` — Check prerequisites
+- `openspec-pw install --claude` — Install or verify Claude Code via the official native installer (print-only by default; `--run` executes; `--verify` checks; no mirrors, proxies, or region workarounds)
 - `openspec-pw audit` — Audit tests for orphaned specs and issues
 - `openspec-pw migrate` — Migrate old test files to new structure
 - `openspec-pw explore` — Explore app routes with Playwright (`--file <path>` selects app-exploration.md; runs sequentially)

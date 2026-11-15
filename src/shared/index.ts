@@ -54,8 +54,20 @@ export {
   parsePort,
   hasFrontendSignal,
   explainFrontendSignal,
+  detectMiniProgramSignal,
+  hasMiniProgramSignal,
+  resolveTemplateTarget,
+  resolveProjectTarget,
 } from "./app-detect.js";
-export type { AppServerDetection } from "./app-detect.js";
+export type { AppServerDetection, MiniProgramSignal, TemplateTarget } from "./app-detect.js";
+export {
+  resolveWxaProject,
+  resolvePageManifest,
+  resolveBuildScript,
+} from "./miniprogram.js";
+export type { WxaProjectResolution, PageManifest } from "./miniprogram.js";
+export { renderWorkflowTemplate } from "./workflow-render.js";
+export type { WorkflowRenderOptions } from "./workflow-render.js";
 export {
   CREDENTIALS_RELPATHS,
   credentialsIgnoreHint,

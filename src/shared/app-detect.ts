@@ -337,11 +337,131 @@ function findFrontendInDirs(seeds: string[], budget: number, baseDir: string): s
  * also selects init mode (frontend | minimal) and gates the Playwright MCP
  * / vendored-agents installs — see explainFrontendSignal for attribution.
  */
-export function hasFrontendSignal(projectRoot: string): boolean | null {
+export type TemplateTarget = "web" | "miniprogram";
+
+export interface MiniProgramSignal {
+  kind: "strong" | "weak" | null;
+  source: string | null;
+}
+
+const MINI_PROGRAM_OUTPUT_DIRS = [
+  "dist/build/mp-weixin",
+  "dist/dev/mp-weixin",
+  "dist/mp-weixin",
+  "mp-weixin",
+];
+
+const MINI_PROGRAM_COMPANION_FILES = [
+  "app.wxss",
+  "sitemap.json",
+  "project.private.config.json",
+];
+
+function firstExistingDir(root: string, candidates: string[]): string | null {
+  return candidates.find((rel) => existsSync(join(root, rel))) ?? null;
+}
+
+function hasMiniProgramDependency(pkg: PackageJson | null): string | null {
+  if (!pkg) return null;
+  const names = [
+    ...Object.keys(pkg.dependencies ?? {}),
+    ...Object.keys(pkg.devDependencies ?? {}),
+  ];
+  return names.find((name) => name.startsWith("@tarojs/") || name.startsWith("@dcloudio/")) ?? null;
+}
+
+function hasWeakAppJson(dir: string): boolean {
+  const appJson = join(dir, "app.json");
+  if (!existsSync(appJson)) return false;
+  try {
+    const parsed = JSON.parse(readFileSync(appJson, "utf-8")) as { pages?: unknown };
+    if (!Array.isArray(parsed.pages)) return false;
+  } catch {
+    return false;
+  }
+  return MINI_PROGRAM_COMPANION_FILES.some((file) => existsSync(join(dir, file)));
+}
+
+/**
+ * Mini-program signals, split by strength. Strong signals (WeChat project
+ * file, compiled mp-weixin output, Taro/uni-app dependencies) beat generic
+ * web framework signals, because Taro/uni-app projects also depend on
+ * react/vue. A bare app.json is weak: Expo/React Native projects have one
+ * too, so it only counts next to a WeChat-specific companion file.
+ */
+export function detectMiniProgramSignal(projectRoot: string): MiniProgramSignal {
   const npmRoot = findNpmRoot(projectRoot);
   const pkg = readPackageJson(join(npmRoot, "package.json"));
-  if (!pkg) return null;
+  const roots = npmRoot === projectRoot ? [projectRoot] : [projectRoot, npmRoot];
 
+  for (const dir of roots) {
+    if (existsSync(join(dir, "project.config.json"))) {
+      return { kind: "strong", source: "project.config.json" };
+    }
+  }
+  for (const dir of roots) {
+    const output = firstExistingDir(dir, MINI_PROGRAM_OUTPUT_DIRS);
+    if (output) return { kind: "strong", source: `output: ${output}` };
+  }
+  const dep = hasMiniProgramDependency(pkg);
+  if (dep) return { kind: "strong", source: `dependency: ${dep}` };
+
+  for (const dir of roots) {
+    if (hasWeakAppJson(dir)) return { kind: "weak", source: "app.json" };
+  }
+  return { kind: null, source: null };
+}
+
+export function hasMiniProgramSignal(projectRoot: string): boolean {
+  return detectMiniProgramSignal(projectRoot).kind === "strong";
+}
+
+/** Generated artifacts make an explicit `--miniprogram` choice survive `update`. */
+function hasMiniProgramArtifacts(projectRoot: string): boolean {
+  if (existsSync(join(projectRoot, "tests", "playwright", "wxa-test.ts"))) return true;
+  const config = join(projectRoot, "playwright.config.ts");
+  if (!existsSync(config)) return false;
+  try {
+    return readFileSync(config, "utf-8").includes("wxaProject");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Target for commands that have no explicit flag and must not re-detect:
+ * update/remove/doctor follow the shape already on disk. A Taro/uni-app
+ * project scaffolded as Web by an older version stays Web — switching it on
+ * a strong signal would overwrite its Web BasePage/test-plan.
+ */
+export function resolveProjectTarget(projectRoot: string): TemplateTarget {
+  return hasMiniProgramArtifacts(projectRoot) ? "miniprogram" : "web";
+}
+
+/**
+ * Resolve the target for `init`: explicit CLI choice wins, then generated
+ * artifacts, then detection (strong mini-program > web > weak app.json).
+ * Other commands use `resolveProjectTarget` so they never re-detect.
+ */
+export function resolveTemplateTarget(
+  projectRoot: string,
+  options: { miniprogram?: boolean } = {},
+): TemplateTarget {
+  if (options.miniprogram === true) return "miniprogram";
+  if (options.miniprogram === false) return "web";
+  if (hasMiniProgramArtifacts(projectRoot)) return "miniprogram";
+
+  const mini = detectMiniProgramSignal(projectRoot);
+  if (mini.kind === "strong") return "miniprogram";
+
+  const npmRoot = findNpmRoot(projectRoot);
+  const pkg = readPackageJson(join(npmRoot, "package.json"));
+  if (pkg && hasWebFrontendSignal(projectRoot, npmRoot, pkg)) return "web";
+  if (mini.kind === "weak") return "miniprogram";
+  return "web";
+}
+
+function hasWebFrontendSignal(projectRoot: string, npmRoot: string, pkg: PackageJson): boolean {
   if (hasFrontendConfigFile(projectRoot) || (npmRoot !== projectRoot && hasFrontendConfigFile(npmRoot))) return true;
   if (packageHasFrontendDeps(pkg)) return true;
   const dev = pkg.scripts?.dev ?? "";
@@ -356,6 +476,18 @@ export function hasFrontendSignal(projectRoot: string): boolean | null {
   return findFrontendInDirs([projectRoot], WORKSPACE_SCAN_MAX_DEPTH, projectRoot) !== null;
 }
 
+export function hasFrontendSignal(projectRoot: string): boolean | null {
+  const mini = detectMiniProgramSignal(projectRoot);
+  const npmRoot = findNpmRoot(projectRoot);
+  const pkg = readPackageJson(join(npmRoot, "package.json"));
+  const web = pkg !== null && hasWebFrontendSignal(projectRoot, npmRoot, pkg);
+
+  if (mini.kind === "strong") return true;
+  if (mini.kind === "weak" && !web) return true;
+  if (!pkg) return null;
+  return web;
+}
+
 /**
  * Attribution companion to hasFrontendSignal: re-runs the same layers in the
  * same order and returns a human-readable description of the hit
@@ -367,10 +499,22 @@ export function hasFrontendSignal(projectRoot: string): boolean | null {
  * boolean contract, and the re-scan is bounded by the same workspace limits.
  */
 export function explainFrontendSignal(projectRoot: string): string | null {
+  const mini = detectMiniProgramSignal(projectRoot);
+  if (mini.kind === "strong") return mini.source;
+
   const npmRoot = findNpmRoot(projectRoot);
   const pkg = readPackageJson(join(npmRoot, "package.json"));
-  if (!pkg) return null;
+  const web = pkg === null ? null : explainWebFrontendSignal(projectRoot, npmRoot, pkg);
+  if (web) return web;
+  if (mini.kind === "weak") return mini.source;
+  return null;
+}
 
+function explainWebFrontendSignal(
+  projectRoot: string,
+  npmRoot: string,
+  pkg: PackageJson,
+): string | null {
   for (const dir of npmRoot !== projectRoot ? [projectRoot, npmRoot] : [projectRoot]) {
     const config = findFrontendConfigFile(dir);
     if (config) return config;
