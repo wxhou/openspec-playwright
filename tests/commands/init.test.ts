@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("../../src/shared/exec.js", () => ({
   execFileAsync: vi.fn(),
   execFileSync: vi.fn(),
+  hasCommand: vi.fn(() => true),
   spawnSync: vi.fn(),
 }));
 
