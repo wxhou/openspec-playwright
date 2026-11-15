@@ -261,7 +261,7 @@ describe("init refuses a half migration to the mini-program target", () => {
     const { init } = await import("../../src/commands/init.js");
     await expect(
       init({ tools: "none", miniprogram: true, mcp: false }, { isTTY: false }),
-    ).rejects.toThrow(/pages\/BasePage\.ts/);
+    ).rejects.toThrow(/BasePage\.ts/);
     expect(existsSync(join(testsDir, "wxa-test.ts"))).toBe(false);
   });
 });

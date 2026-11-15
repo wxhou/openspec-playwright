@@ -742,6 +742,9 @@ export function syncProjectTemplates(tmpDir: string, projectRoot: string) {
   // instead (asset-sync: no version tracking for a low-value static doc).
   // The mini-program target keeps its contract doc next to the tests.
   const readmeRel = mini ? join("tests", "playwright", "README.md") : join("tests", "README.md");
+  // POSIX label for messages: the hint is asserted verbatim and must not vary
+  // with the platform separator.
+  const readmeLabel = mini ? "tests/playwright/README.md" : "tests/README.md";
   const readmeTemplate = mini
     ? join("templates", "miniprogram", "tests-readme.md")
     : join("templates", "tests-readme.md");
@@ -751,7 +754,7 @@ export function syncProjectTemplates(tmpDir: string, projectRoot: string) {
     if (normalizeEol(readFileSync(readmeDest, "utf-8")) !== normalizeEol(readFileSync(readmeSrc, "utf-8"))) {
       console.log(
         chalk.yellow(
-          `  ⚠ ${readmeRel} differs from the bundled template — update it manually, or delete it and re-run \`openspec-pw init\``,
+          `  ⚠ ${readmeLabel} differs from the bundled template — update it manually, or delete it and re-run \`openspec-pw init\``,
         ),
       );
     }
