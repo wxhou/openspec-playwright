@@ -6,6 +6,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- **fix(e2e): 对齐自动流水线与 skill 的测试计划路径**. `--auto` 的 plan gate 改读 `openspec/changes/<name>/specs/playwright/test-plan.md`，并加契约测试，防止两处路径再次漂移。已有 `openspec-auto.yml` 不会被覆盖；请手动改路径，或删除该文件后重跑 `init --auto-pipeline`。
+  - `templates/auto-pipeline.yml`、`tests/auto-pipeline.test.ts`、`CHANGELOG.md`
+- **fix(explore): 支持指定 app-exploration.md，并停止宣称并行**. `explore --file <path>` 让 change 模式使用自身探索文件；`--parallel` 保留兼容但 help 注明串行。
+  - `src/commands/explore.ts`、`src/index.ts`、`tests/commands/explore.test.ts`、`CHANGELOG.md`
+- **docs(e2e): 闭合无头与认证缺口**. `--auto` 对变更名歧义或缺测试数据直接 abort、删除测试保留并记录；plan 按 scenario 标题生成；Step 7 补 `E2E_AUTH_REQUIRED`、多用户环境变量与无凭据分支；tasks.md 在 skipped 时不再标 verified；4xx 按测试输入与 5xx 分开归类。
+  - `templates/e2e-command.md`、`templates/credentials.yaml`、`templates/auth.setup.ts`、`templates/test-plan.md`、`templates/playwright.config.ts`、`templates/github-workflow.yml`、`templates/auto-pipeline.yml`、`README.md`、`README.zh-CN.md`、`tests/e2e-template-auto.test.ts`、`CHANGELOG.md`
+- **docs(e2e): skill 按官方规范瘦身**. 正文从约 7.5k 降到约 5.8k tokens：删除重复块、Mode split 摘要与 Guardrails/Graceful 表，合并 Healer 步骤，补 MCP 全限定名与 Done when、修正 Step 2 认证措辞。
+  - `templates/e2e-command.md`、`tests/e2e-template-auto.test.ts`、`CHANGELOG.md`
+- **fix(e2e): 补 CI 认证变量并保留失败 trace**. workflow 传入 `E2E_AUTH_*` 仓库变量；config 与 Step 8 的 trace 改为 `retain-on-failure`。
+  - `templates/github-workflow.yml`、`templates/playwright.config.ts`、`templates/e2e-command.md`、`CHANGELOG.md`
+- **docs(e2e): 拆分 Healer 环境类失败并约束 strict locator**. 配置/不可达不再记 App Bug；歧义 locator 不得用 `.first()` 掩盖。
+  - `templates/e2e-command.md`、`CHANGELOG.md`
+- **fix(e2e): 避免 UI 登录断言泄露密码**. 去掉密码值断言，登录成功改用路径锚定的正向 URL 校验。
+  - `templates/auth.setup.ts`、`CHANGELOG.md`
+- **docs(e2e): 探索范围改为需求驱动**. Step 4 先探索 change 涉及的路由，仅在流程引出时扩展；all 模式仍覆盖全量路由。
+  - `templates/e2e-command.md`、`CHANGELOG.md`
+- **fix(e2e): 统一认证配置与选择器优先级**. `auth.setup.ts` 读取 `E2E_AUTH_API`，API 登录校验 cookie 并按可选 `E2E_AUTH_CHECK_PATH` 验证会话；选择器优先级统一为 role-first；Healer 不得用最接近元素替代消失目标；测试数据要求唯一值、逆序清理、UI 非被测行为时走 API；多用户从 `credentials.yaml` 读取用户。
+  - `templates/auth.setup.ts`、`templates/credentials.yaml`、`templates/e2e-command.md`、`templates/app-knowledge.md`、`templates/app-exploration.md`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
+- **fix(update): 停止同步已废弃的 credentials.yaml `api` 字段**. update 只保留 users 配置。
+  - `src/commands/update.ts`、`tests/update.test.ts`、`CHANGELOG.md`
+- **docs(standards): 明确自动审查与自动修复边界**. 审查条与 verify 后 CRITICAL 修复标记为自动；WARNING/SUGGESTION 注明不自行修改。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
+- **docs(e2e): 补密钥处理与 healer 证据判据**. Testing Principles 增加 Secrets；Phase 1 先读 trace / 截图 / console，并给出三条诊断信号。
+  - `templates/e2e-command.md`、`CHANGELOG.md`
 - **docs(readme): 精简中英文 README**. 删除过时与重复内容，修正步数与检查项。
   - `README.md`、`README.zh-CN.md`
 - **chore(repo): 缩小仓库跟踪范围**. `dist/` 改由 `prepare` 生成；本机 `config/mcporter.json` 与生成的 `tests/README.md` 加入 `.gitignore`；删除未引用的 `templates/e2e-test.ts`。

@@ -860,8 +860,7 @@ export function syncProjectTemplates(tmpDir: string, projectRoot: string) {
 
 /**
  * Sync credentials.yaml — update template structure while preserving user data.
- * Extracts api + users array from existing file, injects into latest template.
- * Falls back to warning if template structure changed significantly.
+ * Extracts the users array from the existing file, injects it into the latest template.
  */
 export function syncCredentials(tmpDir: string, projectRoot: string) {
   const credsSrc = join(tmpDir, "templates", "credentials.yaml");
@@ -914,10 +913,6 @@ export function syncCredentials(tmpDir: string, projectRoot: string) {
     });
   }
 
-  // Extract api field from existing
-  const apiMatch = existing.match(/^api:\s*(.+?)(?:\n|$)/m);
-  const apiValue = apiMatch ? apiMatch[1].trim() : "";
-
   // Build updated template with preserved user data
   let updated = latest;
   if (users.length > 0) {
@@ -931,12 +926,8 @@ export function syncCredentials(tmpDir: string, projectRoot: string) {
     // Replace the users section in template
     updated = updated.replace(
       /^users:\s*\n(\s*- name:[\s\S]*?)(\n\s*#|\n\s*# Multi-user)/m,
-      `users:\n${userLines}\n$2`,
+      `users:\n${userLines}$2`,
     );
-  }
-
-  if (apiValue && !apiValue.includes("CHANGE_ME")) {
-    updated = updated.replace(/^api:\s*.*$/m, `api: ${apiValue}`);
   }
 
   writeFileSync(credsDest, updated);

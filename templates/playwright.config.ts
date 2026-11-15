@@ -135,7 +135,7 @@ if (npmRoot !== projectRoot) {
   devCmd = `cd "${npmRoot}" && ${devCmd}`;
 }
 
-// ─── BASE_URL: prefer env, then detected port, then seed.spec.ts, then default ───
+// ─── BASE_URL: prefer env, then env/script/vite/.env/framework port, then seed.spec.ts, then default ───
 const seedSpec = join(projectRoot, 'tests', 'playwright', 'seed.spec.ts');
 let baseUrl = process.env.BASE_URL;
 if (!baseUrl) {
@@ -169,7 +169,8 @@ export default defineConfig({
 
   use: {
     baseURL: baseUrl,
-    trace: 'on-first-retry',
+    // retain-on-failure keeps evidence for local failures (retries are 0 locally).
+    trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
 

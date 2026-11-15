@@ -23,9 +23,9 @@ BASE_URL: <from env or seed.spec.ts>
 
 | Element | Selector | Notes |
 |---------|----------|-------|
-| heading | `[data-testid="..."]` or `h1` | |
+| heading | `getByRole('heading', { name: '...' })` or `h1` | |
 | submit btn | `getByRole('button', { name: '...' })` | |
-| logout btn | `[data-testid="logout-btn"]` | |
+| logout btn | `getByRole('button', { name: /log ?out/i })` or `[data-testid="logout-btn"]` | |
 | form | `form >> input[name="..."]` | |
 | nav link | `a:text("...")` or `nav >> text=...` | |
 

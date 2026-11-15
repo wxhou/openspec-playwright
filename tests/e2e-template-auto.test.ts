@@ -36,15 +36,36 @@ describe("e2e-command template: autonomous mode", () => {
   });
 
   it("says out loud that a self-read plan is not approval", () => {
-    expect(template).toContain("Your own reading of the plan is not approval");
+    expect(template).toContain("Your own reading is not approval");
   });
 
   // CI has no browser MCP. Without a documented third rung the agent improvises
   // and reports "the tool was denied" instead of producing exploration data.
   it("documents the no-MCP fallback for headless exploration", () => {
-    expect(template).toContain("No browser MCP at all");
+    expect(template).toContain("No browser MCP");
     expect(template).toContain("npx playwright test <file>");
-    expect(template).toContain("The routing is a chain, not a menu");
-    expect(template).toContain("delete them when Step 4 ends");
+    expect(template).toContain("Step down only when the tool above");
+    expect(template).toContain("delete after Step 4");
+  });
+
+  it("closes every ask-user path in --auto", () => {
+    expect(template).toContain("E2E ABORTED: change name required");
+    expect(template).toContain("E2E ABORTED: no specs");
+    expect(template).toContain("E2E ABORTED: test data required");
+    expect(template).toContain("keep the test and note it in the report");
+  });
+
+  it("passes the exploration file to the CLI in change mode", () => {
+    expect(template).toContain(
+      "openspec-pw explore --file <path-to-app-exploration.md>",
+    );
+    expect(template).toContain(
+      "openspec/changes/<name>/specs/playwright/app-exploration.md",
+    );
+  });
+
+  it("does not mark tasks verified when tests were skipped", () => {
+    expect(template).toContain("0 active App Bugs and 0 skipped");
+    expect(template).toContain("E2E incomplete");
   });
 });

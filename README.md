@@ -307,7 +307,7 @@ Edits to lint config, `tsconfig*.json`, Playwright or Vitest config appear under
 
 **Stop hook.** `openspec-pw init --hook` merges a `Stop` hook into `.claude/settings.json` that runs `openspec-pw gate --hook`. When the gate is red the hook exits 2 with the failing checks on stderr, so the agent keeps working instead of claiming done. Two tiers: `static` (default — validate, lint, typecheck, unit tests) and `full` (adds flake and e2e). Use `full` only once the change's E2E tests exist: before that, the "scenarios but no tests" guard fails the gate on every turn and the hook blocks work that is on the right track. It blocks at most once per turn (honouring Claude Code's `stop_hook_active`) and caches its verdict against a working-tree fingerprint, so an unchanged tree is not re-checked. `--no-hook` or `openspec-pw remove` removes it; your own hooks in the same file are never touched.
 
-**Autonomous pipeline.** `openspec-pw init --auto-pipeline` writes `.github/workflows/openspec-auto.yml` once and never overwrites it. Two triggers on purpose: every pull request runs `gate` only — mark that job as a **required status check**, or a PR with a red gate can still merge — while a `openspec:auto` label or a manual dispatch starts the headless agent (apply → static gate → generate E2E → full gate) and opens the PR. Required secret: `ANTHROPIC_API_KEY`. Stages run cheapest-first: apply verifies itself with `gate --skip e2e` (the change's E2E tests do not exist yet, and the "scenarios but no tests" guard would fail a full gate — a loop that cannot terminate), a static gate follows at zero token cost, then the browser-driven E2E stage, and only then the full gate as the job's own verdict. Apply is judged by `openspec list --json` task counts, because a headless run that stops to ask a question still exits 0. A final `/opsx:verify` pass is advisory — its report and every stage's `total_cost_usd` land in the PR body, and it never blocks. The E2E step runs `/opsx:e2e --auto`: the human plan approval becomes `openspec-pw coverage --plan`, and every point that would wait for a person becomes a structured abort with a non-zero exit. Because CI checks out the repository, `openspec/` is kept out of the managed `.gitignore` block in pipeline projects — the specs and changes must be committed or the agent has nothing to apply. A rule outside the block that still ignores `openspec/` is reported, not rewritten.
+**Autonomous pipeline.** `openspec-pw init --auto-pipeline` writes `.github/workflows/openspec-auto.yml` once and never overwrites it. Two triggers on purpose: every pull request runs `gate` only — mark that job as a **required status check**, or a PR with a red gate can still merge — while a `openspec:auto` label or a manual dispatch starts the headless agent (apply → static gate → generate E2E → full gate) and opens the PR. Required secret: `ANTHROPIC_API_KEY`. For authenticated apps, also provide `E2E_USERNAME` / `E2E_PASSWORD` secrets and the `E2E_AUTH_*` repository variables; the E2E stage forwards them. Stages run cheapest-first: apply verifies itself with `gate --skip e2e` (the change's E2E tests do not exist yet, and the "scenarios but no tests" guard would fail a full gate — a loop that cannot terminate), a static gate follows at zero token cost, then the browser-driven E2E stage, and only then the full gate as the job's own verdict. Apply is judged by `openspec list --json` task counts, because a headless run that stops to ask a question still exits 0. A final `/opsx:verify` pass is advisory — its report and every stage's `total_cost_usd` land in the PR body, and it never blocks. The E2E step runs `/opsx:e2e --auto`: the human plan approval becomes `openspec-pw coverage --plan`, and every point that would wait for a person becomes a structured abort with a non-zero exit. Because CI checks out the repository, `openspec/` is kept out of the managed `.gitignore` block in pipeline projects — the specs and changes must be committed or the agent has nothing to apply. A rule outside the block that still ignores `openspec/` is reported, not rewritten.
 
 ## How It Works
 
@@ -483,23 +483,24 @@ If your app requires login, set up credentials once, then all tests run authenti
 > **Credentials are ignored automatically**: init and update maintain a marked block at the tail of your `.gitignore` that ignores `tests/playwright/credentials.yaml`, its `.bak`, `tests/playwright/test-results/`, and exploration screenshots (`tests/playwright/screenshots/` — they age as the app evolves; stay local like app-exploration.md) — plus auth storageState (`playwright/.auth/`, logged-in session cookies), MCP config (`.mcp.json` — user-added servers often carry API keys in env/headers), tool-local data (`.codegraph/`, `.playwright-mcp/`), and first-tier names like `.claude/`, `.cursor/`, `.codebuddy/`, `.agents/skills/opsx-e2e/`, `.dsh/skills/opsx-e2e/`, `openspec/`, `AGENTS.md`, `CLAUDE.md`, `CODEBUDDY.md` (the generated products stay local, per design). The block is idempotent, never touches your own rules, and is cleaned up by `remove`. If the block cannot be written, a warning lists the uncovered paths instead. Note: ignore rules do not apply to already-tracked files — if credentials were committed before, run `git rm --cached tests/playwright/credentials.yaml`. Alternatively keep credentials in the `E2E_USERNAME` / `E2E_PASSWORD` env vars. Interactive init can uncheck individual paths; the opt-outs are stored on the block's `# openspec-pw: skip=…` header line and honored by every later `update`.
 
 ```bash
-# 1. Edit credentials
+# 1. (Optional) Edit test users for role-based tests
 vim tests/playwright/credentials.yaml
 
 # 2. Enable auth and set environment variables
 export E2E_AUTH_REQUIRED=true
 export E2E_AUTH_METHOD=api # or ui
+export E2E_AUTH_API=/api/auth/login # optional; this is the default
 export E2E_USERNAME=your-email@example.com
 export E2E_PASSWORD=your-password
 
-# 3. Record login (one-time — opens browser, log in manually)
+# 3. Record login (one-time; UI login opens the browser)
 npx playwright test --project=setup
 
 # 4. All subsequent tests use the saved session
 /opsx:e2e my-feature
 ```
 
-Supports **API login** (preferred) and **UI login** (fallback). For multi-user tests (admin vs user), add multiple users in `credentials.yaml` and run `/opsx:e2e` (or `/opsx-e2e` in OpenCode/Cline/Cursor/Pi/Oh My Pi/MiniMax Code/DeepSeek Harness; CodeBuddy CLI uses the `/opsx:e2e` colon form) — it auto-detects roles from specs.
+Supports **API login** (preferred, cookie-based) and **UI login** (fallback, for token/localStorage auth). For multi-user tests (admin vs user), add multiple users in `credentials.yaml` and run `/opsx:e2e` (or `/opsx-e2e` in OpenCode/Cline/Cursor/Pi/Oh My Pi/MiniMax Code/DeepSeek Harness; CodeBuddy CLI uses the `/opsx:e2e` colon form) — it reads role labels from specs and users from `credentials.yaml`, then generates one setup per role. Each setup reads `E2E_<ROLE>_USERNAME` and `E2E_<ROLE>_PASSWORD` (role name uppercased; non-alphanumeric characters become `_`).
 
 ## Customization
 
@@ -513,9 +514,16 @@ Edit `tests/playwright/seed.spec.ts` to match your app's:
 ### Authentication credentials
 
 Edit `tests/playwright/credentials.yaml`:
-- Set login API endpoint (or leave empty for UI login)
-- Configure test user credentials
-- Add multiple users for role-based tests
+- Add one entry per role for role-based tests
+
+Auth environment variables:
+- `E2E_AUTH_REQUIRED=true` — actually run `auth.setup.ts`; without it the setup test is skipped
+- `E2E_AUTH_API` — login endpoint for API login (default `/api/auth/login`); assumes cookie auth
+- `E2E_AUTH_METHOD=ui` — use UI login instead, for token/localStorage auth
+- `E2E_AUTH_CHECK_PATH` — optional path asserted after login, before the session is saved
+- `E2E_<ROLE>_USERNAME` / `E2E_<ROLE>_PASSWORD` — one pair per role for multi-user setups
+
+In CI, set the `E2E_AUTH_*` values as repository variables; the workflow passes them to the test step. For multi-user CI, add the per-role credential pairs as secrets and forward them in the workflow env — the shipped workflow forwards only `E2E_USERNAME` / `E2E_PASSWORD`.
 
 ## Architecture
 

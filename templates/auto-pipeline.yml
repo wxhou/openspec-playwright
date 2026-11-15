@@ -193,6 +193,13 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           CHANGE: ${{ steps.resolve.outputs.change }}
+          E2E_USERNAME: ${{ secrets.E2E_USERNAME }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          E2E_AUTH_REQUIRED: ${{ vars.E2E_AUTH_REQUIRED || 'false' }}
+          E2E_AUTH_METHOD: ${{ vars.E2E_AUTH_METHOD || 'api' }}
+          E2E_AUTH_API: ${{ vars.E2E_AUTH_API || '/api/auth/login' }}
+          E2E_AUTH_CHECK_PATH: ${{ vars.E2E_AUTH_CHECK_PATH }}
+          BASE_URL: ${{ secrets.BASE_URL || 'http://localhost:3000' }}
         run: |
           claude -p "/opsx:e2e $CHANGE --auto" \
             --permission-mode acceptEdits \
@@ -202,7 +209,7 @@ jobs:
             --max-turns 60 \
             --max-budget-usd 10 \
             --output-format json > e2e.json || true
-          openspec-pw coverage "$CHANGE" --plan "tests/playwright/changes/$CHANGE/test-plan.md"
+          openspec-pw coverage "$CHANGE" --plan "openspec/changes/$CHANGE/specs/playwright/test-plan.md"
 
       # Full gate, E2E included — run independently of both agent stages: the
       # E2E agent can edit code too, so the static result above is not assumed
@@ -214,6 +221,13 @@ jobs:
         env:
           CHANGE: ${{ steps.resolve.outputs.change }}
           E2E: ${{ inputs.e2e }}
+          E2E_USERNAME: ${{ secrets.E2E_USERNAME }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          E2E_AUTH_REQUIRED: ${{ vars.E2E_AUTH_REQUIRED || 'false' }}
+          E2E_AUTH_METHOD: ${{ vars.E2E_AUTH_METHOD || 'api' }}
+          E2E_AUTH_API: ${{ vars.E2E_AUTH_API || '/api/auth/login' }}
+          E2E_AUTH_CHECK_PATH: ${{ vars.E2E_AUTH_CHECK_PATH }}
+          BASE_URL: ${{ secrets.BASE_URL || 'http://localhost:3000' }}
         run: |
           set -o pipefail
           ARGS=()

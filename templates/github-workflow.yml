@@ -4,6 +4,9 @@
 # This workflow runs E2E tests on every push to main and every pull request.
 # It handles: Node setup, Playwright browser install, dev server startup, and test execution.
 #
+# Use a dedicated test account. Same-repository pull_request runs receive the
+# E2E secrets; fork PRs do not by default.
+#
 # Prerequisites (run these once locally):
 #   npm install -g @fission-ai/openspec@latest
 #   openspec init
@@ -56,6 +59,11 @@ jobs:
         env:
           E2E_USERNAME: ${{ secrets.E2E_USERNAME }}
           E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          # Auth config (repository variables)
+          E2E_AUTH_REQUIRED: ${{ vars.E2E_AUTH_REQUIRED || 'false' }}
+          E2E_AUTH_METHOD: ${{ vars.E2E_AUTH_METHOD || 'api' }}
+          E2E_AUTH_API: ${{ vars.E2E_AUTH_API || '/api/auth/login' }}
+          E2E_AUTH_CHECK_PATH: ${{ vars.E2E_AUTH_CHECK_PATH }}
           BASE_URL: ${{ secrets.BASE_URL || 'http://localhost:3000' }}
 
       - name: Upload test results

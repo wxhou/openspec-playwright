@@ -34,7 +34,7 @@ describe("syncCredentials", () => {
     const projectDir = join(tmpdir(), "creds-gen-project-" + Date.now());
     const src = join(tmpDir, "templates");
     mkdirSync(src, { recursive: true });
-    writeFileSync(join(src, "credentials.yaml"), "api: http://localhost\nusers: []");
+    writeFileSync(join(src, "credentials.yaml"), "users: []");
 
     const { syncCredentials } = await import("../../src/commands/update.js");
     syncCredentials(tmpDir, projectDir);
@@ -48,8 +48,7 @@ describe("syncCredentials", () => {
     mkdirSync(join(projectDir, "tests", "playwright"), { recursive: true });
 
     // Existing credentials with user data
-    const existingCreds = `api: http://localhost:3000
-users:
+    const existingCreds = `users:
   - name: admin
     username: admin@test.com
     password: secret123
@@ -59,8 +58,7 @@ users:
     // New template - must include `# Multi-user` comment for replace pattern
     const src = join(tmpDir, "templates");
     mkdirSync(src, { recursive: true });
-    writeFileSync(join(src, "credentials.yaml"), `api: CHANGE_ME
-# Multi-user test credentials
+    writeFileSync(join(src, "credentials.yaml"), `# Multi-user test credentials
 users:
   - name: CHANGE_ME
     username: CHANGE_ME
@@ -73,7 +71,6 @@ users:
     syncCredentials(tmpDir, projectDir);
 
     const updated = readFileSync(join(projectDir, "tests", "playwright", "credentials.yaml"), "utf-8");
-    expect(updated).toContain("http://localhost:3000"); // preserved api
     expect(updated).toContain("admin@test.com"); // preserved user
     expect(updated).toContain("secret123"); // preserved password
     rmSync(projectDir, { recursive: true, force: true });
@@ -83,8 +80,7 @@ users:
     const projectDir = join(tmpdir(), "creds-backup-project-" + Date.now());
     mkdirSync(join(projectDir, "tests", "playwright"), { recursive: true });
 
-    const existingCreds = `api: http://localhost:3000
-users:
+    const existingCreds = `users:
   - name: admin
     username: admin@test.com
     password: secret123
@@ -93,8 +89,7 @@ users:
 
     const src = join(tmpDir, "templates");
     mkdirSync(src, { recursive: true });
-    writeFileSync(join(src, "credentials.yaml"), `api: NEW_API
-users:
+    writeFileSync(join(src, "credentials.yaml"), `users:
   - name: NEW_USER
     username: new@test.com
     password: newpass
@@ -115,8 +110,7 @@ users:
     const projectDir = join(tmpdir(), "creds-identical-project-" + Date.now());
     mkdirSync(join(projectDir, "tests", "playwright"), { recursive: true });
 
-    const templateContent = `api: CHANGE_ME
-users:
+    const templateContent = `users:
   - name: CHANGE_ME
     username: CHANGE_ME
     password: CHANGE_ME
@@ -145,7 +139,7 @@ describe("syncCredentials: credentials ignore hint", () => {
     mkdirSync(join(tplDir, "templates"), { recursive: true });
     writeFileSync(
       join(tplDir, "templates", "credentials.yaml"),
-      "api: CHANGE_ME\nusers: []\n",
+      "users: []\n",
     );
   });
 
@@ -194,7 +188,7 @@ describe("syncCredentials: credentials ignore hint", () => {
     );
     writeFileSync(
       join(projectDir, "tests", "playwright", "credentials.yaml"),
-      "api: http://localhost:3000\nusers: []\n",
+      "users: []\n",
     );
     try {
       const logs = await runSync(projectDir);
@@ -241,8 +235,7 @@ describe("syncCredentials: credentials ignore hint", () => {
 
 describe("credentials user extraction logic", () => {
   it("extracts users from yaml with multiple entries", () => {
-    const yaml = `api: http://localhost
-users:
+    const yaml = `users:
   - name: admin
     username: admin@test.com
     password: secret123
@@ -264,35 +257,10 @@ users:
   });
 
   it("handles yaml with no users section", () => {
-    const yaml = `api: http://localhost
-other: value
+    const yaml = `other: value
 `;
     const userBlockMatch = yaml.match(/^users:\n([\s\S]*?)(?=\n[^ ])/m);
     expect(userBlockMatch).toBeNull();
-  });
-
-  it("extracts api value from credentials yaml", () => {
-    const yaml = `api: http://localhost:3000
-users:
-  - name: admin
-    username: admin@test.com
-    password: secret
-`;
-    const apiMatch = yaml.match(/^api:\s*(.+?)(?:\n|$)/m);
-    expect(apiMatch).not.toBeNull();
-    expect(apiMatch![1].trim()).toBe("http://localhost:3000");
-  });
-
-  it("handles yaml with api that contains CHANGE_ME placeholder", () => {
-    const yaml = `api: CHANGE_ME
-users:
-  - name: test
-    username: CHANGE_ME
-    password: CHANGE_ME
-`;
-    const apiMatch = yaml.match(/^api:\s*(.+?)(?:\n|$)/m);
-    expect(apiMatch![1].trim()).toBe("CHANGE_ME");
-    expect(apiMatch![1].includes("CHANGE_ME")).toBe(true);
   });
 });
 

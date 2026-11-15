@@ -1,12 +1,14 @@
 import { chromium, Browser, BrowserContext, Page } from "playwright";
 import chalk from "chalk";
 import { existsSync, readFileSync, writeFileSync, renameSync } from "fs";
-import { join } from "path";
+import { join, isAbsolute } from "path";
 import { detectAppServer } from "../shared/index.js";
 
 export interface ExploreOptions {
   parallel?: number;
   dryRun?: boolean;
+  /** Path to app-exploration.md; relative paths resolve against the cwd. */
+  file?: string;
 }
 
 export interface RouteResult {
@@ -306,6 +308,12 @@ export function resolveExploreBaseUrl(
   return env.BASE_URL ?? recordedBaseUrl ?? detectAppServer(projectRoot, env).baseUrl;
 }
 
+/** Resolve the exploration file; `--file` wins, otherwise ./app-exploration.md. */
+export function resolveExplorationPath(projectRoot: string, file?: string): string {
+  if (!file) return join(projectRoot, "app-exploration.md");
+  return isAbsolute(file) ? file : join(projectRoot, file);
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────────
 
 export async function explore(options: ExploreOptions) {
@@ -331,7 +339,7 @@ export async function explore(options: ExploreOptions) {
   console.log(chalk.blue(`\nApp Exploration (sequential)\n`));
 
   // 1. Read app-exploration.md
-  const explorationPath = join(projectRoot, "app-exploration.md");
+  const explorationPath = resolveExplorationPath(projectRoot, options.file);
   if (!existsSync(explorationPath)) {
     console.log(
       chalk.red(

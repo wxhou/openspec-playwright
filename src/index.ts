@@ -226,12 +226,16 @@ program
 
 program
   .command("explore")
-  .description("Explore routes in parallel with Playwright")
+  .description("Explore app routes with Playwright")
   .option(
     "-p, --parallel <n>",
-    "Number of parallel workers",
+    "Accepted for backward compatibility; routes run sequentially",
     (v) => parseInt(v, 10),
     4,
+  )
+  .option(
+    "-f, --file <path>",
+    "Path to app-exploration.md (default: ./app-exploration.md)",
   )
   .option(
     "-n, --dry-run",

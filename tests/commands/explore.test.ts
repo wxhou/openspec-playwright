@@ -5,6 +5,7 @@ import { tmpdir } from "os";
 import {
   parseExplorationFile,
   resolveExploreBaseUrl,
+  resolveExplorationPath,
   updateExplorationFile,
   appendFailureSection,
 } from "../../src/commands/explore.js";
@@ -82,6 +83,33 @@ describe("explore base URL resolution", () => {
     expect(resolveExploreBaseUrl(tmpDir, undefined, {})).toBe(
       "http://localhost:3000",
     );
+  });
+});
+
+describe("explore file resolution", () => {
+  const root = join(tmpdir(), "ospw-pw-root");
+
+  it("defaults to app-exploration.md at the project root", () => {
+    expect(resolveExplorationPath(root)).toBe(join(root, "app-exploration.md"));
+  });
+
+  it("resolves a relative --file against the project root", () => {
+    expect(
+      resolveExplorationPath(
+        root,
+        "openspec/changes/demo/specs/playwright/app-exploration.md",
+      ),
+    ).toBe(
+      join(
+        root,
+        "openspec/changes/demo/specs/playwright/app-exploration.md",
+      ),
+    );
+  });
+
+  it("keeps an absolute --file unchanged", () => {
+    const absolute = join(root, "custom.md");
+    expect(resolveExplorationPath("/elsewhere", absolute)).toBe(absolute);
   });
 });
 

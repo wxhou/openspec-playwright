@@ -71,14 +71,14 @@ const CLAUDE_MD_ZH = `# 项目规范
 
 ## 工作流参考
 - 🔴 提案范围须用户确认，AI 不得自行确认；commit/push/merge/release/archive 须用户授权，一次授权只覆盖明确指定的动作，未授权动作不得自行执行
-- 🟡 提案后审查按风险分级，总上限 2 轮：
+- 🟡 提案后按风险分级自动审查，总上限 2 轮：
   - 第 1 轮（所有提案）：对抗审查——对照目标/约束/specs，检查完整性、一致性、正确性与范围蔓延并修正
   - 第 2 轮：高风险或架构级提案换独立视角复检全部制品（子代理 → 独立上下文；否则重读并输出「需求/场景 → 证据(file:line) → 结论」表，不复用上轮自评）；普通提案在同一上下文复检修订后的制品
   - 审查内不中途等确认；结束后列出修正并请求范围确认：仍有阻断则停在提案阶段，仅非阻断项记录后确认；自修不得增删需求，需增删时列入待确认
 - 🟡 自动链：提案后自动审查，用户确认范围后自动 apply，收尾同一回合 verify（跑测试/自查不算，「可归档」收尾语不豁免）；显式「实现/做到绿/走完」或 \`/opsx:apply\` 同样触发
   - 停止：单独调用 verify/e2e 等单阶段命令 → 该阶段结束即停
   - 范围：e2e 不在链内，「做到绿」不含 e2e
-- 🟡 verify 之后：CRITICAL → 按修复预算修复并复跑 verify；需增删范围或预算耗尽仍有 CRITICAL → 停下汇报；WARNING/SUGGESTION → 记录后交用户裁决
+- 🟡 verify 之后：CRITICAL → 按修复预算自动修复并复跑 verify；需增删范围或预算耗尽仍有 CRITICAL → 停下汇报；WARNING/SUGGESTION → 记录后交用户裁决，不自行修改
 - 🟡 高风险变更（公共 API/CLI 契约、数据模型/迁移、鉴权与安全、跨模块架构；不确定按高风险）在动手前（无论是否走提案流程）汇报设计要点、影响面与回滚方式并等待确认
 - 🟡 仅当用户明确要求「自动归档」，且 tasks 全勾无 blocked、verify 无 CRITICAL、e2e（如运行）无 active App Bug、commit/merge 已授权并完成时才自动执行；skipped 列出交用户裁决；手动归档不受此限
 - 🟡 在 tasks.md 末尾维护「## 状态」：当前阶段、提案审查结论、最后停止原因、e2e 未运行或运行结果、待裁决项；每次停下或上下文压缩前更新
@@ -195,14 +195,14 @@ const CLAUDE_MD_EN = `# Project Guidelines
 
 ## Workflow Reference
 - 🔴 Proposal scope is confirmed by the user, never self-confirmed; commit/push/merge/release/archive require user authorization, and one authorization covers only the explicitly specified action; unauthorized actions must never be performed
-- 🟡 Proposal review is risk-tiered, with at most 2 rounds:
+- 🟡 Proposal review is risk-tiered and runs automatically, with at most 2 rounds:
   - Round 1 (all proposals): adversarial review — check goals/constraints/existing specs for completeness, consistency, correctness and scope creep, and fix findings
   - Round 2: high-risk or architecture-level proposals get an independent re-check of all artifacts (subagents → independent context; otherwise re-read and output a "requirement/scenario → evidence (file:line) → conclusion" table, never reuse the previous self-assessment); ordinary proposals re-check the revised artifacts in the same context
   - Do not pause between rounds; afterwards list fixes and request scope confirmation: blocking issues → stop at the proposal stage; non-blocking items are recorded, then confirmation. Fixes never add or remove requirements; proposed scope changes are listed for final confirmation
 - 🟡 Auto-chain: review runs automatically after the proposal; once the user confirms the scope, apply runs automatically, and verify runs in the same turn at close-out (running tests or a self-check is not verify; the \`opsx:apply\` "you can archive" closing line does not justify skipping it); an explicit "implement / make it green / run this change through" or \`/opsx:apply\` also triggers it
   - Stop: invoking verify/e2e alone stops after that phase
   - Scope: e2e is not part of the chain, and "make it green" does not include e2e
-- 🟡 After verify: CRITICAL → fix within the repair budget and re-run verify; if scope must change or CRITICAL remains after the budget → stop and report; WARNING/SUGGESTION → record and hand to the user
+- 🟡 After verify: CRITICAL → automatically fix within the repair budget and re-run verify; if scope must change or CRITICAL remains after the budget → stop and report; WARNING/SUGGESTION → record and hand to the user, do not modify them yourself
 - 🟡 High-risk changes (public API/CLI contracts, data models/migrations, auth & security, cross-module architecture; when unsure, treat as high-risk) report design essentials, impact and rollback before implementation (even outside the proposal flow) and wait for confirmation
 - 🟡 Auto-archive only when explicitly requested ("auto archive") and all tasks are checked with no blocked item, verify has no CRITICAL, e2e (if run) has no active App Bug, and commit/merge are authorized and completed; list skipped tests for the user to decide — manual archive is exempt
 - 🟡 Maintain a "## Status" section at the end of tasks.md: current phase, proposal review conclusion, last stop reason, e2e not run or its result, pending decisions; update it before every stop or context compaction
