@@ -103,6 +103,17 @@ describe("pipeline template", () => {
     expect(template).toMatch(/- name: Gate[\s\S]{0,700}E2E_AUTH_REQUIRED/);
   });
 
+  it("runs E2E on label events and installs the e2e command", () => {
+    // A missing `inputs` context on pull_request label events compares equal
+    // to false; without the event guard the E2E stage is skipped.
+    expect(template).toContain(
+      "github.event_name != 'workflow_dispatch' || inputs.e2e != false",
+    );
+    // `.claude/` is gitignored; a fresh runner must regenerate the command.
+    expect(template).toContain("openspec-pw init --tools claude --no-mcp --no-hook");
+    expect(template).toContain(".claude/commands/opsx/e2e.md");
+  });
+
   it("runs verify after the gate, advisory only, and records it in the PR", () => {
     const gate = template.lastIndexOf("- name: Gate\n");
     const verify = template.indexOf("- name: Verify (advisory)");

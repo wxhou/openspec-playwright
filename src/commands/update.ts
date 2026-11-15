@@ -899,35 +899,21 @@ export function syncCredentials(tmpDir: string, projectRoot: string) {
     ),
   );
 
-  // Extract user data from existing file
-  const users: Array<{ name: string; username: string; password: string }> = [];
-  // Match user entries directly without block matching (more robust)
-  const regex =
-    /^  - name:\s*(\S+)\n    username:\s*(.+?)\n    password:\s*(.+?)(?:\n|$)/gm;
-  let match;
-  while ((match = regex.exec(existing)) !== null) {
-    users.push({
-      name: match[1],
-      username: match[2].trim(),
-      password: match[3].trim(),
-    });
-  }
-
-  // Build updated template with preserved user data
+  // Preserve the user's whole users block verbatim. Rebuilding entries from
+  // fixed-indent lines loses valid YAML reformatting, and injecting user data
+  // through String.replace would expand `$` patterns in names or passwords.
+  const existingUsers = extractUsersBlock(existing);
   let updated = latest;
-  if (users.length > 0) {
-    const userLines = users
-      .map(
-        (u) =>
-          `  - name: ${u.name}\n    username: ${u.username}\n    password: ${u.password}`,
-      )
-      .join("\n\n");
-
-    // Replace the users section in template
-    updated = updated.replace(
-      /^users:\s*\n(\s*- name:[\s\S]*?)(\n\s*#|\n\s*# Multi-user)/m,
-      `users:\n${userLines}$2`,
-    );
+  if (existingUsers !== null && existingUsers.some((line) => line.trim() !== "")) {
+    const latestLines = latest.split(/\r?\n/);
+    const latestRange = findUsersBlockRange(latestLines);
+    if (latestRange) {
+      updated = [
+        ...latestLines.slice(0, latestRange.start + 1),
+        ...existingUsers,
+        ...latestLines.slice(latestRange.end),
+      ].join("\n");
+    }
   }
 
   writeFileSync(credsDest, updated);
@@ -936,6 +922,29 @@ export function syncCredentials(tmpDir: string, projectRoot: string) {
       "  ✓ Updated: tests/playwright/credentials.yaml (preserved user data)",
     ),
   );
+}
+
+/** Locate the top-level `users:` block; stop at the next top-level key. */
+function findUsersBlockRange(
+  lines: string[],
+): { start: number; end: number } | null {
+  const start = lines.findIndex((line) => /^users:\s*(?:#.*)?$/.test(line));
+  if (start === -1) return null;
+  let end = start + 1;
+  while (
+    end < lines.length &&
+    (lines[end].trim() === "" || /^\s/.test(lines[end]))
+  ) {
+    end++;
+  }
+  return { start, end };
+}
+
+function extractUsersBlock(text: string): string[] | null {
+  const lines = text.split(/\r?\n/);
+  const range = findUsersBlockRange(lines);
+  if (!range) return null;
+  return lines.slice(range.start + 1, range.end);
 }
 
 /**

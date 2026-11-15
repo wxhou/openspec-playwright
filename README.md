@@ -286,7 +286,7 @@ openspec-pw coverage      # Analyze spec–test coverage for changes (--fail-und
 openspec-pw flake         # Detect flake patterns in test files (static patterns + raised timeouts)
 openspec-pw gate [change] # Run every quality check and exit 0 / 1 / 2 (pass / fail / cannot decide; --repeat N reruns failed E2E tests to classify flaky vs real)
 openspec-pw migrate       # Migrate old test files to new structure
-openspec-pw explore       # Explore app routes with Playwright
+openspec-pw explore       # Explore app routes with Playwright (--file <path> selects app-exploration.md)
 openspec-pw remove        # Remove integration (--all scans home + Windows drives; --yes executes)
 ```
 

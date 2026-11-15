@@ -76,6 +76,65 @@ users:
     rmSync(projectDir, { recursive: true, force: true });
   });
 
+  it("preserves $ sequences in user data without replacement expansion", async () => {
+    const projectDir = join(tmpdir(), "creds-dollar-project-" + Date.now());
+    mkdirSync(join(projectDir, "tests", "playwright"), { recursive: true });
+
+    const existingCreds = `users:
+  - name: admin
+    username: a$1b@test.com
+    password: pa$$word
+`;
+    writeFileSync(join(projectDir, "tests", "playwright", "credentials.yaml"), existingCreds);
+
+    const src = join(tmpDir, "templates");
+    mkdirSync(src, { recursive: true });
+    writeFileSync(join(src, "credentials.yaml"), `users:
+  - name: CHANGE_ME
+    username: CHANGE_ME
+    password: CHANGE_ME
+`);
+
+    const { syncCredentials } = await import("../../src/commands/update.js");
+    syncCredentials(tmpDir, projectDir);
+
+    const updated = readFileSync(join(projectDir, "tests", "playwright", "credentials.yaml"), "utf-8");
+    expect(updated).toContain("a$1b@test.com");
+    expect(updated).toContain("pa$$word");
+    expect(updated.match(/a\$1b@test\.com/g)).toHaveLength(1);
+    rmSync(projectDir, { recursive: true, force: true });
+  });
+
+  it("preserves a valid users block with different indentation", async () => {
+    const projectDir = join(tmpdir(), "creds-indent-project-" + Date.now());
+    mkdirSync(join(projectDir, "tests", "playwright"), { recursive: true });
+
+    const existingCreds = `users:
+    - name: admin
+      username: admin@test.com
+      password: secret123
+    # keep this comment
+`;
+    writeFileSync(join(projectDir, "tests", "playwright", "credentials.yaml"), existingCreds);
+
+    const src = join(tmpDir, "templates");
+    mkdirSync(src, { recursive: true });
+    writeFileSync(join(src, "credentials.yaml"), `users:
+  - name: CHANGE_ME
+    username: CHANGE_ME
+    password: CHANGE_ME
+`);
+
+    const { syncCredentials } = await import("../../src/commands/update.js");
+    syncCredentials(tmpDir, projectDir);
+
+    const updated = readFileSync(join(projectDir, "tests", "playwright", "credentials.yaml"), "utf-8");
+    expect(updated).toContain("    - name: admin");
+    expect(updated).toContain("      username: admin@test.com");
+    expect(updated).toContain("    # keep this comment");
+    rmSync(projectDir, { recursive: true, force: true });
+  });
+
   it("creates backup of existing credentials before update", async () => {
     const projectDir = join(tmpdir(), "creds-backup-project-" + Date.now());
     mkdirSync(join(projectDir, "tests", "playwright"), { recursive: true });
@@ -228,39 +287,6 @@ describe("syncCredentials: credentials ignore hint", () => {
     } finally {
       rmSync(projectDir, { recursive: true, force: true });
     }
-  });
-});
-
-// ─── User data extraction regex (testing the logic) ──────────────────────────
-
-describe("credentials user extraction logic", () => {
-  it("extracts users from yaml with multiple entries", () => {
-    const yaml = `users:
-  - name: admin
-    username: admin@test.com
-    password: secret123
-
-  - name: user2
-    username: user2@test.com
-    password: pass456
-`;
-    // Same pattern as syncCredentials in update.ts
-    const regex = /^  - name:\s*(\S+)\n    username:\s*(.+?)\n    password:\s*(.+?)(?:\n|$)/gm;
-    const matches: { name: string; username: string; password: string }[] = [];
-    let m;
-    while ((m = regex.exec(yaml)) !== null) {
-      matches.push({ name: m[1], username: m[2].trim(), password: m[3].trim() });
-    }
-    expect(matches).toHaveLength(2);
-    expect(matches[0]).toEqual({ name: "admin", username: "admin@test.com", password: "secret123" });
-    expect(matches[1]).toEqual({ name: "user2", username: "user2@test.com", password: "pass456" });
-  });
-
-  it("handles yaml with no users section", () => {
-    const yaml = `other: value
-`;
-    const userBlockMatch = yaml.match(/^users:\n([\s\S]*?)(?=\n[^ ])/m);
-    expect(userBlockMatch).toBeNull();
   });
 });
 

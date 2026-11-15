@@ -194,7 +194,7 @@ openspec-pw coverage      # 分析 spec 与测试之间的覆盖率（--fail-und
 openspec-pw flake         # 检测测试文件中的不稳定模式（静态模式 + 被调大的超时）
 openspec-pw gate [change]  # 跑全部质量检查，退出码 0 / 1 / 2（通过 / 不达标 / 无法判定；--repeat N 重跑失败的 E2E 以区分 flaky 与真失败）
 openspec-pw migrate       # 迁移旧测试文件到新目录结构
-openspec-pw explore       # 探索应用路由
+openspec-pw explore       # 探索应用路由（--file <path> 指定 app-exploration.md）
 openspec-pw remove        # 移除集成（--all 扫描 home 与 Windows 盘根；--yes 才执行）
 ```
 

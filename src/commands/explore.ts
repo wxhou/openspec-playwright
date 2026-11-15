@@ -52,7 +52,9 @@ export function parseExplorationFile(content: string): ParsedExplorationFile {
   // Pure function: no file-system access. Absence of a BASE_URL line is
   // reported as undefined; the caller resolves the fallback via
   // detectAppServer (env > recorded > detection > localhost:3000).
-  const baseUrlMatch = content.match(/BASE_URL:\s*(\S+)/);
+  // Only accept an absolute http(s) URL; the template's placeholder
+  // (`<from env or seed.spec.ts>`) must fall through to env/detection.
+  const baseUrlMatch = content.match(/BASE_URL:\s*(https?:\/\/\S+)/i);
   const baseUrl = baseUrlMatch ? baseUrlMatch[1].trim() : undefined;
 
   const routes: ParsedExplorationFile["routes"] = [];

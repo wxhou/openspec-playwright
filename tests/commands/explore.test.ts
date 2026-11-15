@@ -31,6 +31,13 @@ describe("explore parseExplorationFile", () => {
     expect(parsed.baseUrl).toBeUndefined();
     expect(parsed.routes.length).toBe(1);
   });
+
+  it("ignores the template placeholder instead of treating it as a URL", () => {
+    const parsed = parseExplorationFile(
+      "BASE_URL: <from env or seed.spec.ts>\n\n| /home | public | 200 | ready |",
+    );
+    expect(parsed.baseUrl).toBeUndefined();
+  });
 });
 
 describe("explore base URL resolution", () => {

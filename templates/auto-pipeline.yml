@@ -125,10 +125,13 @@ jobs:
           # files are never in git — regenerate them here before asserting.
           # `openspec update` is not enough: it only refreshes tools already
           # configured in the global config, which a fresh runner does not have.
-          # The `core` profile omits `/opsx:verify`, which stage 5 runs.
+          # `core` profile omits `/opsx:verify`, which stage 5 runs.
           openspec init --tools claude --profile custom --no-animation >/dev/null
+          openspec-pw init --tools claude --no-mcp --no-hook >/dev/null
           test -f .claude/commands/opsx/apply.md || {
             echo "::error::/opsx:apply was not produced by 'openspec init --tools claude' — check the OpenSpec CLI version"; exit 1; }
+          test -f .claude/commands/opsx/e2e.md || {
+            echo "::error::/opsx:e2e was not produced by 'openspec-pw init' — check the openspec-pw CLI version"; exit 1; }
 
       - name: Resolve change
         id: resolve
@@ -189,7 +192,7 @@ jobs:
         run: openspec-pw gate "$CHANGE" --only validate,lint,typecheck,test,flake --keep-going
 
       - name: Generate E2E tests
-        if: ${{ inputs.e2e != false }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.e2e != false }}
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           CHANGE: ${{ steps.resolve.outputs.change }}
