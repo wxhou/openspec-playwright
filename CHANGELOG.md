@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.119] - 2026-11-15
 - **fix(e2e): 修正认证检查与升级提示**. API/UI 的 `E2E_AUTH_CHECK_PATH` 检查禁用重定向，UI setup 也执行该检查；README 补旧 `auth.setup.ts`/workflow 的升级提示；skill 选择器表与 `docs/llms.txt` 的 explore 描述对齐。
   - `templates/auth.setup.ts`、`templates/e2e-command.md`、`docs/llms.txt`、`README.md`、`README.zh-CN.md`、`tests/init.test.ts`、`CHANGELOG.md`
 - **fix(e2e): 修复 credentials 同步与 auto-pipeline 预检**. credentials 的 users 块按原文保留，避免 `$` 展开和 YAML 重排导致的数据丢失；label 事件恢复 E2E 阶段，预检安装并断言 `/opsx:e2e`；explore 忽略模板占位 BASE_URL。
