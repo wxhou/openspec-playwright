@@ -1,11 +1,20 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { bundledTemplatePath } from "../src/shared/drift.js";
 
 const template = readFileSync(
   bundledTemplatePath("templates/e2e-command.md"),
   "utf-8",
+);
+// `.claude/` is gitignored, so CI has no installed copy to compare against.
+const installedCommandPath = join(
+  __dirname,
+  "..",
+  ".claude",
+  "commands",
+  "opsx",
+  "e2e.md",
 );
 
 // `--auto` exists so CI can run the e2e pipeline unattended. It must not turn
@@ -95,12 +104,12 @@ describe("e2e-command template: mini-program target", () => {
     expect(template).toContain("`auth.setup.ts`");
   });
 
-  it("keeps the installed Claude command in sync with the template body", () => {
-    const installed = readFileSync(
-      join(__dirname, "..", ".claude", "commands", "opsx", "e2e.md"),
-      "utf-8",
-    );
-    const body = installed.replace(/^---[\s\S]*?---\n/, "");
-    expect(body.trim()).toBe(template.trim());
-  });
+  it.skipIf(!existsSync(installedCommandPath))(
+    "keeps the installed Claude command in sync with the template body",
+    () => {
+      const installed = readFileSync(installedCommandPath, "utf-8");
+      const body = installed.replace(/^---[\s\S]*?---\n/, "");
+      expect(body.trim()).toBe(template.trim());
+    },
+  );
 });
