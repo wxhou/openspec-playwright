@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- **fix(e2e): 修正认证检查与升级提示**. API/UI 的 `E2E_AUTH_CHECK_PATH` 检查禁用重定向，UI setup 也执行该检查；README 补旧 `auth.setup.ts`/workflow 的升级提示；skill 选择器表与 `docs/llms.txt` 的 explore 描述对齐。
+  - `templates/auth.setup.ts`、`templates/e2e-command.md`、`docs/llms.txt`、`README.md`、`README.zh-CN.md`、`tests/init.test.ts`、`CHANGELOG.md`
 - **fix(e2e): 修复 credentials 同步与 auto-pipeline 预检**. credentials 的 users 块按原文保留，避免 `$` 展开和 YAML 重排导致的数据丢失；label 事件恢复 E2E 阶段，预检安装并断言 `/opsx:e2e`；explore 忽略模板占位 BASE_URL。
   - `src/commands/update.ts`、`src/commands/explore.ts`、`templates/auto-pipeline.yml`、`templates/e2e-command.md`、`tests/update.test.ts`、`tests/auto-pipeline.test.ts`、`tests/commands/explore.test.ts`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
 - **fix(e2e): 对齐自动流水线与 skill 的测试计划路径**. `--auto` 的 plan gate 改读 `openspec/changes/<name>/specs/playwright/test-plan.md`，并加契约测试，防止两处路径再次漂移。已有 `openspec-auto.yml` 不会被覆盖；请手动改路径并补 E2E 认证环境变量，或删除该文件后重跑 `init --auto-pipeline`。

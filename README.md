@@ -527,6 +527,8 @@ Auth environment variables:
 
 In CI, set the `E2E_AUTH_*` values as repository variables; the workflow passes them to the test step. For multi-user CI, add the per-role credential pairs as secrets and forward them in the workflow env — the shipped workflow forwards only `E2E_USERNAME` / `E2E_PASSWORD`.
 
+> **Upgrading an existing project?** `openspec-pw update` leaves an existing `auth.setup.ts` and `.github/workflows/openspec-pw.yml` untouched. Merge the `E2E_AUTH_*` handling from the current templates, or regenerate those files; otherwise the new variables are ignored.
+
 ## Architecture
 
 <details>

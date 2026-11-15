@@ -150,7 +150,7 @@ If seed fails → **HARD STOP**. Report the failing output and wait — environm
 | Element type | Selector priority |
 | ------------ | ----------------- |
 | Buttons | `getByRole` > `getByLabel` > `getByText` > `[data-testid]` |
-| Form fields | `label` > `placeholder` > `name` > `[data-testid]` |
+| Form fields | `label` > `placeholder` > `[data-testid]` > `name` |
 | Navigation | `getByRole` > `text` > `href` |
 | Headings, errors | For assertions |
 | Special (canvas, iframe, CAPTCHA, OTP, Shadow DOM, file upload) | Detect & note strategy |

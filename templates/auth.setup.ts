@@ -60,7 +60,9 @@ setup('authenticate via API', async ({ page }) => {
 
   const checkPath = process.env.E2E_AUTH_CHECK_PATH;
   if (checkPath) {
-    const check = await page.request.get(new URL(checkPath, baseUrl).toString());
+    const check = await page.request.get(new URL(checkPath, baseUrl).toString(), {
+      maxRedirects: 0,
+    });
     if (!check.ok()) {
       throw new Error(`Auth check failed (${check.status()}) at ${checkPath}.`);
     }
@@ -108,6 +110,16 @@ setup('authenticate via UI', async ({ page }) => {
 
   // Positive, path-anchored success check; never assert the password value (it echoes into failures).
   await page.waitForURL((url) => /^\/(dashboard|home|profile)(\/|$)/.test(url.pathname));
+
+  const checkPath = process.env.E2E_AUTH_CHECK_PATH;
+  if (checkPath) {
+    const check = await page.request.get(new URL(checkPath, baseUrl).toString(), {
+      maxRedirects: 0,
+    });
+    if (!check.ok()) {
+      throw new Error(`Auth check failed (${check.status()}) at ${checkPath}.`);
+    }
+  }
 
   await page.context().storageState({ path: './playwright/.auth/user.json' });
 

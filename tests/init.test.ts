@@ -274,6 +274,9 @@ describe("template regressions", () => {
     expect(auth).toContain("const authRequired = process.env.E2E_AUTH_REQUIRED === 'true'");
     expect(auth).toContain("setup.skip(!authRequired || authMethod !== 'api'");
     expect(auth).toContain("setup.skip(!authRequired || authMethod !== 'ui'");
+    expect(auth.match(/maxRedirects: 0/g)).toHaveLength(2);
+    const uiSetup = auth.slice(auth.indexOf("authenticate via UI"));
+    expect(uiSetup).toContain("E2E_AUTH_CHECK_PATH");
   });
 
   it("seed and BasePage use Playwright baseURL when BASE_URL env is unset", () => {

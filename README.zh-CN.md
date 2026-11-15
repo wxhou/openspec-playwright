@@ -379,6 +379,8 @@ npx playwright test --project=setup
 
 CI 中把 `E2E_AUTH_*` 设为仓库变量；workflow 会将它们传给测试步骤。多用户 CI 需要把每个角色的凭据设为 secrets，并在 workflow env 中转发——内置 workflow 只转发 `E2E_USERNAME` / `E2E_PASSWORD`。
 
+> **升级已有项目？** `openspec-pw update` 不会改动已有的 `auth.setup.ts` 和 `.github/workflows/openspec-pw.yml`。请手动合并当前模板里的 `E2E_AUTH_*` 处理，或重新生成这两个文件；否则新变量会被忽略。
+
 ## 架构
 
 <details>
