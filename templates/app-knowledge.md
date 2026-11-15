@@ -32,17 +32,17 @@ Written by Step 4 (idempotency): skip full re-exploration when the sitemap is un
 |-------|--------|--------|
 | username | `<pattern>` | e.g. `email@example.com` or `test_user_001` |
 | password | `<pattern>` | |
-| login endpoint | `<path>` | e.g. `/api/auth/login` |
+| login endpoint | `<path>` | env `E2E_AUTH_API` (default `/api/auth/login`) |
 
 ## Common Selector Patterns
 
-Priority (single source of truth, matches the E2E workflow): verified selector from app-exploration.md > `[data-testid]` > `getByRole` > `getByLabel` > `getByText` > CSS id/class > positional
+Priority (defers to the E2E workflow selector order): verified selector from app-exploration.md > getByRole > getByLabel > getByPlaceholder > getByText > `[data-testid]` > CSS id/class > positional
 
 ### Forms
 
 | Element | Selector | Notes |
 |---------|----------|-------|
-| submit btn | `[data-testid="..."]` or `getByRole('button', { name: '...' })` | |
+| submit btn | `getByRole('button', { name: '...' })` or `[data-testid="..."]` | |
 | text input | `getByLabel('...')` or `[data-testid="..."]` | |
 | password input | `getByLabel('...')` or `[name="..."]` | |
 
@@ -51,7 +51,7 @@ Priority (single source of truth, matches the E2E workflow): verified selector f
 | Element | Selector | Notes |
 |---------|----------|-------|
 | nav link | `a:text("...")` or `nav >> text=...` | |
-| logout btn | `[data-testid="logout-btn"]` | |
+| logout btn | `getByRole('button', { name: /log ?out/i })` or `[data-testid="logout-btn"]` | |
 
 ### Feedback
 

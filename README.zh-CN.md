@@ -194,7 +194,7 @@ openspec-pw coverage      # 分析 spec 与测试之间的覆盖率（--fail-und
 openspec-pw flake         # 检测测试文件中的不稳定模式（静态模式 + 被调大的超时）
 openspec-pw gate [change]  # 跑全部质量检查，退出码 0 / 1 / 2（通过 / 不达标 / 无法判定；--repeat N 重跑失败的 E2E 以区分 flaky 与真失败）
 openspec-pw migrate       # 迁移旧测试文件到新目录结构
-openspec-pw explore       # 探索应用路由
+openspec-pw explore       # 探索应用路由（--file <path> 指定 app-exploration.md）
 openspec-pw remove        # 移除集成（--all 扫描 home 与 Windows 盘根；--yes 才执行）
 ```
 
@@ -215,7 +215,9 @@ openspec-pw remove        # 移除集成（--all 扫描 home 与 Windows 盘根�
 
 **Stop hook。** `openspec-pw init --hook` 会向 `.claude/settings.json` 合并一个 `Stop` 钩子，调用 `openspec-pw gate --hook`。门禁为红时钩子以退出码 2 结束、把失败项写到 stderr，agent 必须继续修而不是宣布完成。两档：`static`（默认——validate、lint、typecheck、单元测试）与 `full`（额外含 flake 与 e2e）。`full` 只在该变更的 E2E 测试已存在后再用：此前「有 scenario 无测试」护栏会让每回合都判红，把进展正常的活儿卡住。每回合最多阻断一次（读取 Claude Code 的 `stop_hook_active`），并按工作树指纹缓存结论，工作树没变就不重复检查。`--no-hook` 或 `openspec-pw remove` 可移除；同一文件里你自己的钩子不会被改动。
 
-**全自动流水线。** `openspec-pw init --auto-pipeline` 生成 `.github/workflows/openspec-auto.yml`，只写一次、之后不再覆盖。两种触发是刻意的：每个 PR 只跑 `gate`——请把该 job 设为**必需状态检查**，否则门禁为红的 PR 仍能合并；`openspec:auto` 标签或手动触发才起无头 agent（apply → 静态门禁 → 生成 E2E → 全量门禁）并开 PR。需要 secret：`ANTHROPIC_API_KEY`。阶段按「便宜的在前」排列：apply 用 `gate --skip e2e` 自证（此时该变更的 E2E 测试还不存在，「有 scenario 无测试」护栏会让全量 gate 判红——那是个永远不会结束的循环），随后是零 token 的静态门禁，再到需要浏览器的 E2E 阶段，最后才用全量 gate 作作业侧裁决。apply 的完成度以 `openspec list --json` 的任务计数判定，因为无头运行停下来提问时退出码同样是 0。末尾的 `/opsx:verify` 只作 advisory——报告与各阶段 `total_cost_usd` 写进 PR 正文，不拦截流程。E2E 步骤以 `/opsx:e2e --auto` 运行：人工确认测试计划改为 `openspec-pw coverage --plan`，所有原本「等用户」的节点改为结构化中止并以非零码退出。CI 是 checkout 仓库跑的，所以流水线项目里 `openspec/` 不进受管 `.gitignore` 块——规格与变更必须提交，否则 agent 无可应用；块外自己写的忽略规则只提示、不改写。
+**全自动流水线。** `openspec-pw init --auto-pipeline` 生成 `.github/workflows/openspec-auto.yml`，只写一次、之后不再覆盖。两种触发是刻意的：每个 PR 只跑 `gate`——请把该 job 设为**必需状态检查**，否则门禁为红的 PR 仍能合并；`openspec:auto` 标签或手动触发才起无头 agent（apply → 静态门禁 → 生成 E2E → 全量门禁）并开 PR。需要 secret：`ANTHROPIC_API_KEY`。需要认证的应用还要提供 `E2E_USERNAME` / `E2E_PASSWORD` secrets 与 `E2E_AUTH_*` 仓库变量；E2E 阶段会转发它们。阶段按「便宜的在前」排列：apply 用 `gate --skip e2e` 自证（此时该变更的 E2E 测试还不存在，「有 scenario 无测试」护栏会让全量 gate 判红——那是个永远不会结束的循环），随后是零 token 的静态门禁，再到需要浏览器的 E2E 阶段，最后才用全量 gate 作作业侧裁决。apply 的完成度以 `openspec list --json` 的任务计数判定，因为无头运行停下来提问时退出码同样是 0。末尾的 `/opsx:verify` 只作 advisory——报告与各阶段 `total_cost_usd` 写进 PR 正文，不拦截流程。E2E 步骤以 `/opsx:e2e --auto` 运行：人工确认测试计划改为 `openspec-pw coverage --plan`，所有原本「等用户」的节点改为结构化中止并以非零码退出。CI 是 checkout 仓库跑的，所以流水线项目里 `openspec/` 不进受管 `.gitignore` 块——规格与变更必须提交，否则 agent 无可应用；块外自己写的忽略规则只提示、不改写。
+
+> **升级已有流水线？** 生成器不会覆盖 `.github/workflows/openspec-auto.yml`。如果文件里仍是 `--plan "tests/playwright/changes/$CHANGE/test-plan.md"`，改成 `--plan "openspec/changes/$CHANGE/specs/playwright/test-plan.md"`，并补上 E2E 认证环境变量；或删除该文件后重跑 `openspec-pw init --auto-pipeline`。
 
 ## 工作原理
 
@@ -335,21 +337,24 @@ audit **只报告、绝不删除**——测试退役永远是人工决策。存�
 > **凭据自动忽略**：init 和 update 会在 `.gitignore` 尾部维护一个标记块，忽略 `tests/playwright/credentials.yaml`、其 `.bak`、`tests/playwright/test-results/` 和探索截图（`tests/playwright/screenshots/`——随开发过时，本地留档）——以及 auth storageState（`playwright/.auth/`，已登录会话 cookie）、MCP 配置（`.mcp.json`——用户自加的 server 常在 env/headers 里放 API key）、工具本地数据（`.codegraph/`、`.playwright-mcp/`）、第一层名如 `.claude/`、`.cursor/`、`.codebuddy/`、`.agents/skills/opsx-e2e/`、`.dsh/skills/opsx-e2e/`、`openspec/`、`AGENTS.md`、`CLAUDE.md`、`CODEBUDDY.md`（生成的产物按设计留在本地）。标记块幂等、不碰你自己的规则，`remove` 时自动清理。无法写入时会降级为警告并列出未覆盖路径。注意：ignore 规则对已被 git 追踪的文件无效——若凭据曾提交过，请执行 `git rm --cached tests/playwright/credentials.yaml`。也可以改用 `E2E_USERNAME` / `E2E_PASSWORD` 环境变量。
 
 ```bash
-# 1. 编辑凭证
+# 1.（可选）编辑测试用户（角色测试）
 vim tests/playwright/credentials.yaml
 
-# 2. 设置环境变量
+# 2. 启用认证并设置环境变量
+export E2E_AUTH_REQUIRED=true
+export E2E_AUTH_METHOD=api # 或 ui
+export E2E_AUTH_API=/api/auth/login # 可选；默认为此值
 export E2E_USERNAME=your-email@example.com
 export E2E_PASSWORD=your-password
 
-# 3. 录制登录（一次性 — 打开浏览器，手动登录一次）
+# 3. 录制登录（一次性；UI 登录会打开浏览器）
 npx playwright test --project=setup
 
 # 4. 后续所有测试自动复用登录状态
 /opsx:e2e my-feature
 ```
 
-支持 **API 登录**（推荐）和 **UI 登录**（备选）。多用户测试（管理员 vs 普通用户）在 `credentials.yaml` 中添加多个用户，运行 `/opsx:e2e`（OpenCode/Cline/Cursor/Pi/Oh My Pi/MiniMax Code/DeepSeek Harness 中用 `/opsx-e2e`；CodeBuddy CLI 用 `/opsx:e2e` 冒号形式）— 会从 specs 自动检测角色。
+支持 **API 登录**（推荐，基于 cookie）和 **UI 登录**（备选，用于 token/localStorage 认证）。多用户测试（管理员 vs 普通用户）在 `credentials.yaml` 中添加多个用户，运行 `/opsx:e2e`（OpenCode/Cline/Cursor/Pi/Oh My Pi/MiniMax Code/DeepSeek Harness 中用 `/opsx-e2e`；CodeBuddy CLI 用 `/opsx:e2e` 冒号形式）— 它从 specs 读取角色标签、从 `credentials.yaml` 读取用户，然后为每个角色生成一份 setup。每份 setup 读取 `E2E_<ROLE>_USERNAME` 与 `E2E_<ROLE>_PASSWORD`（角色名大写；非字母数字字符变为 `_`）。
 
 ## 自定义
 
@@ -363,9 +368,16 @@ npx playwright test --project=setup
 ### 认证凭证
 
 编辑 `tests/playwright/credentials.yaml`：
-- 设置登录 API 端点（或留空使用 UI 登录）
-- 配置测试用户凭证
-- 为角色测试添加多用户
+- 为角色测试添加每个角色的用户条目
+
+认证环境变量：
+- `E2E_AUTH_REQUIRED=true` — 实际运行 `auth.setup.ts`；未设置时 setup 测试会跳过
+- `E2E_AUTH_API` — API 登录端点（默认 `/api/auth/login`）；API 登录假定使用 cookie 认证
+- `E2E_AUTH_METHOD=ui` — 改用 UI 登录，用于 token/localStorage 认证
+- `E2E_AUTH_CHECK_PATH` — 可选；登录后、保存会话前断言该路径可访问
+- `E2E_<ROLE>_USERNAME` / `E2E_<ROLE>_PASSWORD` — 多用户时每个角色一对
+
+CI 中把 `E2E_AUTH_*` 设为仓库变量；workflow 会将它们传给测试步骤。多用户 CI 需要把每个角色的凭据设为 secrets，并在 workflow env 中转发——内置 workflow 只转发 `E2E_USERNAME` / `E2E_PASSWORD`。
 
 ## 架构
 

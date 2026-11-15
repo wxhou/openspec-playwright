@@ -6,10 +6,17 @@
 //   1. Set credentials: export E2E_USERNAME=xxx E2E_PASSWORD=yyy
 //   2. Enable auth: export E2E_AUTH_REQUIRED=true
 //   3. Choose method: export E2E_AUTH_METHOD=api   # or ui
+//      API endpoint: export E2E_AUTH_API=/api/auth/login   # optional; this is the default
+//      Session check: export E2E_AUTH_CHECK_PATH=/api/me   # optional; asserted when set
 //   4. Run: npx playwright test --project=setup
 //
 // If E2E_AUTH_REQUIRED is not true, auth setup is skipped so public apps
 // can run seed/smoke tests without credentials.
+//
+// Multi-user: copy this file to auth.<role>.setup.ts, replace the single-user
+// env vars with E2E_<ROLE>_USERNAME / E2E_<ROLE>_PASSWORD, and write
+// playwright/.auth/<role>.json. Add one Playwright project per role with its
+// own storageState.
 
 import { test as setup, expect } from '@playwright/test';
 import { existsSync } from 'fs';
@@ -18,13 +25,14 @@ const authRequired = process.env.E2E_AUTH_REQUIRED === 'true';
 const authMethod = process.env.E2E_AUTH_METHOD || 'api';
 
 // ─── API Login (preferred) ───────────────────────────────────────────────────
-// If your app has a login API, configure it in tests/playwright/credentials.yaml:
-//   api: /api/auth/login
+// Set E2E_AUTH_API to your login endpoint (default: /api/auth/login).
+// API login assumes cookie-based auth; token/localStorage auth needs UI login.
 
 setup('authenticate via API', async ({ page }) => {
   setup.skip(!authRequired || authMethod !== 'api', 'API auth not required/enabled');
 
   const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+  const apiPath = process.env.E2E_AUTH_API || '/api/auth/login';
   const username = process.env.E2E_USERNAME;
   const password = process.env.E2E_PASSWORD;
 
@@ -35,12 +43,27 @@ setup('authenticate via API', async ({ page }) => {
     );
   }
 
-  const res = await page.request.post(`${baseUrl}/api/auth/login`, {
+  const res = await page.request.post(new URL(apiPath, baseUrl).toString(), {
     data: { username, password },
   });
 
   if (!res.ok()) {
-    throw new Error(`API login failed (${res.status()}). Check credentials.`);
+    throw new Error(`API login failed (${res.status()}). Check credentials and E2E_AUTH_API.`);
+  }
+
+  const cookies = await page.context().cookies();
+  if (cookies.length === 0) {
+    throw new Error(
+      'API login returned success but set no cookies. If your app stores auth in localStorage or a token, use E2E_AUTH_METHOD=ui.'
+    );
+  }
+
+  const checkPath = process.env.E2E_AUTH_CHECK_PATH;
+  if (checkPath) {
+    const check = await page.request.get(new URL(checkPath, baseUrl).toString());
+    if (!check.ok()) {
+      throw new Error(`Auth check failed (${check.status()}) at ${checkPath}.`);
+    }
   }
 
   await page.context().storageState({ path: './playwright/.auth/user.json' });
@@ -67,26 +90,24 @@ setup('authenticate via UI', async ({ page }) => {
     );
   }
 
-  // TODO: Update these selectors to match your login page
-  // Preferred: add data-testid attributes to your login form fields
+  // TODO: Update these selectors to match your login page.
+  // Prefer role/label selectors; use test IDs only when the form has no labels.
   await page.goto(`${baseUrl}/login`);
 
-  // Common selector patterns (uncomment the one that matches):
-  await page.fill('[data-testid="username"]', username);
-  await expect(page.locator('[data-testid="username"]')).toHaveValue(username);
-  // await page.fill('input[name="email"]', username);
+  // Anchor to the label start so toggles like "Remember email" / "Show password" do not match.
+  const usernameField = page.getByLabel(/^(username|email)/i);
+  await usernameField.fill(username);
+  await expect(usernameField).toHaveValue(username);
 
-  await page.fill('[data-testid="password"]', password);
-  await expect(page.locator('[data-testid="password"]')).toHaveValue(password);
-  // await page.fill('input[name="password"]', password);
+  const passwordField = page.getByLabel(/^password/i);
+  await passwordField.fill(password);
 
-  await page.click('[data-testid="login-button"]');
-  // await page.click('button[type="submit"]');
-  // await page.click('text=Sign In');
+  // Primary form button only — excludes social-login buttons like "Log in with Google".
+  await page.getByRole('button', { name: /^(log ?in|sign ?in)$/i }).click();
+  // Fallbacks: page.getByTestId('username') / page.getByTestId('login-button')
 
-  // Wait for redirect after login (adjust pattern to your app)
-  await page.waitForURL(/\/(dashboard|home|profile)/);
-  await expect(page).not.toHaveURL(/.*login.*|.*signin.*/);
+  // Positive, path-anchored success check; never assert the password value (it echoes into failures).
+  await page.waitForURL((url) => /^\/(dashboard|home|profile)(\/|$)/.test(url.pathname));
 
   await page.context().storageState({ path: './playwright/.auth/user.json' });
 

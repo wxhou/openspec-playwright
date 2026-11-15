@@ -10,7 +10,10 @@ Generated from: `openspec/changes/<change-name>/specs/`
 
 ## Test Cases
 
-### <test-name>
+<!-- One case per `#### Scenario:` in the delta specs. Keep the exact scenario
+     title in the heading so `openspec-pw coverage --plan` can match it. -->
+
+### <scenario-title>
 
 - **Route**: `/<page>`
 - **Role**: `@role(<role>)`
