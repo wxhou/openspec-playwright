@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-- **fix(e2e): 对齐自动流水线与 skill 的测试计划路径**. `--auto` 的 plan gate 改读 `openspec/changes/<name>/specs/playwright/test-plan.md`，并加契约测试，防止两处路径再次漂移。已有 `openspec-auto.yml` 不会被覆盖；请手动改路径，或删除该文件后重跑 `init --auto-pipeline`。
+- **fix(e2e): 对齐自动流水线与 skill 的测试计划路径**. `--auto` 的 plan gate 改读 `openspec/changes/<name>/specs/playwright/test-plan.md`，并加契约测试，防止两处路径再次漂移。已有 `openspec-auto.yml` 不会被覆盖；请手动改路径并补 E2E 认证环境变量，或删除该文件后重跑 `init --auto-pipeline`。
   - `templates/auto-pipeline.yml`、`tests/auto-pipeline.test.ts`、`CHANGELOG.md`
 - **fix(explore): 支持指定 app-exploration.md，并停止宣称并行**. `explore --file <path>` 让 change 模式使用自身探索文件；`--parallel` 保留兼容但 help 注明串行。
   - `src/commands/explore.ts`、`src/index.ts`、`tests/commands/explore.test.ts`、`CHANGELOG.md`

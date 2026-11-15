@@ -217,6 +217,8 @@ openspec-pw remove        # 移除集成（--all 扫描 home 与 Windows 盘根�
 
 **全自动流水线。** `openspec-pw init --auto-pipeline` 生成 `.github/workflows/openspec-auto.yml`，只写一次、之后不再覆盖。两种触发是刻意的：每个 PR 只跑 `gate`——请把该 job 设为**必需状态检查**，否则门禁为红的 PR 仍能合并；`openspec:auto` 标签或手动触发才起无头 agent（apply → 静态门禁 → 生成 E2E → 全量门禁）并开 PR。需要 secret：`ANTHROPIC_API_KEY`。需要认证的应用还要提供 `E2E_USERNAME` / `E2E_PASSWORD` secrets 与 `E2E_AUTH_*` 仓库变量；E2E 阶段会转发它们。阶段按「便宜的在前」排列：apply 用 `gate --skip e2e` 自证（此时该变更的 E2E 测试还不存在，「有 scenario 无测试」护栏会让全量 gate 判红——那是个永远不会结束的循环），随后是零 token 的静态门禁，再到需要浏览器的 E2E 阶段，最后才用全量 gate 作作业侧裁决。apply 的完成度以 `openspec list --json` 的任务计数判定，因为无头运行停下来提问时退出码同样是 0。末尾的 `/opsx:verify` 只作 advisory——报告与各阶段 `total_cost_usd` 写进 PR 正文，不拦截流程。E2E 步骤以 `/opsx:e2e --auto` 运行：人工确认测试计划改为 `openspec-pw coverage --plan`，所有原本「等用户」的节点改为结构化中止并以非零码退出。CI 是 checkout 仓库跑的，所以流水线项目里 `openspec/` 不进受管 `.gitignore` 块——规格与变更必须提交，否则 agent 无可应用；块外自己写的忽略规则只提示、不改写。
 
+> **升级已有流水线？** 生成器不会覆盖 `.github/workflows/openspec-auto.yml`。如果文件里仍是 `--plan "tests/playwright/changes/$CHANGE/test-plan.md"`，改成 `--plan "openspec/changes/$CHANGE/specs/playwright/test-plan.md"`，并补上 E2E 认证环境变量；或删除该文件后重跑 `openspec-pw init --auto-pipeline`。
+
 ## 工作原理
 
 ### Spec 锚与过时测试审计
