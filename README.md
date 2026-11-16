@@ -262,7 +262,10 @@ checks Chrome, the fixture, the Playwright version (>=1.64), and the
 
 Limitations: tests run in headless Chrome, not WeChat DevTools. DevTools-only
 APIs (real login, payment, native components) are outside the harness. CI
-support targets x86-64 Linux; there is no WebKit or Firefox project.
+support targets x86-64 Linux; there is no WebKit or Firefox project. Taro
+projects resolve and build, but Taro's own runtime may fail to initialize in
+the browser runner (`没有找到页面实例`); run the seed first and treat a
+failing seed as that app being unsupported, not as a reason to write specs.
 
 ### Official Playwright Agents
 

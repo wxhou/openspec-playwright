@@ -181,8 +181,49 @@ describe("mini-program resolution for a member path with a space", () => {
   });
 });
 
-describe("page manifest entry page", () => {
+describe("Taro outputRoot versus a root project.config.json", () => {
   let root = "";
+
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), "openspec-pw-taro-layout-"));
+    writeJson(join(root, "package.json"), {
+      scripts: { "build:weapp": "taro build --type weapp" },
+      dependencies: { "@tarojs/taro": "3.6.21" },
+    });
+    // Taro writes this file for DevTools; templates often hardcode `dist`
+    // while the build actually writes `dist/<platform>`.
+    writeJson(join(root, "project.config.json"), { miniprogramRoot: "./dist" });
+    mkdirSync(join(root, "config"), { recursive: true });
+    writeFileSync(
+      join(root, "config", "index.js"),
+      "module.exports = { outputRoot: `dist/${process.env.TARO_ENV}` };\n",
+    );
+  });
+
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it("points at the per-platform output once it is built", () => {
+    writeJson(join(root, "dist", "weapp", "app.json"), {
+      pages: ["pages/index/index"],
+    });
+
+    const wxa = resolveWxaProject(root);
+    expect(wxa.kind).toBe("taro");
+    expect(wxa.projectPath).toBe("dist/weapp");
+    expect(wxa.exists).toBe(true);
+    expect(resolvePageManifest(root).homePage).toBe("pages/index/index");
+  });
+
+  it("reports the per-platform output before the first build", () => {
+    const wxa = resolveWxaProject(root);
+    expect(wxa.projectPath).toBe("dist/weapp");
+    expect(wxa.exists).toBe(false);
+  });
+});
+
+describe("page manifest entry page", () => {  let root = "";
 
   beforeEach(() => {
     root = mkdtempSync(join(tmpdir(), "openspec-pw-mini-entry-"));

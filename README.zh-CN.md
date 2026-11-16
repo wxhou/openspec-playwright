@@ -174,7 +174,7 @@ openspec-pw init --no-miniprogram   # 强制 Web 目标
 
 依赖：`@playwright/test@^1.65`、`@open-wxa/wxa-runner-playwright@^0.13`、`@open-wxa/wxa-runner-core@^0.13`、`wxa-runner@^0.13`（`/opsx:e2e` 探索步骤调用的 CLI），以及 Google Chrome（`npx playwright install chrome`）。Taro 用 `build:weapp`，uni-app 用 `build:mp-weixin`；monorepo 中在拥有该脚本的包里执行（`npm --prefix <member> run <script>`）。生成的 CI 会安装 Chrome，并在 `npx playwright test` 前执行该构建；`doctor` 检查 Chrome、fixture、Playwright 版本（>=1.64）与 `wxaProject` 产物目录。升级 fixture 导入请改 `tests/playwright/wxa-test.ts`——`update` 会保留你改过的副本。
 
-限制：测试运行在无头 Chrome 中，不是微信开发者工具。仅在开发者工具中可用的 API（真实登录、支付、原生组件）不在覆盖范围。CI 支持面向 x86-64 Linux；没有 WebKit 或 Firefox project。
+限制：测试运行在无头 Chrome 中，不是微信开发者工具。仅在开发者工具中可用的 API（真实登录、支付、原生组件）不在覆盖范围。CI 支持面向 x86-64 Linux；没有 WebKit 或 Firefox project。Taro 项目可以解析与构建，但 Taro 运行时可能在浏览器运行器里初始化失败（`没有找到页面实例`）；先跑 seed，seed 失败即视为该应用不受支持，不要转而写 spec。
 
 ### 官方 Playwright Agents
 

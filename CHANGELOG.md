@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `src/commands/{remove,doctor,miniprogram,init}.ts`、`src/shared/workflow-render.ts`、`templates/e2e-command.md`、`.claude/commands/opsx/e2e.md`、`README.md`、`README.zh-CN.md`、`tests/commands/{remove-command,doctor-miniprogram,init-miniprogram}.test.ts`、`tests/shared/workflow-render.test.ts`、`CHANGELOG.md`
 - **docs(miniprogram): 说明编译框架的 data 键名**. uni-app / Taro 编译后会重命名页面 data 的键（`title` 变成 `b`），`/opsx:e2e`、探索模板与测试计划改为要求先读 `pageData()` 再断言稳定键；`remove` 在保留被改过的小程序 README 时给出提示。
   - `templates/e2e-command.md`、`.claude/commands/opsx/e2e.md`、`templates/miniprogram/{app-exploration,test-plan,tests-readme}.md`、`src/commands/remove.ts`、`tests/commands/remove-command.test.ts`、`CHANGELOG.md`
+- **fix(cli): 按 Taro 的 outputRoot 解析产物并声明运行时限制**. 根 `project.config.json` 写死 `dist`、实际产物在 `dist/<platform>` 时，改用 Taro 的 `outputRoot` 并解析 `process.env.TARO_ENV`；Taro 3.6 实测在浏览器运行器里报 `没有找到页面实例`，README 与 `/opsx:e2e` 要求 seed 失败即停止，不关闭错误检查。
+  - `src/shared/miniprogram.ts`、`tests/shared/miniprogram.test.ts`、`templates/e2e-command.md`、`.claude/commands/opsx/e2e.md`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
 - **chore(deps): 升级 Playwright 到 1.65.1**. `@playwright/test` 与 `playwright` 同步升到 `^1.65.1`；`engines.node` 提到 `>=22`，因为 Playwright 1.65 不再测试 Node 20。已装浏览器的项目需重跑 `npx playwright install`。
   - `package.json`、`package-lock.json`、`README.md`、`README.zh-CN.md`、`docs/index.html`、`CHANGELOG.md`
 

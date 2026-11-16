@@ -116,6 +116,48 @@ function findDirWithAppJson(root: string, depth: number): string | null {
   return null;
 }
 
+function readMiniprogramRoot(configPath: string): string | null {
+  try {
+    const config = JSON.parse(readFileSync(configPath, "utf-8")) as {
+      miniprogramRoot?: unknown;
+    };
+    if (typeof config.miniprogramRoot === "string" && config.miniprogramRoot.trim()) {
+      return config.miniprogramRoot;
+    }
+  } catch {
+    // unreadable config → run from the directory that holds it
+  }
+  return null;
+}
+
+/** Resolution from the first `project.config.json` under the search roots. */
+function projectConfigResolution(
+  projectRoot: string,
+  roots: string[],
+  kind: WxaProjectResolution["kind"],
+): WxaProjectResolution | null {
+  for (const dir of roots) {
+    const configPath = join(dir, "project.config.json");
+    if (!existsSync(configPath)) continue;
+    // WeChat keeps sources under miniprogramRoot when it is set; the runner
+    // needs that directory, not the repository root.
+    let source = "project.config.json";
+    let projectDir = dir;
+    const miniprogramRoot = readMiniprogramRoot(configPath);
+    if (miniprogramRoot) {
+      projectDir = join(dir, miniprogramRoot);
+      source = `project.config.json (miniprogramRoot: ${miniprogramRoot})`;
+    }
+    return {
+      projectPath: toPosix(projectRoot, projectDir),
+      kind,
+      exists: existsSync(projectDir),
+      source,
+    };
+  }
+  return null;
+}
+
 /**
  * Resolve the directory wxa-runner must run. Native projects point at the
  * directory holding project.config.json; uni-app and Taro point at their
@@ -126,32 +168,52 @@ export function resolveWxaProject(projectRoot: string, miniRoot?: string): WxaPr
   const root = miniRoot ?? resolveMiniRoot(projectRoot);
   const pkg = readPackageAt(root);
   const roots = searchRoots(projectRoot, root);
-  for (const dir of roots) {
-    const configPath = join(dir, "project.config.json");
-    if (existsSync(configPath)) {
-      // WeChat keeps sources under miniprogramRoot when it is set; the runner
-      // needs that directory, not the repository root.
-      let source = "project.config.json";
-      let projectDir = dir;
+
+  // Taro before the native branch: its outputRoot names the compiled
+  // directory, while a root project.config.json often hardcodes `dist` even
+  // when the build writes `dist/<platform>`. The config wins only when Taro
+  // names no outputRoot at all.
+  if (hasDep(pkg, "@tarojs/")) {
+    const configFile = firstExistingIn(roots, ["config/index.ts", "config/index.js"]);
+    let outputRoot: string | null = null;
+    if (configFile) {
       try {
-        const config = JSON.parse(readFileSync(configPath, "utf-8")) as {
-          miniprogramRoot?: unknown;
-        };
-        if (typeof config.miniprogramRoot === "string" && config.miniprogramRoot.trim()) {
-          projectDir = join(dir, config.miniprogramRoot);
-          source = `project.config.json (miniprogramRoot: ${config.miniprogramRoot})`;
-        }
+        const match = readFileSync(configFile, "utf-8").match(
+          /outputRoot\s*:\s*(['"`])([^'"`]+)\1/,
+        );
+        // `dist/${process.env.TARO_ENV}` is a common per-platform layout;
+        // this target always builds weapp.
+        if (match) outputRoot = match[2].replace(/\$\{[^}]*TARO_ENV[^}]*\}/g, "weapp");
       } catch {
-        // unreadable config → run from the directory that holds it
+        // unreadable config → keep the documented Taro 3 default
       }
+    }
+    const effectiveRoot = outputRoot ?? "dist";
+    // outputRoot is relative to the Taro project root (the package root).
+    const outputDir = join(root, effectiveRoot);
+    const withAppJson = findDirWithAppJson(outputDir, 2);
+    if (withAppJson) {
       return {
-        projectPath: toPosix(projectRoot, projectDir),
-        kind: "native",
-        exists: existsSync(projectDir),
-        source,
+        projectPath: toPosix(projectRoot, withAppJson),
+        kind: "taro",
+        exists: true,
+        source: `outputRoot: ${effectiveRoot}`,
       };
     }
+    if (outputRoot === null) {
+      const fromConfig = projectConfigResolution(projectRoot, roots, "taro");
+      if (fromConfig) return fromConfig;
+    }
+    return {
+      projectPath: toPosix(projectRoot, outputDir),
+      kind: "taro",
+      exists: false,
+      source: `outputRoot: ${effectiveRoot}`,
+    };
   }
+
+  const native = projectConfigResolution(projectRoot, roots, "native");
+  if (native) return native;
 
   const uniOutput = firstExistingIn(roots, [
     "dist/build/mp-weixin",
@@ -165,30 +227,6 @@ export function resolveWxaProject(projectRoot: string, miniRoot?: string): WxaPr
       kind: "uni-app",
       exists: true,
       source: `output: ${toPosix(projectRoot, uniOutput)}`,
-    };
-  }
-
-  if (hasDep(pkg, "@tarojs/")) {
-    const configFile = firstExistingIn(roots, ["config/index.ts", "config/index.js"]);
-    let outputRoot = "dist";
-    if (configFile) {
-      try {
-        const match = readFileSync(configFile, "utf-8").match(
-          /outputRoot\s*:\s*['"]([^'"]+)['"]/,
-        );
-        if (match) outputRoot = match[1];
-      } catch {
-        // unreadable config → keep the documented Taro 3 default
-      }
-    }
-    // outputRoot is relative to the Taro project root (the package root).
-    const outputDir = join(root, outputRoot);
-    const withAppJson = findDirWithAppJson(outputDir, 2);
-    return {
-      projectPath: toPosix(projectRoot, withAppJson ?? outputDir),
-      kind: "taro",
-      exists: withAppJson !== null,
-      source: `outputRoot: ${outputRoot}`,
     };
   }
 

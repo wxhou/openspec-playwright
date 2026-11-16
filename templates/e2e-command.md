@@ -60,6 +60,7 @@ Never switch tools to reuse state (see Session state).
 - **Imports**: specs import `{ test, expect }` from `./wxa-test`, not `@playwright/test`.
 - **Navigation**: `await miniProgram.open('<page>?<query>')`; never `page.goto` or a URL.
 - **Rebuild**: after changing mini-program source, run the build script again before rerunning tests; the runner serves the build output, not the source.
+- **Framework runtime failures**: if every page fails with a framework runtime error (e.g. Taro's `没有找到页面实例`), the browser runner cannot run that app — stop and report it. Do not turn off `wxaCheckErrors` or write specs around a framework that does not initialize.
 - **Selectors**: resolve inside `miniProgram.current` (the current page frame); the priority order is unchanged.
 - **Assertions**: `toHavePath`, `toHavePageData`, `waitForRequest`. `toHavePageData` sees the compiled page data — uni-app/Taro rename the keys (a `title` binding can appear as `b`), so read the real shape from `pageData()` first and assert only stable keys; prefer `toHavePath` plus visible-text assertions. Runtime errors are checked automatically (`wxaCheckErrors`); turning the check off requires a written reason.
 - **Exploration (Step 4)**: start `npx wxa-runner dev <wxaProject> --setup tests/playwright/wxa.setup.ts --open`, then open the URL the runner prints with `?path=<page>` (the runner picks the next free port when 3000 is taken). If the browser MCP cannot read the page frame, drive a throwaway Playwright script under `tmp/`. Do not call `openspec-pw explore`.
