@@ -165,17 +165,8 @@ describe("codegraphHintLines — gap-aware hint content", () => {
     mcpInstalledAdapters: [],
   };
 
-  it("indexed + MCP missing → sync + install lines", () => {
-    expect(codegraphHintLines(base)).toEqual([
-      "Refresh code index: codegraph sync",
-      "Install code hooks: codegraph install --target=auto --location=local",
-    ]);
-  });
-
-  it("indexed + MCP installed → sync line only (no install repeat)", () => {
-    expect(
-      codegraphHintLines({ ...base, mcpInstalledAdapters: ["claude"] }),
-    ).toEqual(["Refresh code index: codegraph sync"]);
+  it("indexed → sync line only", () => {
+    expect(codegraphHintLines(base)).toEqual(["Refresh code index: codegraph sync"]);
   });
 
   it("no index + CLI installed → init line", () => {
