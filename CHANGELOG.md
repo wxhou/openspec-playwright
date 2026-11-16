@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `package.json`、`package-lock.json`、`README.md`、`README.zh-CN.md`、`docs/index.html`、`CHANGELOG.md`
 - **fix(cli): 移除 codegraph MCP 安装提示**. init / update 的摘要与 doctor 的 `codegraph-mcp` 检查不再打印 `codegraph install --target=auto --location=local`；已建索引时只保留 `codegraph sync` 一行，未建索引时仍提示可选的 `codegraph init`。
   - `src/shared/codegraph.ts`、`src/commands/{doctor,init,update}.ts`、`tests/shared/codegraph.test.ts`、`tests/commands/doctor.test.ts`、`CHANGELOG.md`
+- **docs(standards): 新增大文件与外部制品源规范**. §8 要求 ≥1GB 制品先列国内可信源、国际官方源兜底；交互选择一次并记住，非交互只读配置；按官方元数据校验哈希；不按 IP/时区静默切换。英文版暂未同步。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 
 ## [0.3.119] - 2026-11-15
 - **fix(e2e): 修正认证检查与升级提示**. API/UI 的 `E2E_AUTH_CHECK_PATH` 检查禁用重定向，UI setup 也执行该检查；README 补旧 `auth.setup.ts`/workflow 的升级提示；skill 选择器表与 `docs/llms.txt` 的 explore 描述对齐。

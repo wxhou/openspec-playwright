@@ -116,6 +116,9 @@ const ZH_ANCHORS: [string, string][] = [
   ["§7 无界读取禁令", "禁止无界读取进内存"],
   ["§7 无界并发禁令", "禁止无界并发"],
   ["§7 外部调用超时", "禁止无超时的外部调用"],
+  ["§8 大文件与外部制品源", "大文件与外部制品源"],
+  ["§8 不静默换源", "不按 IP、时区或语言静默切换源"],
+  ["§8 哈希校验", "按官方元数据校验大小与哈希"],
   ["§0 经验沉淀载体", "非工具托管的载体"],
 ];
 
@@ -283,11 +286,11 @@ describe("docs/script.js embedded standards stay in sync", () => {
     });
   });
 
-  it("every standards section number 0..7 is represented in the ZH embed", () => {
+  it("every standards section number 0..8 is represented in the ZH embed", () => {
     // Section HEADINGS drift in wording between the full standards and the
     // condensed copy, so match by number coverage instead of exact titles.
     const sectionCount = (standards.match(/^## \d+\./gm) ?? []).length;
-    expect(sectionCount).toBeGreaterThanOrEqual(8); // §0..§7
+    expect(sectionCount).toBeGreaterThanOrEqual(9); // §0..§8
     // The condensed ZH copy carries all major sections as headings too.
     const zhHeadings = (zh.match(/^## /gm) ?? []).length;
     expect(zhHeadings).toBeGreaterThanOrEqual(sectionCount - 1);
