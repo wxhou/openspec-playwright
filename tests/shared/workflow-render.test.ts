@@ -82,4 +82,29 @@ describe("renderWorkflowTemplate", () => {
       rendered.indexOf("- name: Apply change"),
     );
   });
+
+  it("gives the build step the condition of the step it feeds", () => {
+    const pipeline = `      - name: Generate E2E tests
+        if: \${{ github.event_name != 'workflow_dispatch' || inputs.e2e != false }}
+        run: claude -p "/opsx:e2e"
+`;
+    const rendered = renderWorkflowTemplate(pipeline, {
+      target: "miniprogram",
+      buildCommand: "npm run build:mp-weixin",
+    });
+    expect(rendered).toContain(
+      "      - if: ${{ github.event_name != 'workflow_dispatch' || inputs.e2e != false }}\n        run: npm run build:mp-weixin\n      - name: Generate E2E tests",
+    );
+  });
+
+  it("leaves the build step unconditional when the step has no condition", () => {
+    const pipeline = `      - name: Generate E2E tests
+        run: claude -p "/opsx:e2e"
+`;
+    const rendered = renderWorkflowTemplate(pipeline, {
+      target: "miniprogram",
+      buildCommand: "npm run build:mp-weixin",
+    });
+    expect(rendered).toContain("      - run: npm run build:mp-weixin\n      - name: Generate E2E tests");
+  });
 });

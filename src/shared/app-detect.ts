@@ -331,24 +331,24 @@ function findMiniProgramInDirs(
   seeds: string[],
   budget: number,
   baseDir: string,
-): string | null {
+): { dir: string; source: string } | null {
   let checked = 0;
   const relPosixFromBase = (dir: string): string => {
     const rel = relative(baseDir, dir);
     const posix = rel.split(sep).join("/");
     return posix === "" ? "." : posix;
   };
-  const visit = (dir: string, remaining: number): string | null => {
+  const visit = (dir: string, remaining: number): { dir: string; source: string } | null => {
     if (remaining < 0 || checked >= WORKSPACE_SCAN_MAX_MEMBERS) return null;
     const pkg = readPackageJson(join(dir, "package.json"));
     if (pkg) checked++;
     if (existsSync(join(dir, "project.config.json"))) {
-      return `${relPosixFromBase(dir)} (project.config.json)`;
+      return { dir, source: `${relPosixFromBase(dir)} (project.config.json)` };
     }
     const output = firstExistingDir(dir, MINI_PROGRAM_OUTPUT_DIRS);
-    if (output) return `${relPosixFromBase(dir)} (output: ${output})`;
+    if (output) return { dir, source: `${relPosixFromBase(dir)} (output: ${output})` };
     const dep = hasMiniProgramDependency(pkg);
-    if (dep) return `${relPosixFromBase(dir)} (${dep})`;
+    if (dep) return { dir, source: `${relPosixFromBase(dir)} (${dep})` };
     if (remaining === 0) return null;
     let entries;
     try {
@@ -391,6 +391,13 @@ export type TemplateTarget = "web" | "miniprogram";
 export interface MiniProgramSignal {
   kind: "strong" | "weak" | null;
   source: string | null;
+  /**
+   * Directory that holds the mini program — the repo root or the workspace
+   * member that owns it. Resolution must use it: the repo root can own the
+   * runnable dev script (so findNpmRoot stops there) while the mini app lives
+   * in a member directory.
+   */
+  miniRoot?: string;
 }
 
 const MINI_PROGRAM_OUTPUT_DIRS = [
@@ -445,37 +452,53 @@ export function detectMiniProgramSignal(projectRoot: string): MiniProgramSignal 
 
   for (const dir of roots) {
     if (existsSync(join(dir, "project.config.json"))) {
-      return { kind: "strong", source: "project.config.json" };
+      return { kind: "strong", source: "project.config.json", miniRoot: dir };
     }
   }
   for (const dir of roots) {
     const output = firstExistingDir(dir, MINI_PROGRAM_OUTPUT_DIRS);
-    if (output) return { kind: "strong", source: `output: ${output}` };
+    if (output) return { kind: "strong", source: `output: ${output}`, miniRoot: dir };
   }
   const dep = hasMiniProgramDependency(pkg);
-  if (dep) return { kind: "strong", source: `dependency: ${dep}` };
+  if (dep) return { kind: "strong", source: `dependency: ${dep}`, miniRoot: npmRoot };
 
   // A workspace member may hold the mini app while the root package.json
   // owns the runnable dev script (findNpmRoot stops at the root); a native
-  // app may have no package.json at all.
-  const patterns = pkg ? workspaceGlobPatterns(projectRoot, pkg) : null;
-  if (patterns !== null || !pkg) {
+  // app may have no package.json at all. Member globs come from the repo
+  // root's package.json — it is the workspace root, not the npm root.
+  const rootPkg = readPackageJson(join(projectRoot, "package.json")) ?? pkg;
+  const patterns = rootPkg ? workspaceGlobPatterns(projectRoot, rootPkg) : null;
+  if (patterns !== null || !rootPkg) {
     const memberDirs = patterns ? resolveMemberDirs(projectRoot, patterns) : null;
     const hit =
       memberDirs !== null && memberDirs.length > 0
         ? findMiniProgramInDirs(memberDirs, WORKSPACE_SCAN_MAX_DEPTH - 1, projectRoot)
         : findMiniProgramInDirs([projectRoot], WORKSPACE_SCAN_MAX_DEPTH, projectRoot);
-    if (hit) return { kind: "strong", source: `workspace member: ${hit}` };
+    if (hit) {
+      return { kind: "strong", source: `workspace member: ${hit.source}`, miniRoot: hit.dir };
+    }
   }
 
   for (const dir of roots) {
-    if (hasWeakAppJson(dir)) return { kind: "weak", source: "app.json" };
+    if (hasWeakAppJson(dir)) return { kind: "weak", source: "app.json", miniRoot: dir };
   }
   return { kind: null, source: null };
 }
 
 export function hasMiniProgramSignal(projectRoot: string): boolean {
   return detectMiniProgramSignal(projectRoot).kind === "strong";
+}
+
+/**
+ * A Playwright config that configures the mini-program runner. The check is
+ * for the `wxaProject` option, not the word: a comment mentioning it must not
+ * turn a web config into a mini one.
+ */
+export function configHasWxaProject(content: string): boolean {
+  const code = content
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/.*$/gm, "$1");
+  return /(^|[{,\s])wxaProject\s*:/.test(code);
 }
 
 /** Generated artifacts make an explicit `--miniprogram` choice survive `update`. */
@@ -485,7 +508,7 @@ function hasMiniProgramArtifacts(projectRoot: string): boolean {
     const config = join(projectRoot, `playwright.config.${ext}`);
     if (!existsSync(config)) continue;
     try {
-      if (readFileSync(config, "utf-8").includes("wxaProject")) return true;
+      if (configHasWxaProject(readFileSync(config, "utf-8"))) return true;
     } catch {
       // unreadable → not evidence of a mini scaffold
     }
@@ -502,7 +525,7 @@ function hasWebScaffoldArtifacts(projectRoot: string): boolean {
     const config = join(projectRoot, `playwright.config.${ext}`);
     if (!existsSync(config)) continue;
     try {
-      if (!readFileSync(config, "utf-8").includes("wxaProject")) return true;
+      if (!configHasWxaProject(readFileSync(config, "utf-8"))) return true;
     } catch {
       // unreadable → fall through to the other artifacts
     }

@@ -56,6 +56,7 @@ export {
   explainFrontendSignal,
   detectMiniProgramSignal,
   hasMiniProgramSignal,
+  configHasWxaProject,
   resolveTemplateTarget,
   resolveProjectTarget,
 } from "./app-detect.js";

@@ -4,6 +4,7 @@ import { join } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
 import {
+  configHasWxaProject,
   resolveBuildCommand,
   resolvePageManifest,
   resolveProjectTarget,
@@ -18,18 +19,28 @@ const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
  * (the e2e target marker) while leaving the Web config and BasePage in place.
  */
 export function webScaffoldConflicts(projectRoot: string): string[] {
+  const conflicts: string[] = [];
+  // A config counts as the mini scaffold only when it configures the runner
+  // (`wxaProject:`); a web config that merely mentions the word must not
+  // slip past this check.
+  for (const ext of ["ts", "js", "mjs", "mts"]) {
+    const rel = `playwright.config.${ext}`;
+    const abs = join(projectRoot, rel);
+    if (!existsSync(abs)) continue;
+    try {
+      if (!configHasWxaProject(readFileSync(abs, "utf-8"))) conflicts.push(rel);
+    } catch {
+      conflicts.push(rel);
+    }
+  }
   // Any listed marker means the file already belongs to the mini scaffold.
   const checks: Array<[string, string[]]> = [
-    ...["ts", "js", "mjs", "mts"].map(
-      (ext) => [`playwright.config.${ext}`, ["wxaProject"]] as [string, string[]],
-    ),
     [
       join("tests", "playwright", "seed.spec.ts"),
       ["./wxa-test", "@open-wxa/wxa-runner-playwright"],
     ],
     [join("tests", "playwright", "pages", "BasePage.ts"), ["miniProgram"]],
   ];
-  const conflicts: string[] = [];
   for (const [rel, markers] of checks) {
     const abs = join(projectRoot, rel);
     if (!existsSync(abs)) continue;
@@ -141,7 +152,7 @@ export async function generateMiniProgramScaffold(projectRoot: string, testsDir:
 export function printMiniProgramNextSteps(projectRoot: string) {
   console.log(
     chalk.gray(
-      "  1. Install deps: npm i -D @playwright/test@^1.65 @open-wxa/wxa-runner-playwright@^0.13 @open-wxa/wxa-runner-core@^0.13",
+      "  1. Install deps: npm i -D @playwright/test@^1.65 @open-wxa/wxa-runner-playwright@^0.13 @open-wxa/wxa-runner-core@^0.13 wxa-runner@^0.13",
     ),
   );
   console.log(

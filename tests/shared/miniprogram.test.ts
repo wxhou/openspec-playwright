@@ -116,3 +116,97 @@ describe("mini-program resolution in a monorepo", () => {
     expect(wxa.exists).toBe(true);
   });
 });
+
+describe("mini-program resolution when the repo root owns the dev script", () => {
+  let root = "";
+
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), "openspec-pw-mini-root-dev-"));
+    // The repo root runs the web app; the mini program is a workspace member.
+    writeJson(join(root, "package.json"), {
+      private: true,
+      scripts: { dev: "vite" },
+      workspaces: ["apps/*"],
+    });
+    const pkg = join(root, "apps", "mobile");
+    writeJson(join(pkg, "package.json"), {
+      scripts: { "build:mp-weixin": "uni build -p mp-weixin" },
+      dependencies: { "@dcloudio/uni-app": "^3.0.0" },
+    });
+    mkdirSync(join(pkg, "dist", "dev", "mp-weixin"), { recursive: true });
+    writeJson(join(pkg, "src", "pages.json"), { pages: [{ path: "pages/home/index" }] });
+  });
+
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it("points wxaProject at the member's build output", () => {
+    const wxa = resolveWxaProject(root);
+    expect(wxa.kind).toBe("uni-app");
+    expect(wxa.projectPath).toBe("apps/mobile/dist/dev/mp-weixin");
+    expect(wxa.exists).toBe(true);
+  });
+
+  it("runs the build script from the member that owns it", () => {
+    expect(resolveBuildCommand(root)).toBe("npm --prefix apps/mobile run build:mp-weixin");
+  });
+
+  it("reads the page manifest from the member", () => {
+    expect(resolvePageManifest(root).homePage).toBe("pages/home/index");
+  });
+});
+
+describe("mini-program resolution for a member path with a space", () => {
+  let root = "";
+
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), "openspec-pw-mini-spaced-"));
+    writeJson(join(root, "package.json"), {
+      private: true,
+      workspaces: ["apps/*"],
+    });
+    writeJson(join(root, "apps", "my app", "package.json"), {
+      scripts: { "build:mp-weixin": "uni build -p mp-weixin" },
+      dependencies: { "@dcloudio/uni-app": "^3.0.0" },
+    });
+  });
+
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it("quotes the prefix so the path stays one shell argument", () => {
+    expect(resolveBuildCommand(root)).toBe('npm --prefix "apps/my app" run build:mp-weixin');
+  });
+});
+
+describe("page manifest entry page", () => {
+  let root = "";
+
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), "openspec-pw-mini-entry-"));
+  });
+
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it("honors entryPagePath without a project.config.json", () => {
+    writeJson(join(root, "app.json"), {
+      entryPagePath: "pages/home/index",
+      pages: ["pages/index/index"],
+    });
+
+    expect(resolvePageManifest(root).homePage).toBe("pages/home/index");
+  });
+
+  it("honors entryPagePath in a uni-app pages.json", () => {
+    writeJson(join(root, "src", "pages.json"), {
+      entryPagePath: "pages/home/index",
+      pages: [{ path: "pages/index/index" }],
+    });
+
+    expect(resolvePageManifest(root).homePage).toBe("pages/home/index");
+  });
+});

@@ -68,4 +68,23 @@ describe("doctor mini-program checks", () => {
     expect(check?.ok).toBe(false);
     expect(check?.message).toContain("build first");
   });
+
+  it("names the build command when the output is missing", () => {
+    rmSync(join(tmpDir, "project.config.json"));
+    writeFileSync(
+      join(tmpDir, "package.json"),
+      JSON.stringify({
+        scripts: { dev: "x", "build:weapp": "taro build --type weapp" },
+        dependencies: { "@tarojs/taro": "^4.0.0" },
+      }),
+    );
+    const check = miniProgramChecks(tmpDir).find((c) => c.name === "wxa-project");
+    expect(check?.message).toContain("npm run build:weapp");
+  });
+
+  it("names the upgrade command when the Playwright version is too low", () => {
+    writePackage("@playwright/test", "1.63.0");
+    const check = miniProgramChecks(tmpDir).find((c) => c.name === "playwright-test-version");
+    expect(check?.message).toContain("npm i -D @playwright/test@^1.65");
+  });
 });

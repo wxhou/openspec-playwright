@@ -24,6 +24,7 @@ import {
   findSourceFile,
   resolveProjectTarget,
   resolveWxaProject,
+  resolveBuildCommand,
 } from "../shared/index.js";
 import { bundledStandardsPath, compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
 import { hasRuleFileMarkers, wrapperRulesFile, wrapperHasMarkers } from "./editors/project-rules.js";
@@ -299,7 +300,7 @@ export function miniProgramChecks(projectRoot: string): DoctorCheck[] {
     ok: fixtureOk,
     message: fixtureOk
       ? "installed"
-      : "not installed (npm i -D @open-wxa/wxa-runner-playwright@^0.13 @open-wxa/wxa-runner-core@^0.13)",
+      : "not installed (npm i -D @open-wxa/wxa-runner-playwright@^0.13 @open-wxa/wxa-runner-core@^0.13 wxa-runner@^0.13)",
   });
 
   const pwVersion = playwrightTestVersion(projectRoot);
@@ -313,16 +314,21 @@ export function miniProgramChecks(projectRoot: string): DoctorCheck[] {
     name: "playwright-test-version",
     ok: versionOk,
     message: pwVersion
-      ? `${pwVersion}${versionOk ? "" : " (requires >=1.64)"}`
-      : "not installed",
+      ? versionOk
+        ? pwVersion
+        : `${pwVersion} — requires >=1.64 (upgrade: npm i -D @playwright/test@^1.65)`
+      : "not installed (npm i -D @playwright/test@^1.65)",
   });
 
   const wxa = resolveWxaProject(projectRoot);
+  const build = resolveBuildCommand(projectRoot);
   checks.push({
     category: "Mini Program",
     name: "wxa-project",
     ok: wxa.exists,
-    message: `${wxa.projectPath} (${wxa.source})${wxa.exists ? "" : " — build first"}`,
+    message: wxa.exists
+      ? `${wxa.projectPath} (${wxa.source})`
+      : `${wxa.projectPath} (${wxa.source}) — build first: ${build ?? "no build script found (add one to package.json)"}`,
   });
 
   return checks;
@@ -502,6 +508,15 @@ export async function doctor(options: DoctorOptions = {}) {
       name: "browsers",
       ok: true,
       message: "no Playwright scaffold (minimal mode)",
+    });
+  } else if (target === "miniprogram") {
+    // The mini scaffold runs Google Chrome (channel: chrome); the Mini
+    // Program checks above cover it, so chromium is the wrong binary here.
+    checks.push({
+      category: "Playwright Browsers",
+      name: "browsers",
+      ok: true,
+      message: "mini-program target uses Google Chrome (channel: chrome)",
     });
   } else {
     let hasBrowsers = false;
@@ -953,31 +968,42 @@ export async function doctor(options: DoctorOptions = {}) {
     message: hasSeed ? "found" : "not found (optional)",
   });
 
-  // App server detection (diagnostic only — not a prerequisite)
-  const app = detectAppServer(projectRoot);
-  checks.push({
-    category: "App Server",
-    name: "dev-script",
-    ok: Boolean(app.devCommand),
-    message: app.devCommand
-      ? `${app.devCommand}${app.scriptCommand ? ` (${app.scriptCommand})` : ""}`
-      : "not detected (configure webServer manually)",
-  });
-  checks.push({
-    category: "App Server",
-    name: "base-url",
-    ok: true,
-    message: `${app.baseUrl} (${app.baseUrlSource})`,
-  });
-  const reachable = await checkUrl(app.baseUrl);
-  checks.push({
-    category: "App Server",
-    name: "reachable",
-    ok: reachable.ok,
-    message: reachable.ok
-      ? `responded ${reachable.status ?? "ok"}`
-      : `${reachable.message} (diagnostic only; Playwright webServer may start it)`,
-  });
+  // App server detection (diagnostic only — not a prerequisite). The
+  // mini-program target has no webServer: each worker starts its own
+  // wxa-runner server, so dev script and base URL do not apply.
+  if (target === "miniprogram") {
+    checks.push({
+      category: "App Server",
+      name: "dev-script",
+      ok: true,
+      message: "not needed (wxa-runner serves the mini program per worker)",
+    });
+  } else {
+    const app = detectAppServer(projectRoot);
+    checks.push({
+      category: "App Server",
+      name: "dev-script",
+      ok: Boolean(app.devCommand),
+      message: app.devCommand
+        ? `${app.devCommand}${app.scriptCommand ? ` (${app.scriptCommand})` : ""}`
+        : "not detected (configure webServer manually)",
+    });
+    checks.push({
+      category: "App Server",
+      name: "base-url",
+      ok: true,
+      message: `${app.baseUrl} (${app.baseUrlSource})`,
+    });
+    const reachable = await checkUrl(app.baseUrl);
+    checks.push({
+      category: "App Server",
+      name: "reachable",
+      ok: reachable.ok,
+      message: reachable.ok
+        ? `responded ${reachable.status ?? "ok"}`
+        : `${reachable.message} (diagnostic only; Playwright webServer may start it)`,
+    });
+  }
 
   // Lint — swallow-error checklist coverage (lint-guidelines capability).
   // Semantic-first: ESLint's own resolver (`--print-config`) and ruff's

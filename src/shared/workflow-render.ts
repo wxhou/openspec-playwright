@@ -30,6 +30,26 @@ function stepRunsE2E(lines: string[], index: number, indent: number): boolean {
 }
 
 /**
+ * The step's own `if:` condition, or null when it has none. The build step
+ * exists to feed that step, so it must run exactly when the step runs — a
+ * pipeline told to skip E2E must not fail on a build nobody consumes.
+ */
+function stepCondition(lines: string[], index: number, indent: number): string | null {
+  for (let i = index + 1; i < lines.length; i++) {
+    const line = lines[i];
+    const nextStep = line.match(/^(\s*)- name:/);
+    if (nextStep && nextStep[1].length === indent) break;
+    const condition = line.match(/^\s*if:\s*(.+?)\s*$/);
+    if (condition) {
+      // A block scalar carries its condition on the following lines; copying
+      // only the marker would break the YAML, so leave it alone.
+      return condition[1] === "|" || condition[1] === ">" ? null : condition[1];
+    }
+  }
+  return null;
+}
+
+/**
  * Render a workflow template for the target. Web returns the input unchanged
  * (byte-identical, so `remove` keeps recognizing existing files); the
  * mini-program target installs Google Chrome and runs the build before the
@@ -53,7 +73,12 @@ export function renderWorkflowTemplate(
       options.buildCommand &&
       stepRunsE2E(lines, i, step[1].length)
     ) {
-      out.push(`${step[1]}- run: ${options.buildCommand}`);
+      const condition = stepCondition(lines, i, step[1].length);
+      out.push(
+        condition
+          ? `${step[1]}- if: ${condition}\n${step[1]}  run: ${options.buildCommand}`
+          : `${step[1]}- run: ${options.buildCommand}`,
+      );
       inserted = true;
     }
     out.push(

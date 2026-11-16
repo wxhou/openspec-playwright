@@ -10,6 +10,7 @@ import {
   explainFrontendSignal,
   detectMiniProgramSignal,
   hasMiniProgramSignal,
+  configHasWxaProject,
   resolveTemplateTarget,
   resolveProjectTarget,
 } from "../../src/shared/app-detect.js";
@@ -343,6 +344,7 @@ describe("app-detect", () => {
     expect(detectMiniProgramSignal(tmpDir)).toEqual({
       kind: "strong",
       source: "project.config.json",
+      miniRoot: tmpDir,
     });
     expect(hasMiniProgramSignal(tmpDir)).toBe(true);
   });
@@ -375,7 +377,11 @@ describe("app-detect", () => {
   it("detectMiniProgramSignal: app.json with app.wxss is a weak signal", () => {
     writeFileSync(join(tmpDir, "app.json"), JSON.stringify({ pages: ["pages/index/index"] }));
     writeFileSync(join(tmpDir, "app.wxss"), "");
-    expect(detectMiniProgramSignal(tmpDir)).toEqual({ kind: "weak", source: "app.json" });
+    expect(detectMiniProgramSignal(tmpDir)).toEqual({
+      kind: "weak",
+      source: "app.json",
+      miniRoot: tmpDir,
+    });
     expect(hasMiniProgramSignal(tmpDir)).toBe(false);
   });
 
@@ -448,6 +454,70 @@ describe("app-detect", () => {
       JSON.stringify({ dependencies: { "@dcloudio/uni-app": "^3.0.0" } }),
     );
     expect(detectMiniProgramSignal(tmpDir).kind).toBe("strong");
+  });
+
+  it("detectMiniProgramSignal: names the workspace member that holds the mini app", () => {
+    writeFileSync(
+      join(tmpDir, "package.json"),
+      JSON.stringify({ scripts: { dev: "vite" }, workspaces: ["apps/*"] }),
+    );
+    const member = join(tmpDir, "apps", "mobile");
+    mkdirSync(member, { recursive: true });
+    writeFileSync(
+      join(member, "package.json"),
+      JSON.stringify({ dependencies: { "@dcloudio/uni-app": "^3.0.0" } }),
+    );
+    expect(detectMiniProgramSignal(tmpDir).miniRoot).toBe(member);
+  });
+});
+
+describe("configHasWxaProject", () => {
+  it("accepts the option in any nesting", () => {
+    expect(configHasWxaProject("export default { wxaProject: 'dist' };")).toBe(true);
+    expect(configHasWxaProject("export default { use: { wxaProject: '.' } };")).toBe(true);
+  });
+
+  it("rejects a comment that only mentions it", () => {
+    expect(
+      configHasWxaProject("// wxaProject: 'dist'\nexport default { use: { baseURL: 'x' } };"),
+    ).toBe(false);
+    expect(
+      configHasWxaProject("/* wxaProject: 'dist' */\nexport default {};"),
+    ).toBe(false);
+  });
+
+  it("rejects a config without it", () => {
+    expect(configHasWxaProject("export default { use: { baseURL: 'x' } };")).toBe(false);
+  });
+});
+
+describe("target markers", () => {
+  const dir = join(tmpdir(), "openspec-pw-target-markers-" + Date.now());
+
+  beforeEach(() => {
+    mkdirSync(dir, { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("resolveTemplateTarget: a config that only mentions wxaProject stays web", () => {
+    writeFileSync(
+      join(dir, "playwright.config.ts"),
+      "// wxaProject: 'dist/mp-weixin'\nexport default { use: { baseURL: 'http://localhost:3000' } };\n",
+    );
+    expect(resolveTemplateTarget(dir)).toBe("web");
+    expect(resolveProjectTarget(dir)).toBe("web");
+  });
+
+  it("resolveTemplateTarget: a config that configures wxaProject is mini", () => {
+    writeFileSync(
+      join(dir, "playwright.config.ts"),
+      "export default { wxaProject: 'dist/mp-weixin' };\n",
+    );
+    expect(resolveTemplateTarget(dir)).toBe("miniprogram");
+    expect(resolveProjectTarget(dir)).toBe("miniprogram");
   });
 });
 

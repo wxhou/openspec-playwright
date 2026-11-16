@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `src/shared/miniprogram.ts`、`src/commands/{init,miniprogram,remove}.ts`、`.github/workflows/ci.yml`、`README.md`、`README.zh-CN.md`、`tests/commands/{init-miniprogram,remove-command}.test.ts`、`tests/shared/miniprogram.test.ts`、`CHANGELOG.md`
 - **fix(cli): 修正小程序目标判定与归属边界**. 普通 `init` 遇到既有 Web 脚手架保持 Web；检测覆盖 workspace 成员；构建命令在拥有脚本的包里执行；`update` 不再覆盖用户改过的 `wxa-test.ts`（缺失时重建）；工作流归属不因构建脚本增删改名失效；迁移护栏提前到删除阶段之前。
   - `src/shared/{app-detect,miniprogram,workflow-render}.ts`、`src/commands/{init,miniprogram,pipeline,remove,update}.ts`、`templates/e2e-command.md`、`.claude/commands/opsx/e2e.md`、`README.md`、`README.zh-CN.md`、`tests/shared/{app-detect,miniprogram,workflow-render}.test.ts`、`tests/commands/{init-miniprogram,remove-command}.test.ts`、`CHANGELOG.md`
+- **fix(cli): 按 workspace 成员解析小程序**. 仓库根拥有 `dev` 脚本时，产物目录、构建命令与页面清单改按检测到的成员目录解析；`entryPagePath` 在所有页面清单中优先；含空格的成员路径加引号；`wxaProject` 只有作为配置选项时才构成小程序标记。
+  - `src/shared/{app-detect,miniprogram}.ts`、`src/commands/miniprogram.ts`、`tests/shared/{app-detect,miniprogram}.test.ts`、`CHANGELOG.md`
+- **fix(cli): 修正工作流归属与小程序诊断输出**. `remove` 在构建脚本新增或删除后仍识别自己的工作流，用户额外添加的 npm 步骤会让文件保留；auto-pipeline 的构建步骤继承所服务步骤的 `if:`；`doctor` 的小程序检查给出构建/升级命令，不再打印 Web 专属的 dev-script 与 base-url 诊断；`/opsx:e2e` 探索补 `--setup` 与动态端口，依赖说明加入 `wxa-runner@^0.13`。
+  - `src/commands/{remove,doctor,miniprogram}.ts`、`src/shared/workflow-render.ts`、`templates/e2e-command.md`、`.claude/commands/opsx/e2e.md`、`README.md`、`README.zh-CN.md`、`tests/commands/{remove-command,doctor-miniprogram}.test.ts`、`tests/shared/workflow-render.test.ts`、`CHANGELOG.md`
 - **chore(deps): 升级 Playwright 到 1.65.1**. `@playwright/test` 与 `playwright` 同步升到 `^1.65.1`；`engines.node` 提到 `>=22`，因为 Playwright 1.65 不再测试 Node 20。已装浏览器的项目需重跑 `npx playwright install`。
   - `package.json`、`package-lock.json`、`README.md`、`README.zh-CN.md`、`docs/index.html`、`CHANGELOG.md`
 

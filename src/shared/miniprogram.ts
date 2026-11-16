@@ -1,7 +1,12 @@
 import { existsSync, readFileSync, readdirSync } from "fs";
 import { join, relative, sep } from "path";
 import { parse as parseJsonc, type ParseError } from "jsonc-parser";
-import { findNpmRoot, type PackageJson } from "./app-detect.js";
+import {
+  detectMiniProgramSignal,
+  findNpmRoot,
+  type MiniProgramSignal,
+  type PackageJson,
+} from "./app-detect.js";
 
 export interface WxaProjectResolution {
   /** Project directory relative to the repo root, POSIX separators. */
@@ -54,13 +59,22 @@ function firstExistingIn(roots: string[], rels: string[]): string | null {
   return null;
 }
 
-function searchRoots(projectRoot: string, npmRoot: string): string[] {
-  return npmRoot === projectRoot ? [projectRoot] : [projectRoot, npmRoot];
+function searchRoots(projectRoot: string, miniRoot: string): string[] {
+  return miniRoot === projectRoot ? [projectRoot] : [miniRoot, projectRoot];
 }
 
-function readPackage(projectRoot: string): { npmRoot: string; pkg: PackageJson | null } {
-  const npmRoot = findNpmRoot(projectRoot);
-  return { npmRoot, pkg: readJson(join(npmRoot, "package.json")) as PackageJson | null };
+function readPackageAt(root: string): PackageJson | null {
+  return readJson(join(root, "package.json")) as PackageJson | null;
+}
+
+/**
+ * Directory that actually holds the mini program. The repo root can own the
+ * runnable dev script (findNpmRoot stops there) while the mini app lives in a
+ * workspace member, so the package root comes from the detection signal.
+ */
+export function resolveMiniRoot(projectRoot: string, signal?: MiniProgramSignal): string {
+  const detected = signal ?? detectMiniProgramSignal(projectRoot);
+  return detected.miniRoot ?? findNpmRoot(projectRoot);
 }
 
 function hasDep(pkg: PackageJson | null, prefix: string): boolean {
@@ -108,9 +122,10 @@ function findDirWithAppJson(root: string, depth: number): string | null {
  * compiled mp-weixin output. Missing output is reported, never invented as
  * "present" — callers warn and doctor fails.
  */
-export function resolveWxaProject(projectRoot: string): WxaProjectResolution {
-  const { npmRoot, pkg } = readPackage(projectRoot);
-  const roots = searchRoots(projectRoot, npmRoot);
+export function resolveWxaProject(projectRoot: string, miniRoot?: string): WxaProjectResolution {
+  const root = miniRoot ?? resolveMiniRoot(projectRoot);
+  const pkg = readPackageAt(root);
+  const roots = searchRoots(projectRoot, root);
   for (const dir of roots) {
     const configPath = join(dir, "project.config.json");
     if (existsSync(configPath)) {
@@ -167,7 +182,7 @@ export function resolveWxaProject(projectRoot: string): WxaProjectResolution {
       }
     }
     // outputRoot is relative to the Taro project root (the package root).
-    const outputDir = join(npmRoot, outputRoot);
+    const outputDir = join(root, outputRoot);
     const withAppJson = findDirWithAppJson(outputDir, 2);
     return {
       projectPath: toPosix(projectRoot, withAppJson ?? outputDir),
@@ -184,7 +199,7 @@ export function resolveWxaProject(projectRoot: string): WxaProjectResolution {
       ? join("dist", "build", "mp-weixin")
       : join("dist", "dev", "mp-weixin");
     return {
-      projectPath: toPosix(projectRoot, join(npmRoot, outputRoot)),
+      projectPath: toPosix(projectRoot, join(root, outputRoot)),
       kind: "uni-app",
       exists: false,
       source: "uni-app default output",
@@ -228,11 +243,10 @@ function collectSubPackagePages(value: unknown): string[] {
 function manifestFromJson(
   data: Record<string, unknown>,
   source: string,
-  entryAware: boolean,
 ): PageManifest {
   const pages = normalizePageList(data.pages);
   const subPages = collectSubPackagePages(data.subPackages ?? data.subpackages);
-  const entry = entryAware && typeof data.entryPagePath === "string" ? data.entryPagePath : null;
+  const entry = typeof data.entryPagePath === "string" ? data.entryPagePath : null;
   return {
     homePage: entry ?? pages[0] ?? subPages[0] ?? null,
     pages: [...pages, ...subPages],
@@ -262,25 +276,26 @@ function readTaroStaticPages(projectRoot: string, roots: string[]): PageManifest
 
 /**
  * Read the page manifest used for the seed and for all-mode exploration.
- * Native uses app.json (entryPagePath wins); uni-app uses pages.json; Taro
- * prefers its compiled app.json and falls back to the static app.config.
+ * Native uses app.json, uni-app uses pages.json, Taro prefers its compiled
+ * app.json and falls back to the static app.config. `entryPagePath` wins over
+ * `pages[0]` in every manifest — it names the page the app opens first.
  */
-export function resolvePageManifest(projectRoot: string): PageManifest {
-  const wxa = resolveWxaProject(projectRoot);
+export function resolvePageManifest(projectRoot: string, miniRoot?: string): PageManifest {
+  const root = miniRoot ?? resolveMiniRoot(projectRoot);
+  const wxa = resolveWxaProject(projectRoot, root);
   const projectDir = join(projectRoot, wxa.projectPath);
-  const { npmRoot } = readPackage(projectRoot);
-  const roots = searchRoots(projectRoot, npmRoot);
+  const roots = searchRoots(projectRoot, root);
 
   const appJsonPath = join(projectDir, "app.json");
   if (existsSync(appJsonPath)) {
     const data = readJson(appJsonPath);
-    if (data) return manifestFromJson(data, toPosix(projectRoot, appJsonPath), wxa.kind === "native");
+    if (data) return manifestFromJson(data, toPosix(projectRoot, appJsonPath));
   }
 
   const pagesJson = firstExistingIn(roots, ["src/pages.json", "pages.json"]);
   if (pagesJson) {
     const data = readJsonc(pagesJson);
-    if (data) return manifestFromJson(data, toPosix(projectRoot, pagesJson), false);
+    if (data) return manifestFromJson(data, toPosix(projectRoot, pagesJson));
   }
 
   const taro = readTaroStaticPages(projectRoot, roots);
@@ -295,8 +310,9 @@ export function resolvePageManifest(projectRoot: string): PageManifest {
 }
 
 /** Build script for the mini-program target, chosen from real package scripts. */
-export function resolveBuildScript(projectRoot: string): string | null {
-  return buildScriptFor(readPackage(projectRoot).pkg);
+export function resolveBuildScript(projectRoot: string, miniRoot?: string): string | null {
+  const root = miniRoot ?? resolveMiniRoot(projectRoot);
+  return buildScriptFor(readPackageAt(root));
 }
 
 /**
@@ -304,10 +320,13 @@ export function resolveBuildScript(projectRoot: string): string | null {
  * workspace member's script needs `--prefix`, or CI fails with
  * "Missing script" at the root.
  */
-export function resolveBuildCommand(projectRoot: string): string | null {
-  const { npmRoot, pkg } = readPackage(projectRoot);
-  const script = buildScriptFor(pkg);
+export function resolveBuildCommand(projectRoot: string, miniRoot?: string): string | null {
+  const root = miniRoot ?? resolveMiniRoot(projectRoot);
+  const script = buildScriptFor(readPackageAt(root));
   if (!script) return null;
-  const rel = toPosix(projectRoot, npmRoot);
-  return rel === "." ? `npm run ${script}` : `npm --prefix ${rel} run ${script}`;
+  const rel = toPosix(projectRoot, root);
+  if (rel === ".") return `npm run ${script}`;
+  // A path with spaces must stay one shell argument.
+  const prefix = /\s/.test(rel) ? `"${rel}"` : rel;
+  return `npm --prefix ${prefix} run ${script}`;
 }

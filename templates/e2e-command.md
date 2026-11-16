@@ -62,7 +62,7 @@ Never switch tools to reuse state (see Session state).
 - **Rebuild**: after changing mini-program source, run the build script again before rerunning tests; the runner serves the build output, not the source.
 - **Selectors**: resolve inside `miniProgram.current` (the current page frame); the priority order is unchanged.
 - **Assertions**: `toHavePath`, `toHavePageData`, `waitForRequest`. Runtime errors are checked automatically (`wxaCheckErrors`); turning the check off requires a written reason.
-- **Exploration (Step 4)**: start `npx wxa-runner dev <wxaProject> --open`, then open `http://localhost:3000/?path=<page>`. If the browser MCP cannot read the page frame, drive a throwaway Playwright script under `tmp/`. Do not call `openspec-pw explore`.
+- **Exploration (Step 4)**: start `npx wxa-runner dev <wxaProject> --setup tests/playwright/wxa.setup.ts --open`, then open the URL the runner prints with `?path=<page>` (the runner picks the next free port when 3000 is taken). If the browser MCP cannot read the page frame, drive a throwaway Playwright script under `tmp/`. Do not call `openspec-pw explore`.
 - **Output shape**: record findings with the packaged `templates/miniprogram/app-exploration.md`.
 - **Route source (all mode)**: read `app.json` / `pages.json` / Taro `app.config` → `entryPagePath`, `pages`, `subPackages`; never sitemap.xml. If a spec names a page that is absent from the manifest, stop and report the missing page; never guess a path.
 - **Auth**: preset in `tests/playwright/wxa.setup.ts` (`storage` / `mock` / `network.routes`); never URL login, `storageState`, `auth.setup.ts`, or `credentials.yaml`.
@@ -144,7 +144,7 @@ If seed fails → **HARD STOP**. Report the failing output and wait — environm
 
 **4.1. Verify BASE_URL**: navigate; HTTP 5xx → **STOP: backend error**. Read `app-knowledge.md` for known risks. Confirm the page belongs to **your app** (known element or title) — a foreign server on the port invalidates every test (false green).
 
-**4.2. Explore each route**: navigate → check console errors → snapshot DOM → screenshot. For ≥5 routes, use `openspec-pw explore --file <path-to-app-exploration.md>`. The command reads the route table, so write that file first in both modes — use the packaged `templates/app-exploration.md` as the shape. It runs sequentially; for parallel browsers use the MCP tools in the routing table.
+**4.2. Explore each route**: navigate → check console errors → snapshot DOM → screenshot. For ≥5 routes on the web target, use `openspec-pw explore --file <path-to-app-exploration.md>`. The command reads the route table, so write that file first in both modes — use the packaged `templates/app-exploration.md` as the shape. It runs sequentially; for parallel browsers use the MCP tools in the routing table.
 
 **App-level error decisions**:
 
