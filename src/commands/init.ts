@@ -13,9 +13,9 @@ import { readFile } from "fs/promises";
 import { execFileSync, hasCommand } from "../shared/exec.js";
 import { installStopHook, isHookTier, uninstallStopHook } from "./hooks.js";
 import {
+  assertScaffoldCompatible,
   generateMiniProgramScaffold,
   printMiniProgramNextSteps,
-  webScaffoldConflicts,
 } from "./miniprogram.js";
 import {
   BRANCH_PROTECTION_HINT,
@@ -64,7 +64,6 @@ import {
   hasFrontendSignal,
   explainFrontendSignal,
   resolveTemplateTarget,
-  resolveProjectTarget,
   resolveWxaProject,
   resolveBuildScript,
   renderWorkflowTemplate,
@@ -706,27 +705,12 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   });
   // Both guards only matter when this run writes a Playwright scaffold; a
   // minimal-mode refresh touches neither target's files.
-  if (mode === "frontend" && target === "miniprogram") {
-    const conflicts = webScaffoldConflicts(projectRoot);
-    if (conflicts.length > 0) {
-      throw new Error(
-        `Existing web Playwright scaffold detected (${conflicts.join(", ")}). ` +
-          "Re-running init cannot convert it in place. Move or delete these files " +
-          "(keep your tests), then run `openspec-pw init --miniprogram` again.",
-      );
-    }
-  }
-  if (
-    mode === "frontend" &&
-    options.miniprogram === false &&
-    resolveProjectTarget(projectRoot) === "miniprogram"
-  ) {
-    throw new Error(
-      "Existing mini-program Playwright scaffold detected (tests/playwright/wxa-test.ts or wxaProject). " +
-        "`--no-miniprogram` cannot convert it in place. Move or delete the mini-program scaffold " +
-        "(keep your tests), then re-run `openspec-pw init`.",
-    );
-  }
+  assertScaffoldCompatible(
+    projectRoot,
+    target,
+    mode,
+    options.miniprogram === false,
+  );
   // Set in the minimal scaffold phase; the Summary links the contract doc
   // only when this run generated it.
   let readmeGenerated = false;

@@ -3,7 +3,12 @@ import { readFile } from "fs/promises";
 import { join } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
-import { resolveBuildScript, resolvePageManifest } from "../shared/index.js";
+import {
+  resolveBuildScript,
+  resolvePageManifest,
+  resolveProjectTarget,
+  type TemplateTarget,
+} from "../shared/index.js";
 
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
 
@@ -36,6 +41,37 @@ export function webScaffoldConflicts(projectRoot: string): string[] {
     }
   }
   return conflicts;
+}
+
+/**
+ * Refuse a half migration before init writes anything. Only frontend mode
+ * writes a Playwright scaffold, so a minimal-mode refresh is never blocked.
+ */
+export function assertScaffoldCompatible(
+  projectRoot: string,
+  target: TemplateTarget,
+  mode: "frontend" | "minimal",
+  explicitWeb: boolean,
+): void {
+  if (mode !== "frontend") return;
+  if (target === "miniprogram") {
+    const conflicts = webScaffoldConflicts(projectRoot);
+    if (conflicts.length > 0) {
+      throw new Error(
+        `Existing web Playwright scaffold detected (${conflicts.join(", ")}). ` +
+          "Re-running init cannot convert it in place. Move or delete these files " +
+          "(keep your tests), then run `openspec-pw init --miniprogram` again.",
+      );
+    }
+    return;
+  }
+  if (explicitWeb && resolveProjectTarget(projectRoot) === "miniprogram") {
+    throw new Error(
+      "Existing mini-program Playwright scaffold detected (tests/playwright/wxa-test.ts or wxaProject). " +
+        "`--no-miniprogram` cannot convert it in place. Move or delete the mini-program scaffold " +
+        "(keep your tests), then re-run `openspec-pw init`.",
+    );
+  }
 }
 
 export async function generateMiniProgramScaffold(projectRoot: string, testsDir: string) {
