@@ -317,7 +317,7 @@ audit **只报告、绝不删除**——测试退役永远是人工决策。存�
 
 | 步骤 | 命令 | 失败时快速修复 |
 |------|------|----------------|
-| 1. 安装 CLI | `npm install -g openspec-playwright@latest` | 检查 Node.js 版本 `node -v`（需 >= 20） |
+| 1. 安装 CLI | `npm install -g openspec-playwright@latest` | 检查 Node.js 版本 `node -v`（需 >= 22） |
 | 2. 安装 OpenSpec | `npm install -g @fission-ai/openspec@latest && openspec init` | `npm cache clean -f && npm install -g @fission-ai/openspec@latest` |
 | 3. 初始化 E2E | `openspec-pw init` | 运行 `openspec-pw doctor` 查看具体缺失项 |
 | 4. 安装浏览器 | `npx playwright install chromium` | Linux CI 镜像可能需系统依赖：`npx playwright install --with-deps chromium`（macOS 可能需先运行 `xcode-select --install`） |

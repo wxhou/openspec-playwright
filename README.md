@@ -462,7 +462,7 @@ Run through these steps in order when using the E2E workflow for the first time:
 
 | Step | Command | If it fails |
 |------|---------|-------------|
-| 1. Install CLI | `npm install -g openspec-playwright@latest` | Check Node.js version `node -v` (needs >= 20) |
+| 1. Install CLI | `npm install -g openspec-playwright@latest` | Check Node.js version `node -v` (needs >= 22) |
 | 2. Install OpenSpec | `npm install -g @fission-ai/openspec@latest && openspec init` | `npm cache clean -f && npm install -g @fission-ai/openspec@latest` |
 | 3. Initialize E2E | `openspec-pw init` | Run `openspec-pw doctor` to see what's missing |
 | 4. Install browsers | `npx playwright install chromium` | Linux CI images may need system deps: `npx playwright install --with-deps chromium` (macOS may need `xcode-select --install` first) |

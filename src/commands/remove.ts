@@ -312,7 +312,7 @@ export async function removeInProject(
         console.log(
           chalk.yellow(`  ⚠ ${rel} resolves outside the project (symlink) — skipping`),
         );
-      } else if (isPristineCopy(projectRoot, rel, templateFile, renderForTarget)) {
+      } else if (isPristineCopy(projectRoot, rel, templateFile, renderForTarget, normalizeBuildStep)) {
         rmSync(dest);
         cleanupEmptyDirs(dirname(dest), projectRoot);
         track(rel);
@@ -478,6 +478,16 @@ export async function removeInProject(
           ),
         );
       }
+    }
+
+    // 4c. Remove the mini-program contract doc — same content-owned rule.
+    const miniReadmeRel = join("tests", "playwright", "README.md");
+    if (
+      isPristineCopy(projectRoot, miniReadmeRel, "miniprogram/tests-readme.md")
+    ) {
+      rmSync(join(projectRoot, miniReadmeRel));
+      track("tests/playwright/README.md");
+      console.log(chalk.green("  ✓ Removed tests/playwright/README.md"));
     }
 
     // 5. Clean rules file markers for each detected editor
@@ -853,6 +863,15 @@ export function describePlan(projectRoot: string): string[] {
   if (isPristineCopy(projectRoot, join("tests", "README.md"), "tests-readme.md")) {
     groups.push("tests/README.md");
   }
+  if (
+    isPristineCopy(
+      projectRoot,
+      join("tests", "playwright", "README.md"),
+      "miniprogram/tests-readme.md",
+    )
+  ) {
+    groups.push("tests/playwright/README.md");
+  }
   if (hasCleanableRuleMarkers(projectRoot)) groups.push("rules markers");
   const checklistPath = join(projectRoot, LINT_GUIDELINES_RELPATH);
   if (
@@ -864,10 +883,10 @@ export function describePlan(projectRoot: string): string[] {
       groups.push("lint checklist");
     }
   }
-  if (isPristineCopy(projectRoot, GITHUB_WORKFLOW_REL, WORKFLOW_TEMPLATE, renderWorkflow)) {
+  if (isPristineCopy(projectRoot, GITHUB_WORKFLOW_REL, WORKFLOW_TEMPLATE, renderWorkflow, normalizeBuildStep)) {
     groups.push("CI workflow");
   }
-  if (isPristineCopy(projectRoot, AUTO_PIPELINE_REL, AUTO_PIPELINE_TEMPLATE, renderWorkflow)) {
+  if (isPristineCopy(projectRoot, AUTO_PIPELINE_REL, AUTO_PIPELINE_TEMPLATE, renderWorkflow, normalizeBuildStep)) {
     groups.push("auto pipeline workflow");
   }
   if (hasRuffBlock(projectRoot)) groups.push("ruff managed block");
@@ -892,12 +911,18 @@ export function describePlan(projectRoot: string): string[] {
   return groups;
 }
 
+/** Treat any build-script name in the generated build step as equivalent. */
+function normalizeBuildStep(content: string): string {
+  return content.replace(/^(\s*)- run: npm run \S+$/gm, "$1- run: npm run __BUILD__");
+}
+
 /** True when the file exists and is byte-identical (EOL-normalized) to its template. */
 function isPristineCopy(
   projectRoot: string,
   relPath: string,
   templateFile: string,
   transform?: (content: string) => string,
+  normalize?: (content: string) => string,
 ): boolean {
   const dest = join(projectRoot, relPath);
   if (!existsSync(dest) || !isPathInsideProjectRoot(projectRoot, dest)) {
@@ -920,7 +945,9 @@ function isPristineCopy(
   // Templates are small; a larger file cannot be a byte-identical copy.
   if (read.kind === "too-large") return false;
   const expected = transform ? transform(template.content) : template.content;
-  return normalizeEol(read.content) === normalizeEol(expected);
+  const actual = normalize ? normalize(read.content) : read.content;
+  const wanted = normalize ? normalize(expected) : expected;
+  return normalizeEol(actual) === normalizeEol(wanted);
 }
 
 /** Identity of one physical MCP entry — shared config files count once. */

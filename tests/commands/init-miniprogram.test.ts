@@ -264,4 +264,27 @@ describe("init refuses a half migration to the mini-program target", () => {
     ).rejects.toThrow(/BasePage\.ts/);
     expect(existsSync(join(testsDir, "wxa-test.ts"))).toBe(false);
   });
+
+  it("does not block minimal mode on a project with a web scaffold", async () => {
+    writeFileSync(
+      join(tmpDir, "package.json"),
+      JSON.stringify({ dependencies: { "@tarojs/taro": "^4.0.0" } }),
+    );
+    writeFileSync(join(tmpDir, "playwright.config.ts"), "export default {};\n");
+    const { init } = await import("../../src/commands/init.js");
+    await expect(
+      init({ tools: "none", frontend: false, mcp: false }, { isTTY: false }),
+    ).resolves.toBeUndefined();
+    expect(existsSync(join(testsDir, "wxa-test.ts"))).toBe(false);
+  });
+
+  it("refuses --no-miniprogram over an existing mini scaffold", async () => {
+    mkdirSync(testsDir, { recursive: true });
+    writeFileSync(join(testsDir, "wxa-test.ts"), "export {};\n");
+    const { init } = await import("../../src/commands/init.js");
+    await expect(
+      init({ tools: "none", miniprogram: false, mcp: false }, { isTTY: false }),
+    ).rejects.toThrow(/mini-program Playwright scaffold/);
+    expect(existsSync(join(testsDir, "auth.setup.ts"))).toBe(false);
+  });
 });

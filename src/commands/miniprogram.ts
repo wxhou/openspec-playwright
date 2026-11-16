@@ -13,19 +13,24 @@ const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
  * (the e2e target marker) while leaving the Web config and BasePage in place.
  */
 export function webScaffoldConflicts(projectRoot: string): string[] {
-  const checks: Array<[string, string]> = [
+  // Any listed marker means the file already belongs to the mini scaffold.
+  const checks: Array<[string, string[]]> = [
     ...["ts", "js", "mjs", "mts"].map(
-      (ext) => [`playwright.config.${ext}`, "wxaProject"] as [string, string],
+      (ext) => [`playwright.config.${ext}`, ["wxaProject"]] as [string, string[]],
     ),
-    [join("tests", "playwright", "seed.spec.ts"), "./wxa-test"],
-    [join("tests", "playwright", "pages", "BasePage.ts"), "miniProgram"],
+    [
+      join("tests", "playwright", "seed.spec.ts"),
+      ["./wxa-test", "@open-wxa/wxa-runner-playwright"],
+    ],
+    [join("tests", "playwright", "pages", "BasePage.ts"), ["miniProgram"]],
   ];
   const conflicts: string[] = [];
-  for (const [rel, marker] of checks) {
+  for (const [rel, markers] of checks) {
     const abs = join(projectRoot, rel);
     if (!existsSync(abs)) continue;
     try {
-      if (!readFileSync(abs, "utf-8").includes(marker)) conflicts.push(rel);
+      const content = readFileSync(abs, "utf-8");
+      if (!markers.some((marker) => content.includes(marker))) conflicts.push(rel);
     } catch {
       conflicts.push(rel);
     }

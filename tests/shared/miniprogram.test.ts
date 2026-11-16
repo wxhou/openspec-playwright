@@ -54,6 +54,38 @@ describe("mini-program resolution in a monorepo", () => {
     expect(wxa.exists).toBe(false);
   });
 
+  it("points uni-app at the build output when a build script exists", () => {
+    const pkg = join(root, "apps", "mobile");
+    writeJson(join(pkg, "package.json"), {
+      scripts: { dev: "uni -p mp-weixin", "build:mp-weixin": "uni build -p mp-weixin" },
+      dependencies: { "@dcloudio/uni-app": "^3.0.0" },
+    });
+
+    const wxa = resolveWxaProject(root);
+    expect(wxa.projectPath).toBe("apps/mobile/dist/build/mp-weixin");
+    expect(wxa.exists).toBe(false);
+  });
+
+  it("follows project.config.json miniprogramRoot for native projects", () => {
+    writeJson(join(root, "project.config.json"), { miniprogramRoot: "miniprogram/" });
+    writeJson(join(root, "miniprogram", "app.json"), {
+      entryPagePath: "pages/home/index",
+      pages: ["pages/index/index", "pages/home/index"],
+    });
+
+    const wxa = resolveWxaProject(root);
+    expect(wxa.kind).toBe("native");
+    expect(wxa.projectPath).toBe("miniprogram");
+    expect(wxa.exists).toBe(true);
+    expect(resolvePageManifest(root).homePage).toBe("pages/home/index");
+  });
+
+  it("marks an unrecognized directory without app.json as missing", () => {
+    expect(resolveWxaProject(root).exists).toBe(false);
+    writeJson(join(root, "app.json"), { pages: ["pages/index/index"] });
+    expect(resolveWxaProject(root).exists).toBe(true);
+  });
+
   it("resolves Taro outputRoot relative to the config directory", () => {
     const pkg = join(root, "apps", "mobile");
     writeJson(join(pkg, "package.json"), {

@@ -70,6 +70,21 @@ function hasDep(pkg: PackageJson | null, prefix: string): boolean {
   );
 }
 
+/** Build script name from real package scripts, or null when none matches. */
+function buildScriptFor(pkg: PackageJson | null): string | null {
+  const scripts = pkg?.scripts ?? {};
+  const names = Object.keys(scripts);
+  const preferred = hasDep(pkg, "@dcloudio/")
+    ? ["build:mp-weixin", "build:mp"]
+    : hasDep(pkg, "@tarojs/")
+      ? ["build:weapp", "build:mp-weixin"]
+      : ["build:mp-weixin", "build:weapp"];
+  for (const name of preferred) {
+    if (scripts[name]) return name;
+  }
+  return names.find((name) => name.includes("build") && /(mp-weixin|weapp)/.test(name)) ?? null;
+}
+
 function findDirWithAppJson(root: string, depth: number): string | null {
   if (depth < 0) return null;
   if (existsSync(join(root, "app.json"))) return root;
@@ -97,14 +112,35 @@ export function resolveWxaProject(projectRoot: string): WxaProjectResolution {
   const { npmRoot, pkg } = readPackage(projectRoot);
   const roots = searchRoots(projectRoot, npmRoot);
   for (const dir of roots) {
-    if (existsSync(join(dir, "project.config.json"))) {
-      return { projectPath: toPosix(projectRoot, dir), kind: "native", exists: true, source: "project.config.json" };
+    const configPath = join(dir, "project.config.json");
+    if (existsSync(configPath)) {
+      // WeChat keeps sources under miniprogramRoot when it is set; the runner
+      // needs that directory, not the repository root.
+      let source = "project.config.json";
+      let projectDir = dir;
+      try {
+        const config = JSON.parse(readFileSync(configPath, "utf-8")) as {
+          miniprogramRoot?: unknown;
+        };
+        if (typeof config.miniprogramRoot === "string" && config.miniprogramRoot.trim()) {
+          projectDir = join(dir, config.miniprogramRoot);
+          source = `project.config.json (miniprogramRoot: ${config.miniprogramRoot})`;
+        }
+      } catch {
+        // unreadable config → run from the directory that holds it
+      }
+      return {
+        projectPath: toPosix(projectRoot, projectDir),
+        kind: "native",
+        exists: existsSync(projectDir),
+        source,
+      };
     }
   }
 
   const uniOutput = firstExistingIn(roots, [
-    "dist/dev/mp-weixin",
     "dist/build/mp-weixin",
+    "dist/dev/mp-weixin",
     "dist/mp-weixin",
     "mp-weixin",
   ]);
@@ -142,16 +178,25 @@ export function resolveWxaProject(projectRoot: string): WxaProjectResolution {
   }
 
   if (hasDep(pkg, "@dcloudio/")) {
-    const defaultOutput = join(npmRoot, "dist", "dev", "mp-weixin");
+    // A production build writes dist/build/mp-weixin; a dev run writes
+    // dist/dev/mp-weixin. Point at whichever the project's scripts produce.
+    const outputRoot = buildScriptFor(pkg)
+      ? join("dist", "build", "mp-weixin")
+      : join("dist", "dev", "mp-weixin");
     return {
-      projectPath: toPosix(projectRoot, defaultOutput),
+      projectPath: toPosix(projectRoot, join(npmRoot, outputRoot)),
       kind: "uni-app",
       exists: false,
       source: "uni-app default output",
     };
   }
 
-  return { projectPath: ".", kind: "unknown", exists: true, source: "project root" };
+  return {
+    projectPath: ".",
+    kind: "unknown",
+    exists: roots.some((dir) => existsSync(join(dir, "app.json"))),
+    source: "project root",
+  };
 }
 
 function normalizePageList(value: unknown): string[] {
@@ -251,16 +296,5 @@ export function resolvePageManifest(projectRoot: string): PageManifest {
 
 /** Build script for the mini-program target, chosen from real package scripts. */
 export function resolveBuildScript(projectRoot: string): string | null {
-  const { pkg } = readPackage(projectRoot);
-  const scripts = pkg?.scripts ?? {};
-  const names = Object.keys(scripts);
-  const preferred = hasDep(pkg, "@dcloudio/")
-    ? ["build:mp-weixin", "build:mp"]
-    : hasDep(pkg, "@tarojs/")
-      ? ["build:weapp", "build:mp-weixin"]
-      : ["build:mp-weixin", "build:weapp"];
-  for (const name of preferred) {
-    if (scripts[name]) return name;
-  }
-  return names.find((name) => name.includes("build") && /(mp-weixin|weapp)/.test(name)) ?? null;
+  return buildScriptFor(readPackage(projectRoot).pkg);
 }
