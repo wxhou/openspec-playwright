@@ -73,9 +73,6 @@ import {
   type TemplateTarget,
   detectCodeGraphStatus,
   codegraphHintLines,
-  detectInstalledLanguage,
-  resolveStandardsLanguage,
-  missingEnglishSections,
   ensureGitignoreEntries,
   findUncoveredManagedPaths,
   skippableManagedPaths,
@@ -91,7 +88,7 @@ import {
   type LintConfigResult,
   type RuffTableHeader,
 } from "../shared/index.js";
-import { extractRuleBlockContent } from "../shared/drift.js";
+import { loadProjectStandards } from "./standards-source.js";
 
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
 const E2E_COMMAND_SRC = fileURLToPath(
@@ -1048,37 +1045,13 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   // 8. Install employee-grade standards (AGENTS.md + CLAUDE.md wrapper if Claude)
   if (editors.length > 0) {
     console.log(chalk.blue("\n─── Installing Employee Standards ───"));
-    const agentsPath = join(projectRoot, "AGENTS.md");
-    const installed = detectInstalledLanguage(
-      existsSync(agentsPath)
-        ? extractRuleBlockContent(readFileSync(agentsPath, "utf-8"))
-        : null,
+    const loaded = loadProjectStandards(
+      projectRoot,
+      { zh: EMPLOYEE_STANDARDS_SRC, en: EMPLOYEE_STANDARDS_EN_SRC },
+      options.lang,
     );
-    const language = resolveStandardsLanguage({ flag: options.lang, installed });
-    const standardsSrc =
-      language === "en" ? EMPLOYEE_STANDARDS_EN_SRC : EMPLOYEE_STANDARDS_SRC;
-    const standards = readEmployeeStandards(standardsSrc);
-    if (!standards) {
-      console.error(
-        chalk.red(`  ✗ Employee standards file missing: ${basename(standardsSrc)}`),
-      );
-      console.error(
-        chalk.gray("    Reinstall the CLI: npm install -g openspec-playwright@latest"),
-      );
-      process.exit(1);
-    }
-    if (language === "en") {
-      const missing = missingEnglishSections(standards);
-      if (missing.length > 0) {
-        console.error(
-          chalk.red(
-            `  ✗ English standards incomplete — missing ${missing.map((n) => `§${n}`).join(", ")}`,
-          ),
-        );
-        console.error(chalk.gray("    Reinstall the CLI or pass --lang zh"));
-        process.exit(1);
-      }
-    }
+    if (!loaded) process.exit(1);
+    const { language, content: standards } = loaded;
     // Migrate surviving legacy OPENSPEC blocks first (same ordering rule as
     // syncEmployeeStandards — migration precedes any marker judgment).
     migrateLegacyMarkers(
