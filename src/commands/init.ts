@@ -1144,9 +1144,8 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     );
   }
   // Optional: CodeGraph hints — suggest `codegraph init` when the CLI is
-  // installed but the project is not indexed, or `codegraph sync` +
-  // (when the MCP is missing) `codegraph install` to refresh an existing
-  // index. Hints only, never setup.
+  // installed but the project is not indexed, or `codegraph sync` to refresh
+  // an existing index. Hints only, never setup.
   const cg = detectCodeGraphStatus(projectRoot);
   const hints = codegraphHintLines(cg);
   if (hints.length > 0) {

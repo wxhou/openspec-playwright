@@ -1205,7 +1205,7 @@ export async function doctor(options: DoctorOptions = {}) {
     mcpMsg = `installed: ${cg.mcpInstalledAdapters.join(", ")}`;
   } else {
     mcpOk = false;
-    mcpMsg = "missing (run: codegraph install --target=auto --location=local)";
+    mcpMsg = "missing";
   }
   checks.push({
     category: "CodeGraph",

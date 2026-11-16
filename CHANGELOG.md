@@ -25,8 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `src/shared/miniprogram.ts`、`tests/shared/miniprogram.test.ts`、`templates/e2e-command.md`、`.claude/commands/opsx/e2e.md`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
 - **chore(deps): 升级 Playwright 到 1.65.1**. `@playwright/test` 与 `playwright` 同步升到 `^1.65.1`；`engines.node` 提到 `>=22`，因为 Playwright 1.65 不再测试 Node 20。已装浏览器的项目需重跑 `npx playwright install`。
   - `package.json`、`package-lock.json`、`README.md`、`README.zh-CN.md`、`docs/index.html`、`CHANGELOG.md`
-- **fix(cli): 移除 codegraph MCP 安装提示**. init / update 的摘要不再打印 `codegraph install --target=auto --location=local`；已建索引时只保留 `codegraph sync` 一行，未建索引时仍提示可选的 `codegraph init`。
-  - `src/shared/codegraph.ts`、`tests/shared/codegraph.test.ts`、`CHANGELOG.md`
+- **fix(cli): 移除 codegraph MCP 安装提示**. init / update 的摘要与 doctor 的 `codegraph-mcp` 检查不再打印 `codegraph install --target=auto --location=local`；已建索引时只保留 `codegraph sync` 一行，未建索引时仍提示可选的 `codegraph init`。
+  - `src/shared/codegraph.ts`、`src/commands/{doctor,init,update}.ts`、`tests/shared/codegraph.test.ts`、`tests/commands/doctor.test.ts`、`CHANGELOG.md`
 
 ## [0.3.119] - 2026-11-15
 - **fix(e2e): 修正认证检查与升级提示**. API/UI 的 `E2E_AUTH_CHECK_PATH` 检查禁用重定向，UI setup 也执行该检查；README 补旧 `auth.setup.ts`/workflow 的升级提示；skill 选择器表与 `docs/llms.txt` 的 explore 描述对齐。
