@@ -61,7 +61,7 @@ Never switch tools to reuse state (see Session state).
 - **Navigation**: `await miniProgram.open('<page>?<query>')`; never `page.goto` or a URL.
 - **Rebuild**: after changing mini-program source, run the build script again before rerunning tests; the runner serves the build output, not the source.
 - **Selectors**: resolve inside `miniProgram.current` (the current page frame); the priority order is unchanged.
-- **Assertions**: `toHavePath`, `toHavePageData`, `waitForRequest`. Runtime errors are checked automatically (`wxaCheckErrors`); turning the check off requires a written reason.
+- **Assertions**: `toHavePath`, `toHavePageData`, `waitForRequest`. `toHavePageData` sees the compiled page data — uni-app/Taro rename the keys (a `title` binding can appear as `b`), so read the real shape from `pageData()` first and assert only stable keys; prefer `toHavePath` plus visible-text assertions. Runtime errors are checked automatically (`wxaCheckErrors`); turning the check off requires a written reason.
 - **Exploration (Step 4)**: start `npx wxa-runner dev <wxaProject> --setup tests/playwright/wxa.setup.ts --open`, then open the URL the runner prints with `?path=<page>` (the runner picks the next free port when 3000 is taken). If the browser MCP cannot read the page frame, drive a throwaway Playwright script under `tmp/`. Do not call `openspec-pw explore`.
 - **Output shape**: record findings with the packaged `templates/miniprogram/app-exploration.md`.
 - **Route source (all mode)**: read `app.json` / `pages.json` / Taro `app.config` → `entryPagePath`, `pages`, `subPackages`; never sitemap.xml. If a spec names a page that is absent from the manifest, stop and report the missing page; never guess a path.

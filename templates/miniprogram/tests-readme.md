@@ -26,7 +26,7 @@ npx playwright install chrome
 
 ## 断言
 
-- 页面跳转用 `toHavePath`，页面 `data` 用 `toHavePageData`，请求用 `waitForRequest`。
+- 页面跳转用 `toHavePath`，页面 `data` 用 `toHavePageData`，请求用 `waitForRequest`。编译框架（uni-app / Taro）会重命名 data 键，先读 `pageData()` 确认真实结构，只断言稳定键。
 - 用例结束时 fixture 默认检查运行时错误；关闭 `wxaCheckErrors` 必须写明理由。
 - 截图只作辅助证据，不单独判定通过。
 

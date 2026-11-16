@@ -321,6 +321,24 @@ describe("removeInProject() CI workflow", () => {
     expect(existsSync(join(tmp, "tests", "playwright", "README.md"))).toBe(false);
   });
 
+  it("keeps a modified mini-program README with a notice", async () => {
+    mkdirSync(join(tmp, "tests", "playwright"), { recursive: true });
+    writeFileSync(join(tmp, "tests", "playwright", "wxa-test.ts"), "export {};");
+    writeFileSync(join(tmp, "tests", "playwright", "README.md"), "# my notes\n");
+
+    const lines: string[] = [];
+    const spy = vi.spyOn(console, "log");
+    spy.mockImplementation((msg?: unknown) => lines.push(String(msg)));
+    try {
+      await removeInProject(tmp);
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(existsSync(join(tmp, "tests", "playwright", "README.md"))).toBe(true);
+    expect(lines.join("\n")).toContain("tests/playwright/README.md differs");
+  });
+
   it("lists the mini-program README in the dry-run plan", () => {
     mkdirSync(join(tmp, "tests", "playwright"), { recursive: true });
     writeFileSync(join(tmp, "tests", "playwright", "wxa-test.ts"), "export {};");

@@ -29,7 +29,7 @@ Generated from: `openspec/changes/<change-name>/specs/`
 ## Assertions
 
 - Page path: `await expect(miniProgram).toHavePath('<page>')`
-- Page data: `await expect(miniProgram).toHavePageData({ ... })`
+- Page data: `await expect(miniProgram).toHavePageData({ ... })` — compiled frameworks rename data keys, so read `pageData()` first and assert only stable keys
 - Request: `await miniProgram.waitForRequest('<METHOD pattern>')`
 - Runtime errors: checked automatically at the end of each test.
 

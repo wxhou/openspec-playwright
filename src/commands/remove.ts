@@ -486,6 +486,12 @@ export async function removeInProject(
       rmSync(join(projectRoot, miniReadmeRel));
       track("tests/playwright/README.md");
       console.log(chalk.green("  ✓ Removed tests/playwright/README.md"));
+    } else if (existsSync(join(projectRoot, miniReadmeRel))) {
+      console.log(
+        chalk.yellow(
+          "  ⚠ tests/playwright/README.md differs from the bundled template — kept (user-modified or user-owned)",
+        ),
+      );
     }
 
     // 5. Clean rules file markers for each detected editor

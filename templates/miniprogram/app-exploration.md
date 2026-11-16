@@ -41,7 +41,7 @@ Read the page DOM from the runner's active iframe (`iframe[data-current]` →
 
 ### Dynamic Content Notes
 
-- <observed dynamic values; prefer `toHavePageData` with the stable subset>
+- <observed dynamic values; read them with `pageData()` first — compiled frameworks rename the keys — then prefer `toHavePageData` with the stable subset>
 
 ## Exploration Failures
 
