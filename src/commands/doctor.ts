@@ -25,8 +25,9 @@ import {
   resolveProjectTarget,
   resolveWxaProject,
   resolveBuildCommand,
+  detectInstalledLanguage,
 } from "../shared/index.js";
-import { bundledStandardsPath, compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
+import { bundledStandardsPath, compareBlock, OPENSPEC_START, hasLegacyTerritoryStart, extractRuleBlockContent } from "../shared/drift.js";
 import { hasRuleFileMarkers, wrapperRulesFile, wrapperHasMarkers } from "./editors/project-rules.js";
 
 /** Editors whose project rules file is a thin wrapper (not AGENTS.md). */
@@ -776,11 +777,6 @@ export async function doctor(options: DoctorOptions = {}) {
       message: "not initialized (run openspec-pw init first)",
     });
   } else {
-    const standardsPath = bundledStandardsPath();
-    const standardsExpected = existsSync(standardsPath)
-      ? readFileSync(standardsPath, "utf-8")
-      : "";
-
     // AGENTS.md — 标记即领土: only the tool-owned block is maintained
     // (update repairs it when present). A wiped block IS a failure when pw
     // command artifacts exist OR another rules file carries our marker
@@ -805,6 +801,15 @@ export async function doctor(options: DoctorOptions = {}) {
       });
     } else {
       const fileContent = readFileSync(agentsPath, "utf-8");
+      // Compare against the SSOT in the language the project actually has —
+      // otherwise an English block would always read as drift from the
+      // Chinese template. Legacy blocks without either anchor stay Chinese.
+      const standardsPath = bundledStandardsPath(
+        detectInstalledLanguage(extractRuleBlockContent(fileContent)) ?? "zh",
+      );
+      const standardsExpected = existsSync(standardsPath)
+        ? readFileSync(standardsPath, "utf-8")
+        : "";
       const noMarkers = !fileContent.includes(OPENSPEC_START);
       const missing = noMarkers && !hasLegacyTerritoryStart(fileContent);
       const drift = noMarkers

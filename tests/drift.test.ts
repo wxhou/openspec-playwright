@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   compareBlock,
   extractOpenSpecBlock,
+  extractRuleBlockContent,
   OPENSPEC_START,
   OPENSPEC_END,
   bundledStandardsPath,
@@ -71,10 +72,32 @@ describe("compareBlock", () => {
   });
 });
 
+describe("extractRuleBlockContent", () => {
+  it("returns only the tool-owned block, not user prose around it", () => {
+    const file = `# user prose\nThis codebase is yours\n${MARKER("这份代码库是你的")}\n`;
+    expect(extractRuleBlockContent(file)).toContain("这份代码库是你的");
+    expect(extractRuleBlockContent(file)).not.toContain("This codebase is yours");
+  });
+
+  it("reads a legacy OPENSPEC block before marker migration", () => {
+    const file = `preamble\n<!-- OPENSPEC:START -->\n这份代码库是你的\n<!-- OPENSPEC:END -->\n`;
+    expect(extractRuleBlockContent(file)).toContain("这份代码库是你的");
+  });
+
+  it("returns null when the file has no complete marker pair", () => {
+    expect(extractRuleBlockContent("# no markers\n")).toBeNull();
+    expect(extractRuleBlockContent(`${OPENSPEC_START}\ntruncated\n`)).toBeNull();
+  });
+});
+
 describe("bundled template path resolution", () => {
   it("resolves employee-standards.md to the package root", () => {
     const p = bundledStandardsPath();
     expect(p.endsWith("employee-standards.md")).toBe(true);
+  });
+
+  it("resolves the English standards file when asked", () => {
+    expect(bundledStandardsPath("en").endsWith("employee-standards.en.md")).toBe(true);
   });
 
   it("resolves templates relative to the package root", () => {

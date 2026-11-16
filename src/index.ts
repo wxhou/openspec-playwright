@@ -9,6 +9,7 @@ import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { Command } from "commander";
 import chalk from "chalk";
+import { validateLanguageFlag } from "./shared/standards-language.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -74,6 +75,10 @@ program
     "--auto-pipeline",
     "generate .github/workflows/openspec-auto.yml (gate on PRs, headless agent on label/dispatch)",
   )
+  .option(
+    "--lang <lang>",
+    'employee standards language: "zh" or "en" (default: system locale)',
+  )
   .action(async (opts) => {
     // Raw-argv check, before any import or write: commander's .conflicts()
     // cannot tell --miniprogram from --no-miniprogram (same attribute) and
@@ -87,6 +92,11 @@ program
           "\n  ✗ Conflicting flags: use either --miniprogram or --no-miniprogram, and do not combine --miniprogram with --no-frontend.\n",
         ),
       );
+      process.exit(2);
+    }
+    const langError = validateLanguageFlag(opts.lang);
+    if (langError) {
+      console.error(chalk.red(`\n  ✗ ${langError}\n`));
       process.exit(2);
     }
     const { init } = await import("./commands/init.js");
@@ -144,7 +154,16 @@ program
   .option("--no-cli", "skip CLI update")
   .option("--no-skill", "skip command update")
   .option("--no-mcp", "skip Playwright MCP install")
+  .option(
+    "--lang <lang>",
+    'employee standards language: "zh" or "en" (default: keep installed, else system locale)',
+  )
   .action(async (opts) => {
+    const langError = validateLanguageFlag(opts.lang);
+    if (langError) {
+      console.error(chalk.red(`\n  ✗ ${langError}\n`));
+      process.exit(2);
+    }
     const { update } = await import("./commands/update.js");
     await update(opts);
     // No version check needed after update — user just updated

@@ -36,6 +36,9 @@ import {
   resolveProjectTarget,
   detectCodeGraphStatus,
   codegraphHintLines,
+  detectInstalledLanguage,
+  resolveStandardsLanguage,
+  missingEnglishSections,
   findUncoveredManagedPaths,
   managedBlockAdvisoryHint,
   ensureGitignoreEntries,
@@ -44,7 +47,7 @@ import {
   LINT_GUIDELINES_RELPATH,
 } from "../shared/index.js";
 import { execFileAsync, execFileSync } from "../shared/exec.js";
-import { compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
+import { compareBlock, OPENSPEC_START, hasLegacyTerritoryStart, extractRuleBlockContent } from "../shared/drift.js";
 import { pipelineGitignoreOmit } from "./pipeline.js";
 import { wrapperHasMarkers, hasRuleFileMarkers } from "./editors/project-rules.js";
 import type { EditorAdapter } from "./editors.js";
@@ -59,6 +62,8 @@ export interface UpdateOptions {
   cli?: boolean;
   skill?: boolean;
   mcp?: boolean;
+  /** Employee standards language (`--lang zh|en`); invalid values are rejected by the CLI. */
+  lang?: string;
 }
 
 export async function update(options: UpdateOptions) {
@@ -243,6 +248,7 @@ export async function update(options: UpdateOptions) {
         hasCommandArtifacts(projectRoot, claudeAdapter) || wrapperHasMarkers(claudeAdapter, projectRoot),
         authorized.length > 0 || hasRuleFileMarkers(projectRoot),
         hasCommandArtifacts(projectRoot, codebuddyAdapter) || wrapperHasMarkers(codebuddyAdapter, projectRoot),
+        options.lang,
       );
 
       rmSync(tmpDir, { recursive: true, force: true });
@@ -291,6 +297,7 @@ export async function update(options: UpdateOptions) {
         hasCommandArtifacts(projectRoot, claudeAdapter) || wrapperHasMarkers(claudeAdapter, projectRoot),
         getAllAdapters().some((a) => hasCommandArtifacts(projectRoot, a)) || hasRuleFileMarkers(projectRoot),
         hasCommandArtifacts(projectRoot, codebuddyAdapter) || wrapperHasMarkers(codebuddyAdapter, projectRoot),
+        options.lang,
       );
       rmSync(tmpDir, { recursive: true, force: true });
     } catch (err) {
@@ -608,6 +615,7 @@ export function syncEmployeeStandards(
   claudeAuthorized: boolean,
   hasPwArtifacts: boolean,
   codebuddyAuthorized = false,
+  lang?: string,
 ): void {
   // Update employee-grade standards in project rules files (AGENTS.md +
   // wrapper files CLAUDE.md / CODEBUDDY.md). Drift-aware: only rewrite a
@@ -618,9 +626,52 @@ export function syncEmployeeStandards(
   // markers is NOT created/appended here (run `openspec-pw init` to
   // install). Wrapper files are gated on their editor's command-artifact
   // authorization, not their own markers.
-  const standardsSrc = join(tmpDir, "employee-standards.md");
-  if (!existsSync(standardsSrc)) return;
+  const agentsPath = join(projectRoot, "AGENTS.md");
+  const installed = detectInstalledLanguage(
+    existsSync(agentsPath)
+      ? extractRuleBlockContent(readFileSync(agentsPath, "utf-8"))
+      : null,
+  );
+  const language = resolveStandardsLanguage({ flag: lang, installed });
+  const standardsSrc = join(
+    tmpDir,
+    language === "en" ? "employee-standards.en.md" : "employee-standards.md",
+  );
+  if (!existsSync(standardsSrc)) {
+    console.error(
+      chalk.red(`  ✗ Employee standards file missing: ${basename(standardsSrc)}`),
+    );
+    console.error(chalk.gray("    Reinstall the CLI or pass --lang zh|en"));
+    process.exitCode = 1;
+    return;
+  }
   const standards = readFileSync(standardsSrc, "utf-8");
+  if (language === "en") {
+    const missing = missingEnglishSections(standards);
+    if (missing.length > 0) {
+      console.error(
+        chalk.red(
+          `  ✗ English standards incomplete — missing ${missing.map((n) => `§${n}`).join(", ")}`,
+        ),
+      );
+      console.error(chalk.gray("    Reinstall the CLI or pass --lang zh"));
+      process.exitCode = 1;
+      return;
+    }
+  }
+  if (lang && !installed) {
+    console.log(
+      chalk.gray(
+        '  - --lang has no effect without an installed standards block — run "openspec-pw init"',
+      ),
+    );
+  } else if (installed && installed !== language) {
+    console.log(
+      chalk.gray(
+        `  ✓ Employee standards switched to ${language === "en" ? "English" : "Chinese"}`,
+      ),
+    );
+  }
 
   // Migrate surviving legacy OPENSPEC blocks FIRST — every marker judgment
   // below reads the migrated file. (Ordering is load-bearing: a legacy
@@ -628,17 +679,22 @@ export function syncEmployeeStandards(
   // bare-import check before migration fixes it.)
   migrateLegacyMarkers(projectRoot, hasPwArtifacts, claudeAuthorized, codebuddyAuthorized);
 
-  const agentsPath = join(projectRoot, "AGENTS.md");
+  // Re-read after migration: the marker judgment below must see the migrated
+  // markers. Language detection above only needed the content anchors.
+  const agentsContent = existsSync(agentsPath)
+    ? readFileSync(agentsPath, "utf-8")
+    : null;
+
   let agentsStale = false;
   let agentsInTerritory = false;
-  if (!existsSync(agentsPath)) {
+  if (agentsContent === null) {
     console.log(
       chalk.gray(
         '  - AGENTS.md not found — run "openspec-pw init" to install employee standards',
       ),
     );
   } else {
-    const fileContent = readFileSync(agentsPath, "utf-8");
+    const fileContent = agentsContent;
     if (!fileContent.includes(OPENSPEC_START)) {
       if (hasPwArtifacts && !hasLegacyTerritoryStart(fileContent)) {
         // Territorial block vanished (e.g. wiped by the official openspec

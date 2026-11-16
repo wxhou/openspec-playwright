@@ -84,15 +84,39 @@ export function compareBlock(
   };
 }
 
+/**
+ * Inner text of the tool-owned rules block, or `null` when the file has no
+ * complete marker pair. Accepts the legacy OPENSPEC markers too: `update`
+ * detects the installed language before migrating them.
+ */
+export function extractRuleBlockContent(content: string): string | null {
+  const range = extractOpenSpecBlock(content);
+  if (range) {
+    return content.slice(
+      range.startIdx + OPENSPEC_START.length,
+      range.endIdx - OPENSPEC_END.length,
+    );
+  }
+  const start = content.indexOf(LEGACY_OPENSPEC_START);
+  const end = content.indexOf(LEGACY_OPENSPEC_END);
+  if (start === -1 || end === -1 || end < start) return null;
+  return content.slice(start + LEGACY_OPENSPEC_START.length, end);
+}
+
 // ─── Bundled-template path resolution ─────────────────────────────────────
 // This module compiles to dist/shared/drift.js, so `../../` from here resolves
 // to the installed package root — same pattern init.ts uses for templates.
 
 const PKG_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
-/** Absolute path to the bundled employee-standards.md inside this package. */
-export function bundledStandardsPath(): string {
-  return join(PKG_ROOT, "employee-standards.md");
+/** Absolute path to the bundled employee-standards file for the given language. */
+export function bundledStandardsPath(
+  lang: "zh" | "en" = "zh",
+): string {
+  return join(
+    PKG_ROOT,
+    lang === "en" ? "employee-standards.en.md" : "employee-standards.md",
+  );
 }
 
 /**

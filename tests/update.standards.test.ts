@@ -61,6 +61,9 @@ const installOpenSpecBlockMock = vi.mocked(installOpenSpecBlock);
 const installClaudeWrapperMock = vi.mocked(installClaudeWrapper);
 
 const STANDARDS = "employee-grade standards body v1";
+const EN_STANDARDS = ["0", "1", "2", "3", "4", "5", "6", "7"]
+  .map((n) => `## ${n}. Section ${n}`)
+  .join("\n\n");
 
 describe("update() early return", () => {
   const root = "/tmp/fake-update-project";
@@ -104,10 +107,17 @@ describe("syncEmployeeStandards", () => {
   let existingPaths: Set<string>;
   let contentsByPath: Map<string, string>;
   let symlinks: Map<string, boolean>;
+  const savedEnv = { ...process.env };
 
   beforeEach(() => {
     vi.clearAllMocks();
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    // Pin the system locale so a machine without LANG cannot flip the default
+    // standards language and make these cases machine-dependent.
+    for (const key of ["LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"]) {
+      delete process.env[key];
+    }
+    process.env.LANG = "zh_CN.UTF-8";
 
     existingPaths = new Set([standardsSrc]);
     contentsByPath = new Map([[standardsSrc, STANDARDS]]);
@@ -126,6 +136,7 @@ describe("syncEmployeeStandards", () => {
 
   afterEach(() => {
     logSpy.mockRestore();
+    process.env = { ...savedEnv };
   });
 
   function logText(): string {
@@ -350,5 +361,94 @@ describe("syncEmployeeStandards", () => {
     // claude authorized + wrapper missing → installed
     syncEmployeeStandards(tmpDir, root, true, true);
     expect(installClaudeWrapperMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the installed Chinese standards when no --lang is passed", () => {
+    const enSrc = join(tmpDir, "employee-standards.en.md");
+    existingPaths.add(enSrc);
+    contentsByPath.set(enSrc, EN_STANDARDS);
+    existingPaths.add(agentsPath);
+    contentsByPath.set(
+      agentsPath,
+      `${OPENSPEC_START}\n中文正文\n这份代码库是你的\n${OPENSPEC_END}`,
+    );
+
+    syncEmployeeStandards(tmpDir, root, false, true);
+
+    expect(installOpenSpecBlockMock).toHaveBeenCalledWith(
+      root,
+      STANDARDS,
+      expect.anything(),
+    );
+  });
+
+  it("switches an installed Chinese block to English when --lang en is passed", () => {
+    const enSrc = join(tmpDir, "employee-standards.en.md");
+    existingPaths.add(enSrc);
+    contentsByPath.set(enSrc, EN_STANDARDS);
+    existingPaths.add(agentsPath);
+    contentsByPath.set(
+      agentsPath,
+      `${OPENSPEC_START}\n中文正文\n这份代码库是你的\n${OPENSPEC_END}`,
+    );
+
+    syncEmployeeStandards(tmpDir, root, false, true, false, "en");
+
+    expect(logText()).toContain("switched to English");
+    expect(installOpenSpecBlockMock).toHaveBeenCalledWith(
+      root,
+      EN_STANDARDS,
+      expect.anything(),
+    );
+  });
+
+  it("reports --lang as ineffective when no standards block is installed", () => {
+    const enSrc = join(tmpDir, "employee-standards.en.md");
+    existingPaths.add(enSrc);
+    contentsByPath.set(enSrc, EN_STANDARDS);
+
+    syncEmployeeStandards(tmpDir, root, false, true, false, "en");
+
+    expect(logText()).toContain("--lang has no effect");
+    expect(installOpenSpecBlockMock).not.toHaveBeenCalled();
+  });
+
+  it("fails visibly when the requested language file is missing", () => {
+    const previousExitCode = process.exitCode;
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      syncEmployeeStandards(tmpDir, root, false, true, false, "en");
+
+      const errorText = errorSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+      expect(errorText).toContain("employee-standards.en.md");
+      expect(process.exitCode).toBe(1);
+      expect(installOpenSpecBlockMock).not.toHaveBeenCalled();
+    } finally {
+      process.exitCode = previousExitCode;
+      errorSpy.mockRestore();
+    }
+  });
+
+  it("fails visibly when the English SSOT is missing a required section", () => {
+    const previousExitCode = process.exitCode;
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const enSrc = join(tmpDir, "employee-standards.en.md");
+      existingPaths.add(enSrc);
+      contentsByPath.set(
+        enSrc,
+        EN_STANDARDS.replace("## 5. Section 5\n\n", ""),
+      );
+
+      syncEmployeeStandards(tmpDir, root, false, true, false, "en");
+
+      const errorText = errorSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+      expect(errorText).toContain("missing §5");
+      expect(process.exitCode).toBe(1);
+      expect(installOpenSpecBlockMock).not.toHaveBeenCalled();
+    } finally {
+      process.exitCode = previousExitCode;
+      errorSpy.mockRestore();
+    }
   });
 });

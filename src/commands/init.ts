@@ -73,6 +73,9 @@ import {
   type TemplateTarget,
   detectCodeGraphStatus,
   codegraphHintLines,
+  detectInstalledLanguage,
+  resolveStandardsLanguage,
+  missingEnglishSections,
   ensureGitignoreEntries,
   findUncoveredManagedPaths,
   skippableManagedPaths,
@@ -88,6 +91,7 @@ import {
   type LintConfigResult,
   type RuffTableHeader,
 } from "../shared/index.js";
+import { extractRuleBlockContent } from "../shared/drift.js";
 
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
 const E2E_COMMAND_SRC = fileURLToPath(
@@ -95,6 +99,9 @@ const E2E_COMMAND_SRC = fileURLToPath(
 );
 const EMPLOYEE_STANDARDS_SRC = fileURLToPath(
   new URL("../../employee-standards.md", import.meta.url),
+);
+const EMPLOYEE_STANDARDS_EN_SRC = fileURLToPath(
+  new URL("../../employee-standards.en.md", import.meta.url),
 );
 const TESTS_README_SRC = fileURLToPath(
   new URL("../../templates/tests-readme.md", import.meta.url),
@@ -130,6 +137,8 @@ export interface InitOptions {
   hook?: boolean | string;
   /** Generate `.github/workflows/openspec-auto.yml` (`--auto-pipeline`). */
   autoPipeline?: boolean;
+  /** Employee standards language (`--lang zh|en`); invalid values are rejected by the CLI. */
+  lang?: string;
 }
 
 export interface InitDeps {
@@ -1039,18 +1048,51 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   // 8. Install employee-grade standards (AGENTS.md + CLAUDE.md wrapper if Claude)
   if (editors.length > 0) {
     console.log(chalk.blue("\n─── Installing Employee Standards ───"));
-    const standards = readEmployeeStandards(EMPLOYEE_STANDARDS_SRC);
-    if (standards) {
-      // Migrate surviving legacy OPENSPEC blocks first (same ordering rule as
-      // syncEmployeeStandards — migration precedes any marker judgment).
-      migrateLegacyMarkers(
-        projectRoot,
-        editors.length > 0,
-        editors.some((a) => a.id === "claude"),
-        editors.some((a) => a.id === "codebuddy"),
+    const agentsPath = join(projectRoot, "AGENTS.md");
+    const installed = detectInstalledLanguage(
+      existsSync(agentsPath)
+        ? extractRuleBlockContent(readFileSync(agentsPath, "utf-8"))
+        : null,
+    );
+    const language = resolveStandardsLanguage({ flag: options.lang, installed });
+    const standardsSrc =
+      language === "en" ? EMPLOYEE_STANDARDS_EN_SRC : EMPLOYEE_STANDARDS_SRC;
+    const standards = readEmployeeStandards(standardsSrc);
+    if (!standards) {
+      console.error(
+        chalk.red(`  ✗ Employee standards file missing: ${basename(standardsSrc)}`),
       );
-      installProjectRules(projectRoot, standards, editors);
+      console.error(
+        chalk.gray("    Reinstall the CLI: npm install -g openspec-playwright@latest"),
+      );
+      process.exit(1);
     }
+    if (language === "en") {
+      const missing = missingEnglishSections(standards);
+      if (missing.length > 0) {
+        console.error(
+          chalk.red(
+            `  ✗ English standards incomplete — missing ${missing.map((n) => `§${n}`).join(", ")}`,
+          ),
+        );
+        console.error(chalk.gray("    Reinstall the CLI or pass --lang zh"));
+        process.exit(1);
+      }
+    }
+    // Migrate surviving legacy OPENSPEC blocks first (same ordering rule as
+    // syncEmployeeStandards — migration precedes any marker judgment).
+    migrateLegacyMarkers(
+      projectRoot,
+      editors.length > 0,
+      editors.some((a) => a.id === "claude"),
+      editors.some((a) => a.id === "codebuddy"),
+    );
+    installProjectRules(projectRoot, standards, editors);
+    console.log(
+      chalk.gray(
+        `  ✓ Employee standards installed in ${language === "en" ? "English" : "Chinese"} — switch with --lang ${language === "en" ? "zh" : "en"}`,
+      ),
+    );
   }
 
   // 8b. Claude Code Stop hook (explicit opt-in; never installed by default)

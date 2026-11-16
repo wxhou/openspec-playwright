@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 const standards = readFileSync(join(root, "employee-standards.md"), "utf-8");
+const standardsEn = readFileSync(join(root, "employee-standards.en.md"), "utf-8");
 const scriptJs = readFileSync(join(root, "docs", "script.js"), "utf-8");
 
 // Extract the CLAUDE_MD_ZH / CLAUDE_MD_EN template bodies from script.js.
@@ -207,6 +208,8 @@ const EN_ANCHORS: [string, string][] = [
   ["§7 unbounded reads", "Never read unbounded data into memory"],
   ["§7 unbounded concurrency", "Never fan out unbounded concurrency"],
   ["§7 external call timeout", "Never make external calls without a timeout"],
+  ["§4 data fabrication ban", "Never fabricate data simulating real entities"],
+  ["§5 temp file management", "Temp File Management"],
   ["§0 experience-distillation carrier", "carrier the tooling does not own"],
 ];
 
@@ -294,6 +297,17 @@ describe("docs/script.js embedded standards stay in sync", () => {
     // The condensed ZH copy carries all major sections as headings too.
     const zhHeadings = (zh.match(/^## /gm) ?? []).length;
     expect(zhHeadings).toBeGreaterThanOrEqual(sectionCount - 1);
+  });
+
+  it("English SSOT covers sections 0..7 and omits the Chinese-only section 8", () => {
+    const enSections = [...standardsEn.matchAll(/^## (\d+)\./gm)].map((m) => m[1]);
+    expect(enSections).toEqual(["0", "1", "2", "3", "4", "5", "6", "7"]);
+    expect(standards).toContain("## 8.");
+  });
+
+  it("each SSOT carries its language-detection anchor", () => {
+    expect(standards).toContain("这份代码库是你的");
+    expect(standardsEn).toContain("This codebase is yours");
   });
 
   // Landing-page rendering contracts in script.js (beyond the embed text):
