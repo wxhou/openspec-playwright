@@ -209,6 +209,27 @@ describe("mini-program CI generation", () => {
     const bundled = readFileSync(join(ROOT, "templates", "github-workflow.yml"), "utf-8");
     expect(generated).toBe(bundled);
   });
+
+  it("does not ask a native project to build", async () => {
+    writeFileSync(join(tmpDir, "package.json"), JSON.stringify({ private: true }));
+    writeFileSync(join(tmpDir, "app.json"), JSON.stringify({ pages: ["pages/index/index"] }));
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((line: unknown) => {
+      logs.push(String(line));
+    });
+    try {
+      const { generateGithubWorkflow } = await import("../../src/commands/init.js");
+      await generateGithubWorkflow(tmpDir, "miniprogram");
+    } finally {
+      spy.mockRestore();
+    }
+    const content = readFileSync(
+      join(tmpDir, ".github", "workflows", "openspec-pw.yml"),
+      "utf-8",
+    );
+    expect(content).not.toContain("npm run");
+    expect(logs.join("\n")).toContain("no build step needed");
+  });
 });
 
 describe("init summary for the mini-program target", () => {
@@ -244,6 +265,22 @@ describe("init summary for the mini-program target", () => {
     expect(output).not.toContain("Customize tests/playwright/credentials.yaml");
     expect(output).not.toContain("export E2E_USERNAME");
     expect(output).not.toContain("npx playwright test --project=setup");
+  });
+
+  it("does not ask a native project to build the output", async () => {
+    const logs: string[] = [];
+    const logSpy = vi.spyOn(console, "log").mockImplementation((line: unknown) => {
+      logs.push(String(line));
+    });
+    try {
+      const { init } = await import("../../src/commands/init.js");
+      await init({ tools: "none", miniprogram: true, mcp: false }, { isTTY: false });
+    } finally {
+      logSpy.mockRestore();
+    }
+    const output = logs.join("\n");
+    expect(output).toContain("No build step needed");
+    expect(output).not.toContain("Build the mini program output");
   });
 });
 

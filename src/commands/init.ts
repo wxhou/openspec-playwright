@@ -14,9 +14,11 @@ import { execFileSync, hasCommand } from "../shared/exec.js";
 import { installStopHook, isHookTier, uninstallStopHook } from "./hooks.js";
 import {
   assertScaffoldCompatible,
+  generateMiniPlaywrightConfig,
   generateMiniProgramScaffold,
   printMiniConfigHint,
   printMiniProgramNextSteps,
+  printMiniWorkflowHint,
 } from "./miniprogram.js";
 import {
   BRANCH_PROTECTION_HINT,
@@ -66,7 +68,6 @@ import {
   detectMiniProgramSignal,
   explainFrontendSignal,
   resolveTemplateTarget,
-  resolveWxaProject,
   resolveBuildCommand,
   renderWorkflowTemplate,
   type TemplateTarget,
@@ -1405,13 +1406,7 @@ export async function generateGithubWorkflow(
       chalk.green("  ✓ Generated: .github/workflows/openspec-pw.yml"),
     );
     if (target === "miniprogram") {
-      console.log(
-        chalk.gray(
-          buildCommand
-            ? `  Mini-program target: workflow installs Google Chrome and runs \`${buildCommand}\` before tests.`
-            : "  Mini-program target: workflow installs Google Chrome; no build script found — add the build step manually before tests.",
-        ),
-      );
+      printMiniWorkflowHint(projectRoot, buildCommand);
     } else {
       console.log(
         chalk.gray("  Set E2E_USERNAME, E2E_PASSWORD, BASE_URL secrets in repo settings."),
@@ -1441,28 +1436,10 @@ export async function generatePlaywrightConfig(
   }
 
   if (existsSync(configSrc)) {
-    let content = readFileSync(configSrc, "utf-8");
     if (isMini) {
-      const wxa = resolveWxaProject(projectRoot);
-      content = content.replace("__WXA_PROJECT__", wxa.projectPath);
-      writeFileSync(configDest, content);
-      console.log(chalk.green("  ✓ Generated: playwright.config.ts"));
-      console.log(chalk.gray(`  wxaProject: ${wxa.projectPath} (${wxa.source})`));
-      if (!wxa.exists) {
-        const build = resolveBuildCommand(projectRoot);
-        console.log(
-          chalk.yellow(
-            `  ⚠ Mini-program output not found — build first${build ? `: ${build}` : ""}`,
-          ),
-        );
-      }
-      console.log(
-        chalk.gray(
-          "  (Each worker starts its own wxa-runner server; no webServer block is needed)",
-        ),
-      );
+      generateMiniPlaywrightConfig(projectRoot, configSrc, configDest);
     } else {
-      writeFileSync(configDest, content);
+      writeFileSync(configDest, readFileSync(configSrc, "utf-8"));
       console.log(chalk.green("  ✓ Generated: playwright.config.ts"));
       console.log(chalk.gray("  Customize webServer command and port for your app."));
     }

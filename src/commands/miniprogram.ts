@@ -8,6 +8,7 @@ import {
   resolveBuildCommand,
   resolvePageManifest,
   resolveProjectTarget,
+  resolveWxaProject,
   type TemplateTarget,
 } from "../shared/index.js";
 
@@ -149,6 +150,55 @@ export async function generateMiniProgramScaffold(projectRoot: string, testsDir:
   );
 }
 
+/** Explains what the generated CI does about building, for the mini target. */
+export function printMiniWorkflowHint(projectRoot: string, buildCommand: string | null) {
+  if (buildCommand) {
+    console.log(
+      chalk.gray(
+        `  Mini-program target: workflow installs Google Chrome and runs \`${buildCommand}\` before tests.`,
+      ),
+    );
+    return;
+  }
+  const output = resolveWxaProject(projectRoot);
+  console.log(
+    chalk.gray(
+      output.exists
+        ? "  Mini-program target: workflow installs Google Chrome; no build script found, and the resolved output already exists — no build step needed."
+        : "  Mini-program target: workflow installs Google Chrome; no build script found — add the build step manually before tests.",
+    ),
+  );
+}
+
+/** Writes the mini variant of `playwright.config.ts` with its resolved project path. */
+export function generateMiniPlaywrightConfig(
+  projectRoot: string,
+  configSrc: string,
+  configDest: string,
+) {
+  const wxa = resolveWxaProject(projectRoot);
+  const content = readFileSync(configSrc, "utf-8").replace(
+    "__WXA_PROJECT__",
+    wxa.projectPath,
+  );
+  writeFileSync(configDest, content);
+  console.log(chalk.green("  ✓ Generated: playwright.config.ts"));
+  console.log(chalk.gray(`  wxaProject: ${wxa.projectPath} (${wxa.source})`));
+  if (!wxa.exists) {
+    const build = resolveBuildCommand(projectRoot);
+    console.log(
+      chalk.yellow(
+        `  ⚠ Mini-program output not found — build first${build ? `: ${build}` : ""}`,
+      ),
+    );
+  }
+  console.log(
+    chalk.gray(
+      "  (Each worker starts its own wxa-runner server; no webServer block is needed)",
+    ),
+  );
+}
+
 export function printMiniProgramNextSteps(projectRoot: string) {
   console.log(
     chalk.gray(
@@ -159,11 +209,14 @@ export function printMiniProgramNextSteps(projectRoot: string) {
     chalk.gray("  2. Install Google Chrome: npx playwright install chrome"),
   );
   const build = resolveBuildCommand(projectRoot);
+  const output = resolveWxaProject(projectRoot);
   console.log(
     chalk.gray(
       build
         ? `  3. Build the mini program: ${build}`
-        : "  3. Build the mini program output (mp-weixin) before running tests",
+        : output.exists
+          ? "  3. No build step needed — the mini program runs from its resolved output"
+          : "  3. Build the mini program output (mp-weixin) before running tests",
     ),
   );
   console.log(
