@@ -2,7 +2,11 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
-import { resolvePageManifest, resolveWxaProject } from "../../src/shared/miniprogram.js";
+import {
+  resolveBuildCommand,
+  resolvePageManifest,
+  resolveWxaProject,
+} from "../../src/shared/miniprogram.js";
 
 // Monorepo layout: the repo root has no runnable script, the package lives in
 // apps/mobile. Paths must resolve against the package root, not the repo root.
@@ -84,6 +88,16 @@ describe("mini-program resolution in a monorepo", () => {
     expect(resolveWxaProject(root).exists).toBe(false);
     writeJson(join(root, "app.json"), { pages: ["pages/index/index"] });
     expect(resolveWxaProject(root).exists).toBe(true);
+  });
+
+  it("prefixes the build command with the workspace member path", () => {
+    const pkg = join(root, "apps", "mobile");
+    writeJson(join(pkg, "package.json"), {
+      scripts: { dev: "uni -p mp-weixin", "build:mp-weixin": "uni build -p mp-weixin" },
+      dependencies: { "@dcloudio/uni-app": "^3.0.0" },
+    });
+
+    expect(resolveBuildCommand(root)).toBe("npm --prefix apps/mobile run build:mp-weixin");
   });
 
   it("resolves Taro outputRoot relative to the config directory", () => {

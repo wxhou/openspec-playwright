@@ -37,7 +37,7 @@ import {
   LINT_ESLINT_CONFIG_FILE,
   LINT_GUIDELINES_RELPATH,
   resolveProjectTarget,
-  resolveBuildScript,
+  resolveBuildCommand,
   renderWorkflowTemplate,
 } from "../shared/index.js";
 import { discoverProjects, expandTilde } from "../shared/discover.js";
@@ -295,7 +295,7 @@ export async function removeInProject(
     // A generated mini-program workflow is the rendered template, not the raw
     // one; compare against the same rendering generate used.
     const workflowTarget = resolveProjectTarget(projectRoot);
-    const workflowBuild = resolveBuildScript(projectRoot);
+    const workflowBuild = resolveBuildCommand(projectRoot);
     const renderForTarget = (content: string) =>
       renderWorkflowTemplate(content, {
         target: workflowTarget,
@@ -810,7 +810,7 @@ export function describePlan(projectRoot: string): string[] {
   // Plan and execution must render the same mini-program workflow, or the
   // plan hides a file that --yes then deletes.
   const workflowTarget = resolveProjectTarget(projectRoot);
-  const workflowBuild = resolveBuildScript(projectRoot);
+  const workflowBuild = resolveBuildCommand(projectRoot);
   const renderWorkflow = (content: string) =>
     renderWorkflowTemplate(content, {
       target: workflowTarget,
@@ -913,7 +913,9 @@ export function describePlan(projectRoot: string): string[] {
 
 /** Treat any build-script name in the generated build step as equivalent. */
 function normalizeBuildStep(content: string): string {
-  return content.replace(/^(\s*)- run: npm run \S+$/gm, "$1- run: npm run __BUILD__");
+  // Ownership must survive the build script being added, renamed, or removed;
+  // the generated template has no other npm step, so dropping them is safe.
+  return content.replace(/^\s*- run: npm (?:--prefix \S+ )?run \S+\n?/gm, "");
 }
 
 /** True when the file exists and is byte-identical (EOL-normalized) to its template. */

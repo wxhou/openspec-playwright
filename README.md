@@ -252,9 +252,12 @@ Dependencies: `@playwright/test@^1.65`,
 `@open-wxa/wxa-runner-playwright@^0.13`,
 `@open-wxa/wxa-runner-core@^0.13`, and Google Chrome
 (`npx playwright install chrome`). For Taro the build script is `build:weapp`;
-for uni-app it is `build:mp-weixin`. Generated CI installs Chrome and runs
-that build before `npx playwright test`; `doctor` checks Chrome, the fixture,
-the Playwright version (>=1.64), and the `wxaProject` output directory.
+for uni-app it is `build:mp-weixin`. In a monorepo the step runs from the
+package that owns the script (`npm --prefix <member> run <script>`). Generated
+CI installs Chrome and runs that build before `npx playwright test`; `doctor`
+checks Chrome, the fixture, the Playwright version (>=1.64), and the
+`wxaProject` output directory. Upgrade the fixture import in
+`tests/playwright/wxa-test.ts` — `update` keeps a modified copy.
 
 Limitations: tests run in headless Chrome, not WeChat DevTools. DevTools-only
 APIs (real login, payment, native components) are outside the harness. CI

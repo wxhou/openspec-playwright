@@ -13,7 +13,7 @@ describe("renderWorkflowTemplate", () => {
   it("installs Chrome and adds the build step after the browser install", () => {
     const rendered = renderWorkflowTemplate(TEMPLATE, {
       target: "miniprogram",
-      buildCommand: "build:mp-weixin",
+      buildCommand: "npm run build:mp-weixin",
     });
     expect(rendered).toContain("npx playwright install --with-deps chrome");
     expect(rendered).not.toContain("--with-deps chromium");
@@ -36,7 +36,7 @@ describe("renderWorkflowTemplate", () => {
 `;
     const rendered = renderWorkflowTemplate(twoJobs, {
       target: "miniprogram",
-      buildCommand: "build:weapp",
+      buildCommand: "npm run build:weapp",
     });
     expect(rendered.match(/npm run build:weapp/g)).toHaveLength(2);
   });
@@ -49,7 +49,7 @@ describe("renderWorkflowTemplate", () => {
 `;
     const rendered = renderWorkflowTemplate(named, {
       target: "miniprogram",
-      buildCommand: "build:mp-weixin",
+      buildCommand: "npm run build:mp-weixin",
     });
     expect(rendered).toContain(
       "      - run: npm run build:mp-weixin\n      - name: Run tests",
@@ -67,7 +67,7 @@ describe("renderWorkflowTemplate", () => {
 `;
     const rendered = renderWorkflowTemplate(pipeline, {
       target: "miniprogram",
-      buildCommand: "build:mp-weixin",
+      buildCommand: "npm run build:mp-weixin",
     });
     expect(rendered).not.toContain(
       "npx playwright install --with-deps chrome\n      - run: npm run build:mp-weixin",

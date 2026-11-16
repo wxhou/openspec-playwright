@@ -115,14 +115,18 @@ describe("update mini-program templates", () => {
   beforeEach(() => {
     mkdirSync(testsDir, { recursive: true });
     writeFileSync(join(tmpDir, "project.config.json"), "{}");
-    writeFileSync(join(testsDir, "wxa-test.ts"), "export {};");
+    // The mini target marker: the generated config carries wxaProject.
+    writeFileSync(
+      join(tmpDir, "playwright.config.ts"),
+      "export default { use: { wxaProject: '.' } };\n",
+    );
   });
 
   afterEach(() => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("syncs the mini-program BasePage and skips credentials", async () => {
+  it("syncs the mini-program BasePage and regenerates a missing wrapper", async () => {
     const { syncProjectTemplates } = await import("../../src/commands/update.js");
     syncProjectTemplates(ROOT, tmpDir);
 
@@ -134,6 +138,24 @@ describe("update mini-program templates", () => {
     expect(wrapper).toContain("@open-wxa/wxa-runner-playwright");
 
     expect(existsSync(join(testsDir, "credentials.yaml"))).toBe(false);
+  });
+
+  it("keeps a user-modified wrapper (the fixture import lives there) and hints", async () => {
+    const edited = "export { test, expect } from '@open-wxa/wxa-runner-playwright';\n";
+    writeFileSync(join(testsDir, "wxa-test.ts"), edited);
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((line: unknown) => {
+      logs.push(String(line));
+    });
+    try {
+      const { syncProjectTemplates } = await import("../../src/commands/update.js");
+      syncProjectTemplates(ROOT, tmpDir);
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(readFileSync(join(testsDir, "wxa-test.ts"), "utf-8")).toBe(edited);
+    expect(logs.some((l) => l.includes("wxa-test.ts differs from the bundled template"))).toBe(true);
   });
 });
 

@@ -63,6 +63,7 @@ Never switch tools to reuse state (see Session state).
 - **Selectors**: resolve inside `miniProgram.current` (the current page frame); the priority order is unchanged.
 - **Assertions**: `toHavePath`, `toHavePageData`, `waitForRequest`. Runtime errors are checked automatically (`wxaCheckErrors`); turning the check off requires a written reason.
 - **Exploration (Step 4)**: start `npx wxa-runner dev <wxaProject> --open`, then open `http://localhost:3000/?path=<page>`. If the browser MCP cannot read the page frame, drive a throwaway Playwright script under `tmp/`. Do not call `openspec-pw explore`.
+- **Output shape**: record findings with the packaged `templates/miniprogram/app-exploration.md`.
 - **Route source (all mode)**: read `app.json` / `pages.json` / Taro `app.config` → `entryPagePath`, `pages`, `subPackages`; never sitemap.xml. If a spec names a page that is absent from the manifest, stop and report the missing page; never guess a path.
 - **Auth**: preset in `tests/playwright/wxa.setup.ts` (`storage` / `mock` / `network.routes`); never URL login, `storageState`, `auth.setup.ts`, or `credentials.yaml`.
 - **Write scope**: no `playwright/.auth/` or credentials; the rest is unchanged.

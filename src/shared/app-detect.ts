@@ -322,6 +322,55 @@ function findFrontendInDirs(seeds: string[], budget: number, baseDir: string): s
 }
 
 /**
+ * Bounded scan of workspace members for a mini-program package. The repo
+ * root may carry a runnable `dev` script (so findNpmRoot stops there), while
+ * the mini app lives in a member directory; a native app may have no
+ * package.json at all. Same limits and skip rules as findFrontendInDirs.
+ */
+function findMiniProgramInDirs(
+  seeds: string[],
+  budget: number,
+  baseDir: string,
+): string | null {
+  let checked = 0;
+  const relPosixFromBase = (dir: string): string => {
+    const rel = relative(baseDir, dir);
+    const posix = rel.split(sep).join("/");
+    return posix === "" ? "." : posix;
+  };
+  const visit = (dir: string, remaining: number): string | null => {
+    if (remaining < 0 || checked >= WORKSPACE_SCAN_MAX_MEMBERS) return null;
+    const pkg = readPackageJson(join(dir, "package.json"));
+    if (pkg) checked++;
+    if (existsSync(join(dir, "project.config.json"))) {
+      return `${relPosixFromBase(dir)} (project.config.json)`;
+    }
+    const output = firstExistingDir(dir, MINI_PROGRAM_OUTPUT_DIRS);
+    if (output) return `${relPosixFromBase(dir)} (output: ${output})`;
+    const dep = hasMiniProgramDependency(pkg);
+    if (dep) return `${relPosixFromBase(dir)} (${dep})`;
+    if (remaining === 0) return null;
+    let entries;
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return null;
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory() || entry.name.startsWith(".") || entry.name === "node_modules") continue;
+      const hit = visit(join(dir, entry.name), remaining - 1);
+      if (hit) return hit;
+    }
+    return null;
+  };
+  for (const seed of seeds) {
+    const hit = visit(seed, budget);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/**
  * Detect whether the project has frontend code — layered signals, specific
  * first, stop on first hit:
  *   1. framework config files at the project/npm root (strongest);
@@ -406,6 +455,19 @@ export function detectMiniProgramSignal(projectRoot: string): MiniProgramSignal 
   const dep = hasMiniProgramDependency(pkg);
   if (dep) return { kind: "strong", source: `dependency: ${dep}` };
 
+  // A workspace member may hold the mini app while the root package.json
+  // owns the runnable dev script (findNpmRoot stops at the root); a native
+  // app may have no package.json at all.
+  const patterns = pkg ? workspaceGlobPatterns(projectRoot, pkg) : null;
+  if (patterns !== null || !pkg) {
+    const memberDirs = patterns ? resolveMemberDirs(projectRoot, patterns) : null;
+    const hit =
+      memberDirs !== null && memberDirs.length > 0
+        ? findMiniProgramInDirs(memberDirs, WORKSPACE_SCAN_MAX_DEPTH - 1, projectRoot)
+        : findMiniProgramInDirs([projectRoot], WORKSPACE_SCAN_MAX_DEPTH, projectRoot);
+    if (hit) return { kind: "strong", source: `workspace member: ${hit}` };
+  }
+
   for (const dir of roots) {
     if (hasWeakAppJson(dir)) return { kind: "weak", source: "app.json" };
   }
@@ -419,13 +481,55 @@ export function hasMiniProgramSignal(projectRoot: string): boolean {
 /** Generated artifacts make an explicit `--miniprogram` choice survive `update`. */
 function hasMiniProgramArtifacts(projectRoot: string): boolean {
   if (existsSync(join(projectRoot, "tests", "playwright", "wxa-test.ts"))) return true;
-  const config = join(projectRoot, "playwright.config.ts");
-  if (!existsSync(config)) return false;
-  try {
-    return readFileSync(config, "utf-8").includes("wxaProject");
-  } catch {
-    return false;
+  for (const ext of ["ts", "js", "mjs", "mts"]) {
+    const config = join(projectRoot, `playwright.config.${ext}`);
+    if (!existsSync(config)) continue;
+    try {
+      if (readFileSync(config, "utf-8").includes("wxaProject")) return true;
+    } catch {
+      // unreadable → not evidence of a mini scaffold
+    }
   }
+  return false;
+}
+
+/**
+ * A web scaffold already on disk. Plain `init` on an older Taro/uni-app
+ * project must refresh that scaffold, not reinterpret it as mini and abort.
+ */
+function hasWebScaffoldArtifacts(projectRoot: string): boolean {
+  for (const ext of ["ts", "js", "mjs", "mts"]) {
+    const config = join(projectRoot, `playwright.config.${ext}`);
+    if (!existsSync(config)) continue;
+    try {
+      if (!readFileSync(config, "utf-8").includes("wxaProject")) return true;
+    } catch {
+      // unreadable → fall through to the other artifacts
+    }
+  }
+  const seed = join(projectRoot, "tests", "playwright", "seed.spec.ts");
+  if (existsSync(seed)) {
+    try {
+      const content = readFileSync(seed, "utf-8");
+      if (
+        !content.includes("./wxa-test") &&
+        !content.includes("@open-wxa/wxa-runner-playwright")
+      ) {
+        return true;
+      }
+    } catch {
+      // unreadable → fall through
+    }
+  }
+  const basePage = join(projectRoot, "tests", "playwright", "pages", "BasePage.ts");
+  if (existsSync(basePage)) {
+    try {
+      if (!readFileSync(basePage, "utf-8").includes("miniProgram")) return true;
+    } catch {
+      // unreadable → fall through
+    }
+  }
+  return false;
 }
 
 /**
@@ -439,19 +543,21 @@ export function resolveProjectTarget(projectRoot: string): TemplateTarget {
 }
 
 /**
- * Resolve the target for `init`: explicit CLI choice wins, then generated
- * artifacts, then detection (strong mini-program > web > weak app.json).
- * Other commands use `resolveProjectTarget` so they never re-detect.
+ * Resolve the target for `init`: explicit CLI choice wins, then the scaffold
+ * already on disk (mini or web), then detection (strong mini-program > web >
+ * weak app.json). Other commands use `resolveProjectTarget` so they never
+ * re-detect.
  */
 export function resolveTemplateTarget(
   projectRoot: string,
-  options: { miniprogram?: boolean } = {},
+  options: { miniprogram?: boolean; miniSignal?: MiniProgramSignal } = {},
 ): TemplateTarget {
   if (options.miniprogram === true) return "miniprogram";
   if (options.miniprogram === false) return "web";
   if (hasMiniProgramArtifacts(projectRoot)) return "miniprogram";
+  if (hasWebScaffoldArtifacts(projectRoot)) return "web";
 
-  const mini = detectMiniProgramSignal(projectRoot);
+  const mini = options.miniSignal ?? detectMiniProgramSignal(projectRoot);
   if (mini.kind === "strong") return "miniprogram";
 
   const npmRoot = findNpmRoot(projectRoot);
@@ -476,8 +582,11 @@ function hasWebFrontendSignal(projectRoot: string, npmRoot: string, pkg: Package
   return findFrontendInDirs([projectRoot], WORKSPACE_SCAN_MAX_DEPTH, projectRoot) !== null;
 }
 
-export function hasFrontendSignal(projectRoot: string): boolean | null {
-  const mini = detectMiniProgramSignal(projectRoot);
+export function hasFrontendSignal(
+  projectRoot: string,
+  miniSignal?: MiniProgramSignal,
+): boolean | null {
+  const mini = miniSignal ?? detectMiniProgramSignal(projectRoot);
   const npmRoot = findNpmRoot(projectRoot);
   const pkg = readPackageJson(join(npmRoot, "package.json"));
   const web = pkg !== null && hasWebFrontendSignal(projectRoot, npmRoot, pkg);

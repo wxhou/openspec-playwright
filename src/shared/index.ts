@@ -64,6 +64,7 @@ export {
   resolveWxaProject,
   resolvePageManifest,
   resolveBuildScript,
+  resolveBuildCommand,
 } from "./miniprogram.js";
 export type { WxaProjectResolution, PageManifest } from "./miniprogram.js";
 export { renderWorkflowTemplate } from "./workflow-render.js";

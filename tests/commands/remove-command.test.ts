@@ -278,7 +278,7 @@ describe("removeInProject() CI workflow", () => {
     mkdirSync(join(tmp, ".github", "workflows"), { recursive: true });
     writeFileSync(
       join(tmp, ".github", "workflows", "openspec-pw.yml"),
-      renderWorkflowTemplate(template, { target: "miniprogram", buildCommand: "build:mp-weixin" }),
+      renderWorkflowTemplate(template, { target: "miniprogram", buildCommand: "npm run build:mp-weixin" }),
     );
 
     await removeInProject(tmp);
@@ -299,7 +299,7 @@ describe("removeInProject() CI workflow", () => {
     mkdirSync(join(tmp, ".github", "workflows"), { recursive: true });
     writeFileSync(
       join(tmp, ".github", "workflows", "openspec-pw.yml"),
-      renderWorkflowTemplate(template, { target: "miniprogram", buildCommand: "build:mp-weixin" }),
+      renderWorkflowTemplate(template, { target: "miniprogram", buildCommand: "npm run build:mp-weixin" }),
     );
 
     expect(describePlan(tmp)).toContain("CI workflow");
@@ -348,7 +348,7 @@ describe("removeInProject() CI workflow", () => {
     mkdirSync(join(tmp, ".github", "workflows"), { recursive: true });
     writeFileSync(
       join(tmp, ".github", "workflows", "openspec-pw.yml"),
-      renderWorkflowTemplate(template, { target: "miniprogram", buildCommand: "build:mp-weixin" }),
+      renderWorkflowTemplate(template, { target: "miniprogram", buildCommand: "npm run build:mp-weixin" }),
     );
     writeFileSync(
       join(tmp, "package.json"),

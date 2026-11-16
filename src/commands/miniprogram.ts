@@ -4,7 +4,7 @@ import { join } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
 import {
-  resolveBuildScript,
+  resolveBuildCommand,
   resolvePageManifest,
   resolveProjectTarget,
   type TemplateTarget,
@@ -74,6 +74,14 @@ export function assertScaffoldCompatible(
   }
 }
 
+export function printMiniConfigHint() {
+  console.log(
+    chalk.gray(
+      "    Compare with templates/miniprogram/playwright.config.ts, or delete it and re-run `openspec-pw init`",
+    ),
+  );
+}
+
 export async function generateMiniProgramScaffold(projectRoot: string, testsDir: string) {
   const manifest = resolvePageManifest(projectRoot);
   const seedPath = join(testsDir, "seed.spec.ts");
@@ -139,11 +147,11 @@ export function printMiniProgramNextSteps(projectRoot: string) {
   console.log(
     chalk.gray("  2. Install Google Chrome: npx playwright install chrome"),
   );
-  const build = resolveBuildScript(projectRoot);
+  const build = resolveBuildCommand(projectRoot);
   console.log(
     chalk.gray(
       build
-        ? `  3. Build the mini program: npm run ${build}`
+        ? `  3. Build the mini program: ${build}`
         : "  3. Build the mini program output (mp-weixin) before running tests",
     ),
   );

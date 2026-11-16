@@ -2,7 +2,7 @@ import type { TemplateTarget } from "./app-detect.js";
 
 export interface WorkflowRenderOptions {
   target: TemplateTarget;
-  /** Script name from package.json (e.g. build:mp-weixin); null = no step. */
+  /** Shell command that builds the mini program (e.g. `npm run build:mp-weixin`); null = no step. */
   buildCommand?: string | null;
 }
 
@@ -53,7 +53,7 @@ export function renderWorkflowTemplate(
       options.buildCommand &&
       stepRunsE2E(lines, i, step[1].length)
     ) {
-      out.push(`${step[1]}- run: npm run ${options.buildCommand}`);
+      out.push(`${step[1]}- run: ${options.buildCommand}`);
       inserted = true;
     }
     out.push(
@@ -73,7 +73,7 @@ export function renderWorkflowTemplate(
       BROWSER_LINE,
       (line: string, indent: string, dash: string | undefined) => {
         const stepIndent = dash ? indent : indent.slice(0, Math.max(0, indent.length - 2));
-        return `${line}\n${stepIndent}- run: npm run ${options.buildCommand}`;
+        return `${line}\n${stepIndent}- run: ${options.buildCommand}`;
       },
     );
   }

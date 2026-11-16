@@ -172,7 +172,7 @@ openspec-pw init --no-miniprogram   # 强制 Web 目标
 
 脚手架使用官方 [`@open-wxa/wxa-runner-playwright`](https://open-wxa.github.io/wxa-runner/) fixture，在 Chrome 中按官方基础库运行构建产物。生成文件：`playwright.config.ts`（`channel: 'chrome'`、`wxaProject`、`wxaServerOptions.setup`）、`wxa-test.ts` 重导出 wrapper、`wxa.setup.ts`、`pages/BasePage.ts`，以及打开 `entryPagePath`（或 `pages[0]`）并断言 `toHavePath` 的 seed 测试。不生成 `auth.setup.ts` 与 `credentials.yaml`——登录态放 `wxa.setup.ts`。
 
-依赖：`@playwright/test@^1.65`、`@open-wxa/wxa-runner-playwright@^0.13`、`@open-wxa/wxa-runner-core@^0.13`，以及 Google Chrome（`npx playwright install chrome`）。Taro 用 `build:weapp`，uni-app 用 `build:mp-weixin`。生成的 CI 会安装 Chrome，并在 `npx playwright test` 前执行该构建；`doctor` 检查 Chrome、fixture、Playwright 版本（>=1.64）与 `wxaProject` 产物目录。
+依赖：`@playwright/test@^1.65`、`@open-wxa/wxa-runner-playwright@^0.13`、`@open-wxa/wxa-runner-core@^0.13`，以及 Google Chrome（`npx playwright install chrome`）。Taro 用 `build:weapp`，uni-app 用 `build:mp-weixin`；monorepo 中在拥有该脚本的包里执行（`npm --prefix <member> run <script>`）。生成的 CI 会安装 Chrome，并在 `npx playwright test` 前执行该构建；`doctor` 检查 Chrome、fixture、Playwright 版本（>=1.64）与 `wxaProject` 产物目录。升级 fixture 导入请改 `tests/playwright/wxa-test.ts`——`update` 会保留你改过的副本。
 
 限制：测试运行在无头 Chrome 中，不是微信开发者工具。仅在开发者工具中可用的 API（真实登录、支付、原生组件）不在覆盖范围。CI 支持面向 x86-64 Linux；没有 WebKit 或 Firefox project。
 

@@ -15,6 +15,7 @@ import { installStopHook, isHookTier, uninstallStopHook } from "./hooks.js";
 import {
   assertScaffoldCompatible,
   generateMiniProgramScaffold,
+  printMiniConfigHint,
   printMiniProgramNextSteps,
 } from "./miniprogram.js";
 import {
@@ -62,10 +63,11 @@ import {
   isTestRunnerMcpInstalled,
   TEST_RUNNER_MCP_SERVER,
   hasFrontendSignal,
+  detectMiniProgramSignal,
   explainFrontendSignal,
   resolveTemplateTarget,
   resolveWxaProject,
-  resolveBuildScript,
+  resolveBuildCommand,
   renderWorkflowTemplate,
   type TemplateTarget,
   detectCodeGraphStatus,
@@ -560,6 +562,29 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     );
   }
 
+  // 3. Init mode + template target. Resolved before the deselected-removal
+  // phase so a scaffold conflict aborts before any editor artifact is
+  // deleted.
+  const miniSignal = detectMiniProgramSignal(projectRoot);
+  const frontendSignal = hasFrontendSignal(projectRoot, miniSignal);
+  const mode = resolveInitMode(options, frontendSignal);
+  // Template target is orthogonal to mode: mini-program keeps the frontend
+  // gates but swaps the generated scaffold. Explicit --miniprogram also
+  // forces frontend mode (resolveInitMode), so a signal-less directory still
+  // gets a scaffold.
+  const target = resolveTemplateTarget(projectRoot, {
+    miniprogram: options.miniprogram,
+    miniSignal,
+  });
+  // Both guards only matter when this run writes a Playwright scaffold; a
+  // minimal-mode refresh touches neither target's files.
+  assertScaffoldCompatible(
+    projectRoot,
+    target,
+    mode,
+    options.miniprogram === false,
+  );
+
   // 3a. Deselect = remove. Interactive deselections are real removals of
   // openspec-pw products (commands, MCP entries, claude wrapper/legacy
   // skill, vendored agents, and the shared AGENTS.md block when no editor
@@ -691,26 +716,6 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     }
   }
 
-  // 3b. Init mode: explicit flag wins, otherwise the frontend signal
-  // decides (false and null both → minimal). Reused by every phase gate
-  // (MCP, agents, scaffold, Summary) below.
-  const frontendSignal = hasFrontendSignal(projectRoot);
-  const mode = resolveInitMode(options, frontendSignal);
-  // Template target is orthogonal to mode: mini-program keeps the frontend
-  // gates but swaps the generated scaffold. Explicit --miniprogram also
-  // forces frontend mode (resolveInitMode), so a signal-less directory still
-  // gets a scaffold.
-  const target = resolveTemplateTarget(projectRoot, {
-    miniprogram: options.miniprogram,
-  });
-  // Both guards only matter when this run writes a Playwright scaffold; a
-  // minimal-mode refresh touches neither target's files.
-  assertScaffoldCompatible(
-    projectRoot,
-    target,
-    mode,
-    options.miniprogram === false,
-  );
   // Set in the minimal scaffold phase; the Summary links the contract doc
   // only when this run generated it.
   let readmeGenerated = false;
@@ -1390,7 +1395,7 @@ export async function generateGithubWorkflow(
   }
 
   if (existsSync(workflowSrc)) {
-    const buildCommand = resolveBuildScript(projectRoot);
+    const buildCommand = resolveBuildCommand(projectRoot);
     const rendered = renderWorkflowTemplate(readFileSync(workflowSrc, "utf-8"), {
       target,
       buildCommand,
@@ -1403,7 +1408,7 @@ export async function generateGithubWorkflow(
       console.log(
         chalk.gray(
           buildCommand
-            ? `  Mini-program target: workflow installs Google Chrome and runs npm run ${buildCommand} before tests.`
+            ? `  Mini-program target: workflow installs Google Chrome and runs \`${buildCommand}\` before tests.`
             : "  Mini-program target: workflow installs Google Chrome; no build script found — add the build step manually before tests.",
         ),
       );
@@ -1431,6 +1436,7 @@ export async function generatePlaywrightConfig(
   if (existsSync(configDest)) {
     console.log(chalk.gray("  - playwright.config.ts already exists, skipping"));
     if (!isMini) suggestPlaywrightConfigPatch(configDest);
+    else printMiniConfigHint();
     return;
   }
 
@@ -1443,10 +1449,10 @@ export async function generatePlaywrightConfig(
       console.log(chalk.green("  ✓ Generated: playwright.config.ts"));
       console.log(chalk.gray(`  wxaProject: ${wxa.projectPath} (${wxa.source})`));
       if (!wxa.exists) {
-        const build = resolveBuildScript(projectRoot);
+        const build = resolveBuildCommand(projectRoot);
         console.log(
           chalk.yellow(
-            `  ⚠ Mini-program output not found — build first${build ? `: npm run ${build}` : ""}`,
+            `  ⚠ Mini-program output not found — build first${build ? `: ${build}` : ""}`,
           ),
         );
       }

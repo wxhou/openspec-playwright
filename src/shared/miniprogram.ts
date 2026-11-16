@@ -298,3 +298,16 @@ export function resolvePageManifest(projectRoot: string): PageManifest {
 export function resolveBuildScript(projectRoot: string): string | null {
   return buildScriptFor(readPackage(projectRoot).pkg);
 }
+
+/**
+ * Shell command that runs the build script from the repository root. A
+ * workspace member's script needs `--prefix`, or CI fails with
+ * "Missing script" at the root.
+ */
+export function resolveBuildCommand(projectRoot: string): string | null {
+  const { npmRoot, pkg } = readPackage(projectRoot);
+  const script = buildScriptFor(pkg);
+  if (!script) return null;
+  const rel = toPosix(projectRoot, npmRoot);
+  return rel === "." ? `npm run ${script}` : `npm --prefix ${rel} run ${script}`;
+}

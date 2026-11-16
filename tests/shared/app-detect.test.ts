@@ -426,6 +426,29 @@ describe("app-detect", () => {
   it("resolveTemplateTarget: explicit true wins without any signal", () => {
     expect(resolveTemplateTarget(tmpDir, { miniprogram: true })).toBe("miniprogram");
   });
+
+  it("resolveTemplateTarget: an existing web scaffold wins over a mini signal", () => {
+    writeFileSync(
+      join(tmpDir, "package.json"),
+      JSON.stringify({ dependencies: { "@tarojs/taro": "^4.0.0" } }),
+    );
+    writeFileSync(join(tmpDir, "playwright.config.ts"), "export default {};\n");
+    expect(resolveTemplateTarget(tmpDir)).toBe("web");
+  });
+
+  it("detectMiniProgramSignal: finds a workspace member mini app", () => {
+    writeFileSync(
+      join(tmpDir, "package.json"),
+      JSON.stringify({ scripts: { dev: "vite" }, workspaces: ["apps/*"] }),
+    );
+    const member = join(tmpDir, "apps", "mobile");
+    mkdirSync(member, { recursive: true });
+    writeFileSync(
+      join(member, "package.json"),
+      JSON.stringify({ dependencies: { "@dcloudio/uni-app": "^3.0.0" } }),
+    );
+    expect(detectMiniProgramSignal(tmpDir).kind).toBe("strong");
+  });
 });
 
 describe("resolveProjectTarget", () => {

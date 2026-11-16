@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { renderWorkflowTemplate } from "../shared/workflow-render.js";
-import { resolveBuildScript } from "../shared/miniprogram.js";
+import { resolveBuildCommand } from "../shared/miniprogram.js";
 import type { TemplateTarget } from "../shared/app-detect.js";
 
 const TEMPLATE_DIR = join(
@@ -58,7 +58,7 @@ export function generateAutoPipeline(
   mkdirSync(dirname(dest), { recursive: true });
   const rendered = renderWorkflowTemplate(readFileSync(source, "utf-8"), {
     target,
-    buildCommand: resolveBuildScript(projectRoot),
+    buildCommand: resolveBuildCommand(projectRoot),
   });
   writeFileSync(dest, rendered, "utf-8");
   return { status: "created", path: dest };

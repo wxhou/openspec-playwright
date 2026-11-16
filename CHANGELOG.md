@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `src/index.ts`、`src/commands/{init,update,remove,pipeline,doctor}.ts`、`src/shared/{app-detect,miniprogram,workflow-render}.ts`、`templates/miniprogram/`、`templates/e2e-command.md`、`.claude/commands/opsx/e2e.md`、`package.json`、`package-lock.json`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
 - **fix(cli): 修正小程序目标解析与清理边界**. uni-app 默认产物跟随构建脚本，原生项目读取 `miniprogramRoot`；迁移护栏只在 frontend 模式生效并覆盖反向切换；`remove` 清理小程序 README，构建脚本改名后仍能识别工作流；CI 矩阵与文档统一到 Node 22。
   - `src/shared/miniprogram.ts`、`src/commands/{init,miniprogram,remove}.ts`、`.github/workflows/ci.yml`、`README.md`、`README.zh-CN.md`、`tests/commands/{init-miniprogram,remove-command}.test.ts`、`tests/shared/miniprogram.test.ts`、`CHANGELOG.md`
+- **fix(cli): 修正小程序目标判定与归属边界**. 普通 `init` 遇到既有 Web 脚手架保持 Web；检测覆盖 workspace 成员；构建命令在拥有脚本的包里执行；`update` 不再覆盖用户改过的 `wxa-test.ts`（缺失时重建）；工作流归属不因构建脚本增删改名失效；迁移护栏提前到删除阶段之前。
+  - `src/shared/{app-detect,miniprogram,workflow-render}.ts`、`src/commands/{init,miniprogram,pipeline,remove,update}.ts`、`templates/e2e-command.md`、`.claude/commands/opsx/e2e.md`、`README.md`、`README.zh-CN.md`、`tests/shared/{app-detect,miniprogram,workflow-render}.test.ts`、`tests/commands/{init-miniprogram,remove-command}.test.ts`、`CHANGELOG.md`
 - **chore(deps): 升级 Playwright 到 1.65.1**. `@playwright/test` 与 `playwright` 同步升到 `^1.65.1`；`engines.node` 提到 `>=22`，因为 Playwright 1.65 不再测试 Node 20。已装浏览器的项目需重跑 `npx playwright install`。
   - `package.json`、`package-lock.json`、`README.md`、`README.zh-CN.md`、`docs/index.html`、`CHANGELOG.md`
 

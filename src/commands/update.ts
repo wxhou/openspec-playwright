@@ -879,16 +879,25 @@ export function syncProjectTemplates(tmpDir: string, projectRoot: string) {
     }
   }
 
-  // 3b. Mini-program import wrapper — tool-owned, refreshed on drift.
+  // 3b. Mini-program import wrapper — content-owned: the file is the single
+  // place users upgrade the fixture import, so a modified copy is kept and
+  // only a missing one is regenerated.
   if (mini) {
     const wrapperSrc = join(tmpDir, "templates", "miniprogram", "wxa-test.ts");
     const wrapperDest = join(testsDir, "wxa-test.ts");
-    if (existsSync(wrapperSrc) && existsSync(wrapperDest)) {
-      const existing = readFileSync(wrapperDest, "utf-8");
+    if (existsSync(wrapperSrc)) {
       const latest = readFileSync(wrapperSrc, "utf-8");
-      if (existing !== latest) {
+      if (!existsSync(wrapperDest)) {
         writeFileSync(wrapperDest, latest);
-        console.log(chalk.green("  ✓ Updated: tests/playwright/wxa-test.ts"));
+        console.log(chalk.green("  ✓ Generated: tests/playwright/wxa-test.ts"));
+      } else if (
+        normalizeEol(readFileSync(wrapperDest, "utf-8")) !== normalizeEol(latest)
+      ) {
+        console.log(
+          chalk.yellow(
+            "  ⚠ tests/playwright/wxa-test.ts differs from the bundled template — update it manually (the fixture import lives here), or delete it and re-run `openspec-pw init`",
+          ),
+        );
       }
     }
   }
