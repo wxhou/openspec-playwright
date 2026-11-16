@@ -1,10 +1,20 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
+import { join } from "path";
 import { bundledTemplatePath } from "../src/shared/drift.js";
 
 const template = readFileSync(
   bundledTemplatePath("templates/e2e-command.md"),
   "utf-8",
+);
+// `.claude/` is gitignored, so CI has no installed copy to compare against.
+const installedCommandPath = join(
+  __dirname,
+  "..",
+  ".claude",
+  "commands",
+  "opsx",
+  "e2e.md",
 );
 
 // `--auto` exists so CI can run the e2e pipeline unattended. It must not turn
@@ -68,4 +78,38 @@ describe("e2e-command template: autonomous mode", () => {
     expect(template).toContain("0 active App Bugs and 0 skipped");
     expect(template).toContain("E2E incomplete");
   });
+});
+
+describe("e2e-command template: mini-program target", () => {
+  it("documents target detection and fixture imports", () => {
+    expect(template).toContain("## Mini-program target");
+    expect(template).toContain("tests/playwright/wxa-test.ts");
+    expect(template).toContain("from `./wxa-test`");
+  });
+
+  it("uses the fixture API instead of URL navigation", () => {
+    expect(template).toContain("miniProgram.open('<page>?<query>')");
+    expect(template).toContain("miniProgram.current");
+    expect(template).toContain("toHavePath");
+    expect(template).toContain("toHavePageData");
+    expect(template).toContain("waitForRequest");
+  });
+
+  it("forbids web-only exploration and auth", () => {
+    expect(template).toContain("Do not call `openspec-pw explore`");
+    expect(template).toContain("never sitemap.xml");
+    expect(template).toContain("tests/playwright/wxa.setup.ts");
+    expect(template).toContain("never URL login");
+    expect(template).toContain("`storageState`");
+    expect(template).toContain("`auth.setup.ts`");
+  });
+
+  it.skipIf(!existsSync(installedCommandPath))(
+    "keeps the installed Claude command in sync with the template body",
+    () => {
+      const installed = readFileSync(installedCommandPath, "utf-8");
+      const body = installed.replace(/^---[\s\S]*?---\n/, "");
+      expect(body.trim()).toBe(template.trim());
+    },
+  );
 });

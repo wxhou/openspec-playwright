@@ -322,6 +322,55 @@ function findFrontendInDirs(seeds: string[], budget: number, baseDir: string): s
 }
 
 /**
+ * Bounded scan of workspace members for a mini-program package. The repo
+ * root may carry a runnable `dev` script (so findNpmRoot stops there), while
+ * the mini app lives in a member directory; a native app may have no
+ * package.json at all. Same limits and skip rules as findFrontendInDirs.
+ */
+function findMiniProgramInDirs(
+  seeds: string[],
+  budget: number,
+  baseDir: string,
+): { dir: string; source: string } | null {
+  let checked = 0;
+  const relPosixFromBase = (dir: string): string => {
+    const rel = relative(baseDir, dir);
+    const posix = rel.split(sep).join("/");
+    return posix === "" ? "." : posix;
+  };
+  const visit = (dir: string, remaining: number): { dir: string; source: string } | null => {
+    if (remaining < 0 || checked >= WORKSPACE_SCAN_MAX_MEMBERS) return null;
+    const pkg = readPackageJson(join(dir, "package.json"));
+    if (pkg) checked++;
+    if (existsSync(join(dir, "project.config.json"))) {
+      return { dir, source: `${relPosixFromBase(dir)} (project.config.json)` };
+    }
+    const output = firstExistingDir(dir, MINI_PROGRAM_OUTPUT_DIRS);
+    if (output) return { dir, source: `${relPosixFromBase(dir)} (output: ${output})` };
+    const dep = hasMiniProgramDependency(pkg);
+    if (dep) return { dir, source: `${relPosixFromBase(dir)} (${dep})` };
+    if (remaining === 0) return null;
+    let entries;
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return null;
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory() || entry.name.startsWith(".") || entry.name === "node_modules") continue;
+      const hit = visit(join(dir, entry.name), remaining - 1);
+      if (hit) return hit;
+    }
+    return null;
+  };
+  for (const seed of seeds) {
+    const hit = visit(seed, budget);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/**
  * Detect whether the project has frontend code — layered signals, specific
  * first, stop on first hit:
  *   1. framework config files at the project/npm root (strongest);
@@ -337,11 +386,211 @@ function findFrontendInDirs(seeds: string[], budget: number, baseDir: string): s
  * also selects init mode (frontend | minimal) and gates the Playwright MCP
  * / vendored-agents installs — see explainFrontendSignal for attribution.
  */
-export function hasFrontendSignal(projectRoot: string): boolean | null {
+export type TemplateTarget = "web" | "miniprogram";
+
+export interface MiniProgramSignal {
+  kind: "strong" | "weak" | null;
+  source: string | null;
+  /**
+   * Directory that holds the mini program — the repo root or the workspace
+   * member that owns it. Resolution must use it: the repo root can own the
+   * runnable dev script (so findNpmRoot stops there) while the mini app lives
+   * in a member directory.
+   */
+  miniRoot?: string;
+}
+
+const MINI_PROGRAM_OUTPUT_DIRS = [
+  "dist/build/mp-weixin",
+  "dist/dev/mp-weixin",
+  "dist/mp-weixin",
+  "mp-weixin",
+];
+
+const MINI_PROGRAM_COMPANION_FILES = [
+  "app.wxss",
+  "sitemap.json",
+  "project.private.config.json",
+];
+
+function firstExistingDir(root: string, candidates: string[]): string | null {
+  return candidates.find((rel) => existsSync(join(root, rel))) ?? null;
+}
+
+function hasMiniProgramDependency(pkg: PackageJson | null): string | null {
+  if (!pkg) return null;
+  const names = [
+    ...Object.keys(pkg.dependencies ?? {}),
+    ...Object.keys(pkg.devDependencies ?? {}),
+  ];
+  return names.find((name) => name.startsWith("@tarojs/") || name.startsWith("@dcloudio/")) ?? null;
+}
+
+function hasWeakAppJson(dir: string): boolean {
+  const appJson = join(dir, "app.json");
+  if (!existsSync(appJson)) return false;
+  try {
+    const parsed = JSON.parse(readFileSync(appJson, "utf-8")) as { pages?: unknown };
+    if (!Array.isArray(parsed.pages)) return false;
+  } catch {
+    return false;
+  }
+  return MINI_PROGRAM_COMPANION_FILES.some((file) => existsSync(join(dir, file)));
+}
+
+/**
+ * Mini-program signals, split by strength. Strong signals (WeChat project
+ * file, compiled mp-weixin output, Taro/uni-app dependencies) beat generic
+ * web framework signals, because Taro/uni-app projects also depend on
+ * react/vue. A bare app.json is weak: Expo/React Native projects have one
+ * too, so it only counts next to a WeChat-specific companion file.
+ */
+export function detectMiniProgramSignal(projectRoot: string): MiniProgramSignal {
   const npmRoot = findNpmRoot(projectRoot);
   const pkg = readPackageJson(join(npmRoot, "package.json"));
-  if (!pkg) return null;
+  const roots = npmRoot === projectRoot ? [projectRoot] : [projectRoot, npmRoot];
 
+  for (const dir of roots) {
+    if (existsSync(join(dir, "project.config.json"))) {
+      return { kind: "strong", source: "project.config.json", miniRoot: dir };
+    }
+  }
+  for (const dir of roots) {
+    const output = firstExistingDir(dir, MINI_PROGRAM_OUTPUT_DIRS);
+    if (output) return { kind: "strong", source: `output: ${output}`, miniRoot: dir };
+  }
+  const dep = hasMiniProgramDependency(pkg);
+  if (dep) return { kind: "strong", source: `dependency: ${dep}`, miniRoot: npmRoot };
+
+  // A workspace member may hold the mini app while the root package.json
+  // owns the runnable dev script (findNpmRoot stops at the root); a native
+  // app may have no package.json at all. Member globs come from the repo
+  // root's package.json — it is the workspace root, not the npm root.
+  const rootPkg = readPackageJson(join(projectRoot, "package.json")) ?? pkg;
+  const patterns = rootPkg ? workspaceGlobPatterns(projectRoot, rootPkg) : null;
+  if (patterns !== null || !rootPkg) {
+    const memberDirs = patterns ? resolveMemberDirs(projectRoot, patterns) : null;
+    const hit =
+      memberDirs !== null && memberDirs.length > 0
+        ? findMiniProgramInDirs(memberDirs, WORKSPACE_SCAN_MAX_DEPTH - 1, projectRoot)
+        : findMiniProgramInDirs([projectRoot], WORKSPACE_SCAN_MAX_DEPTH, projectRoot);
+    if (hit) {
+      return { kind: "strong", source: `workspace member: ${hit.source}`, miniRoot: hit.dir };
+    }
+  }
+
+  for (const dir of roots) {
+    if (hasWeakAppJson(dir)) return { kind: "weak", source: "app.json", miniRoot: dir };
+  }
+  return { kind: null, source: null };
+}
+
+export function hasMiniProgramSignal(projectRoot: string): boolean {
+  return detectMiniProgramSignal(projectRoot).kind === "strong";
+}
+
+/**
+ * A Playwright config that configures the mini-program runner. The check is
+ * for the `wxaProject` option, not the word: a comment mentioning it must not
+ * turn a web config into a mini one.
+ */
+export function configHasWxaProject(content: string): boolean {
+  const code = content
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/.*$/gm, "$1");
+  return /(^|[{,\s])wxaProject\s*:/.test(code);
+}
+
+/** Generated artifacts make an explicit `--miniprogram` choice survive `update`. */
+function hasMiniProgramArtifacts(projectRoot: string): boolean {
+  if (existsSync(join(projectRoot, "tests", "playwright", "wxa-test.ts"))) return true;
+  for (const ext of ["ts", "js", "mjs", "mts"]) {
+    const config = join(projectRoot, `playwright.config.${ext}`);
+    if (!existsSync(config)) continue;
+    try {
+      if (configHasWxaProject(readFileSync(config, "utf-8"))) return true;
+    } catch {
+      // unreadable → not evidence of a mini scaffold
+    }
+  }
+  return false;
+}
+
+/**
+ * A web scaffold already on disk. Plain `init` on an older Taro/uni-app
+ * project must refresh that scaffold, not reinterpret it as mini and abort.
+ */
+function hasWebScaffoldArtifacts(projectRoot: string): boolean {
+  for (const ext of ["ts", "js", "mjs", "mts"]) {
+    const config = join(projectRoot, `playwright.config.${ext}`);
+    if (!existsSync(config)) continue;
+    try {
+      if (!configHasWxaProject(readFileSync(config, "utf-8"))) return true;
+    } catch {
+      // unreadable → fall through to the other artifacts
+    }
+  }
+  const seed = join(projectRoot, "tests", "playwright", "seed.spec.ts");
+  if (existsSync(seed)) {
+    try {
+      const content = readFileSync(seed, "utf-8");
+      if (
+        !content.includes("./wxa-test") &&
+        !content.includes("@open-wxa/wxa-runner-playwright")
+      ) {
+        return true;
+      }
+    } catch {
+      // unreadable → fall through
+    }
+  }
+  const basePage = join(projectRoot, "tests", "playwright", "pages", "BasePage.ts");
+  if (existsSync(basePage)) {
+    try {
+      if (!readFileSync(basePage, "utf-8").includes("miniProgram")) return true;
+    } catch {
+      // unreadable → fall through
+    }
+  }
+  return false;
+}
+
+/**
+ * Target for commands that have no explicit flag and must not re-detect:
+ * update/remove/doctor follow the shape already on disk. A Taro/uni-app
+ * project scaffolded as Web by an older version stays Web — switching it on
+ * a strong signal would overwrite its Web BasePage/test-plan.
+ */
+export function resolveProjectTarget(projectRoot: string): TemplateTarget {
+  return hasMiniProgramArtifacts(projectRoot) ? "miniprogram" : "web";
+}
+
+/**
+ * Resolve the target for `init`: explicit CLI choice wins, then the scaffold
+ * already on disk (mini or web), then detection (strong mini-program > web >
+ * weak app.json). Other commands use `resolveProjectTarget` so they never
+ * re-detect.
+ */
+export function resolveTemplateTarget(
+  projectRoot: string,
+  options: { miniprogram?: boolean; miniSignal?: MiniProgramSignal } = {},
+): TemplateTarget {
+  if (options.miniprogram === true) return "miniprogram";
+  if (options.miniprogram === false) return "web";
+  if (hasMiniProgramArtifacts(projectRoot)) return "miniprogram";
+  if (hasWebScaffoldArtifacts(projectRoot)) return "web";
+
+  const mini = options.miniSignal ?? detectMiniProgramSignal(projectRoot);
+  if (mini.kind === "strong") return "miniprogram";
+
+  const npmRoot = findNpmRoot(projectRoot);
+  const pkg = readPackageJson(join(npmRoot, "package.json"));
+  if (pkg && hasWebFrontendSignal(projectRoot, npmRoot, pkg)) return "web";
+  if (mini.kind === "weak") return "miniprogram";
+  return "web";
+}
+
+function hasWebFrontendSignal(projectRoot: string, npmRoot: string, pkg: PackageJson): boolean {
   if (hasFrontendConfigFile(projectRoot) || (npmRoot !== projectRoot && hasFrontendConfigFile(npmRoot))) return true;
   if (packageHasFrontendDeps(pkg)) return true;
   const dev = pkg.scripts?.dev ?? "";
@@ -356,6 +605,21 @@ export function hasFrontendSignal(projectRoot: string): boolean | null {
   return findFrontendInDirs([projectRoot], WORKSPACE_SCAN_MAX_DEPTH, projectRoot) !== null;
 }
 
+export function hasFrontendSignal(
+  projectRoot: string,
+  miniSignal?: MiniProgramSignal,
+): boolean | null {
+  const mini = miniSignal ?? detectMiniProgramSignal(projectRoot);
+  const npmRoot = findNpmRoot(projectRoot);
+  const pkg = readPackageJson(join(npmRoot, "package.json"));
+  const web = pkg !== null && hasWebFrontendSignal(projectRoot, npmRoot, pkg);
+
+  if (mini.kind === "strong") return true;
+  if (mini.kind === "weak" && !web) return true;
+  if (!pkg) return null;
+  return web;
+}
+
 /**
  * Attribution companion to hasFrontendSignal: re-runs the same layers in the
  * same order and returns a human-readable description of the hit
@@ -367,10 +631,22 @@ export function hasFrontendSignal(projectRoot: string): boolean | null {
  * boolean contract, and the re-scan is bounded by the same workspace limits.
  */
 export function explainFrontendSignal(projectRoot: string): string | null {
+  const mini = detectMiniProgramSignal(projectRoot);
+  if (mini.kind === "strong") return mini.source;
+
   const npmRoot = findNpmRoot(projectRoot);
   const pkg = readPackageJson(join(npmRoot, "package.json"));
-  if (!pkg) return null;
+  const web = pkg === null ? null : explainWebFrontendSignal(projectRoot, npmRoot, pkg);
+  if (web) return web;
+  if (mini.kind === "weak") return mini.source;
+  return null;
+}
 
+function explainWebFrontendSignal(
+  projectRoot: string,
+  npmRoot: string,
+  pkg: PackageJson,
+): string | null {
   for (const dir of npmRoot !== projectRoot ? [projectRoot, npmRoot] : [projectRoot]) {
     const config = findFrontendConfigFile(dir);
     if (config) return config;

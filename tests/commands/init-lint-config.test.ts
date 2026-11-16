@@ -14,6 +14,7 @@ import { join } from "path";
 // hermetic runs don't depend on PATH (same pattern as tests/agents.test.ts).
 vi.mock("../../src/shared/exec.js", () => ({
   execFileAsync: vi.fn(),
+  hasCommand: vi.fn(() => true),
   execFileSync: vi.fn((file: string, args: string[]) => {
     if (file === "npx" && args[0] === "openspec") return "1.11.0";
     if (file === "npx" && args[0] === "playwright") return "1.62.1";

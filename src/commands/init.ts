@@ -10,8 +10,16 @@ import { join, basename, relative } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { readFile } from "fs/promises";
-import { execFileSync } from "../shared/exec.js";
+import { execFileSync, hasCommand } from "../shared/exec.js";
 import { installStopHook, isHookTier, uninstallStopHook } from "./hooks.js";
+import {
+  assertScaffoldCompatible,
+  generateMiniPlaywrightConfig,
+  generateMiniProgramScaffold,
+  printMiniConfigHint,
+  printMiniProgramNextSteps,
+  printMiniWorkflowHint,
+} from "./miniprogram.js";
 import {
   BRANCH_PROTECTION_HINT,
   generateAutoPipeline,
@@ -57,7 +65,12 @@ import {
   isTestRunnerMcpInstalled,
   TEST_RUNNER_MCP_SERVER,
   hasFrontendSignal,
+  detectMiniProgramSignal,
   explainFrontendSignal,
+  resolveTemplateTarget,
+  resolveBuildCommand,
+  renderWorkflowTemplate,
+  type TemplateTarget,
   detectCodeGraphStatus,
   codegraphHintLines,
   ensureGitignoreEntries,
@@ -99,6 +112,12 @@ export interface InitOptions {
    * mode, undefined lets the frontend signal decide (init-minimal-mode).
    */
   frontend?: boolean;
+  /**
+   * Target override: true forces the mini-program template set (and frontend
+   * mode), false forces web, undefined lets detection and generated
+   * artifacts decide.
+   */
+  miniprogram?: boolean;
   /**
    * Opt-in lint-config bootstrap (`--lint-config`): create missing ESLint/ruff
    * configs or append the managed ruff block; existing configs are never edited.
@@ -264,6 +283,7 @@ export function resolveInitMode(
   options: InitOptions,
   frontendSignal: boolean | null,
 ): "frontend" | "minimal" {
+  if (options.miniprogram === true) return "frontend";
   if (options.frontend === true) return "frontend";
   if (options.frontend === false) return "minimal";
   return frontendSignal === true ? "frontend" : "minimal";
@@ -374,8 +394,8 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   // 1. Check prerequisites
   console.log(chalk.blue("─── Prerequisites ───"));
 
-  const hasNode = hasCmd("node", ["--version"], "Node.js", true);
-  const hasNpm = hasCmd("npm", ["--version"], "npm", true);
+  const hasNode = hasCommand("node", ["--version"], "Node.js", true);
+  const hasNpm = hasCommand("npm", ["--version"], "npm", true);
   // Use execFile (no shell) so Windows paths in tmp dirs / node modules
   // are passed verbatim and `2>/dev/null` / `||` bash-isms don't reach cmd.exe.
   // Equivalent of: `npx openspec --version || echo "not found"`
@@ -543,6 +563,29 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     );
   }
 
+  // 3. Init mode + template target. Resolved before the deselected-removal
+  // phase so a scaffold conflict aborts before any editor artifact is
+  // deleted.
+  const miniSignal = detectMiniProgramSignal(projectRoot);
+  const frontendSignal = hasFrontendSignal(projectRoot, miniSignal);
+  const mode = resolveInitMode(options, frontendSignal);
+  // Template target is orthogonal to mode: mini-program keeps the frontend
+  // gates but swaps the generated scaffold. Explicit --miniprogram also
+  // forces frontend mode (resolveInitMode), so a signal-less directory still
+  // gets a scaffold.
+  const target = resolveTemplateTarget(projectRoot, {
+    miniprogram: options.miniprogram,
+    miniSignal,
+  });
+  // Both guards only matter when this run writes a Playwright scaffold; a
+  // minimal-mode refresh touches neither target's files.
+  assertScaffoldCompatible(
+    projectRoot,
+    target,
+    mode,
+    options.miniprogram === false,
+  );
+
   // 3a. Deselect = remove. Interactive deselections are real removals of
   // openspec-pw products (commands, MCP entries, claude wrapper/legacy
   // skill, vendored agents, and the shared AGENTS.md block when no editor
@@ -674,11 +717,6 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     }
   }
 
-  // 3b. Init mode: explicit flag wins, otherwise the frontend signal
-  // decides (false and null both → minimal). Reused by every phase gate
-  // (MCP, agents, scaffold, Summary) below.
-  const frontendSignal = hasFrontendSignal(projectRoot);
-  const mode = resolveInitMode(options, frontendSignal);
   // Set in the minimal scaffold phase; the Summary links the contract doc
   // only when this run generated it.
   let readmeGenerated = false;
@@ -827,20 +865,20 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     // minimal-mode run is an outdated marker — prune it (ownership-aware).
     console.log(chalk.blue("\n─── Generating Seed Test ───"));
     await pruneMinimalModeReadme(projectRoot);
-    await generateSeedTest(projectRoot);
+    await generateSeedTest(projectRoot, target);
 
     // 6b. Generate shared pages directory
     console.log(chalk.blue("\n─── Generating Shared Pages ───"));
-    await generateSharedPages(projectRoot);
-    await generateTestPlanTemplate(projectRoot);
+    await generateSharedPages(projectRoot, target);
+    await generateTestPlanTemplate(projectRoot, target);
 
     // 6c. Generate playwright.config.ts
     console.log(chalk.blue("\n─── Generating Playwright Config ───"));
-    await generatePlaywrightConfig(projectRoot);
+    await generatePlaywrightConfig(projectRoot, target);
 
     // 7. Generate app-knowledge.md
     console.log(chalk.blue("\n─── Generating App Knowledge ───"));
-    await generateAppKnowledge(projectRoot);
+    await generateAppKnowledge(projectRoot, target);
   }
 
   // 7z. Swallow-error lint checklist (lint-guidelines capability) — falls in
@@ -965,13 +1003,13 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   // the workflow runs Playwright, which minimal-mode projects don't have)
   if (options.ci && mode === "frontend") {
     console.log(chalk.blue("\n─── Generating CI Workflow ───"));
-    await generateGithubWorkflow(projectRoot);
+    await generateGithubWorkflow(projectRoot, target);
   }
 
   // 7c. Autonomous pipeline workflow (opt-in; never overwritten)
   if (options.autoPipeline) {
     console.log(chalk.blue("\n─── Generating Auto Pipeline ───"));
-    const pipeline = generateAutoPipeline(projectRoot);
+    const pipeline = generateAutoPipeline(projectRoot, target);
     if ("error" in pipeline) {
       console.log(chalk.yellow(`  ⚠ ${pipeline.error}`));
     } else if (pipeline.status === "exists") {
@@ -1049,31 +1087,36 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
 
   if (mode === "frontend") {
     const basis = explainFrontendSignal(projectRoot);
-    console.log(chalk.green(`  Mode: frontend${basis ? ` (signal: ${basis})` : ""}`));
+    const targetLabel = target === "miniprogram" ? " · target: miniprogram" : "";
+    console.log(chalk.green(`  Mode: frontend${basis ? ` (signal: ${basis})` : ""}${targetLabel}`));
     console.log(chalk.bold("Next steps:"));
-    console.log(
-      chalk.gray(
-        "  1. Install Playwright browsers: npx playwright install chromium",
-      ),
-    );
-    console.log(
-      chalk.gray(
-        "  2. Customize tests/playwright/credentials.yaml with your test user",
-      ),
-    );
-    console.log(
-      chalk.gray(
-        "  3. Set credentials: export E2E_USERNAME=xxx E2E_PASSWORD=yyy",
-      ),
-    );
-    console.log(
-      chalk.gray("  4. Run auth setup: npx playwright test --project=setup"),
-    );
-    console.log(
-      chalk.gray(
-        "  5. Page objects: extend tests/playwright/pages/BasePage.ts for shared selectors",
-      ),
-    );
+    if (target === "miniprogram") {
+      printMiniProgramNextSteps(projectRoot);
+    } else {
+      console.log(
+        chalk.gray(
+          "  1. Install Playwright browsers: npx playwright install chromium",
+        ),
+      );
+      console.log(
+        chalk.gray(
+          "  2. Customize tests/playwright/credentials.yaml with your test user",
+        ),
+      );
+      console.log(
+        chalk.gray(
+          "  3. Set credentials: export E2E_USERNAME=xxx E2E_PASSWORD=yyy",
+        ),
+      );
+      console.log(
+        chalk.gray("  4. Run auth setup: npx playwright test --project=setup"),
+      );
+      console.log(
+        chalk.gray(
+          "  5. Page objects: extend tests/playwright/pages/BasePage.ts for shared selectors",
+        ),
+      );
+    }
   } else {
     // The minimal-mode reason reflects reality: a signal miss vs an explicit
     // --no-frontend override (the signal may have actually hit).
@@ -1101,9 +1144,8 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     );
   }
   // Optional: CodeGraph hints — suggest `codegraph init` when the CLI is
-  // installed but the project is not indexed, or `codegraph sync` +
-  // (when the MCP is missing) `codegraph install` to refresh an existing
-  // index. Hints only, never setup.
+  // installed but the project is not indexed, or `codegraph sync` to refresh
+  // an existing index. Hints only, never setup.
   const cg = detectCodeGraphStatus(projectRoot);
   const hints = codegraphHintLines(cg);
   if (hints.length > 0) {
@@ -1205,9 +1247,17 @@ export async function pruneMinimalModeReadme(projectRoot: string) {
   }
 }
 
-export async function generateSeedTest(projectRoot: string) {
+export async function generateSeedTest(
+  projectRoot: string,
+  target: TemplateTarget = "web",
+) {
   const testsDir = join(projectRoot, "tests", "playwright");
   mkdirSync(testsDir, { recursive: true });
+
+  if (target === "miniprogram") {
+    await generateMiniProgramScaffold(projectRoot, testsDir);
+    return;
+  }
 
   const seedPath = join(testsDir, "seed.spec.ts");
   if (existsSync(seedPath)) {
@@ -1251,8 +1301,14 @@ export async function generateSeedTest(projectRoot: string) {
   );
 }
 
-export async function generateAppKnowledge(projectRoot: string) {
-  const src = join(TEMPLATE_DIR, "app-knowledge.md");
+export async function generateAppKnowledge(
+  projectRoot: string,
+  target: TemplateTarget = "web",
+) {
+  const src = join(
+    TEMPLATE_DIR,
+    ...(target === "miniprogram" ? ["miniprogram", "app-knowledge.md"] : ["app-knowledge.md"]),
+  );
   const dest = join(projectRoot, "tests", "playwright", "app-knowledge.md");
 
   if (existsSync(dest)) {
@@ -1273,8 +1329,14 @@ export async function generateAppKnowledge(projectRoot: string) {
  * reference template (app-exploration.md points here). Same lifecycle as
  * BasePage.ts: init creates it once, update refreshes it on drift.
  */
-export async function generateTestPlanTemplate(projectRoot: string) {
-  const src = join(TEMPLATE_DIR, "test-plan.md");
+export async function generateTestPlanTemplate(
+  projectRoot: string,
+  target: TemplateTarget = "web",
+) {
+  const src = join(
+    TEMPLATE_DIR,
+    ...(target === "miniprogram" ? ["miniprogram", "test-plan.md"] : ["test-plan.md"]),
+  );
   const dest = join(projectRoot, "tests", "playwright", "test-plan.template.md");
 
   if (existsSync(dest)) {
@@ -1290,11 +1352,17 @@ export async function generateTestPlanTemplate(projectRoot: string) {
   }
 }
 
-export async function generateSharedPages(projectRoot: string) {
+export async function generateSharedPages(
+  projectRoot: string,
+  target: TemplateTarget = "web",
+) {
   const pagesDir = join(projectRoot, "tests", "playwright", "pages");
   mkdirSync(pagesDir, { recursive: true });
 
-  const basePageSrc = join(TEMPLATE_DIR, "pages", "BasePage.ts");
+  const basePageSrc = join(
+    TEMPLATE_DIR,
+    ...(target === "miniprogram" ? ["miniprogram", "pages", "BasePage.ts"] : ["pages", "BasePage.ts"]),
+  );
   const basePageDest = join(pagesDir, "BasePage.ts");
   if (existsSync(basePageDest)) {
     console.log(chalk.gray("  - pages/BasePage.ts already exists, skipping"));
@@ -1311,7 +1379,10 @@ export async function generateSharedPages(projectRoot: string) {
   }
 }
 
-export async function generateGithubWorkflow(projectRoot: string) {
+export async function generateGithubWorkflow(
+  projectRoot: string,
+  target: TemplateTarget = "web",
+) {
   const workflowsDir = join(projectRoot, ".github", "workflows");
   mkdirSync(workflowsDir, { recursive: true });
 
@@ -1324,32 +1395,53 @@ export async function generateGithubWorkflow(projectRoot: string) {
   }
 
   if (existsSync(workflowSrc)) {
-    writeFileSync(workflowDest, readFileSync(workflowSrc));
+    const buildCommand = resolveBuildCommand(projectRoot);
+    const rendered = renderWorkflowTemplate(readFileSync(workflowSrc, "utf-8"), {
+      target,
+      buildCommand,
+    });
+    writeFileSync(workflowDest, rendered);
     console.log(
       chalk.green("  ✓ Generated: .github/workflows/openspec-pw.yml"),
     );
-    console.log(
-      chalk.gray("  Set E2E_USERNAME, E2E_PASSWORD, BASE_URL secrets in repo settings."),
-    );
+    if (target === "miniprogram") {
+      printMiniWorkflowHint(projectRoot, buildCommand);
+    } else {
+      console.log(
+        chalk.gray("  Set E2E_USERNAME, E2E_PASSWORD, BASE_URL secrets in repo settings."),
+      );
+    }
   } else {
     console.log(chalk.gray("  - CI template not found in package"));
   }
 }
 
-export async function generatePlaywrightConfig(projectRoot: string) {
-  const configSrc = join(TEMPLATE_DIR, "playwright.config.ts");
+export async function generatePlaywrightConfig(
+  projectRoot: string,
+  target: TemplateTarget = "web",
+) {
+  const isMini = target === "miniprogram";
+  const configSrc = join(
+    TEMPLATE_DIR,
+    ...(isMini ? ["miniprogram", "playwright.config.ts"] : ["playwright.config.ts"]),
+  );
   const configDest = join(projectRoot, "playwright.config.ts");
 
   if (existsSync(configDest)) {
     console.log(chalk.gray("  - playwright.config.ts already exists, skipping"));
-    suggestPlaywrightConfigPatch(configDest);
+    if (!isMini) suggestPlaywrightConfigPatch(configDest);
+    else printMiniConfigHint();
     return;
   }
 
   if (existsSync(configSrc)) {
-    writeFileSync(configDest, readFileSync(configSrc));
-    console.log(chalk.green("  ✓ Generated: playwright.config.ts"));
-    console.log(chalk.gray("  Customize webServer command and port for your app."));
+    if (isMini) {
+      generateMiniPlaywrightConfig(projectRoot, configSrc, configDest);
+    } else {
+      writeFileSync(configDest, readFileSync(configSrc, "utf-8"));
+      console.log(chalk.green("  ✓ Generated: playwright.config.ts"));
+      console.log(chalk.gray("  Customize webServer command and port for your app."));
+    }
   } else {
     console.log(chalk.gray("  - Playwright config template not found in package"));
   }
@@ -1379,15 +1471,4 @@ function suggestPlaywrightConfigPatch(configPath: string) {
     console.log(chalk.gray(`    - ${suggestion}`));
   }
   console.log(chalk.gray("    Compare with: openspec-pw init in a temporary project, or copy from templates/playwright.config.ts"));
-}
-
-function hasCmd(bin: string, args: string[], name: string, silent = false): boolean {
-  try {
-    execFileSync(bin, args, { stdio: "pipe" });
-    if (!silent) console.log(chalk.green(`  ✓ ${name} found`));
-    return true;
-  } catch {
-    if (!silent) console.log(chalk.yellow(`  ⚠ ${name} not found`));
-    return false;
-  }
 }

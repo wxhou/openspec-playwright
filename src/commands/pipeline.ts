@@ -7,6 +7,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
+import { renderWorkflowTemplate } from "../shared/workflow-render.js";
+import { resolveBuildCommand } from "../shared/miniprogram.js";
+import type { TemplateTarget } from "../shared/app-detect.js";
 
 const TEMPLATE_DIR = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -41,17 +44,24 @@ export type GenerateResult =
   | { status: "exists"; path: string }
   | { error: string };
 
-export function generateAutoPipeline(projectRoot: string): GenerateResult {
-  const target = join(projectRoot, AUTO_PIPELINE_REL);
-  if (existsSync(target)) return { status: "exists", path: target };
+export function generateAutoPipeline(
+  projectRoot: string,
+  target: TemplateTarget = "web",
+): GenerateResult {
+  const dest = join(projectRoot, AUTO_PIPELINE_REL);
+  if (existsSync(dest)) return { status: "exists", path: dest };
 
   const source = join(TEMPLATE_DIR, AUTO_PIPELINE_TEMPLATE);
   if (!existsSync(source)) {
     return { error: `pipeline template not found: ${source}` };
   }
-  mkdirSync(dirname(target), { recursive: true });
-  writeFileSync(target, readFileSync(source, "utf-8"), "utf-8");
-  return { status: "created", path: target };
+  mkdirSync(dirname(dest), { recursive: true });
+  const rendered = renderWorkflowTemplate(readFileSync(source, "utf-8"), {
+    target,
+    buildCommand: resolveBuildCommand(projectRoot),
+  });
+  writeFileSync(dest, rendered, "utf-8");
+  return { status: "created", path: dest };
 }
 
 /**

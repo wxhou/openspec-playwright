@@ -36,6 +36,10 @@ import {
   isToolOwnedRuffBlock,
   LINT_ESLINT_CONFIG_FILE,
   LINT_GUIDELINES_RELPATH,
+  resolveProjectTarget,
+  resolveBuildCommand,
+  renderWorkflowTemplate,
+  type TemplateTarget,
 } from "../shared/index.js";
 import { discoverProjects, expandTilde } from "../shared/discover.js";
 import { readTextFileCapped } from "../shared/file-read.js";
@@ -289,6 +293,10 @@ export async function removeInProject(
     // 2d. Remove generated CI workflows — tool-named and tool-written, so a
     // byte-identical copy is tool-owned; an edited one is kept and named.
     console.log(chalk.blue("\n─── Removing CI Workflows ───"));
+    // A generated mini-program workflow is the rendered template, not the raw
+    // one; compare against the same rendering generate used.
+    const workflowTarget = resolveProjectTarget(projectRoot);
+    const workflowBuild = resolveBuildCommand(projectRoot);
     for (const [rel, templateFile] of [
       [GITHUB_WORKFLOW_REL, WORKFLOW_TEMPLATE],
       [AUTO_PIPELINE_REL, AUTO_PIPELINE_TEMPLATE],
@@ -300,7 +308,9 @@ export async function removeInProject(
         console.log(
           chalk.yellow(`  ⚠ ${rel} resolves outside the project (symlink) — skipping`),
         );
-      } else if (isPristineCopy(projectRoot, rel, templateFile)) {
+      } else if (
+        isToolOwnedWorkflow(projectRoot, rel, templateFile, workflowTarget, workflowBuild)
+      ) {
         rmSync(dest);
         cleanupEmptyDirs(dirname(dest), projectRoot);
         track(rel);
@@ -466,6 +476,22 @@ export async function removeInProject(
           ),
         );
       }
+    }
+
+    // 4c. Remove the mini-program contract doc — same content-owned rule.
+    const miniReadmeRel = join("tests", "playwright", "README.md");
+    if (
+      isPristineCopy(projectRoot, miniReadmeRel, "miniprogram/tests-readme.md")
+    ) {
+      rmSync(join(projectRoot, miniReadmeRel));
+      track("tests/playwright/README.md");
+      console.log(chalk.green("  ✓ Removed tests/playwright/README.md"));
+    } else if (existsSync(join(projectRoot, miniReadmeRel))) {
+      console.log(
+        chalk.yellow(
+          "  ⚠ tests/playwright/README.md differs from the bundled template — kept (user-modified or user-owned)",
+        ),
+      );
     }
 
     // 5. Clean rules file markers for each detected editor
@@ -781,10 +807,14 @@ export async function runRemoveAll(options: RemoveAllOptions = {}): Promise<numb
 }
 
 /** Read-only summary of the tool-owned artifacts present in one project. */
-function describePlan(projectRoot: string): string[] {
+export function describePlan(projectRoot: string): string[] {
   const groups: string[] = [];
   const detected = detectAdapters(projectRoot);
   const meta = buildCommandMeta("");
+  // Plan and execution must render the same mini-program workflow, or the
+  // plan hides a file that --yes then deletes.
+  const workflowTarget = resolveProjectTarget(projectRoot);
+  const workflowBuild = resolveBuildCommand(projectRoot);
 
   let commands = 0;
   for (const adapter of detected) {
@@ -832,6 +862,15 @@ function describePlan(projectRoot: string): string[] {
   if (isPristineCopy(projectRoot, join("tests", "README.md"), "tests-readme.md")) {
     groups.push("tests/README.md");
   }
+  if (
+    isPristineCopy(
+      projectRoot,
+      join("tests", "playwright", "README.md"),
+      "miniprogram/tests-readme.md",
+    )
+  ) {
+    groups.push("tests/playwright/README.md");
+  }
   if (hasCleanableRuleMarkers(projectRoot)) groups.push("rules markers");
   const checklistPath = join(projectRoot, LINT_GUIDELINES_RELPATH);
   if (
@@ -843,10 +882,26 @@ function describePlan(projectRoot: string): string[] {
       groups.push("lint checklist");
     }
   }
-  if (isPristineCopy(projectRoot, GITHUB_WORKFLOW_REL, WORKFLOW_TEMPLATE)) {
+  if (
+    isToolOwnedWorkflow(
+      projectRoot,
+      GITHUB_WORKFLOW_REL,
+      WORKFLOW_TEMPLATE,
+      workflowTarget,
+      workflowBuild,
+    )
+  ) {
     groups.push("CI workflow");
   }
-  if (isPristineCopy(projectRoot, AUTO_PIPELINE_REL, AUTO_PIPELINE_TEMPLATE)) {
+  if (
+    isToolOwnedWorkflow(
+      projectRoot,
+      AUTO_PIPELINE_REL,
+      AUTO_PIPELINE_TEMPLATE,
+      workflowTarget,
+      workflowBuild,
+    )
+  ) {
     groups.push("auto pipeline workflow");
   }
   if (hasRuffBlock(projectRoot)) groups.push("ruff managed block");
@@ -871,11 +926,82 @@ function describePlan(projectRoot: string): string[] {
   return groups;
 }
 
+/**
+ * Placeholder for the build step the renderer inserts. Rendering the template
+ * with it marks the slot the step occupies, so ownership can be checked
+ * without caring which script name the step carries.
+ */
+const BUILD_STEP_SENTINEL = "__openspec-pw-build-step__";
+
+/** True when a line is a build step the renderer could have produced. */
+function isBuildStepLine(line: string): boolean {
+  return /^\s*- run: npm (?:--prefix (?:"[^"]+"|\S+) )?run \S+\s*$/.test(line);
+}
+
+/**
+ * Line-by-line comparison against a rendered template. A build step slot
+ * matches any build command, so a renamed script still counts as tool-owned;
+ * every other difference means the user edited the file.
+ */
+function matchesRenderedWorkflow(actual: string, expected: string): boolean {
+  const expectedLines = expected.split("\n");
+  const actualLines = actual.split("\n");
+  if (expectedLines.length !== actualLines.length) return false;
+  for (let i = 0; i < expectedLines.length; i++) {
+    if (expectedLines[i].includes(BUILD_STEP_SENTINEL)) {
+      if (!isBuildStepLine(actualLines[i])) return false;
+      continue;
+    }
+    if (expectedLines[i] !== actualLines[i]) return false;
+  }
+  return true;
+}
+
+/**
+ * True when the workflow file is the tool's own output. The build step may
+ * differ — the script can be renamed, added, or removed after generation —
+ * but any other difference means the user edited it.
+ */
+function isToolOwnedWorkflow(
+  projectRoot: string,
+  relPath: string,
+  templateFile: string,
+  target: TemplateTarget,
+  buildCommand: string | null,
+): boolean {
+  const dest = join(projectRoot, relPath);
+  if (!existsSync(dest) || !isPathInsideProjectRoot(projectRoot, dest)) return false;
+  const template = readTextFileCapped(
+    fileURLToPath(new URL(`../../templates/${templateFile}`, import.meta.url)),
+  );
+  if (template.kind !== "ok") {
+    throw new Error(`bundled template ${templateFile} is unreadable`);
+  }
+  const read = readTextFileCapped(dest);
+  if (read.kind === "missing") return false;
+  if (read.kind === "unreadable") {
+    throw new Error(`cannot read ${relPath} to verify ownership`, {
+      cause: read.error,
+    });
+  }
+  if (read.kind === "too-large") return false;
+  const actual = normalizeEol(read.content);
+  const candidates = [
+    renderWorkflowTemplate(template.content, { target, buildCommand }),
+    renderWorkflowTemplate(template.content, { target, buildCommand: null }),
+    renderWorkflowTemplate(template.content, { target, buildCommand: BUILD_STEP_SENTINEL }),
+  ];
+  return candidates.some((expected) =>
+    matchesRenderedWorkflow(actual, normalizeEol(expected)),
+  );
+}
+
 /** True when the file exists and is byte-identical (EOL-normalized) to its template. */
 function isPristineCopy(
   projectRoot: string,
   relPath: string,
   templateFile: string,
+  transform?: (content: string) => string,
 ): boolean {
   const dest = join(projectRoot, relPath);
   if (!existsSync(dest) || !isPathInsideProjectRoot(projectRoot, dest)) {
@@ -897,7 +1023,8 @@ function isPristineCopy(
   }
   // Templates are small; a larger file cannot be a byte-identical copy.
   if (read.kind === "too-large") return false;
-  return normalizeEol(read.content) === normalizeEol(template.content);
+  const expected = transform ? transform(template.content) : template.content;
+  return normalizeEol(read.content) === normalizeEol(expected);
 }
 
 /** Identity of one physical MCP entry — shared config files count once. */

@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+- **feat(cli): 新增 `install --claude`**. 只包装官方 native installer：默认打印命令，`--run` 才执行，`--verify` 检查安装；默认 `latest`，支持 `stable` 与指定版本；不含镜像、代理或地区绕过。
+  - `src/index.ts`、`src/commands/install.ts`、`tests/commands/install.test.ts`、`tests/smoke.test.ts`、`README.md`、`README.zh-CN.md`、`docs/llms.txt`、`CHANGELOG.md`
+- **feat(cli): 新增小程序目标**. 检测强/弱小程序信号并支持 `--miniprogram` 强制；脚手架改用官方 `@open-wxa/wxa-runner-playwright` fixture，CI、doctor、update、remove 与 `/opsx:e2e` 同步支持；已存在小程序产物的项目会被重新判定为 frontend 模式。`update` / `remove` / `doctor` 只按生成物标记判定目标，既有 Web 脚手架不会被静默切换；`init --miniprogram` 遇到 Web 脚手架会拒绝半迁移。
+  - `src/index.ts`、`src/commands/{init,update,remove,pipeline,doctor}.ts`、`src/shared/{app-detect,miniprogram,workflow-render}.ts`、`templates/miniprogram/`、`templates/e2e-command.md`、`.claude/commands/opsx/e2e.md`、`package.json`、`package-lock.json`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
+- **fix(cli): 修正小程序目标解析与清理边界**. uni-app 默认产物跟随构建脚本，原生项目读取 `miniprogramRoot`；迁移护栏只在 frontend 模式生效并覆盖反向切换；`remove` 清理小程序 README，构建脚本改名后仍能识别工作流；CI 矩阵与文档统一到 Node 22。
+  - `src/shared/miniprogram.ts`、`src/commands/{init,miniprogram,remove}.ts`、`.github/workflows/ci.yml`、`README.md`、`README.zh-CN.md`、`tests/commands/{init-miniprogram,remove-command}.test.ts`、`tests/shared/miniprogram.test.ts`、`CHANGELOG.md`
+- **fix(cli): 修正小程序目标判定与归属边界**. 普通 `init` 遇到既有 Web 脚手架保持 Web；检测覆盖 workspace 成员；构建命令在拥有脚本的包里执行；`update` 不再覆盖用户改过的 `wxa-test.ts`（缺失时重建）；工作流归属不因构建脚本增删改名失效；迁移护栏提前到删除阶段之前。
+  - `src/shared/{app-detect,miniprogram,workflow-render}.ts`、`src/commands/{init,miniprogram,pipeline,remove,update}.ts`、`templates/e2e-command.md`、`.claude/commands/opsx/e2e.md`、`README.md`、`README.zh-CN.md`、`tests/shared/{app-detect,miniprogram,workflow-render}.test.ts`、`tests/commands/{init-miniprogram,remove-command}.test.ts`、`CHANGELOG.md`
+- **fix(cli): 按 workspace 成员解析小程序**. 仓库根拥有 `dev` 脚本时，产物目录、构建命令与页面清单改按检测到的成员目录解析；`entryPagePath` 在所有页面清单中优先；含空格的成员路径加引号；`wxaProject` 只有作为配置选项时才构成小程序标记。
+  - `src/shared/{app-detect,miniprogram}.ts`、`src/commands/miniprogram.ts`、`tests/shared/{app-detect,miniprogram}.test.ts`、`CHANGELOG.md`
+- **fix(cli): 修正工作流归属与小程序诊断输出**. `remove` 在构建脚本新增或删除后仍识别自己的工作流，用户额外添加的 npm 步骤会让文件保留；auto-pipeline 的构建步骤继承所服务步骤的 `if:`；`doctor` 的小程序检查给出构建/升级命令，不再打印 Web 专属的 dev-script 与 base-url 诊断；`/opsx:e2e` 探索补 `--setup` 与动态端口，依赖说明加入 `wxa-runner@^0.13`；原生小程序（无构建脚本、产物已存在）不再被要求构建。
+  - `src/commands/{remove,doctor,miniprogram,init}.ts`、`src/shared/workflow-render.ts`、`templates/e2e-command.md`、`.claude/commands/opsx/e2e.md`、`README.md`、`README.zh-CN.md`、`tests/commands/{remove-command,doctor-miniprogram,init-miniprogram}.test.ts`、`tests/shared/workflow-render.test.ts`、`CHANGELOG.md`
+- **docs(miniprogram): 说明编译框架的 data 键名**. uni-app / Taro 编译后会重命名页面 data 的键（`title` 变成 `b`），`/opsx:e2e`、探索模板与测试计划改为要求先读 `pageData()` 再断言稳定键；`remove` 在保留被改过的小程序 README 时给出提示。
+  - `templates/e2e-command.md`、`.claude/commands/opsx/e2e.md`、`templates/miniprogram/{app-exploration,test-plan,tests-readme}.md`、`src/commands/remove.ts`、`tests/commands/remove-command.test.ts`、`CHANGELOG.md`
+- **fix(cli): 按 Taro 的 outputRoot 解析产物并声明运行时限制**. 根 `project.config.json` 写死 `dist`、实际产物在 `dist/<platform>` 时，改用 Taro 的 `outputRoot` 并解析 `process.env.TARO_ENV`；Taro 3.6 实测在浏览器运行器里报 `没有找到页面实例`，README 与 `/opsx:e2e` 要求 seed 失败即停止，不关闭错误检查。
+  - `src/shared/miniprogram.ts`、`tests/shared/miniprogram.test.ts`、`templates/e2e-command.md`、`.claude/commands/opsx/e2e.md`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
+- **chore(deps): 升级 Playwright 到 1.65.1**. `@playwright/test` 与 `playwright` 同步升到 `^1.65.1`；`engines.node` 提到 `>=22`，因为 Playwright 1.65 不再测试 Node 20。已装浏览器的项目需重跑 `npx playwright install`。
+  - `package.json`、`package-lock.json`、`README.md`、`README.zh-CN.md`、`docs/index.html`、`CHANGELOG.md`
+- **fix(cli): 移除 codegraph MCP 安装提示**. init / update 的摘要与 doctor 的 `codegraph-mcp` 检查不再打印 `codegraph install --target=auto --location=local`；已建索引时只保留 `codegraph sync` 一行，未建索引时仍提示可选的 `codegraph init`。
+  - `src/shared/codegraph.ts`、`src/commands/{doctor,init,update}.ts`、`tests/shared/codegraph.test.ts`、`tests/commands/doctor.test.ts`、`CHANGELOG.md`
+- **docs(standards): 新增大文件与外部制品源规范**. §8 要求 ≥1GB 制品先列国内可信源、国际官方源兜底；交互选择一次并记住，非交互只读配置；按官方元数据校验哈希；不按 IP/时区静默切换。英文版暂未同步。
+  - `employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
+
 ## [0.3.119] - 2026-11-15
 - **fix(e2e): 修正认证检查与升级提示**. API/UI 的 `E2E_AUTH_CHECK_PATH` 检查禁用重定向，UI setup 也执行该检查；README 补旧 `auth.setup.ts`/workflow 的升级提示；skill 选择器表与 `docs/llms.txt` 的 explore 描述对齐。
   - `templates/auth.setup.ts`、`templates/e2e-command.md`、`docs/llms.txt`、`README.md`、`README.zh-CN.md`、`tests/init.test.ts`、`CHANGELOG.md`

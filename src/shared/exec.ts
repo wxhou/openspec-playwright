@@ -1,4 +1,5 @@
 import crossSpawn from "cross-spawn";
+import chalk from "chalk";
 import type { SpawnOptions, SpawnSyncOptions } from "node:child_process";
 
 export interface BaseExecOptions {
@@ -284,4 +285,21 @@ export function spawnSync(
   } as unknown as SpawnSyncOptions) as unknown as SpawnSyncResult<
     string | Buffer
   >;
+}
+
+/** Probe a command and report the outcome unless `silent`. */
+export function hasCommand(
+  bin: string,
+  args: string[],
+  name: string,
+  silent = false,
+): boolean {
+  try {
+    execFileSync(bin, args, { stdio: "pipe" });
+    if (!silent) console.log(chalk.green(`  ✓ ${name} found`));
+    return true;
+  } catch {
+    if (!silent) console.log(chalk.yellow(`  ⚠ ${name} not found`));
+    return false;
+  }
 }

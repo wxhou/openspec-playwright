@@ -13,6 +13,7 @@ import { join } from "path";
 // during prerequisites — stub the command wrapper so hermetic runs don't depend on PATH.
 vi.mock("../../src/shared/exec.js", () => ({
   execFileAsync: vi.fn(),
+  hasCommand: vi.fn(() => true),
   execFileSync: vi.fn((file: string, args: string[]) => {
     if (file === "npx" && args[0] === "openspec") return "1.11.0";
     if (file === "node") return "v22.0.0";

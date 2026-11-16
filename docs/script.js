@@ -121,7 +121,17 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🔴 禁止无超时的外部调用：网络请求必须带明确超时，否则挂死等同无界等待
 - 🔴 禁止无界并发：大批量任务不限并发度地一次性发起、无上限开连接/进程/线程——并发池/信号量显式限流
 - 🟡 循环内 I/O 须批量化（N+1 查询、循环内发请求/写文件；流式分块写不算"攒齐"，错误日志保留、聚合输出）
-- 🟡 不写随输入增长的无界缓存（无上限、无淘汰的累积结构）`; // spec-embed:zh
+- 🟡 不写随输入增长的无界缓存（无上限、无淘汰的累积结构）
+
+## 大文件与外部制品源
+- 🟡 单个制品或单次安装总量 ≥ 1GB（阈值可配置）前先列候选源：显式指定 > 项目配置的国内可信源 > 国际官方源；确认该源提供目标版本
+- 🟡 交互环境列出候选（源、延迟、版本、校验状态）并推荐，用户选一次后写入配置；非交互环境只读配置，不可用即失败
+- 🟡 下载后按官方元数据校验大小与哈希，记录源、版本、哈希
+- 🔴 不按 IP、时区或语言静默切换源；探测只用于推荐
+- 🔴 缺包、版本不符或校验失败不得静默回退；显式失败，或经用户确认后回退并记录原因
+- 🔴 第三方公益镜像不设为默认源，须项目显式加入可信清单
+- 🟡 生态级（pip/npm/go/cargo/apt/docker）改索引或 registry；制品级（模型/数据集/直链）按制品解析，不混用
+- 🟡 下载带超时、断点续传与并发上限；源清单可更新，关停即降权`; // spec-embed:zh
 
 const CLAUDE_MD_EN = `# Project Guidelines
 - This codebase is yours: what it's for and how it's built are your call, and you'll keep building on it. Read \`openspec/config.yaml\` first (tech stack, structure, conventions, constraints, etc.); no file or empty → skip this item, the rest applies as usual

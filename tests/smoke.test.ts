@@ -103,11 +103,23 @@ const distExists = existsSync(distDir);
       installCommand(claudeAdapter, buildCommandMeta("hello"), tmpDir);
       installCommand(opencodeAdapter, buildCommandMeta("hello"), tmpDir);
       installCommand(clineAdapter, buildCommandMeta("hello"), tmpDir);
-      installCommand(cursorAdapter, buildCommandMeta("hello /opsx:e2e"), tmpDir);
-      expect(existsSync(join(tmpDir, ".claude", "commands", "opsx", "e2e.md"))).toBe(true);
-      expect(existsSync(join(tmpDir, ".opencode", "commands", "opsx-e2e.md"))).toBe(true);
-      expect(existsSync(join(tmpDir, ".cline", "skills", "opsx-e2e", "SKILL.md"))).toBe(true);
-      expect(existsSync(join(tmpDir, ".cursor", "commands", "opsx-e2e.md"))).toBe(true);
+      installCommand(
+        cursorAdapter,
+        buildCommandMeta("hello /opsx:e2e"),
+        tmpDir,
+      );
+      expect(
+        existsSync(join(tmpDir, ".claude", "commands", "opsx", "e2e.md")),
+      ).toBe(true);
+      expect(
+        existsSync(join(tmpDir, ".opencode", "commands", "opsx-e2e.md")),
+      ).toBe(true);
+      expect(
+        existsSync(join(tmpDir, ".cline", "skills", "opsx-e2e", "SKILL.md")),
+      ).toBe(true);
+      expect(
+        existsSync(join(tmpDir, ".cursor", "commands", "opsx-e2e.md")),
+      ).toBe(true);
       expect(
         existsSync(join(tmpDir, ".cursor", "skills", "opsx-e2e", "SKILL.md")),
       ).toBe(true);
@@ -117,7 +129,8 @@ const distExists = existsSync(distDir);
   });
 
   it("hasClaudeCode detects Claude Code in project", async () => {
-    const { hasClaudeCode, hasCline, hasCursor } = await import("../dist/commands/editors.js");
+    const { hasClaudeCode, hasCline, hasCursor } =
+      await import("../dist/commands/editors.js");
     expect(typeof hasClaudeCode(".")).toBe("boolean");
     expect(typeof hasCline(".")).toBe("boolean");
     expect(typeof hasCursor(".")).toBe("boolean");
@@ -165,6 +178,7 @@ const distExists = existsSync(distDir);
     const { stdout } = runCli("--help");
     expect(stdout).toContain("init");
     expect(stdout).toContain("doctor");
+    expect(stdout).toContain("install");
     expect(stdout).toContain("coverage");
     expect(stdout).toContain("flake");
     expect(stdout).toContain("update");
@@ -195,12 +209,51 @@ const distExists = existsSync(distDir);
     const { stdout } = runCli("init --help");
     expect(stdout).toContain("--no-mcp");
     expect(stdout).toContain("--ci");
+    expect(stdout).toContain("--miniprogram");
+    expect(stdout).toContain("--no-miniprogram");
+  });
+
+  it("init rejects conflicting mini-program flags with exit code 2", () => {
+    for (const args of [
+      "init --miniprogram --no-miniprogram",
+      "init --miniprogram --no-frontend",
+    ]) {
+      const { stderr, status } = runCli(args);
+      expect(status).toBe(2);
+      expect(stderr).toContain("Conflicting flags");
+    }
   });
 
   it("coverage --help shows --json flag and optional change-name", () => {
     const { stdout } = runCli("coverage --help");
     expect(stdout).toContain("--json");
     expect(stdout).toContain("[change-name]");
+  });
+
+  it("install --help documents the official-channel options", () => {
+    const { stdout } = runCli("install --help");
+    expect(stdout).toContain("--claude");
+    expect(stdout).toContain("--run");
+    expect(stdout).toContain("--verify");
+    expect(stdout).toContain("--channel");
+    expect(stdout).toContain("--version");
+    expect(stdout).not.toContain("--mirror");
+    expect(stdout).not.toContain("--registry");
+    expect(stdout).not.toContain("--proxy");
+  });
+
+  it("install --claude --version prints the version plan", () => {
+    const { stdout, status } = runCli("install --claude --version 2.1.89");
+    expect(status).toBe(0);
+    expect(stdout).toContain("2.1.89");
+    expect(stdout).toContain("claude.ai/install");
+    expect(stdout).toContain("supported-countries");
+  });
+
+  it("install without --claude exits 2", () => {
+    const { stderr, status } = runCli("install");
+    expect(status).toBe(2);
+    expect(stderr).toContain("Choose a target: --claude");
   });
 
   it("unknown command exits non-zero", () => {
@@ -230,6 +283,15 @@ const CRITICAL_PACKAGE_FILES = [
   "templates/e2e-command.md",
   "templates/pages/BasePage.ts",
   "templates/github-workflow.yml",
+  "templates/miniprogram/playwright.config.ts",
+  "templates/miniprogram/wxa-test.ts",
+  "templates/miniprogram/wxa.setup.ts",
+  "templates/miniprogram/pages/BasePage.ts",
+  "templates/miniprogram/seed.spec.ts",
+  "templates/miniprogram/tests-readme.md",
+  "templates/miniprogram/app-exploration.md",
+  "templates/miniprogram/app-knowledge.md",
+  "templates/miniprogram/test-plan.md",
 ];
 
 (distExists ? describe : describe.skip)("npm package contents", () => {
@@ -240,8 +302,8 @@ const CRITICAL_PACKAGE_FILES = [
 
   it("npm pack produces a tarball", () => {
     execSync(`npm pack --pack-destination "${packDir}"`, { cwd: ROOT });
-    const files = readdirSync(packDir).filter((f) =>
-      f.startsWith("openspec-playwright-") && f.endsWith(".tgz"),
+    const files = readdirSync(packDir).filter(
+      (f) => f.startsWith("openspec-playwright-") && f.endsWith(".tgz"),
     );
     expect(files.length).toBeGreaterThan(0);
     tarballPath = join(packDir, files[0]);
@@ -250,8 +312,8 @@ const CRITICAL_PACKAGE_FILES = [
   it("tarball contains all critical files", () => {
     if (!tarballPath) {
       execSync(`npm pack --pack-destination "${packDir}"`, { cwd: ROOT });
-      const files = readdirSync(packDir).filter((f) =>
-        f.startsWith("openspec-playwright-") && f.endsWith(".tgz"),
+      const files = readdirSync(packDir).filter(
+        (f) => f.startsWith("openspec-playwright-") && f.endsWith(".tgz"),
       );
       tarballPath = join(packDir, files[0]);
     }

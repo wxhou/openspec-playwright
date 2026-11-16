@@ -5,7 +5,7 @@
 [![npm version](https://img.shields.io/npm/v/openspec-playwright.svg)](https://www.npmjs.com/package/openspec-playwright)
 [![npm 下载量（月）](https://img.shields.io/npm/dm/openspec-playwright.svg)](https://www.npmjs.com/package/openspec-playwright)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Node >= 20](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org)
+[![Node >= 22](https://img.shields.io/badge/node-%3E%3D22-brightgreen.svg)](https://nodejs.org)
 
 **OpenSpec 项目获得与代码同住的 AI 驱动 E2E 验证。** 一条 `/opsx:e2e <change>` 命令（支持九款编辑器）按 spec 规划、生成、执行并自愈 Playwright 测试，附每 change 报告，无需手搭脚手架。
 
@@ -42,7 +42,7 @@ npm install -g openspec-playwright@latest
 
 **必需：**
 
-1. **Node.js >= 20**
+1. **Node.js >= 22**
 2. **至少一个受支持编辑器** — 见 [支持的 AI 编码助手](#支持的-ai-编码助手) 表。Pi、Oh My Pi、MiniMax Code 与 DeepSeek Harness 也会通过全局配置目录（`~/.pi/agent/`、`~/.omp/agent/`、`~/.minimax-code/`、`~/.dsh/`）检测。
 3. **OpenSpec** 已初始化：`npm install -g @fission-ai/openspec@latest && openspec init`
 4. **Playwright MCP**（用于测试执行 + Healer）— `openspec-pw init` 会在检测到前端信号时按编辑器自动安装（纯 API 项目跳过——API 测试用 `request` fixture），**全部项目级**（写入项目内文件；Claude Code 用 `--scope project` 写项目根 `.mcp.json`，不碰全局 `~/.claude.json`）。安装**单个** server，与 Playwright 官方 `playwright init-agents` 布局一致：
@@ -157,6 +157,25 @@ openspec-pw init --no-frontend   # 有信号时强制 minimal
 
 后续升级：项目出现前端信号（或传 `--frontend`）后，重跑 `init` 会增量安装完整脚手架，并清理工具拥有的 `tests/README.md`（被修改过的保留并提示）。minimal 模式项目是一等公民：`update` 同步其规范块与 wrapper，`doctor` 检查时不因缺少 Playwright 失败，`remove` 清理 README 与标记。
 
+### 小程序目标
+
+`init` 也可以为微信小程序生成 E2E 脚手架。目标与安装模式是两个维度：小程序项目始终是 frontend 模式。
+
+检测分强弱两级。强信号——`project.config.json`、已构建的 `mp-weixin` 产物目录、`@tarojs/*` 或 `@dcloudio/*` 依赖——优先于任何 Web 信号。裸 `app.json` 属弱信号：只有含 `pages` 数组且存在伴生文件（`app.wxss`、`sitemap.json`、`project.private.config.json`）才算命中，避免把 Expo Web 应用误判为小程序。可显式覆盖：
+
+```bash
+openspec-pw init --miniprogram      # 强制小程序目标
+openspec-pw init --no-miniprogram   # 强制 Web 目标
+```
+
+生成之后，`update` / `remove` / `doctor` 按生成物（`wxa-test.ts` 或 `wxaProject`）判定目标，不再重新检测，既有 Web 脚手架不会被后续 `update` 切换。对已有 Web 脚手架重跑 `init --miniprogram` 会停止并给出迁移指令，不留下半转换状态。
+
+脚手架使用官方 [`@open-wxa/wxa-runner-playwright`](https://open-wxa.github.io/wxa-runner/) fixture，在 Chrome 中按官方基础库运行构建产物。生成文件：`playwright.config.ts`（`channel: 'chrome'`、`wxaProject`、`wxaServerOptions.setup`）、`wxa-test.ts` 重导出 wrapper、`wxa.setup.ts`、`pages/BasePage.ts`，以及打开 `entryPagePath`（或 `pages[0]`）并断言 `toHavePath` 的 seed 测试。不生成 `auth.setup.ts` 与 `credentials.yaml`——登录态放 `wxa.setup.ts`。
+
+依赖：`@playwright/test@^1.65`、`@open-wxa/wxa-runner-playwright@^0.13`、`@open-wxa/wxa-runner-core@^0.13`、`wxa-runner@^0.13`（`/opsx:e2e` 探索步骤调用的 CLI），以及 Google Chrome（`npx playwright install chrome`）。Taro 用 `build:weapp`，uni-app 用 `build:mp-weixin`；monorepo 中在拥有该脚本的包里执行（`npm --prefix <member> run <script>`）。生成的 CI 会安装 Chrome，并在 `npx playwright test` 前执行该构建；`doctor` 检查 Chrome、fixture、Playwright 版本（>=1.64）与 `wxaProject` 产物目录。升级 fixture 导入请改 `tests/playwright/wxa-test.ts`——`update` 会保留你改过的副本。
+
+限制：测试运行在无头 Chrome 中，不是微信开发者工具。仅在开发者工具中可用的 API（真实登录、支付、原生组件）不在覆盖范围。CI 支持面向 x86-64 Linux；没有 WebKit 或 Firefox project。Taro 项目可以解析与构建，但 Taro 运行时可能在浏览器运行器里初始化失败（`没有找到页面实例`）；先跑 seed，seed 失败即视为该应用不受支持，不要转而写 spec。
+
 ### 官方 Playwright Agents
 
 <details>
@@ -186,9 +205,10 @@ openspec-pw init --tools claude --agents   # 额外安装官方 planner agent �
 
 ```bash
 openspec-pw -v            # 打印版本（也支持 -V / --version）
-openspec-pw init          # 初始化集成（--tools all|none|ids… 可选编辑器；--agents 加装官方 agents；--frontend/--no-frontend 强制安装模式；--lint-config 生成/扩展吞错清单的 ESLint 与 ruff 配置；--hook[=static|full] 安装 Claude Code Stop hook；--auto-pipeline 生成无头 CI 工作流）
+openspec-pw init          # 初始化集成（--tools all|none|ids… 可选编辑器；--agents 加装官方 agents；--frontend/--no-frontend 强制安装模式；--miniprogram/--no-miniprogram 选择小程序目标；--lint-config 生成/扩展吞错清单的 ESLint 与 ruff 配置；--hook[=static|full] 安装 Claude Code Stop hook；--auto-pipeline 生成无头 CI 工作流）
 openspec-pw update        # 更新 CLI 和命令到最新版本
 openspec-pw doctor        # 检查前置条件 (Node, Playwright, OpenSpec, 配置, 测试) + 应用服务器诊断
+openspec-pw install --claude # 通过官方 native installer 安装或验证 Claude Code（默认只打印；--run 才执行；--verify 检查）
 openspec-pw audit         # 检查测试文件是否有孤儿文件和配置问题（--gate 有问题时退出码 1）
 openspec-pw coverage      # 分析 spec 与测试之间的覆盖率（--fail-under <pct> 低于阈值时退出码 1；--plan <file> 要求 delta spec 的每条 scenario 都出现在该测试计划中，否则退出码 1）
 openspec-pw flake         # 检测测试文件中的不稳定模式（静态模式 + 被调大的超时）
@@ -198,7 +218,9 @@ openspec-pw explore       # 探索应用路由（--file <path> 指定 app-explor
 openspec-pw remove        # 移除集成（--all 扫描 home 与 Windows 盘根；--yes 才执行）
 ```
 
-**`remove`** 清理当前项目的工具痕迹（非脚手架）：编辑器命令载体、`playwright-test` 与遗留 `playwright` 的 MCP 条目、规则文件标记块、`.gitignore` managed block、Stop hook、`openspec/schemas/playwright-e2e/`、lint 清单、vendored agents、legacy skill 目录，以及仍与内置模板字节一致的 `tests/README.md`、`.github/workflows/openspec-pw.yml`、`.github/workflows/openspec-auto.yml`、工具生成的 `eslint.config.mjs` 与 ruff managed block。用户数据永不删除（`tests/**`、`credentials.yaml`、`openspec/specs`），被改过的工具文件保留并提示。符号链接解析到项目外的路径一律不删不写，官方 OpenSpec 的 `OPENSPEC:` 块不视为本工具产物。init 写入 OpenCode `instructions` 的 `AGENTS.md` 条目保留——无法与用户自己添加的条目区分；需要你编辑的脚手架文件（`playwright.config.ts`、`tests/playwright/seed.spec.ts`、`auth.setup.ts`、`pages/`、`test-plan.template.md`）保留；只剩空容器的配置文件（`{"mcpServers":{}}`）也保留——无法证明归属。
+`install --claude` 安装 Claude Code CLI 本体；`init` 安装项目集成。默认只打印官方 native installer 命令；`--run` 执行，`--verify` 检查已有安装，`--channel stable|latest` 选择通道（默认 `latest`），`--version x.y.z` 固定版本。native 安装后若找不到 `claude`，请打开新终端或把 `~/.local/bin` 加入 `PATH`。只走 Anthropic 官方渠道；Claude Code 仅在 Anthropic 支持的国家/地区可用（https://www.anthropic.com/supported-countries），本命令不提供镜像、代理或地区绕过。
+
+**`remove`** 清理当前项目的工具痕迹（非脚手架）：编辑器命令载体、`playwright-test` 与遗留 `playwright` 的 MCP 条目、规则文件标记块、`.gitignore` managed block、Stop hook、`openspec/schemas/playwright-e2e/`、lint 清单、vendored agents、legacy skill 目录，以及仍与内置模板字节一致的 `tests/README.md`、`tests/playwright/README.md`（小程序目标）、`.github/workflows/openspec-pw.yml`、`.github/workflows/openspec-auto.yml`、工具生成的 `eslint.config.mjs` 与 ruff managed block。用户数据永不删除（`tests/**`、`credentials.yaml`、`openspec/specs`），被改过的工具文件保留并提示。符号链接解析到项目外的路径一律不删不写，官方 OpenSpec 的 `OPENSPEC:` 块不视为本工具产物。init 写入 OpenCode `instructions` 的 `AGENTS.md` 条目保留——无法与用户自己添加的条目区分；需要你编辑的脚手架文件（`playwright.config.ts`、`tests/playwright/seed.spec.ts`、`auth.setup.ts`、`pages/`、`test-plan.template.md`）保留；只剩空容器的配置文件（`{"mcpServers":{}}`）也保留——无法证明归属。
 
 `remove --all` 扫描本机带 openspec-pw 痕迹的项目——编辑器命令文件、schema 目录、标记块、`.gitignore` managed block，或工具拥有的残留（`tests/README.md`、lint 清单、生成的 CI workflow、工具生成的 ESLint/ruff 配置、遗留 skill 目录、工具拥有的 vendored agents、Stop hook）任一命中即可。单独的 MCP 条目不作为发现信号（`playwright-test` 也是 Playwright 官方 agent 初始化写入的 server 名），只有显式单项目 `remove` 会清理它；批量模式只清理 `playwright-test`，遗留 `playwright` 不处理。默认扫描根是 home 目录，Windows 上再加所有存在的盘根。**默认只列计划不删除**：打印每个项目与将删除的产物组；加 `--yes` 才执行；`--root <dir>`（可重复，支持 `~`）替换默认扫描根——显式给出 `--root` 时扫描范围就是这些根，不再并入当前项目；路径不存在或是 UNC 路径时退出 2。不传 `--root` 时，当前项目包含在计划中并排在首位。单个项目失败不阻断其余项目；因权限不可写的项目记为 skipped，其他错误记为 failed；结束时打印 `removed N / skipped M / failed K`（项目数），有失败则退出码非零。
 
@@ -295,7 +317,7 @@ audit **只报告、绝不删除**——测试退役永远是人工决策。存�
 
 | 步骤 | 命令 | 失败时快速修复 |
 |------|------|----------------|
-| 1. 安装 CLI | `npm install -g openspec-playwright@latest` | 检查 Node.js 版本 `node -v`（需 >= 20） |
+| 1. 安装 CLI | `npm install -g openspec-playwright@latest` | 检查 Node.js 版本 `node -v`（需 >= 22） |
 | 2. 安装 OpenSpec | `npm install -g @fission-ai/openspec@latest && openspec init` | `npm cache clean -f && npm install -g @fission-ai/openspec@latest` |
 | 3. 初始化 E2E | `openspec-pw init` | 运行 `openspec-pw doctor` 查看具体缺失项 |
 | 4. 安装浏览器 | `npx playwright install chromium` | Linux CI 镜像可能需系统依赖：`npx playwright install --with-deps chromium`（macOS 可能需先运行 `xcode-select --install`） |
@@ -318,6 +340,7 @@ audit **只报告、绝不删除**——测试退役永远是人工决策。存�
 | **OpenSpec** | 目录已初始化 | `.spec.md` 规范文件数量 |
 | **Playwright 浏览器** | CLI 版本、Chromium 二进制已下载 | — |
 | **Playwright 测试框架** | `@playwright/test` 已安装 | — |
+| **小程序** | Chrome、`@open-wxa/wxa-runner-playwright`、`@playwright/test` >=1.64、`wxaProject` 产物（仅小程序目标） | — |
 | **Playwright MCP** | 每个已授权（有命令工件）编辑器的 test-runner server 配置；未授权编辑器降为信息行（提示 `init --tools` 添加，不阻断） | `playwright-cli`（PATH 上的 @playwright/cli）——可选 ⚠，不阻断 |
 | **Cursor E2E** | Cursor 已授权时，命令与技能文件存在 | 未配置 → 信息行提示 `init --tools cursor` |
 | **Vendored Agents** | — | 官方 agents 快照的存在与归属（owned/modified）；依赖的 `playwright-test` MCP 缺失时 ⚠（不阻断） |

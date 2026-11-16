@@ -22,4 +22,9 @@ describe("resolveInitMode", () => {
   it("--no-frontend forces minimal mode even on a hit", () => {
     expect(resolveInitMode({ frontend: false }, true)).toBe("minimal");
   });
+
+  it("--miniprogram forces frontend mode without any signal", () => {
+    expect(resolveInitMode({ miniprogram: true }, false)).toBe("frontend");
+    expect(resolveInitMode({ miniprogram: true }, null)).toBe("frontend");
+  });
 });

@@ -7,6 +7,7 @@ import { join } from "path";
 vi.mock("../src/shared/exec.js", () => ({
   execFileAsync: vi.fn(),
   execFileSync: vi.fn(),
+  hasCommand: vi.fn(() => true),
   spawnSync: vi.fn(),
 }));
 import { execFileSync } from "../src/shared/exec.js";

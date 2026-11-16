@@ -409,7 +409,7 @@ describe("doctor CodeGraph category", () => {
     expect(text).toContain("codegraph-index: not initialized (run: codegraph init)");
   });
 
-  it("warns with remediation when indexed but MCP missing", async () => {
+  it("warns when indexed but MCP missing", async () => {
     detectMock.mockReturnValue({
       cliInstalled: true,
       indexed: true,
@@ -425,9 +425,7 @@ describe("doctor CodeGraph category", () => {
       spy.mockRestore();
     }
     const text = logs.join("\n");
-    expect(text).toContain(
-      "codegraph-mcp: missing (run: codegraph install --target=auto --location=local)",
-    );
+    expect(text).toContain("codegraph-mcp: missing");
   });
 
   it("--json includes the CodeGraph checks", async () => {

@@ -22,6 +22,9 @@ import {
   findEslintConfig,
   findRuffConfig,
   findSourceFile,
+  resolveProjectTarget,
+  resolveWxaProject,
+  resolveBuildCommand,
 } from "../shared/index.js";
 import { bundledStandardsPath, compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
 import { hasRuleFileMarkers, wrapperRulesFile, wrapperHasMarkers } from "./editors/project-rules.js";
@@ -234,6 +237,103 @@ export function allEditorCommandHints(): string {
     .join("  or  ");
 }
 
+interface DoctorCheck {
+  category: string;
+  name: string;
+  ok: boolean;
+  message?: string;
+}
+
+function findGoogleChrome(): boolean {
+  if (process.platform === "darwin") {
+    return existsSync("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome");
+  }
+  if (process.platform === "win32") {
+    const roots = [process.env.PROGRAMFILES, process.env["PROGRAMFILES(X86)"], process.env.LOCALAPPDATA].filter(
+      (root): root is string => Boolean(root),
+    );
+    return roots.some((root) => existsSync(join(root, "Google", "Chrome", "Application", "chrome.exe")));
+  }
+  for (const bin of ["google-chrome", "google-chrome-stable"]) {
+    try {
+      execFileSync("which", [bin], { stdio: "pipe" });
+      return true;
+    } catch {
+      // try the next binary name
+    }
+  }
+  return false;
+}
+
+function playwrightTestVersion(projectRoot: string): string | null {
+  try {
+    const projectRequire = createRequire(join(projectRoot, "package.json"));
+    const pkgPath = projectRequire.resolve("@playwright/test/package.json");
+    return (JSON.parse(readFileSync(pkgPath, "utf-8")) as { version?: string }).version ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function miniProgramChecks(projectRoot: string): DoctorCheck[] {
+  const checks: DoctorCheck[] = [];
+
+  const chrome = findGoogleChrome();
+  checks.push({
+    category: "Mini Program",
+    name: "chrome",
+    ok: chrome,
+    message: chrome ? "Google Chrome installed" : "not found (run: npx playwright install chrome)",
+  });
+
+  const projectRequire = createRequire(join(projectRoot, "package.json"));
+  let fixtureOk = false;
+  try {
+    projectRequire.resolve("@open-wxa/wxa-runner-playwright");
+    fixtureOk = true;
+  } catch {
+    // missing
+  }
+  checks.push({
+    category: "Mini Program",
+    name: "wxa-fixture",
+    ok: fixtureOk,
+    message: fixtureOk
+      ? "installed"
+      : "not installed (npm i -D @open-wxa/wxa-runner-playwright@^0.13 @open-wxa/wxa-runner-core@^0.13 wxa-runner@^0.13)",
+  });
+
+  const pwVersion = playwrightTestVersion(projectRoot);
+  let versionOk = false;
+  if (pwVersion) {
+    const [major, minor] = pwVersion.split(".").map(Number);
+    versionOk = major > 1 || (major === 1 && minor >= 64);
+  }
+  checks.push({
+    category: "Mini Program",
+    name: "playwright-test-version",
+    ok: versionOk,
+    message: pwVersion
+      ? versionOk
+        ? pwVersion
+        : `${pwVersion} — requires >=1.64 (upgrade: npm i -D @playwright/test@^1.65)`
+      : "not installed (npm i -D @playwright/test@^1.65)",
+  });
+
+  const wxa = resolveWxaProject(projectRoot);
+  const build = resolveBuildCommand(projectRoot);
+  checks.push({
+    category: "Mini Program",
+    name: "wxa-project",
+    ok: wxa.exists,
+    message: wxa.exists
+      ? `${wxa.projectPath} (${wxa.source})`
+      : `${wxa.projectPath} (${wxa.source}) — build first: ${build ?? "no build script found (add one to package.json)"}`,
+  });
+
+  return checks;
+}
+
 export async function doctor(options: DoctorOptions = {}) {
   const checks: Array<{
     category: string;
@@ -245,6 +345,7 @@ export async function doctor(options: DoctorOptions = {}) {
   }> = [];
 
   const projectRoot = process.cwd();
+  const target = resolveProjectTarget(projectRoot);
 
   let nodeMajor = 0;
   let nodeVersion = "";
@@ -408,6 +509,15 @@ export async function doctor(options: DoctorOptions = {}) {
       ok: true,
       message: "no Playwright scaffold (minimal mode)",
     });
+  } else if (target === "miniprogram") {
+    // The mini scaffold runs Google Chrome (channel: chrome); the Mini
+    // Program checks above cover it, so chromium is the wrong binary here.
+    checks.push({
+      category: "Playwright Browsers",
+      name: "browsers",
+      ok: true,
+      message: "mini-program target uses Google Chrome (channel: chrome)",
+    });
   } else {
     let hasBrowsers = false;
     let browsersMsg = "not installed";
@@ -463,6 +573,12 @@ export async function doctor(options: DoctorOptions = {}) {
     ok: hasPwTest,
     message: pwTestMsg,
   });
+  }
+
+  // Mini-program target: Chrome, the wxa fixture, @playwright/test >=1.64,
+  // and the compiled output directory. Each check is independent.
+  if (target === "miniprogram") {
+    for (const check of miniProgramChecks(projectRoot)) checks.push(check);
   }
 
   // Playwright MCP — check each detected editor adapter
@@ -852,31 +968,42 @@ export async function doctor(options: DoctorOptions = {}) {
     message: hasSeed ? "found" : "not found (optional)",
   });
 
-  // App server detection (diagnostic only — not a prerequisite)
-  const app = detectAppServer(projectRoot);
-  checks.push({
-    category: "App Server",
-    name: "dev-script",
-    ok: Boolean(app.devCommand),
-    message: app.devCommand
-      ? `${app.devCommand}${app.scriptCommand ? ` (${app.scriptCommand})` : ""}`
-      : "not detected (configure webServer manually)",
-  });
-  checks.push({
-    category: "App Server",
-    name: "base-url",
-    ok: true,
-    message: `${app.baseUrl} (${app.baseUrlSource})`,
-  });
-  const reachable = await checkUrl(app.baseUrl);
-  checks.push({
-    category: "App Server",
-    name: "reachable",
-    ok: reachable.ok,
-    message: reachable.ok
-      ? `responded ${reachable.status ?? "ok"}`
-      : `${reachable.message} (diagnostic only; Playwright webServer may start it)`,
-  });
+  // App server detection (diagnostic only — not a prerequisite). The
+  // mini-program target has no webServer: each worker starts its own
+  // wxa-runner server, so dev script and base URL do not apply.
+  if (target === "miniprogram") {
+    checks.push({
+      category: "App Server",
+      name: "dev-script",
+      ok: true,
+      message: "not needed (wxa-runner serves the mini program per worker)",
+    });
+  } else {
+    const app = detectAppServer(projectRoot);
+    checks.push({
+      category: "App Server",
+      name: "dev-script",
+      ok: Boolean(app.devCommand),
+      message: app.devCommand
+        ? `${app.devCommand}${app.scriptCommand ? ` (${app.scriptCommand})` : ""}`
+        : "not detected (configure webServer manually)",
+    });
+    checks.push({
+      category: "App Server",
+      name: "base-url",
+      ok: true,
+      message: `${app.baseUrl} (${app.baseUrlSource})`,
+    });
+    const reachable = await checkUrl(app.baseUrl);
+    checks.push({
+      category: "App Server",
+      name: "reachable",
+      ok: reachable.ok,
+      message: reachable.ok
+        ? `responded ${reachable.status ?? "ok"}`
+        : `${reachable.message} (diagnostic only; Playwright webServer may start it)`,
+    });
+  }
 
   // Lint — swallow-error checklist coverage (lint-guidelines capability).
   // Semantic-first: ESLint's own resolver (`--print-config`) and ruff's
@@ -1078,7 +1205,7 @@ export async function doctor(options: DoctorOptions = {}) {
     mcpMsg = `installed: ${cg.mcpInstalledAdapters.join(", ")}`;
   } else {
     mcpOk = false;
-    mcpMsg = "missing (run: codegraph install --target=auto --location=local)";
+    mcpMsg = "missing";
   }
   checks.push({
     category: "CodeGraph",

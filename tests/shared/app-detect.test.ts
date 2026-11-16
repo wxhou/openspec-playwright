@@ -8,6 +8,11 @@ import {
   parsePort,
   hasFrontendSignal,
   explainFrontendSignal,
+  detectMiniProgramSignal,
+  hasMiniProgramSignal,
+  configHasWxaProject,
+  resolveTemplateTarget,
+  resolveProjectTarget,
 } from "../../src/shared/app-detect.js";
 
 describe("app-detect", () => {
@@ -330,5 +335,216 @@ describe("app-detect", () => {
 
   it("explainFrontendSignal: returns null when package.json is unreadable", () => {
     expect(explainFrontendSignal(tmpDir)).toBe(null);
+  });
+
+  // ─── Mini-program signals ──────────────────────────────────────────────
+
+  it("detectMiniProgramSignal: project.config.json is a strong signal", () => {
+    writeFileSync(join(tmpDir, "project.config.json"), "{}");
+    expect(detectMiniProgramSignal(tmpDir)).toEqual({
+      kind: "strong",
+      source: "project.config.json",
+      miniRoot: tmpDir,
+    });
+    expect(hasMiniProgramSignal(tmpDir)).toBe(true);
+  });
+
+  it("detectMiniProgramSignal: compiled mp-weixin output is a strong signal", () => {
+    mkdirSync(join(tmpDir, "dist", "dev", "mp-weixin"), { recursive: true });
+    expect(detectMiniProgramSignal(tmpDir).kind).toBe("strong");
+    expect(detectMiniProgramSignal(tmpDir).source).toBe("output: dist/dev/mp-weixin");
+  });
+
+  it("detectMiniProgramSignal: @tarojs and @dcloudio dependencies are strong", () => {
+    writeFileSync(
+      join(tmpDir, "package.json"),
+      JSON.stringify({ dependencies: { "@tarojs/taro": "^4.0.0" } }),
+    );
+    expect(detectMiniProgramSignal(tmpDir).source).toBe("dependency: @tarojs/taro");
+
+    writeFileSync(
+      join(tmpDir, "package.json"),
+      JSON.stringify({ devDependencies: { "@dcloudio/uni-app": "^3.0.0" } }),
+    );
+    expect(detectMiniProgramSignal(tmpDir).source).toBe("dependency: @dcloudio/uni-app");
+  });
+
+  it("detectMiniProgramSignal: bare app.json without a companion file is ignored", () => {
+    writeFileSync(join(tmpDir, "app.json"), JSON.stringify({ pages: ["pages/index/index"] }));
+    expect(detectMiniProgramSignal(tmpDir)).toEqual({ kind: null, source: null });
+  });
+
+  it("detectMiniProgramSignal: app.json with app.wxss is a weak signal", () => {
+    writeFileSync(join(tmpDir, "app.json"), JSON.stringify({ pages: ["pages/index/index"] }));
+    writeFileSync(join(tmpDir, "app.wxss"), "");
+    expect(detectMiniProgramSignal(tmpDir)).toEqual({
+      kind: "weak",
+      source: "app.json",
+      miniRoot: tmpDir,
+    });
+    expect(hasMiniProgramSignal(tmpDir)).toBe(false);
+  });
+
+  it("hasFrontendSignal: native mini-program without package.json returns true", () => {
+    writeFileSync(join(tmpDir, "project.config.json"), "{}");
+    expect(hasFrontendSignal(tmpDir)).toBe(true);
+    expect(explainFrontendSignal(tmpDir)).toBe("project.config.json");
+  });
+
+  it("resolveTemplateTarget: Taro plus react still resolves to miniprogram", () => {
+    writeFileSync(
+      join(tmpDir, "package.json"),
+      JSON.stringify({ dependencies: { "@tarojs/taro": "^4.0.0", react: "^19.0.0" } }),
+    );
+    expect(hasFrontendSignal(tmpDir)).toBe(true);
+    expect(resolveTemplateTarget(tmpDir)).toBe("miniprogram");
+  });
+
+  it("resolveTemplateTarget: uni-app plus vue still resolves to miniprogram", () => {
+    writeFileSync(
+      join(tmpDir, "package.json"),
+      JSON.stringify({ dependencies: { "@dcloudio/uni-app": "^3.0.0", vue: "^3.5.0" } }),
+    );
+    expect(resolveTemplateTarget(tmpDir)).toBe("miniprogram");
+  });
+
+  it("resolveTemplateTarget: Expo-style app.json plus react stays web", () => {
+    writeFileSync(
+      join(tmpDir, "package.json"),
+      JSON.stringify({ dependencies: { react: "^19.0.0", expo: "^54.0.0" } }),
+    );
+    writeFileSync(join(tmpDir, "app.json"), JSON.stringify({ expo: { name: "demo" } }));
+    expect(resolveTemplateTarget(tmpDir)).toBe("web");
+  });
+
+  it("resolveTemplateTarget: generated wxa-test.ts keeps an explicit choice", () => {
+    writeFileSync(
+      join(tmpDir, "package.json"),
+      JSON.stringify({ dependencies: { react: "^19.0.0" } }),
+    );
+    const testsDir = join(tmpDir, "tests", "playwright");
+    mkdirSync(testsDir, { recursive: true });
+    writeFileSync(join(testsDir, "wxa-test.ts"), "export {};");
+    expect(resolveTemplateTarget(tmpDir)).toBe("miniprogram");
+    expect(resolveTemplateTarget(tmpDir, { miniprogram: false })).toBe("web");
+  });
+
+  it("resolveTemplateTarget: explicit true wins without any signal", () => {
+    expect(resolveTemplateTarget(tmpDir, { miniprogram: true })).toBe("miniprogram");
+  });
+
+  it("resolveTemplateTarget: an existing web scaffold wins over a mini signal", () => {
+    writeFileSync(
+      join(tmpDir, "package.json"),
+      JSON.stringify({ dependencies: { "@tarojs/taro": "^4.0.0" } }),
+    );
+    writeFileSync(join(tmpDir, "playwright.config.ts"), "export default {};\n");
+    expect(resolveTemplateTarget(tmpDir)).toBe("web");
+  });
+
+  it("detectMiniProgramSignal: finds a workspace member mini app", () => {
+    writeFileSync(
+      join(tmpDir, "package.json"),
+      JSON.stringify({ scripts: { dev: "vite" }, workspaces: ["apps/*"] }),
+    );
+    const member = join(tmpDir, "apps", "mobile");
+    mkdirSync(member, { recursive: true });
+    writeFileSync(
+      join(member, "package.json"),
+      JSON.stringify({ dependencies: { "@dcloudio/uni-app": "^3.0.0" } }),
+    );
+    expect(detectMiniProgramSignal(tmpDir).kind).toBe("strong");
+  });
+
+  it("detectMiniProgramSignal: names the workspace member that holds the mini app", () => {
+    writeFileSync(
+      join(tmpDir, "package.json"),
+      JSON.stringify({ scripts: { dev: "vite" }, workspaces: ["apps/*"] }),
+    );
+    const member = join(tmpDir, "apps", "mobile");
+    mkdirSync(member, { recursive: true });
+    writeFileSync(
+      join(member, "package.json"),
+      JSON.stringify({ dependencies: { "@dcloudio/uni-app": "^3.0.0" } }),
+    );
+    expect(detectMiniProgramSignal(tmpDir).miniRoot).toBe(member);
+  });
+});
+
+describe("configHasWxaProject", () => {
+  it("accepts the option in any nesting", () => {
+    expect(configHasWxaProject("export default { wxaProject: 'dist' };")).toBe(true);
+    expect(configHasWxaProject("export default { use: { wxaProject: '.' } };")).toBe(true);
+  });
+
+  it("rejects a comment that only mentions it", () => {
+    expect(
+      configHasWxaProject("// wxaProject: 'dist'\nexport default { use: { baseURL: 'x' } };"),
+    ).toBe(false);
+    expect(
+      configHasWxaProject("/* wxaProject: 'dist' */\nexport default {};"),
+    ).toBe(false);
+  });
+
+  it("rejects a config without it", () => {
+    expect(configHasWxaProject("export default { use: { baseURL: 'x' } };")).toBe(false);
+  });
+});
+
+describe("target markers", () => {
+  const dir = join(tmpdir(), "openspec-pw-target-markers-" + Date.now());
+
+  beforeEach(() => {
+    mkdirSync(dir, { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("resolveTemplateTarget: a config that only mentions wxaProject stays web", () => {
+    writeFileSync(
+      join(dir, "playwright.config.ts"),
+      "// wxaProject: 'dist/mp-weixin'\nexport default { use: { baseURL: 'http://localhost:3000' } };\n",
+    );
+    expect(resolveTemplateTarget(dir)).toBe("web");
+    expect(resolveProjectTarget(dir)).toBe("web");
+  });
+
+  it("resolveTemplateTarget: a config that configures wxaProject is mini", () => {
+    writeFileSync(
+      join(dir, "playwright.config.ts"),
+      "export default { wxaProject: 'dist/mp-weixin' };\n",
+    );
+    expect(resolveTemplateTarget(dir)).toBe("miniprogram");
+    expect(resolveProjectTarget(dir)).toBe("miniprogram");
+  });
+});
+
+describe("resolveProjectTarget", () => {
+  const dir = join(tmpdir(), "openspec-pw-project-target-" + Date.now());
+
+  beforeEach(() => {
+    mkdirSync(dir, { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("stays web for a Taro project that only has a strong detection signal", () => {
+    writeFileSync(
+      join(dir, "package.json"),
+      JSON.stringify({ dependencies: { "@tarojs/taro": "^4.0.0" } }),
+    );
+    expect(resolveTemplateTarget(dir)).toBe("miniprogram");
+    expect(resolveProjectTarget(dir)).toBe("web");
+  });
+
+  it("follows generated artifacts on disk", () => {
+    const testsDir = join(dir, "tests", "playwright");
+    mkdirSync(testsDir, { recursive: true });
+    writeFileSync(join(testsDir, "wxa-test.ts"), "export {};");
+    expect(resolveProjectTarget(dir)).toBe("miniprogram");
   });
 });

@@ -52,17 +52,7 @@ export function detectCodeGraphStatus(
  * nothing needs suggesting. Hints only, never setup.
  */
 export function codegraphHintLines(cg: CodeGraphStatus): string[] {
-  if (cg.indexed) {
-    const lines = ["Refresh code index: codegraph sync"];
-    if (cg.mcpInstalledAdapters.length === 0) {
-      lines.push(
-        "Install code hooks: codegraph install --target=auto --location=local",
-      );
-    }
-    return lines;
-  }
-  if (cg.cliInstalled) {
-    return ["Build code index (optional): codegraph init"];
-  }
+  if (cg.indexed) return ["Refresh code index: codegraph sync"];
+  if (cg.cliInstalled) return ["Build code index (optional): codegraph init"];
   return [];
 }
