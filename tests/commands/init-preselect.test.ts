@@ -9,6 +9,13 @@ import {
 import { tmpdir } from "os";
 import { join } from "path";
 
+// The OpenSpec CLI version comes from the machine — pin it so the suite does
+// not depend on which CLI is installed.
+vi.mock("../../src/shared/openspec-version.js", () => ({
+  OPENSPEC_SUPPORTED_MAJOR: 1,
+  openSpecCliStatus: vi.fn(() => ({ ok: true, major: 1 })),
+}));
+
 // init shells `npx openspec --version`, `node --version`, `npm --version`
 // during prerequisites — stub the command wrapper so hermetic runs don't depend on PATH.
 vi.mock("../../src/shared/exec.js", () => ({

@@ -17,17 +17,35 @@ export interface OpenSpecVersionProbe {
   reason: string | null;
 }
 
+/**
+ * The CLI state a command should act on: supported, absent, present but
+ * unreadable, or present with an unsupported version.
+ */
+export type OpenSpecCliStatus =
+  | { ok: true; major: number }
+  | { ok: false; kind: "missing"; message: string }
+  | { ok: false; kind: "unreadable"; message: string }
+  | { ok: false; kind: "unsupported"; message: string };
+
 /** Parse the major version out of `openspec --version` output. */
 export function parseOpenSpecMajor(output: string): number | null {
-  const match = output.trim().match(/^v?(\d+)\.(\d+)(?:\.\d+)?(?:[-+].*)?$/);
-  return match ? Number(match[1]) : null;
+  const text = output.trim();
+  const exact = text.match(/^v?(\d+)\.(\d+)(?:\.\d+)?(?:[-+].*)?$/);
+  if (exact) return Number(exact[1]);
+  // Some builds print a banner before the version — take the first semver on
+  // the first line rather than giving up on the whole output.
+  const firstLine = text.split("\n")[0] ?? "";
+  const loose = firstLine.match(/(\d+)\.(\d+)(?:\.\d+)?(?:[-+].*)?/);
+  return loose ? Number(loose[1]) : null;
 }
 
 function isMissingBinary(err: unknown): boolean {
   return (err as { code?: string } | null)?.code === "ENOENT";
 }
 
-function firstLine(err: unknown): string {
+function failureDetail(err: unknown): string {
+  const stderr = (err as { stderr?: string } | null)?.stderr?.trim();
+  if (stderr) return stderr.split("\n")[0];
   const message = err instanceof Error ? err.message : String(err);
   return message.split("\n")[0];
 }
@@ -39,8 +57,10 @@ function firstLine(err: unknown): string {
 export function probeOpenSpecVersion(): OpenSpecVersionProbe {
   const probes: [string, string[]][] = [
     ["openspec", ["--version"]],
-    // `--no-install` keeps npx from downloading the current release, which
-    // would report 2.x on a machine whose cache holds only 1.x.
+    // The bare bin name — not the package name — is what the CLI installs on
+    // PATH (globally or in node_modules/.bin). `--no-install` keeps npx from
+    // downloading the current release, which would report 2.x on a machine
+    // whose cache holds only 1.x.
     ["npx", ["--no-install", "openspec", "--version"]],
   ];
   let broken: string | null = null;
@@ -55,7 +75,7 @@ export function probeOpenSpecVersion(): OpenSpecVersionProbe {
       // failure means "not installed"; a PATH failure that is not a missing
       // binary is a broken install and keeps its reason.
       if (bin === "openspec" && !isMissingBinary(err)) {
-        broken = `probe failed: ${firstLine(err)}`;
+        broken = `probe failed: ${failureDetail(err)}`;
       }
       continue;
     }
@@ -78,4 +98,33 @@ let cached: OpenSpecVersionProbe | undefined;
 export function detectOpenSpecVersion(): OpenSpecVersionProbe {
   if (cached === undefined) cached = probeOpenSpecVersion();
   return cached;
+}
+
+/** Classify an installed CLI (probed by default) for the commands that depend on it. */
+export function openSpecCliStatus(
+  probe: OpenSpecVersionProbe = detectOpenSpecVersion(),
+): OpenSpecCliStatus {
+  if (probe.major === OPENSPEC_SUPPORTED_MAJOR) {
+    return { ok: true, major: probe.major };
+  }
+  const install = `npm install -g @fission-ai/openspec@${OPENSPEC_SUPPORTED_MAJOR}`;
+  if (probe.major === null) {
+    if (probe.reason === "not found") {
+      return {
+        ok: false,
+        kind: "missing",
+        message: `OpenSpec CLI not found — install ${OPENSPEC_SUPPORTED_MAJOR}.x: ${install}`,
+      };
+    }
+    return {
+      ok: false,
+      kind: "unreadable",
+      message: `OpenSpec CLI version could not be read (${probe.reason}) — check the install: ${install}`,
+    };
+  }
+  return {
+    ok: false,
+    kind: "unsupported",
+    message: `OpenSpec ${probe.major}.x detected — this tool needs ${OPENSPEC_SUPPORTED_MAJOR}.x — install ${OPENSPEC_SUPPORTED_MAJOR}.x: ${install}`,
+  };
 }

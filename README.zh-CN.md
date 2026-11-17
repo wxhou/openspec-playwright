@@ -341,7 +341,7 @@ audit **只报告、绝不删除**——测试退役永远是人工决策。存�
 | **Node.js** | `node` 版本 | `engines` 兼容性（对比 `package.json`） |
 | **npm** | `npm` 可用性 | — |
 | **Playwright 配置** | 配置文件存在（`ts`/`js`/`mjs`/`mts`） | — |
-| **OpenSpec** | 目录已初始化 | `.spec.md` 规范文件数量 |
+| **OpenSpec** | 目录已初始化、CLI 为 1.x（CLI 缺失或为 2.x 即失败） | `.spec.md` 规范文件数量 |
 | **Playwright 浏览器** | CLI 版本、Chromium 二进制已下载 | — |
 | **Playwright 测试框架** | `@playwright/test` 已安装 | — |
 | **小程序** | Chrome、`@open-wxa/wxa-runner-playwright`、`@playwright/test` >=1.64、`wxaProject` 产物（仅小程序目标） | — |

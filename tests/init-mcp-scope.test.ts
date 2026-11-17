@@ -3,6 +3,13 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 
+// The OpenSpec CLI version comes from the machine — pin it so the suite does
+// not depend on which CLI is installed.
+vi.mock("../src/shared/openspec-version.js", () => ({
+  OPENSPEC_SUPPORTED_MAJOR: 1,
+  openSpecCliStatus: vi.fn(() => ({ ok: true, major: 1 })),
+}));
+
 // Isolate the claude CLI so init runs MCP phase without a real `claude` binary.
 vi.mock("../src/shared/exec.js", () => ({
   execFileAsync: vi.fn(),

@@ -17,7 +17,7 @@ vi.mock("../../src/shared/exec.js", () => ({
 // Mock the OpenSpec version probe — a healthy 1.x install.
 vi.mock("../../src/shared/openspec-version.js", () => ({
   OPENSPEC_SUPPORTED_MAJOR: 1,
-  detectOpenSpecVersion: vi.fn(() => ({ major: 1, reason: null })),
+  openSpecCliStatus: vi.fn(() => ({ ok: true, major: 1 })),
 }));
 
 // Mock fs modules
@@ -63,7 +63,7 @@ import { execFileSync } from "../../src/shared/exec.js";
 import { readFileSync, existsSync, readdirSync, lstatSync } from "fs";
 import { claudeAdapter, detectAdapters, minimaxAdapter } from "../../src/commands/editors.js";
 import { detectCodeGraphStatus } from "../../src/shared/index.js";
-import { detectOpenSpecVersion } from "../../src/shared/openspec-version.js";
+import { openSpecCliStatus } from "../../src/shared/openspec-version.js";
 import { doctor, isOptionalCheck } from "../../src/commands/doctor.js";
 
 // ─── allOk computation (uses the real isOptionalCheck from doctor.ts) ───────
@@ -485,9 +485,11 @@ describe("doctor CodeGraph category", () => {
   });
 
   it("reports a 2.x OpenSpec CLI as unsupported and exits 1", async () => {
-    vi.mocked(detectOpenSpecVersion).mockReturnValueOnce({
-      major: 2,
-      reason: null,
+    vi.mocked(openSpecCliStatus).mockReturnValueOnce({
+      ok: false,
+      kind: "unsupported",
+      message:
+        "OpenSpec 2.x detected — this tool needs 1.x — install 1.x: npm install -g @fission-ai/openspec@1",
     });
     const logs: string[] = [];
     let exitCode: number | undefined;
@@ -518,9 +520,11 @@ describe("doctor CodeGraph category", () => {
   });
 
   it("prints the 1.x install hint when the OpenSpec CLI is unsupported", async () => {
-    vi.mocked(detectOpenSpecVersion).mockReturnValueOnce({
-      major: 2,
-      reason: null,
+    vi.mocked(openSpecCliStatus).mockReturnValueOnce({
+      ok: false,
+      kind: "unsupported",
+      message:
+        "OpenSpec 2.x detected — this tool needs 1.x — install 1.x: npm install -g @fission-ai/openspec@1",
     });
     const logs: string[] = [];
     const spy = vi.spyOn(console, "log").mockImplementation((...args) => {

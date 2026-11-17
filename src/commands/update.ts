@@ -47,6 +47,7 @@ import {
   LINT_GUIDELINES_RELPATH,
 } from "../shared/index.js";
 import { execFileAsync, execFileSync } from "../shared/exec.js";
+import { openSpecCliStatus } from "../shared/openspec-version.js";
 import { compareBlock, OPENSPEC_START, hasLegacyTerritoryStart, extractRuleBlockContent } from "../shared/drift.js";
 import { pipelineGitignoreOmit } from "./pipeline.js";
 import { wrapperHasMarkers, hasRuleFileMarkers } from "./editors/project-rules.js";
@@ -82,6 +83,13 @@ export async function update(options: UpdateOptions) {
       chalk.gray('  Run "openspec-pw init" first to set up the integration.\n'),
     );
     return;
+  }
+
+  // A 2.x OpenSpec CLI drops the `/opsx:*` command files this tool's workflow
+  // relies on. Updating still works, so warn instead of blocking.
+  const openspec = openSpecCliStatus();
+  if (!openspec.ok && openspec.kind !== "missing") {
+    console.log(chalk.yellow(`  ⚠ ${openspec.message}`));
   }
 
   // 1. Update CLI tool from npm

@@ -5,6 +5,7 @@ import { join } from "path";
 import {
   OPENSPEC_SUPPORTED_MAJOR,
   detectOpenSpecVersion,
+  openSpecCliStatus,
   parseOpenSpecMajor,
   probeOpenSpecVersion,
 } from "../../src/shared/openspec-version.js";
@@ -29,11 +30,33 @@ function fakeOpenspecOnPath(version: string): string {
   return dir;
 }
 
+/** Put a fake `openspec` on PATH that exits 3 with the given stderr. */
+function brokenOpenspecOnPath(stderr: string): string {
+  const dir = mkdtempSync(join(tmpdir(), "ospw-broken-openspec-"));
+  if (process.platform === "win32") {
+    writeFileSync(
+      join(dir, "openspec.cmd"),
+      `@echo off\r\necho ${stderr} 1>&2\r\nexit /b 3\r\n`,
+    );
+  } else {
+    writeFileSync(
+      join(dir, "openspec"),
+      `#!/bin/sh\necho "${stderr}" >&2\nexit 3\n`,
+      { mode: 0o755 },
+    );
+  }
+  return dir;
+}
+
 describe("parseOpenSpecMajor", () => {
   it("reads the major version out of the CLI output", () => {
     expect(parseOpenSpecMajor("1.17.0")).toBe(1);
     expect(parseOpenSpecMajor("2.1.0")).toBe(2);
     expect(parseOpenSpecMajor("v1.17.0")).toBe(1);
+  });
+
+  it("reads the version from a banner line", () => {
+    expect(parseOpenSpecMajor("openspec 1.17.0")).toBe(1);
   });
 
   it("keeps prerelease versions parseable", () => {
@@ -70,6 +93,52 @@ describe("probeOpenSpecVersion", () => {
     // can resolve — the "CLI missing" case, not a version report.
     process.env.PATH = mkdtempSync(join(tmpdir(), "ospw-no-openspec-"));
     expect(probeOpenSpecVersion()).toEqual({ major: null, reason: "not found" });
+  });
+
+  it("keeps a failing CLI's stderr as the reason", () => {
+    // PATH holds only the broken binary — without npx on PATH the fallback
+    // cannot mask the failure.
+    process.env.PATH = brokenOpenspecOnPath("broken install");
+    expect(probeOpenSpecVersion()).toEqual({
+      major: null,
+      reason: "probe failed: broken install",
+    });
+  });
+});
+
+describe("openSpecCliStatus", () => {
+  it("accepts a supported 1.x CLI", () => {
+    expect(openSpecCliStatus({ major: 1, reason: null })).toEqual({
+      ok: true,
+      major: 1,
+    });
+  });
+
+  it("reports a missing CLI as missing", () => {
+    const status = openSpecCliStatus({ major: null, reason: "not found" });
+    expect(status.ok).toBe(false);
+    if (status.ok) throw new Error("expected a failure status");
+    expect(status.kind).toBe("missing");
+  });
+
+  it("reports a 2.x CLI as unsupported and names the 1.x install command", () => {
+    const status = openSpecCliStatus({ major: 2, reason: null });
+    expect(status.ok).toBe(false);
+    if (status.ok) throw new Error("expected a failure status");
+    expect(status.kind).toBe("unsupported");
+    expect(status.message).toContain("2.x detected");
+    expect(status.message).toContain("npm install -g @fission-ai/openspec@1");
+  });
+
+  it("reports an unreadable version as unreadable, not missing", () => {
+    const status = openSpecCliStatus({
+      major: null,
+      reason: "probe failed: broken install",
+    });
+    expect(status.ok).toBe(false);
+    if (status.ok) throw new Error("expected a failure status");
+    expect(status.kind).toBe("unreadable");
+    expect(status.message).toContain("could not be read");
   });
 });
 

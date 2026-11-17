@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **docs(standards): 新增 §0「核实与求助」条款**. 不确定属实的事实先核实再作答——已装源码/类型定义 → 官方文档 → 网络搜索，仍无法确认就问用户，不按记忆作答；英文 SSOT 与 docs 内嵌同步。
   - `standards/employee-standards.md`、`standards/employee-standards.en.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
-- **fix(cli): 要求 OpenSpec 1.x CLI**. OpenSpec 2.x 不再生成 `/opsx:*` 命令文件，改为在 `.agents/skills/` 下安装 skill，本工具的流水线模板依赖这些 1.x 产物。安装命令统一钉 `@1`；`doctor` 检出 2.x 时判为不支持并退出 1，`init` 检出 2.x 时中止；npm 包不再携带 v1 生成的 `.claude/` 命令与 skill 副本。
-  - `src/shared/openspec-version.ts`、`src/commands/{init,doctor}.ts`、`package.json`、`templates/{auto-pipeline,github-workflow}.yml`、`docs/index.html`、`README.md`、`README.zh-CN.md`、`tests/shared/openspec-version.test.ts`、`tests/smoke.test.ts`、`CHANGELOG.md`
+- **fix(cli): 要求 OpenSpec 1.x CLI**. OpenSpec 2.x 不再生成 `/opsx:*` 命令文件，改为在 `.agents/skills/` 下安装 skill，本工具的流水线模板依赖这些 1.x 产物。安装命令统一钉 `@1`；`doctor` 检出 2.x、缺 CLI 或版本不可读时判为不支持并退出 1，`init` 在 CLI 为 2.x 或版本不可读时中止，`update` 只警告不阻断；npm 包不再携带 v1 生成的 `.claude/` 命令与 skill 副本。
+  - `src/shared/openspec-version.ts`、`src/commands/{init,doctor,update}.ts`、`package.json`、`templates/{auto-pipeline,github-workflow}.yml`、`docs/index.html`、`docs/llms.txt`、`README.md`、`README.zh-CN.md`、`tests/shared/openspec-version.test.ts`、`tests/{smoke,init,auto-pipeline}.test.ts`、`tests/init-mcp-scope.test.ts`、`tests/commands/{doctor,doctor-lint-semantic,init-miniprogram,init-deselect,init-language,init-lint-config,init-minimax,init-preselect}.test.ts`、`CHANGELOG.md`
 - **feat(cli): 新增 `install --claude`**. 只包装官方 native installer：默认打印命令，`--run` 才执行，`--verify` 检查安装；默认 `latest`，支持 `stable` 与指定版本；不含镜像、代理或地区绕过。
   - `src/index.ts`、`src/commands/install.ts`、`tests/commands/install.test.ts`、`tests/smoke.test.ts`、`README.md`、`README.zh-CN.md`、`docs/llms.txt`、`CHANGELOG.md`
 - **feat(cli): 新增小程序目标**. 检测强/弱小程序信号并支持 `--miniprogram` 强制；脚手架改用官方 `@open-wxa/wxa-runner-playwright` fixture，CI、doctor、update、remove 与 `/opsx:e2e` 同步支持；已存在小程序产物的项目会被重新判定为 frontend 模式。`update` / `remove` / `doctor` 只按生成物标记判定目标，既有 Web 脚手架不会被静默切换；`init --miniprogram` 遇到 Web 脚手架会拒绝半迁移。

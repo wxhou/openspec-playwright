@@ -498,7 +498,7 @@ Run through these steps in order when using the E2E workflow for the first time:
 | **Node.js** | `node` version | `engines` compatibility (vs `package.json`) |
 | **npm** | `npm` availability | — |
 | **Playwright Config** | config file exists (`ts`/`js`/`mjs`/`mts`) | — |
-| **OpenSpec** | directory initialized | `.spec.md` specs count |
+| **OpenSpec** | directory initialized, CLI is 1.x (a missing or 2.x CLI fails) | `.spec.md` specs count |
 | **Playwright Browsers** | CLI version, Chromium binary downloaded | — |
 | **Playwright Test** | `@playwright/test` framework installed | — |
 | **Mini Program** | Chrome, `@open-wxa/wxa-runner-playwright`, `@playwright/test` >=1.64, `wxaProject` output (mini-program target only) | — |

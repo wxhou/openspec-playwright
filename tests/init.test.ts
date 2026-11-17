@@ -11,6 +11,13 @@ import { join } from "path";
 import { tmpdir } from "os";
 import { fileURLToPath } from "url";
 
+// The OpenSpec CLI version comes from the machine — pin it so the suite does
+// not depend on which CLI is installed.
+vi.mock("../src/shared/openspec-version.js", () => ({
+  OPENSPEC_SUPPORTED_MAJOR: 1,
+  openSpecCliStatus: vi.fn(() => ({ ok: true, major: 1 })),
+}));
+
 // ─── generateTestPlanTemplate ────────────────────────────────────────────────
 
 describe("generateTestPlanTemplate", () => {
@@ -997,5 +1004,27 @@ describe("init credentials ignore hint", () => {
     const gitignore = readFileSync(join(tmpRoot, ".gitignore"), "utf-8");
     expect(gitignore).toContain("# openspec-pw: skip=tmp/");
     expect(gitignore).not.toContain("\ntmp/\n");
+  });
+});
+
+describe("init: OpenSpec CLI guard", () => {
+  it("aborts instead of scaffolding when the CLI is not 1.x", async () => {
+    const { openSpecCliStatus } = await import(
+      "../src/shared/openspec-version.js"
+    );
+    vi.mocked(openSpecCliStatus).mockReturnValueOnce({
+      ok: false,
+      kind: "unsupported",
+      message: "OpenSpec 2.x detected — this tool needs 1.x",
+    });
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      const { init } = await import("../../src/commands/init.js");
+      await expect(init({ tools: "none" })).rejects.toThrow(
+        "OpenSpec 2.x detected",
+      );
+    } finally {
+      logSpy.mockRestore();
+    }
   });
 });

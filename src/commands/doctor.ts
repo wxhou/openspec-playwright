@@ -30,7 +30,7 @@ import {
 import { bundledStandardsPath, compareBlock, OPENSPEC_START, hasLegacyTerritoryStart, extractRuleBlockContent } from "../shared/drift.js";
 import {
   OPENSPEC_SUPPORTED_MAJOR,
-  detectOpenSpecVersion,
+  openSpecCliStatus,
 } from "../shared/openspec-version.js";
 import { hasRuleFileMarkers, wrapperRulesFile, wrapperHasMarkers } from "./editors/project-rules.js";
 
@@ -473,17 +473,12 @@ export async function doctor(options: DoctorOptions = {}) {
 
   // OpenSpec CLI major — 2.x stopped generating the `/opsx:*` command files
   // that this tool's workflow and templates rely on.
-  const openspec = detectOpenSpecVersion();
+  const openspec = openSpecCliStatus();
   checks.push({
     category: "OpenSpec",
     name: "cli-version",
-    ok: openspec.major === OPENSPEC_SUPPORTED_MAJOR,
-    message:
-      openspec.major === OPENSPEC_SUPPORTED_MAJOR
-        ? `${openspec.major}.x`
-        : openspec.major === null
-          ? `${openspec.reason} — install ${OPENSPEC_SUPPORTED_MAJOR}.x: npm install -g @fission-ai/openspec@${OPENSPEC_SUPPORTED_MAJOR}`
-          : `${openspec.major}.x detected — install ${OPENSPEC_SUPPORTED_MAJOR}.x: npm install -g @fission-ai/openspec@${OPENSPEC_SUPPORTED_MAJOR}`,
+    ok: openspec.ok,
+    message: openspec.ok ? `${openspec.major}.x` : openspec.message,
   });
 
   // Playwright CLI (package installed) — gated on the scaffold presence
@@ -1285,14 +1280,24 @@ export async function doctor(options: DoctorOptions = {}) {
     console.log(chalk.gray(`  Run: ${hints.join("  or  ")} <change-name>\n`));
   } else {
     console.log(chalk.red("  ❌ Some prerequisites are missing\n"));
-    if (checks.some((c) => c.name === "cli-version" && !c.ok)) {
+    const cliVersionFailed = checks.some(
+      (c) => c.name === "cli-version" && !c.ok,
+    );
+    if (cliVersionFailed) {
       console.log(
         chalk.gray(
           `  Run: npm install -g @fission-ai/openspec@${OPENSPEC_SUPPORTED_MAJOR}\n`,
         ),
       );
     }
-    console.log(chalk.gray("  Run: openspec-pw init to fix\n"));
+    // Init refuses to run on an unsupported CLI, so only offer it when
+    // something else is also missing.
+    const otherRequiredFailed = checks.some(
+      (c) => !c.ok && c.name !== "cli-version" && !isOptionalCheck(c.name),
+    );
+    if (!cliVersionFailed || otherRequiredFailed) {
+      console.log(chalk.gray("  Run: openspec-pw init to fix\n"));
+    }
     process.exit(1);
   }
 }

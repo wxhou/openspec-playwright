@@ -13,7 +13,7 @@ import { readFile } from "fs/promises";
 import { hasCommand } from "../shared/exec.js";
 import {
   OPENSPEC_SUPPORTED_MAJOR,
-  detectOpenSpecVersion,
+  openSpecCliStatus,
 } from "../shared/openspec-version.js";
 import { installStopHook, isHookTier, uninstallStopHook } from "./hooks.js";
 import {
@@ -408,14 +408,13 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   const hasNpm = hasCommand("npm", ["--version"], "npm", true);
   // The CLI major decides which workflow commands exist: 1.x ships
   // `/opsx:*` command files, 2.x ships skills under `.agents/skills/`.
-  const openspec = detectOpenSpecVersion();
-  if (openspec.major === null) {
-    console.log(chalk.gray(`  - OpenSpec ${openspec.reason} (run: npm install -g @fission-ai/openspec@${OPENSPEC_SUPPORTED_MAJOR})`));
-  } else if (openspec.major !== OPENSPEC_SUPPORTED_MAJOR) {
-    console.log(chalk.red(`  ✗ OpenSpec ${openspec.major}.x found — this tool needs ${OPENSPEC_SUPPORTED_MAJOR}.x (run: npm install -g @fission-ai/openspec@${OPENSPEC_SUPPORTED_MAJOR})`));
-    process.exit(1);
-  } else {
+  const openspec = openSpecCliStatus();
+  if (openspec.ok) {
     console.log(chalk.green("  ✓ OpenSpec found"));
+  } else if (openspec.kind === "missing") {
+    console.log(chalk.gray(`  - ${openspec.message}`));
+  } else {
+    throw new Error(openspec.message);
   }
 
   if (!hasNode || !hasNpm) {

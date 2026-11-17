@@ -21,6 +21,7 @@ npm install -g openspec-playwright
 
 ```
 # In your project directory
+npm install -g @fission-ai/openspec@1   # this tool needs the OpenSpec 1.x CLI
 openspec init
 openspec-pw init
 npx playwright install --with-deps
