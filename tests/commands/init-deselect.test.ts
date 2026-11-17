@@ -155,6 +155,28 @@ describe("init deselect-removal: cursor deselected and confirmed", () => {
     expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(false);
   });
 
+  it("deletes a pristine English tool-created AGENTS.md whole when everything is deselected", async () => {
+    const standards = readFileSync(
+      new URL("../../employee-standards.en.md", import.meta.url),
+      "utf-8",
+    );
+    writeFileSync(
+      join(tmpRoot, "AGENTS.md"),
+      `# ${basename(tmpRoot)}\n\n<!-- OPENSPEC-PW:START -->\n\n${standards.trim()}\n\n<!-- OPENSPEC-PW:END -->\n`,
+    );
+
+    await init(
+      { mcp: false },
+      {
+        isTTY: true,
+        prompt: async () => [],
+        confirm: async () => true,
+      },
+    );
+
+    expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(false);
+  });
+
   it("keeps a pristine AGENTS.md when a wrapper symlinks to it", async () => {
     // Deleting the file whole would leave CLAUDE.md dangling; the shared
     // cleanup guard keeps the heading and strips only the block.

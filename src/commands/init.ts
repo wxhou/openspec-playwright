@@ -713,7 +713,10 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
             "AGENTS.md",
             agentsLinked
               ? undefined
-              : readEmployeeStandards(EMPLOYEE_STANDARDS_SRC),
+              : [
+                  readEmployeeStandards(EMPLOYEE_STANDARDS_SRC),
+                  readEmployeeStandards(EMPLOYEE_STANDARDS_EN_SRC),
+                ],
           );
           if (removedAgents) {
             console.log(chalk.green("  ✓ AGENTS.md: shared openspec-pw block removed"));

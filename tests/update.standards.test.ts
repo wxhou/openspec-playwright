@@ -402,6 +402,27 @@ describe("syncEmployeeStandards", () => {
     );
   });
 
+  it("applies --lang to a block without a language anchor instead of claiming no effect", () => {
+    const enSrc = join(tmpDir, "employee-standards.en.md");
+    existingPaths.add(enSrc);
+    contentsByPath.set(enSrc, EN_STANDARDS);
+    existingPaths.add(agentsPath);
+    contentsByPath.set(
+      agentsPath,
+      `${OPENSPEC_START}\ncustom body without anchors\n${OPENSPEC_END}`,
+    );
+
+    syncEmployeeStandards(tmpDir, root, false, true, false, "en");
+
+    expect(logText()).not.toContain("--lang has no effect");
+    expect(logText()).toContain("switched to English");
+    expect(installOpenSpecBlockMock).toHaveBeenCalledWith(
+      root,
+      EN_STANDARDS,
+      expect.anything(),
+    );
+  });
+
   it("reports --lang as ineffective when no standards block is installed", () => {
     const enSrc = join(tmpDir, "employee-standards.en.md");
     existingPaths.add(enSrc);

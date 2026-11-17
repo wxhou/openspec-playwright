@@ -364,7 +364,7 @@ export function cleanProjectRules(
       const removedAgents = removeMarkersFromFile(
         agents,
         "AGENTS.md",
-        linked ? undefined : (bundledStandardsContent() ?? undefined),
+        linked ? undefined : bundledStandardsContents(),
       );
       if (removedAgents) options.onChanged?.();
       changed = removedAgents || changed;
@@ -413,16 +413,20 @@ export function wrapperLinksToAgents(projectRoot: string, adapter: EditorAdapter
   }
 }
 
-/** Bundled employee standards, or null when the file cannot be read. */
-function bundledStandardsContent(): string | null {
-  try {
-    return readFileSync(
-      new URL("../../../employee-standards.md", import.meta.url),
-      "utf-8",
-    );
-  } catch {
-    return null;
-  }
+/** Bundled employee standards in every shipped language, for pristine checks. */
+function bundledStandardsContents(): string[] {
+  return ["employee-standards.md", "employee-standards.en.md"]
+    .map((name) => {
+      try {
+        return readFileSync(
+          new URL(`../../../${name}`, import.meta.url),
+          "utf-8",
+        );
+      } catch {
+        return "";
+      }
+    })
+    .filter((content) => content.length > 0);
 }
 
 /** Heading install writes into a rules file it creates (shared with the pristine check). */
@@ -435,10 +439,18 @@ function rulesFileTitle(projectRoot: string): string {
  * fresh file: the generated title plus the marker block around `body`. Lets
  * removal delete the file instead of leaving a title-only shell.
  */
-function isPristineRulesFile(dest: string, content: string, body: string): boolean {
+function isPristineRulesFile(
+  dest: string,
+  content: string,
+  bodies: string[],
+): boolean {
   const title = `# ${rulesFileTitle(dirname(dest))}`;
-  const expected = `${title}\n\n${OPENSPEC_START}\n\n${body.trim()}\n\n${OPENSPEC_END}\n`;
-  return content.replace(/\r\n/g, "\n") === expected.replace(/\r\n/g, "\n");
+  const normalized = content.replace(/\r\n/g, "\n");
+  return bodies.some(
+    (body) =>
+      normalized ===
+      `${title}\n\n${OPENSPEC_START}\n\n${body.trim()}\n\n${OPENSPEC_END}\n`,
+  );
 }
 
 /**
@@ -468,7 +480,7 @@ function markersPaired(content: string, start: string, end: string): boolean {
 export function removeMarkersFromFile(
   dest: string,
   fileLabel: string,
-  pristineBody?: string,
+  pristineBody?: string | string[],
 ): boolean {
   if (!existsSync(dest)) {
     console.log(chalk.gray(`  - ${fileLabel} not found, skipping`));
@@ -485,7 +497,16 @@ export function removeMarkersFromFile(
   }
   const existing = readFileSync(dest, "utf-8");
 
-  if (pristineBody !== undefined && isPristineRulesFile(dest, existing, pristineBody)) {
+  const pristineBodies =
+    pristineBody === undefined
+      ? undefined
+      : Array.isArray(pristineBody)
+        ? pristineBody
+        : [pristineBody];
+  if (
+    pristineBodies !== undefined &&
+    isPristineRulesFile(dest, existing, pristineBodies)
+  ) {
     rmSync(dest);
     console.log(chalk.green(`  ✓ Removed ${fileLabel}`));
     return true;

@@ -627,11 +627,16 @@ export function syncEmployeeStandards(
   // install). Wrapper files are gated on their editor's command-artifact
   // authorization, not their own markers.
   const agentsPath = join(projectRoot, "AGENTS.md");
+  const agentsRaw = existsSync(agentsPath)
+    ? readFileSync(agentsPath, "utf-8")
+    : null;
   const installed = detectInstalledLanguage(
-    existsSync(agentsPath)
-      ? extractRuleBlockContent(readFileSync(agentsPath, "utf-8"))
-      : null,
+    agentsRaw ? extractRuleBlockContent(agentsRaw) : null,
   );
+  const hasStandardsBlock =
+    agentsRaw !== null &&
+    (agentsRaw.includes(OPENSPEC_START) ||
+      hasLegacyTerritoryStart(agentsRaw));
   const language = resolveStandardsLanguage({ flag: lang, installed });
   const standardsSrc = join(
     tmpDir,
@@ -659,13 +664,16 @@ export function syncEmployeeStandards(
       return;
     }
   }
-  if (lang && !installed) {
+  if (lang && !hasStandardsBlock) {
     console.log(
       chalk.gray(
         '  - --lang has no effect without an installed standards block — run "openspec-pw init"',
       ),
     );
-  } else if (installed && installed !== language) {
+  } else if (
+    hasStandardsBlock &&
+    (installed === null ? Boolean(lang) : installed !== language)
+  ) {
     console.log(
       chalk.gray(
         `  ✓ Employee standards switched to ${language === "en" ? "English" : "Chinese"}`,
