@@ -52,6 +52,9 @@ jobs:
           New-Item -ItemType Directory -Force -Path tmp/ci-update/openspec | Out-Null
           Push-Location tmp/ci-update
           npm init -y | Out-Null
+          # An installed block pins the standards language, so this smoke does
+          # not depend on the published bundle's locale defaults.
+          Set-Content -Path AGENTS.md -Encoding utf8 -Value "<!-- OPENSPEC-PW:START -->`n这份代码库是你的`n<!-- OPENSPEC-PW:END -->"
           $output = node ../../dist/index.js update --no-cli 2>&1 | Out-String
           $exitCode = $LASTEXITCODE
           Write-Output $output
