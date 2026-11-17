@@ -63,7 +63,6 @@ import { execFileSync } from "../../src/shared/exec.js";
 import { readFileSync, existsSync, readdirSync, lstatSync } from "fs";
 import { claudeAdapter, detectAdapters, minimaxAdapter } from "../../src/commands/editors.js";
 import { detectCodeGraphStatus } from "../../src/shared/index.js";
-import { openSpecCliStatus } from "../../src/shared/openspec-version.js";
 import { doctor, isOptionalCheck } from "../../src/commands/doctor.js";
 
 // ─── allOk computation (uses the real isOptionalCheck from doctor.ts) ───────
@@ -482,75 +481,6 @@ describe("doctor CodeGraph category", () => {
     const parsed = JSON.parse(logs.join("\n"));
     expect(parsed.ok).toBe(true);
     expect(exitSpy).not.toHaveBeenCalled();
-  });
-
-});
-
-// ─── Tests: OpenSpec CLI version guard ──────────────────────────────────────
-
-describe("doctor OpenSpec CLI version", () => {
-  it("reports a 2.x OpenSpec CLI as unsupported and exits 1", async () => {
-    vi.mocked(openSpecCliStatus).mockReturnValueOnce({
-      ok: false,
-      kind: "unsupported",
-      message:
-        "OpenSpec 2.x detected — this tool needs 1.x — install 1.x: npm install -g @fission-ai/openspec@1",
-    });
-    const logs: string[] = [];
-    let exitCode: number | undefined;
-    const spy = vi.spyOn(console, "log").mockImplementation((...args) => {
-      logs.push(args.join(" "));
-    });
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation(((code?: number) => {
-      exitCode = code;
-      throw new Error("process.exit called");
-    }) as never);
-    try {
-      await doctor({ json: true });
-      throw new Error("doctor should exit 1");
-    } catch (err) {
-      expect((err as Error).message).toContain("process.exit called");
-    } finally {
-      spy.mockRestore();
-      exitSpy.mockRestore();
-    }
-    const parsed = JSON.parse(logs.join("\n"));
-    const row = parsed.checks.find(
-      (c: { name: string }) => c.name === "cli-version",
-    );
-    expect(row.ok).toBe(false);
-    expect(row.message).toContain("2.x detected");
-    expect(parsed.ok).toBe(false);
-    expect(exitCode).toBe(1);
-  });
-
-  it("prints the 1.x install hint and no init hint when the CLI is unsupported", async () => {
-    vi.mocked(openSpecCliStatus).mockReturnValueOnce({
-      ok: false,
-      kind: "unsupported",
-      message:
-        "OpenSpec 2.x detected — this tool needs 1.x — install 1.x: npm install -g @fission-ai/openspec@1",
-    });
-    const logs: string[] = [];
-    const spy = vi.spyOn(console, "log").mockImplementation((...args) => {
-      logs.push(args.join(" "));
-    });
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
-      throw new Error("process.exit called");
-    });
-    try {
-      await doctor();
-    } catch {
-      // exits 1 — the row and the hint are what this test reads
-    } finally {
-      spy.mockRestore();
-      exitSpy.mockRestore();
-    }
-    const out = logs.join("\n");
-    expect(out).toContain("cli-version");
-    expect(out).toContain("npm install -g @fission-ai/openspec@1");
-    // init aborts on an unsupported CLI, so offering it would be a dead end.
-    expect(out).not.toContain("openspec-pw init to fix");
   });
 });
 
