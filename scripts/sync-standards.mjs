@@ -106,7 +106,7 @@ export function buildMirrorContent(standards, existing) {
  * wrapper below).
  */
 export function syncAgentsMirror(root, { check = false } = {}) {
-  const standardsPath = join(root, "employee-standards.md");
+  const standardsPath = join(root, "standards", "employee-standards.md");
   if (!existsSync(standardsPath)) throw new Error(`SSOT not found: ${standardsPath}`);
   const standards = readFileSync(standardsPath, "utf-8");
   const agentsPath = join(root, "AGENTS.md");

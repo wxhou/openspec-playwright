@@ -261,9 +261,14 @@ describe("codebuddy wrapper territory (cleanup / removal / markers)", () => {
 // ─── update: wrapper sync gating (asset-sync delta) ──────────────────────
 
 describe("syncEmployeeStandards codebuddy gating", () => {
+  const EN_STUB = ["0", "1", "2", "3", "4", "5", "6", "7"]
+    .map((n) => `## ${n}. Section ${n}`)
+    .join("\n\n");
   const bundle = () => {
     const dir = mkdtempSync(join(tmpdir(), "openspec-pw-bundle-"));
-    writeFileSync(join(dir, "employee-standards.md"), "# bundled standards\n");
+    mkdirSync(join(dir, "standards"));
+    writeFileSync(join(dir, "standards", "employee-standards.md"), "# bundled standards\n");
+    writeFileSync(join(dir, "standards", "employee-standards.en.md"), EN_STUB);
     return dir;
   };
 

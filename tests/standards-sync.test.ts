@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import {
@@ -120,7 +120,10 @@ describe("buildMirrorContent", () => {
 });
 
 describe("syncAgentsMirror", () => {
-  const writeSSOT = () => writeFileSync(join(tmpRoot, "employee-standards.md"), SSOT);
+  const writeSSOT = () => {
+    mkdirSync(join(tmpRoot, "standards"), { recursive: true });
+    writeFileSync(join(tmpRoot, "standards", "employee-standards.md"), SSOT);
+  };
 
   it("round-trips: write then re-run reports already in sync, byte-identical", () => {
     writeSSOT();
@@ -153,7 +156,10 @@ describe("syncAgentsMirror", () => {
 // two CLI bugs live: an undefined `check` (ReferenceError) and a bare catch
 // in the run-guard that swallowed it — `--check` exited 0 on drift forever.
 describe("main (CLI exit semantics)", () => {
-  const writeSSOT = () => writeFileSync(join(tmpRoot, "employee-standards.md"), SSOT);
+  const writeSSOT = () => {
+    mkdirSync(join(tmpRoot, "standards"), { recursive: true });
+    writeFileSync(join(tmpRoot, "standards", "employee-standards.md"), SSOT);
+  };
   let restoreConsole = () => {};
   beforeEach(() => {
     const log = vi.spyOn(console, "log").mockImplementation(() => {});

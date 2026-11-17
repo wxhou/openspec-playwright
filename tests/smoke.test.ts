@@ -224,6 +224,41 @@ const distExists = existsSync(distDir);
     }
   });
 
+  it("init and update --help document --lang", () => {
+    for (const cmd of ["init", "update"]) {
+      const { stdout } = runCli(`${cmd} --help`);
+      expect(stdout).toContain("--lang");
+    }
+  });
+
+  it("init and update reject an invalid --lang with exit code 2", () => {
+    for (const cmd of ["init", "update"]) {
+      const { stderr, status } = runCli(`${cmd} --lang fr`);
+      expect(status).toBe(2);
+      expect(stderr).toContain('Invalid --lang "fr"');
+    }
+  });
+
+  it("init --lang validates before writing any file", () => {
+    const dir = mkdtempSync(join(tmpdir(), "openspec-pw-lang-reject-"));
+    try {
+      let status = 0;
+      try {
+        execSync(`node ${join(ROOT, "dist", "index.js")} init --lang fr`, {
+          cwd: dir,
+          encoding: "utf-8",
+          stdio: "pipe",
+        });
+      } catch (err) {
+        status = (err as { status?: number }).status ?? 1;
+      }
+      expect(status).toBe(2);
+      expect(readdirSync(dir)).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("coverage --help shows --json flag and optional change-name", () => {
     const { stdout } = runCli("coverage --help");
     expect(stdout).toContain("--json");
@@ -275,7 +310,8 @@ const CRITICAL_PACKAGE_FILES = [
   "dist/commands/doctor.js",
   "dist/commands/update.js",
   "dist/commands/editors.js",
-  "employee-standards.md",
+  "standards/employee-standards.md",
+  "standards/employee-standards.en.md",
   "templates/seed.spec.ts",
   "templates/auth.setup.ts",
   "templates/credentials.yaml",

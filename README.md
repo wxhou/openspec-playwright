@@ -132,6 +132,13 @@ settings, global home dirs) no longer influence the pre-select.
 *which* editors, the latter *whether* to install the Playwright MCP server
 for them.
 
+**Standards language.** The employee-standards block in `AGENTS.md` is
+written in Chinese or English. `init --lang zh|en` selects it explicitly;
+without the flag, an installed block's language wins, then the system locale
+(`LANGUAGE` > `LC_ALL` > `LC_MESSAGES` > `LANG`), then English. `update --lang`
+switches an installed block; without a block the flag has no effect. Only the
+locale is read — the region is never detected.
+
 Init prints two output signals: the pre-select hint line (only when
 `--tools` is not given) — `Configured (pre-select):` on projects with
 openspec-pw state, `Detected (pre-select):` in the first-run fallback —
@@ -330,8 +337,8 @@ into a `/opsx:e2e` delivery.
 
 ```bash
 openspec-pw -v            # Print version (also -V / --version)
-openspec-pw init          # Initialize integration (--tools all|none|ids… to select editors; --agents adds the official agents; --frontend/--no-frontend force the install mode; --miniprogram/--no-miniprogram select the mini-program target; --lint-config generates/extends ESLint and ruff config for the swallow-error checklist; --hook[=static|full] installs a Claude Code Stop hook; --auto-pipeline generates the headless CI workflow)
-openspec-pw update        # Update CLI and commands to latest version
+openspec-pw init          # Initialize integration (--tools all|none|ids… to select editors; --agents adds the official agents; --frontend/--no-frontend force the install mode; --miniprogram/--no-miniprogram select the mini-program target; --lint-config generates/extends ESLint and ruff config for the swallow-error checklist; --hook[=static|full] installs a Claude Code Stop hook; --auto-pipeline generates the headless CI workflow; --lang zh|en selects the employee-standards language)
+openspec-pw update        # Update CLI and commands to latest version (--lang zh|en switches an installed standards block)
 openspec-pw doctor        # Check prerequisites (Node, Playwright, OpenSpec, config, tests) + app server diagnostics
 openspec-pw install --claude # Install or verify Claude Code via the official native installer (default: print only; --run executes; --verify checks)
 openspec-pw audit         # Audit tests for orphaned specs and issues (--gate exits 1 when any issue is found)

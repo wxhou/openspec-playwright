@@ -71,6 +71,14 @@ export type { WxaProjectResolution, PageManifest } from "./miniprogram.js";
 export { renderWorkflowTemplate } from "./workflow-render.js";
 export type { WorkflowRenderOptions } from "./workflow-render.js";
 export {
+  detectInstalledLanguage,
+  detectSystemLanguage,
+  missingEnglishSections,
+  resolveStandardsLanguage,
+  validateLanguageFlag,
+} from "./standards-language.js";
+export type { StandardsLanguage } from "./standards-language.js";
+export {
   CREDENTIALS_RELPATHS,
   credentialsIgnoreHint,
   findUnignoredFiles,

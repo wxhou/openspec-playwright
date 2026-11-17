@@ -896,6 +896,31 @@ describe("doctor authorization tiers", () => {
     expect(agents?.message).toContain("run openspec-pw update");
   });
 
+  it("checks an English standards block against the English SSOT", async () => {
+    vi.mocked(detectCodeGraphStatus).mockReturnValue({
+      cliInstalled: false,
+      indexed: false,
+      mcpInstalledAdapters: [],
+    });
+    const drift = await import("../../src/shared/drift.js");
+    const bundled = vi.mocked(drift.bundledStandardsPath);
+    existingPaths.add(join(fixtureRoot, "AGENTS.md").replace(/\\/g, "/"));
+    existingPaths.add(join(fixtureRoot, "openspec").replace(/\\/g, "/"));
+    readFileMock.mockImplementation((p: Parameters<typeof readFileSync>[0]) => {
+      const s = String(p);
+      if (s.endsWith(".mcp.json")) return "{}";
+      if (s.endsWith("AGENTS.md")) {
+        return "preamble\n<!-- OPENSPEC-PW:START -->\nThis codebase is yours\n<!-- OPENSPEC-PW:END -->";
+      }
+      return "";
+    });
+
+    const checks = await doctorJsonChecks();
+
+    expect(checks.find((c) => c.name === "standards-agents")?.ok).toBe(true);
+    expect(bundled).toHaveBeenCalledWith("en");
+  });
+
   it("minimal-mode project: no Playwright scaffold → browsers/playwright-test degrade to ok:true info lines", async () => {
     // Standards block present, no command artifacts, no playwright.config /
     // tests/playwright → the environment checks must not fail doctor.
