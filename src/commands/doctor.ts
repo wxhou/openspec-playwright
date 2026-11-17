@@ -1290,12 +1290,9 @@ export async function doctor(options: DoctorOptions = {}) {
         ),
       );
     }
-    // Init refuses to run on an unsupported CLI, so only offer it when
-    // something else is also missing.
-    const otherRequiredFailed = checks.some(
-      (c) => !c.ok && c.name !== "cli-version" && !isOptionalCheck(c.name),
-    );
-    if (!cliVersionFailed || otherRequiredFailed) {
+    // Init aborts on an unsupported or unreadable CLI, so only offer it when
+    // init can actually run (a missing CLI only makes it print instructions).
+    if (!cliVersionFailed || (!openspec.ok && openspec.kind === "missing")) {
       console.log(chalk.gray("  Run: openspec-pw init to fix\n"));
     }
     process.exit(1);

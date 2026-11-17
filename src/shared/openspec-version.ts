@@ -15,6 +15,8 @@ export interface OpenSpecVersionProbe {
   major: number | null;
   /** Why the version could not be read; null when it was. */
   reason: string | null;
+  /** True when no `openspec` binary is reachable — the "not installed" case. */
+  missing: boolean;
 }
 
 /**
@@ -27,16 +29,23 @@ export type OpenSpecCliStatus =
   | { ok: false; kind: "unreadable"; message: string }
   | { ok: false; kind: "unsupported"; message: string };
 
-/** Parse the major version out of `openspec --version` output. */
+const EXACT_VERSION = /^v?(\d+)\.(\d+)(?:\.\d+)?(?:[-+].*)?$/;
+
+/**
+ * Parse the major version out of `openspec --version` output. Accepts a bare
+ * version, a version on its own line, or a banner that names the tool — an
+ * unrelated version in the banner (a Node version, say) is not a candidate.
+ */
 export function parseOpenSpecMajor(output: string): number | null {
   const text = output.trim();
-  const exact = text.match(/^v?(\d+)\.(\d+)(?:\.\d+)?(?:[-+].*)?$/);
-  if (exact) return Number(exact[1]);
-  // Some builds print a banner before the version — take the first semver on
-  // the first line rather than giving up on the whole output.
-  const firstLine = text.split("\n")[0] ?? "";
-  const loose = firstLine.match(/(\d+)\.(\d+)(?:\.\d+)?(?:[-+].*)?/);
-  return loose ? Number(loose[1]) : null;
+  const direct = text.match(EXACT_VERSION);
+  if (direct) return Number(direct[1]);
+  for (const line of text.split("\n")) {
+    const onLine = line.trim().match(EXACT_VERSION);
+    if (onLine) return Number(onLine[1]);
+  }
+  const named = text.match(/\bopenspec@?\s*v?(\d+)\.(\d+)(?:\.\d+)?/i);
+  return named ? Number(named[1]) : null;
 }
 
 function isMissingBinary(err: unknown): boolean {
@@ -63,7 +72,6 @@ export function probeOpenSpecVersion(): OpenSpecVersionProbe {
     // whose cache holds only 1.x.
     ["npx", ["--no-install", "openspec", "--version"]],
   ];
-  let broken: string | null = null;
   for (const [bin, args] of probes) {
     let out: string;
     try {
@@ -71,22 +79,29 @@ export function probeOpenSpecVersion(): OpenSpecVersionProbe {
         execFileSync(bin, args, { encoding: "utf-8", timeout: 15_000 }),
       );
     } catch (err) {
-      // The npx fallback only runs when the PATH probe found nothing, so its
-      // failure means "not installed"; a PATH failure that is not a missing
-      // binary is a broken install and keeps its reason.
+      // A binary that exists but fails is a broken install: report it instead
+      // of letting the npx fallback resolve a different copy and call the CLI
+      // healthy.
       if (bin === "openspec" && !isMissingBinary(err)) {
-        broken = `probe failed: ${failureDetail(err)}`;
+        return {
+          major: null,
+          reason: `probe failed: ${failureDetail(err)}`,
+          missing: false,
+        };
       }
+      // The npx probe only runs after the PATH probe found no binary, so its
+      // own failure means "not installed".
       continue;
     }
     const major = parseOpenSpecMajor(out);
-    if (major !== null) return { major, reason: null };
+    if (major !== null) return { major, reason: null, missing: false };
     return {
       major: null,
       reason: `version output not parseable: "${out.trim().slice(0, 40)}"`,
+      missing: false,
     };
   }
-  return { major: null, reason: broken ?? "not found" };
+  return { major: null, reason: "not found", missing: true };
 }
 
 let cached: OpenSpecVersionProbe | undefined;
@@ -108,14 +123,14 @@ export function openSpecCliStatus(
     return { ok: true, major: probe.major };
   }
   const install = `npm install -g @fission-ai/openspec@${OPENSPEC_SUPPORTED_MAJOR}`;
+  if (probe.missing) {
+    return {
+      ok: false,
+      kind: "missing",
+      message: `OpenSpec CLI not found — install ${OPENSPEC_SUPPORTED_MAJOR}.x: ${install}`,
+    };
+  }
   if (probe.major === null) {
-    if (probe.reason === "not found") {
-      return {
-        ok: false,
-        kind: "missing",
-        message: `OpenSpec CLI not found — install ${OPENSPEC_SUPPORTED_MAJOR}.x: ${install}`,
-      };
-    }
     return {
       ok: false,
       kind: "unreadable",

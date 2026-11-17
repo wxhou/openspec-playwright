@@ -484,6 +484,11 @@ describe("doctor CodeGraph category", () => {
     expect(exitSpy).not.toHaveBeenCalled();
   });
 
+});
+
+// ─── Tests: OpenSpec CLI version guard ──────────────────────────────────────
+
+describe("doctor OpenSpec CLI version", () => {
   it("reports a 2.x OpenSpec CLI as unsupported and exits 1", async () => {
     vi.mocked(openSpecCliStatus).mockReturnValueOnce({
       ok: false,
@@ -519,7 +524,7 @@ describe("doctor CodeGraph category", () => {
     expect(exitCode).toBe(1);
   });
 
-  it("prints the 1.x install hint when the OpenSpec CLI is unsupported", async () => {
+  it("prints the 1.x install hint and no init hint when the CLI is unsupported", async () => {
     vi.mocked(openSpecCliStatus).mockReturnValueOnce({
       ok: false,
       kind: "unsupported",
@@ -544,6 +549,8 @@ describe("doctor CodeGraph category", () => {
     const out = logs.join("\n");
     expect(out).toContain("cli-version");
     expect(out).toContain("npm install -g @fission-ai/openspec@1");
+    // init aborts on an unsupported CLI, so offering it would be a dead end.
+    expect(out).not.toContain("openspec-pw init to fix");
   });
 });
 
