@@ -33,6 +33,7 @@ const en = extractEmbed(scriptJs, "CLAUDE_MD_EN", "en");
 
 const ZH_ANCHORS: [string, string][] = [
   ["§0 openspec help", "npx openspec --help"],
+  ["§0 核实与求助", "不确定属实的事实先核实再作答"],
   ["§0 代码库所有权", "这份代码库是你的"],
   ["§0 用户指令优先", "用户显式指令可偏离"],
   ["§0 未标注档位", "未标注的条款按 🟡 处理"],
@@ -126,6 +127,7 @@ const ZH_ANCHORS: [string, string][] = [
 
 const EN_ANCHORS: [string, string][] = [
   ["§0 openspec help", "npx openspec --help"],
+  ["§0 verify and ask", "verify facts you are not sure are true before answering"],
   ["§0 codebase ownership", "This codebase is yours"],
   ["§0 user-instruction primacy", "explicit user instructions may override"],
   ["§0 unmarked tier", "unmarked rules are treated as"],

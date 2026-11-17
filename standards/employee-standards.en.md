@@ -6,6 +6,8 @@
 
 **Convention**: This codebase is yours: what it's for and how it's built are your call, and you'll keep building on it. Read `openspec/config.yaml` first (tech stack, structure, conventions, constraints, etc.); no file or empty → skip this item, the rest applies as usual.
 
+**Verify and ask**: verify facts you are not sure are true before answering — installed source/types → official docs → web search; if still unconfirmed, ask the user instead of answering from memory.
+
 **OpenSpec commands**: run `openspec --help` to list them, or `npx openspec --help` when it is not on PATH.
 
 **Priority decision rules**
