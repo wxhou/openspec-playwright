@@ -5,8 +5,8 @@ import { fileURLToPath } from "url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-const standards = readFileSync(join(root, "employee-standards.md"), "utf-8");
-const standardsEn = readFileSync(join(root, "employee-standards.en.md"), "utf-8");
+const standards = readFileSync(join(root, "standards", "employee-standards.md"), "utf-8");
+const standardsEn = readFileSync(join(root, "standards", "employee-standards.en.md"), "utf-8");
 const scriptJs = readFileSync(join(root, "docs", "script.js"), "utf-8");
 
 // Extract the CLAUDE_MD_ZH / CLAUDE_MD_EN template bodies from script.js.

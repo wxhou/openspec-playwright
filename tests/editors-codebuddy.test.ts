@@ -266,8 +266,9 @@ describe("syncEmployeeStandards codebuddy gating", () => {
     .join("\n\n");
   const bundle = () => {
     const dir = mkdtempSync(join(tmpdir(), "openspec-pw-bundle-"));
-    writeFileSync(join(dir, "employee-standards.md"), "# bundled standards\n");
-    writeFileSync(join(dir, "employee-standards.en.md"), EN_STUB);
+    mkdirSync(join(dir, "standards"));
+    writeFileSync(join(dir, "standards", "employee-standards.md"), "# bundled standards\n");
+    writeFileSync(join(dir, "standards", "employee-standards.en.md"), EN_STUB);
     return dir;
   };
 

@@ -95,10 +95,10 @@ const E2E_COMMAND_SRC = fileURLToPath(
   new URL("../../templates/e2e-command.md", import.meta.url),
 );
 const EMPLOYEE_STANDARDS_SRC = fileURLToPath(
-  new URL("../../employee-standards.md", import.meta.url),
+  new URL("../../standards/employee-standards.md", import.meta.url),
 );
 const EMPLOYEE_STANDARDS_EN_SRC = fileURLToPath(
-  new URL("../../employee-standards.en.md", import.meta.url),
+  new URL("../../standards/employee-standards.en.md", import.meta.url),
 );
 const TESTS_README_SRC = fileURLToPath(
   new URL("../../templates/tests-readme.md", import.meta.url),

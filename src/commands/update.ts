@@ -638,13 +638,17 @@ export function syncEmployeeStandards(
     (agentsRaw.includes(OPENSPEC_START) ||
       hasLegacyTerritoryStart(agentsRaw));
   const language = resolveStandardsLanguage({ flag: lang, installed });
-  const standardsSrc = join(
-    tmpDir,
-    language === "en" ? "employee-standards.en.md" : "employee-standards.md",
-  );
-  if (!existsSync(standardsSrc)) {
+  const standardsFile =
+    language === "en" ? "employee-standards.en.md" : "employee-standards.md";
+  // The fetched bundle can predate the standards/ layout move; accept the
+  // legacy root location until the first release with the new layout ships.
+  const standardsSrc = [
+    join(tmpDir, "standards", standardsFile),
+    join(tmpDir, standardsFile),
+  ].find((candidate) => existsSync(candidate));
+  if (!standardsSrc) {
     console.error(
-      chalk.red(`  ✗ Employee standards file missing: ${basename(standardsSrc)}`),
+      chalk.red(`  ✗ Employee standards file missing: ${standardsFile}`),
     );
     console.error(chalk.gray("    Reinstall the CLI or pass --lang zh|en"));
     process.exitCode = 1;

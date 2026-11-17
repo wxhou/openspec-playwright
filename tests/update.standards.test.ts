@@ -99,7 +99,7 @@ describe("update() early return", () => {
 describe("syncEmployeeStandards", () => {
   const tmpDir = "/tmp/fake-update-tmp";
   const root = "/tmp/fake-update-project";
-  const standardsSrc = join(tmpDir, "employee-standards.md");
+  const standardsSrc = join(tmpDir, "standards", "employee-standards.md");
   const agentsPath = join(root, "AGENTS.md");
   const claudePath = join(root, "CLAUDE.md");
 
@@ -364,7 +364,7 @@ describe("syncEmployeeStandards", () => {
   });
 
   it("keeps the installed Chinese standards when no --lang is passed", () => {
-    const enSrc = join(tmpDir, "employee-standards.en.md");
+    const enSrc = join(tmpDir, "standards", "employee-standards.en.md");
     existingPaths.add(enSrc);
     contentsByPath.set(enSrc, EN_STANDARDS);
     existingPaths.add(agentsPath);
@@ -383,7 +383,7 @@ describe("syncEmployeeStandards", () => {
   });
 
   it("switches an installed Chinese block to English when --lang en is passed", () => {
-    const enSrc = join(tmpDir, "employee-standards.en.md");
+    const enSrc = join(tmpDir, "standards", "employee-standards.en.md");
     existingPaths.add(enSrc);
     contentsByPath.set(enSrc, EN_STANDARDS);
     existingPaths.add(agentsPath);
@@ -403,7 +403,7 @@ describe("syncEmployeeStandards", () => {
   });
 
   it("applies --lang to a block without a language anchor instead of claiming no effect", () => {
-    const enSrc = join(tmpDir, "employee-standards.en.md");
+    const enSrc = join(tmpDir, "standards", "employee-standards.en.md");
     existingPaths.add(enSrc);
     contentsByPath.set(enSrc, EN_STANDARDS);
     existingPaths.add(agentsPath);
@@ -424,7 +424,7 @@ describe("syncEmployeeStandards", () => {
   });
 
   it("reports --lang as ineffective when no standards block is installed", () => {
-    const enSrc = join(tmpDir, "employee-standards.en.md");
+    const enSrc = join(tmpDir, "standards", "employee-standards.en.md");
     existingPaths.add(enSrc);
     contentsByPath.set(enSrc, EN_STANDARDS);
 
@@ -432,6 +432,26 @@ describe("syncEmployeeStandards", () => {
 
     expect(logText()).toContain("--lang has no effect");
     expect(installOpenSpecBlockMock).not.toHaveBeenCalled();
+  });
+
+  it("reads the legacy root layout when the fetched bundle predates standards/", () => {
+    const legacySrc = join(tmpDir, "employee-standards.md");
+    existingPaths.clear();
+    existingPaths.add(legacySrc);
+    contentsByPath.set(legacySrc, STANDARDS);
+    existingPaths.add(agentsPath);
+    contentsByPath.set(
+      agentsPath,
+      `${OPENSPEC_START}\n这份代码库是你的\n${OPENSPEC_END}`,
+    );
+
+    syncEmployeeStandards(tmpDir, root, false, true);
+
+    expect(installOpenSpecBlockMock).toHaveBeenCalledWith(
+      root,
+      STANDARDS,
+      expect.anything(),
+    );
   });
 
   it("fails visibly when the requested language file is missing", () => {
@@ -454,7 +474,7 @@ describe("syncEmployeeStandards", () => {
     const previousExitCode = process.exitCode;
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
-      const enSrc = join(tmpDir, "employee-standards.en.md");
+      const enSrc = join(tmpDir, "standards", "employee-standards.en.md");
       existingPaths.add(enSrc);
       contentsByPath.set(
         enSrc,

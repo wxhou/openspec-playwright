@@ -135,7 +135,7 @@ describe("init deselect-removal: cursor deselected and confirmed", () => {
     // the bundled standards. remove does whole-file deletion here (7.9), and
     // the init deselection path must not leave a title-only shell.
     const standards = readFileSync(
-      new URL("../../employee-standards.md", import.meta.url),
+      new URL("../../standards/employee-standards.md", import.meta.url),
       "utf-8",
     );
     writeFileSync(
@@ -157,7 +157,7 @@ describe("init deselect-removal: cursor deselected and confirmed", () => {
 
   it("deletes a pristine English tool-created AGENTS.md whole when everything is deselected", async () => {
     const standards = readFileSync(
-      new URL("../../employee-standards.en.md", import.meta.url),
+      new URL("../../standards/employee-standards.en.md", import.meta.url),
       "utf-8",
     );
     writeFileSync(
@@ -181,7 +181,7 @@ describe("init deselect-removal: cursor deselected and confirmed", () => {
     // Deleting the file whole would leave CLAUDE.md dangling; the shared
     // cleanup guard keeps the heading and strips only the block.
     const standards = readFileSync(
-      new URL("../../employee-standards.md", import.meta.url),
+      new URL("../../standards/employee-standards.md", import.meta.url),
       "utf-8",
     );
     writeFileSync(

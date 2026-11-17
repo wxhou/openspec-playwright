@@ -591,10 +591,11 @@ describe("update.ts: minimal-mode first-class sync", () => {
 
   beforeEach(() => {
     mkdirSync(join(bundleDir, "templates"), { recursive: true });
+    mkdirSync(join(bundleDir, "standards"), { recursive: true });
     mkdirSync(tmpRoot, { recursive: true });
     // Bundled templates in the fetched bundle dir.
-    writeFileSync(join(bundleDir, "employee-standards.md"), "# Standards v2");
-    writeFileSync(join(bundleDir, "employee-standards.en.md"), EN_STANDARDS_STUB);
+    writeFileSync(join(bundleDir, "standards", "employee-standards.md"), "# Standards v2");
+    writeFileSync(join(bundleDir, "standards", "employee-standards.en.md"), EN_STANDARDS_STUB);
     writeFileSync(join(bundleDir, "templates", "tests-readme.md"), "# Acceptance Tests v2\n");
   });
 
@@ -695,9 +696,10 @@ describe("update.ts: minimal-mode block-removed alarm", () => {
 
   beforeEach(() => {
     mkdirSync(bundleDir, { recursive: true });
+    mkdirSync(join(bundleDir, "standards"), { recursive: true });
     mkdirSync(tmpRoot, { recursive: true });
-    writeFileSync(join(bundleDir, "employee-standards.md"), "# Standards v2");
-    writeFileSync(join(bundleDir, "employee-standards.en.md"), EN_STANDARDS_STUB);
+    writeFileSync(join(bundleDir, "standards", "employee-standards.md"), "# Standards v2");
+    writeFileSync(join(bundleDir, "standards", "employee-standards.en.md"), EN_STANDARDS_STUB);
     // Minimal-mode project whose AGENTS.md block was wiped externally, but
     // the CLAUDE.md wrapper marker survives → territory proven by markers.
     writeFileSync(

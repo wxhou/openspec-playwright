@@ -91,13 +91,15 @@ describe("extractRuleBlockContent", () => {
 });
 
 describe("bundled template path resolution", () => {
-  it("resolves employee-standards.md to the package root", () => {
-    const p = bundledStandardsPath();
-    expect(p.endsWith("employee-standards.md")).toBe(true);
+  it("resolves employee-standards.md under the standards directory", () => {
+    const p = bundledStandardsPath().replace(/\\/g, "/");
+    expect(p.endsWith("standards/employee-standards.md")).toBe(true);
   });
 
   it("resolves the English standards file when asked", () => {
-    expect(bundledStandardsPath("en").endsWith("employee-standards.en.md")).toBe(true);
+    expect(
+      bundledStandardsPath("en").replace(/\\/g, "/").endsWith("standards/employee-standards.en.md"),
+    ).toBe(true);
   });
 
   it("resolves templates relative to the package root", () => {

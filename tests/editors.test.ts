@@ -1015,7 +1015,7 @@ describe("cleanProjectRules", () => {
 
   it("deletes untouched files the tool created, generated title included", () => {
     const standards = readFileSync(
-      new URL("../employee-standards.md", import.meta.url),
+      new URL("../standards/employee-standards.md", import.meta.url),
       "utf-8",
     );
     installProjectRules(tmpRoot, standards, [claudeAdapter]);
@@ -1030,7 +1030,7 @@ describe("cleanProjectRules", () => {
 
   it("keeps AGENTS.md when a wrapper is a symlink to it", () => {
     const standards = readFileSync(
-      new URL("../employee-standards.md", import.meta.url),
+      new URL("../standards/employee-standards.md", import.meta.url),
       "utf-8",
     );
     installProjectRules(tmpRoot, standards, [claudeAdapter]);

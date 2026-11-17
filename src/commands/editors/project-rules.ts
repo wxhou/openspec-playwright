@@ -419,7 +419,7 @@ function bundledStandardsContents(): string[] {
     .map((name) => {
       try {
         return readFileSync(
-          new URL(`../../../${name}`, import.meta.url),
+          new URL(`../../../standards/${name}`, import.meta.url),
           "utf-8",
         );
       } catch {

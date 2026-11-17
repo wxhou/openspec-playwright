@@ -115,6 +115,7 @@ export function bundledStandardsPath(
 ): string {
   return join(
     PKG_ROOT,
+    "standards",
     lang === "en" ? "employee-standards.en.md" : "employee-standards.md",
   );
 }
