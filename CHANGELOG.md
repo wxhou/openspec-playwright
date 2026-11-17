@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **fix(cli): 要求 OpenSpec 1.x CLI**. OpenSpec 2.x 移除了 `/opsx:*` 命令与 `--profile`，改为在 `.agents/skills/` 下安装 skill，本工具的流水线模板依赖这些 1.x 产物。安装命令统一钉 `@1`；`init` 与 `doctor` 检出 2.x 时报错并给出安装命令；npm 包不再携带 v1 生成的 `.claude/` 命令与 skill 副本。
+  - `src/shared/openspec-version.ts`、`src/commands/{init,doctor}.ts`、`package.json`、`templates/{auto-pipeline,github-workflow}.yml`、`docs/index.html`、`README.md`、`README.zh-CN.md`、`tests/shared/openspec-version.test.ts`、`tests/smoke.test.ts`、`CHANGELOG.md`
 - **feat(cli): 新增 `install --claude`**. 只包装官方 native installer：默认打印命令，`--run` 才执行，`--verify` 检查安装；默认 `latest`，支持 `stable` 与指定版本；不含镜像、代理或地区绕过。
   - `src/index.ts`、`src/commands/install.ts`、`tests/commands/install.test.ts`、`tests/smoke.test.ts`、`README.md`、`README.zh-CN.md`、`docs/llms.txt`、`CHANGELOG.md`
 - **feat(cli): 新增小程序目标**. 检测强/弱小程序信号并支持 `--miniprogram` 强制；脚手架改用官方 `@open-wxa/wxa-runner-playwright` fixture，CI、doctor、update、remove 与 `/opsx:e2e` 同步支持；已存在小程序产物的项目会被重新判定为 frontend 模式。`update` / `remove` / `doctor` 只按生成物标记判定目标，既有 Web 脚手架不会被静默切换；`init --miniprogram` 遇到 Web 脚手架会拒绝半迁移。

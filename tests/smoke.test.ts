@@ -345,7 +345,7 @@ const CRITICAL_PACKAGE_FILES = [
     tarballPath = join(packDir, files[0]);
   });
 
-  it("tarball contains all critical files", () => {
+  function listPackageFiles(): string[] {
     if (!tarballPath) {
       execSync(`npm pack --pack-destination "${packDir}"`, { cwd: ROOT });
       const files = readdirSync(packDir).filter(
@@ -357,14 +357,25 @@ const CRITICAL_PACKAGE_FILES = [
       encoding: "utf-8",
     });
     // bsdtar on Windows emits CRLF line endings — strip them.
-    const pkgFiles = listOutput
+    return listOutput
       .split(/\r?\n/)
       .map((f) => f.replace(/^package\//, "").trim())
       .filter(Boolean);
+  }
 
+  it("tarball contains all critical files", () => {
+    const pkgFiles = listPackageFiles();
     for (const file of CRITICAL_PACKAGE_FILES) {
       expect(pkgFiles).toContain(file);
     }
+  });
+
+  it("tarball ships no OpenSpec-generated .claude files", () => {
+    // The v1 CLI's generated commands and skills are not ours to ship — the
+    // runtime reads templates/ and standards/ only.
+    expect(listPackageFiles().filter((f) => f.startsWith(".claude/"))).toEqual(
+      [],
+    );
   });
 
   it("bin script exists and has correct shebang", () => {

@@ -240,8 +240,18 @@ describe("init.ts: commands use shared/exec wrapper", () => {
     expect(src).not.toMatch(/npx openspec --version 2>\/dev\/null \|\| echo/);
     // Commands go through the cross-spawn wrapper
     expect(src).toMatch(/from "\.\.\/shared\/exec\.js"/);
-    expect(src).toMatch(/execFileSync\("npx",\s*\["openspec",\s*"--version"\]/);
     expect(src).not.toMatch(/shell:\s*needsShell/);
+    // The OpenSpec version probe moved into the shared module — the wrapper
+    // rule applies there too.
+    const probeSrc = readFileSync(
+      join(
+        fileURLToPath(import.meta.url),
+        "../../src/shared/openspec-version.ts",
+      ),
+      "utf-8",
+    );
+    expect(probeSrc).toMatch(/from "\.\/exec\.js"/);
+    expect(probeSrc).not.toMatch(/shell:\s*needsShell/);
   });
 });
 

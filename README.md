@@ -440,7 +440,7 @@ Audit is **report-only** — it never deletes or edits tests; retiring a test is
 
 1. **Node.js >= 22**
 2. **One or more supported editors** — see the [Supported AI Coding Assistants](#supported-ai-coding-assistants) table. Pi, Oh My Pi, MiniMax Code and DeepSeek Harness are also detected via their global config dirs (`~/.pi/agent/`, `~/.omp/agent/`, `~/.minimax-code/`, `~/.dsh/`).
-3. **OpenSpec** initialized: `npm install -g @fission-ai/openspec@latest && openspec init`
+3. **OpenSpec** initialized: `npm install -g @fission-ai/openspec@1 && openspec init`
 4. **Playwright MCP** (for test execution + Healer) — installed automatically by `openspec-pw init` when a frontend signal is detected (skipped for API-only projects — API tests use the `request` fixture), **project-scoped** (written to a project file; Claude Code uses `--scope project` → project-root `.mcp.json`, never your global `~/.claude.json`). A single server matching the official `playwright init-agents` layout:
    - `playwright-test` — official test-runner server (`npx playwright run-test-mcp-server`, bundled with the `playwright` package). Superset of `@playwright/mcp`: one entry exposes both `browser_*` tools (exploration + Healer page inspection) and the structured `test_run` / `test_debug` / `test_list` workflow tools for the Healer loop.
    - **Claude Code**: `claude mcp add --scope project playwright-test npx playwright run-test-mcp-server` (stored in project-root `.mcp.json`; kept local by the managed `.gitignore` block — user-added servers often carry API keys, so sharing requires an explicit `git add -f .mcp.json`)
@@ -451,6 +451,8 @@ Audit is **report-only** — it never deletes or edits tests; retiring a test is
    - **CodeBuddy CLI**: merged into project-root `.mcp.json` under `mcpServers["playwright-test"] = { "command": "npx", "args": ["playwright", "run-test-mcp-server"] }` (direct file read/write, never via the `codebuddy mcp` CLI — the CLI starts a port-bound service that conflicts with running sessions)
    - **MiniMax Code**: merged into project-root `.mcp.json` under `mcpServers["playwright-test"] = { "command": "npx", "args": ["playwright", "run-test-mcp-server"] }` (direct file read/write — MiniMax Code auto-loads the project-root `.mcp.json`)
    - **Pi**: no MCP client, skipped — browser exploration uses `openspec-pw explore` instead
+
+> **OpenSpec 1.x required**: openspec-pw targets the OpenSpec 1.x CLI. OpenSpec 2.x dropped the `/opsx:*` commands and the `--profile` flag, and installs its workflows as skills under `.agents/skills/` instead of per-tool command files. `openspec-pw doctor` reports a 2.x install as unsupported.
 
 > Project-scoped servers prompt for approval the first time they are used interactively (`claude mcp reset-project-choices` resets those choices).
 
@@ -477,7 +479,7 @@ Run through these steps in order when using the E2E workflow for the first time:
 | Step | Command | If it fails |
 |------|---------|-------------|
 | 1. Install CLI | `npm install -g openspec-playwright@latest` | Check Node.js version `node -v` (needs >= 22) |
-| 2. Install OpenSpec | `npm install -g @fission-ai/openspec@latest && openspec init` | `npm cache clean -f && npm install -g @fission-ai/openspec@latest` |
+| 2. Install OpenSpec | `npm install -g @fission-ai/openspec@1 && openspec init` | `npm cache clean -f && npm install -g @fission-ai/openspec@1` |
 | 3. Initialize E2E | `openspec-pw init` | Run `openspec-pw doctor` to see what's missing |
 | 4. Install browsers | `npx playwright install chromium` | Linux CI images may need system deps: `npx playwright install --with-deps chromium` (macOS may need `xcode-select --install` first) |
 | 5. Start dev server | `npm run dev` (in a separate terminal) | Confirm port, set `BASE_URL` if non-standard |

@@ -10,7 +10,11 @@ import { join, basename, relative } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
 import { readFile } from "fs/promises";
-import { execFileSync, hasCommand } from "../shared/exec.js";
+import { hasCommand } from "../shared/exec.js";
+import {
+  OPENSPEC_SUPPORTED_MAJOR,
+  detectOpenSpecMajorVersion,
+} from "../shared/openspec-version.js";
 import { installStopHook, isHookTier, uninstallStopHook } from "./hooks.js";
 import {
   assertScaffoldCompatible,
@@ -402,14 +406,15 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
 
   const hasNode = hasCommand("node", ["--version"], "Node.js", true);
   const hasNpm = hasCommand("npm", ["--version"], "npm", true);
-  // Use execFile (no shell) so Windows paths in tmp dirs / node modules
-  // are passed verbatim and `2>/dev/null` / `||` bash-isms don't reach cmd.exe.
-  // Equivalent of: `npx openspec --version || echo "not found"`
-  try {
-    execFileSync("npx", ["openspec", "--version"], { encoding: "utf-8", stdio: "pipe" });
+  // The CLI major decides which workflow commands exist: 1.x ships
+  // `/opsx:*` command files, 2.x ships skills under `.agents/skills/`.
+  const openspecMajor = detectOpenSpecMajorVersion();
+  if (openspecMajor === null) {
+    console.log(chalk.gray("  - OpenSpec not found (run: npm install -g @fission-ai/openspec@1)"));
+  } else if (openspecMajor !== OPENSPEC_SUPPORTED_MAJOR) {
+    console.log(chalk.red(`  ✗ OpenSpec ${openspecMajor}.x found — this tool needs ${OPENSPEC_SUPPORTED_MAJOR}.x (run: npm install -g @fission-ai/openspec@${OPENSPEC_SUPPORTED_MAJOR})`));
+  } else {
     console.log(chalk.green("  ✓ OpenSpec found"));
-  } catch {
-    console.log(chalk.gray("  - OpenSpec not found (run: npm install -g @fission-ai/openspec@latest)"));
   }
 
   if (!hasNode || !hasNpm) {
@@ -423,7 +428,7 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     console.log(
       chalk.yellow("\n⚠ OpenSpec not initialized. Run these commands first:"),
     );
-    console.log(chalk.gray("  npm install -g @fission-ai/openspec@latest"));
+    console.log(chalk.gray("  npm install -g @fission-ai/openspec@1"));
     console.log(chalk.gray("  openspec init"));
     console.log(chalk.gray("  openspec config profile core"));
     console.log(chalk.gray("  openspec update\n"));

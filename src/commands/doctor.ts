@@ -28,6 +28,10 @@ import {
   detectInstalledLanguage,
 } from "../shared/index.js";
 import { bundledStandardsPath, compareBlock, OPENSPEC_START, hasLegacyTerritoryStart, extractRuleBlockContent } from "../shared/drift.js";
+import {
+  OPENSPEC_SUPPORTED_MAJOR,
+  detectOpenSpecMajorVersion,
+} from "../shared/openspec-version.js";
 import { hasRuleFileMarkers, wrapperRulesFile, wrapperHasMarkers } from "./editors/project-rules.js";
 
 /** Editors whose project rules file is a thin wrapper (not AGENTS.md). */
@@ -466,6 +470,21 @@ export async function doctor(options: DoctorOptions = {}) {
     ok: specCount > 0,
     message: specCount > 0 ? `${specCount} spec(s) found` : "no .spec.md files",
   });
+
+  // OpenSpec CLI major — 2.x retired the `/opsx:*` commands and `--profile`
+  // that this tool's workflow and templates rely on.
+  const openspecMajor = detectOpenSpecMajorVersion();
+  if (openspecMajor !== null) {
+    checks.push({
+      category: "OpenSpec",
+      name: "cli-version",
+      ok: openspecMajor === OPENSPEC_SUPPORTED_MAJOR,
+      message:
+        openspecMajor === OPENSPEC_SUPPORTED_MAJOR
+          ? `${openspecMajor}.x`
+          : `${openspecMajor}.x detected — install ${OPENSPEC_SUPPORTED_MAJOR}.x: npm install -g @fission-ai/openspec@${OPENSPEC_SUPPORTED_MAJOR}`,
+    });
+  }
 
   // Playwright CLI (package installed) — gated on the scaffold presence
   // like the other Playwright-specific checks (minimal-mode projects have
@@ -1266,6 +1285,13 @@ export async function doctor(options: DoctorOptions = {}) {
     console.log(chalk.gray(`  Run: ${hints.join("  or  ")} <change-name>\n`));
   } else {
     console.log(chalk.red("  ❌ Some prerequisites are missing\n"));
+    if (checks.some((c) => c.name === "cli-version" && !c.ok)) {
+      console.log(
+        chalk.gray(
+          `  Run: npm install -g @fission-ai/openspec@${OPENSPEC_SUPPORTED_MAJOR}\n`,
+        ),
+      );
+    }
     console.log(chalk.gray("  Run: openspec-pw init to fix\n"));
     process.exit(1);
   }
