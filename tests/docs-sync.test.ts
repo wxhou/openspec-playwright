@@ -115,7 +115,6 @@ const ZH_ANCHORS: [string, string][] = [
   ["§6 失败测试先行", "会失败的测试"],
   ["§6 失败原因正确", "失败来自预期的那条断言"],
   ["§6 重构只改结构", "重构只改结构"],
-  ["§7 量级确认", "前先确认量级"],
   ["§7 无界读取禁令", "禁止无界读取进内存"],
   ["§7 无界并发禁令", "禁止无界并发"],
   ["§7 外部调用超时", "禁止无超时的外部调用"],
@@ -225,13 +224,11 @@ const CATCH_SUB_BULLETS_ZH = [
   "上抛（默认出口）",
   "就地消化（仅两种）",
   "兜底返回不算出口",
-  "降级、无类型 catch",
 ];
 const CATCH_SUB_BULLETS_EN = [
   "Rethrow (the default exit)",
   "Absorb in place",
   "Fallbacks outside",
-  "Degrade, untyped catch",
 ];
 
 function catchSubBullets(text: string, startMarker: string): string[] {

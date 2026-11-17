@@ -20,12 +20,12 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🟡 gate 异常不造假：linter/typechecker 不存在（如该栈适用）→ 告知用户并建议安装，装上之前每次编辑后对改动自查并在响应中注明结果；检查未运行 → 标注「未运行」；装上后仍失败 → 完整输出错误日志并停止
 - 🟡 关键假设（外部数据源/接口、环境可运行、依赖版本、已装依赖能力）动手前逐条验证——断言现成依赖缺少某能力、或准备自行实现该能力前，先查其文档、类型定义或已装源码（按已装版本）；无法确认 → 不自行实现，先提问；其余理解不清或有可见风险 → 先提问再执行。更简单方案提出并坚持——用户已否决 → 按用户方案执行，不再重提
 - 🟡 多步任务每步带验证，循环验证直到成功（任务验证的同一检查修复 2 轮后仍失败 → 记录失败并停，停前用一句话写出各次尝试共同依赖的假设，改掉该假设之前不再重试）
-- 🟡 架构决策不留「先这样以后再换」的临时方案；新功能先跑通最小端到端路径，再增量扩展；确需妥协时写明天花板与升级路径
+- 🟡 架构决策不留「先这样以后再换」的临时方案：新功能先跑通最小端到端路径，再增量扩展；确需妥协时按本节的 \`debt:\` 规则写明升级触发条件，并经用户确认
 - 🟡 只写被要求的：不加用户未要求的扩展点（"灵活"/"可配置"之类，不限词面）、单次使用抽象，不主动为想象中的场景写防御
 - 🟡 在「并发与事务」之外新增竞态防护，或处于信任边界的极端情况，若复现、事故记录、项目威胁模型、合规要求四项都不存在 → 先说明再动手：给出失败模式、量级依据、复杂度代价；未获同意或用户不可达 → 不加并报告
   - 基线安全实践（参数化查询、输出编码、CSRF 防护）本就应存在，无须额外论证
 - 新增或改写的界面不写冗余文案：只保留用户明确要求或信息/操作必需的部分——不写用户未要求的介绍性/营销性文案（次级标签、副标题、逐项说明、slogan 等）；改动范围内任何文案删后信息/操作仍完整即冗余，删（用户明确要求的除外）；能用既有布局/层级消解的不加文案，不为省文案新增或重排布局元素（信息/操作必需文本与无障碍基础除外）
-- 🟡 简化有边界，永不简化掉：信任边界的输入校验、防数据丢失的错误处理、安全措施、无障碍基础、用户明确要求的东西；刻意砍角且有已知天花板的简化（全局锁、O(n²) 扫描、朴素启发式）用 \`debt:\` 注释标明天花板和升级路径——debt 只属性能取舍，不豁免性能节已标 🔴 的无界类禁令与正确性/安全措施
+- 🟡 简化有边界，永不简化掉：信任边界的输入校验、防数据丢失的错误处理、安全措施、无障碍基础、用户明确要求的东西；有已知天花板的取舍（全局锁、O(n²)、朴素启发式）用 \`debt:\` 注释写明升级触发条件、天花板和升级路径——debt 只属性能取舍，不豁免性能节的 🔴 与正确性/安全措施
 - 🔴 过时的直接删（过时=因本次改动而不再被引用或不再为真）：删除/修改时不留兼容层/迁移/fallback（仅限本次触及的范围）；与「保持既有测试通过」冲突时按测试红的分类分流
 - 🔴 方案选型按优先级链依次判断，停在第一个成立的：要不要存在（YAGNI）→ 代码库已有可复用 → 标准库 → 平台原生特性 → 已装依赖 → 成熟有人维护的库 → 自己实现——没有明确理由不从零发明；确需自实现，同类问题优先采用经成熟产品验证的既有模式
 - 🔴 引入新依赖前先实查该生态的包注册源——AI 会幻觉包名（抢注攻击）；该生态有安装期脚本时（如 npm postinstall）再检查：下载并执行外部内容、包名与惯用名高度相似 → 可疑即弃
@@ -44,8 +44,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🔴 默认上抛：错误默认向上抛；只有处理能改变结果时才捕获，且只处理一次；记录只发生在出口。
   - 上抛（默认出口）：不为再抛而 catch，让异常自然上行；补信息才带因，新建错误不带因=丢因果。
   - 就地消化（仅两种）：改变控制流——重试（写操作须先满足幂等条）、跳过该步骤及其依赖、改用替代值前行；catch-all 隔离点——批量循环最外层、事件分发处、进程入口等不影响其余输入与状态的边界。两类出口都必须记录 + 行内原因。
-  - 兜底返回不算出口：宽 catch 返回默认值/空值、空 catch 同判吞错（只记录或只加注释不构成豁免）；窄类型 catch + 显式失败值（调用方按契约消费）不算兜底。
-  - 降级、无类型 catch、Promise、try 边界与吞错形状见 \`lint-guidelines.md\`（未安装 → 跳过）。
+  - 兜底返回不算出口：宽 catch 返回默认值/空值、空 catch 同判吞错（只记录或只加注释不构成豁免）；窄类型 catch + 显式失败值（调用方按契约消费）不算兜底；降级、无类型 catch、Promise、try 边界与吞错形状见 \`lint-guidelines.md\`（未安装 → 跳过）。
 - 不写只适配样例输入的逻辑、魔法数字（入常量；有确切依据才注原因）；路径/换行用语言内建跨平台 API（\`path.sep\`/\`path.join\`），比较前归一化 EOL
 - mock 数据/fixture → 参见数据编撰禁令
 
@@ -117,7 +116,6 @@ const CLAUDE_MD_ZH = `# 项目规范
   - UI 渲染冒烟/快照/纯存在断言同判；行为级组件测试按本节点名标准判断，不因「不是 E2E」排除。
 
 ## 性能与资源边界
-- 🟡 写处理运行时数据的代码（查询、文件、网络、并发、大批量集合遍历——含测试造数与测试并发；造数能否写先过数据编撰节，本条只管规模）前先确认量级（预期行数/文件大小/并发度）：openspec/config.yaml 有记录则以它为准；未知且会改变实现结构（分页/分批/索引）→ 问用户，其余默认流式
 - 🔴 禁止无界读取进内存：整文件读入、无 LIMIT 全表查询、全量结果攒齐再处理——除非已有确认的上界（openspec/config.yaml 记录或用户确认）且单次驻留明显低于可用内存（仅知道当前大小不算确认，拿不准 → 流式）；大数据一律流式/分批（数据侧：流/游标/分页/chunk；展示侧：分页/虚拟列表），单批大小显式设定
 - 🔴 禁止无超时的外部调用：网络请求必须带明确超时，否则挂死等同无界等待
 - 🔴 禁止无界并发：大批量任务不限并发度地一次性发起、无上限开连接/进程/线程——并发池/信号量显式限流
@@ -125,8 +123,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🟡 不写随输入增长的无界缓存（无上限、无淘汰的累积结构）
 
 ## 大文件与外部制品源
-- 🟡 单个制品或单次安装总量 ≥ 1GB 前先列候选源：显式指定 > 项目配置的可信源（如国内镜像） > 国际官方源；确认该源提供目标版本
-- 🟡 交互环境列出候选（源、延迟、版本、校验状态）并推荐，用户选一次后写入配置；非交互环境只读配置，不可用即失败
+- 🟡 单个制品或单次安装 ≥ 1GB 前先选源：显式指定 > 项目配置的可信源（如国内镜像） > 国际官方源，确认该源提供目标版本；不可用即显式失败并打印切换方法；改配置须用户选定，非交互环境只读配置
 - 🟡 下载后按官方元数据校验大小与哈希，记录源、版本、哈希
 - 🔴 不按 IP、时区或语言静默切换源；探测只用于推荐
 - 🔴 缺包、版本不符或校验失败不得静默回退；显式失败，或经用户确认后回退并记录原因
@@ -154,12 +151,12 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🟡 Gate anomalies are never faked: linter/typechecker missing (if applicable to the stack) → tell the user and suggest installing; until then, self-check the changes after every edit and note the result in the reply; unexecuted checks are explicitly marked "not run"; still failing after installation → output the full error log and stop
 - 🟡 Verify key assumptions before coding (external data sources & API fields, runnable environment, dependency availability, and whether an installed dependency provides a capability) — before asserting an installed dependency lacks a capability, or preparing to implement that capability yourself, check its documentation, type definitions, or installed source for the installed version; if you cannot confirm → do not hand-roll it, ask first; otherwise, if unclear or risks are visible → ask before acting. Suggest simpler approaches and insist — if already rejected, follow the user's plan, don't re-raise
 - 🟡 Multi-step tasks: verify every step, loop until verified (if the same task-verification check still fails after 2 repair rounds → record the failure and stop; before stopping, state in one sentence the assumption every attempt relied on — no further retry until that assumption changes)
-- 🟡 No "keep it this way for now, swap it later" temporary architecture decisions; prove a new feature's minimal end-to-end path first, then extend incrementally; when a compromise is truly needed, state its ceiling and upgrade path
+- 🟡 No "keep it this way for now, swap it later" temporary architecture decisions: prove a new feature's minimal end-to-end path first, then extend incrementally; when a compromise is truly needed, follow this section's \`debt:\` rule and state the upgrade trigger condition, with the user's confirmation
 - 🟡 Write only what's requested: no un-requested extension points (flexibility/configurability — wording aside), no single-use abstractions, no proactive defensive code for imagined scenarios
 - 🟡 For new race protection beyond the concurrency and transactions rule, or an extreme case at a trust boundary, if all four are absent (reproduction, incident record, project threat model, compliance requirement), explain it and get consent before acting: state the failure mode, its magnitude and basis, and the complexity cost; without consent or if the user is unreachable → do not add it and report
   - Baseline security practice (parameterized queries, output encoding, CSRF protection) is already owed, no extra justification needed.
 - New or rewritten interfaces carry no redundant secondary labels, subtitles, or item-by-item descriptions, and no un-requested slogans — keep only what the user explicitly requested or what information/actions require; within the scope of this change, any copy whose removal leaves information/actions intact is redundant, delete it unless the user explicitly requested that copy; resolve with existing layout/hierarchy instead of adding copy, and never add or rearrange layout elements just to save copy (text required for information/actions and accessibility basics are exempt)
-- 🟡 Simplification has boundaries, never simplify away: input validation at trust boundaries, error handling that prevents data loss, security measures, accessibility basics, anything the user explicitly asked for; deliberate corner-cutting with a known ceiling (global locks, O(n²) scans, naive heuristics) gets a \`debt:\` comment marking the ceiling and upgrade path — debt is a performance trade-off only, it never exempts the 🔴 unbounded-resource bans in the Performance section or correctness/security measures
+- 🟡 Simplification has boundaries, never simplify away: input validation at trust boundaries, error handling that prevents data loss, security measures, accessibility basics, anything the user explicitly asked for; corner-cutting with a known ceiling (global locks, O(n²), naive heuristics) gets a \`debt:\` comment marking the upgrade trigger condition, the ceiling and the upgrade path — debt is a performance trade-off only, it never exempts the 🔴 items in the Performance section or correctness/security measures
 - 🔴 Delete obsolete code outright (obsolete = no longer referenced or no longer true because of this change): no compat layers, migrations, or fallbacks when removing/editing (within the scope of the current change only); when deadlocked with "keep existing tests passing", route through the red-test triage in the Testing section
 - 🔴 Solution selection walks the priority chain, stopping at the first that holds: should it exist at all (YAGNI) → reuse from the codebase → standard library → platform-native features → installed dependencies → mature maintained libraries → write it yourself — never invent from scratch without a clear reason; when self-implementation is required, solve similar problems with patterns proven in mature products
 - 🔴 Before adding any new dependency, verify it on that ecosystem's package registry first — LLMs hallucinate package names (squatting attacks); if that ecosystem has install-time scripts (e.g. npm postinstall), check them: lifecycle scripts that download and execute external content, or names closely imitating a common package → discard
@@ -178,8 +175,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🔴 Propagate by default: an error propagates upward by default; catch it only when handling can change the outcome, and handle it once; log only at the exit.
   - Rethrow (the default exit): never catch just to rethrow — let the error propagate; catch only to add context, and attach the cause; a new error without a cause loses the chain.
   - Absorb in place (two cases only): change control flow — retry (for writes only after the idempotency rule is met), skip the step and its dependents, or move on with a substitute; a catch-all isolation point — the outermost batch loop, event dispatch, or process entry, where the failure does not affect other inputs or state. Both exits must log + include an inline reason.
-  - Fallbacks outside those boundaries are not exits — a broad catch returning a default/empty value and a bare catch both count as swallowing (merely logging or commenting does not exempt them); a narrow catch plus an explicit failure value (consumed by the caller under its contract) is not a fallback.
-  - Degrade, untyped catch, promises and try scope, plus swallow shapes, live in \`lint-guidelines.md\` (if not installed, skip).
+  - Fallbacks outside those boundaries are not exits — a broad catch returning a default/empty value and a bare catch both count as swallowing (merely logging or commenting does not exempt them); a narrow catch plus an explicit failure value (consumed by the caller under its contract) is not a fallback; degrade, untyped catch, promises and try scope, plus swallow shapes, live in \`lint-guidelines.md\` (if not installed, skip).
 - No logic that only fits sample inputs, no magic numbers (constants; a reason comment only when grounded in fact); paths/newlines via the language's built-in cross-platform APIs (\`path.sep\`/\`path.join\`), normalize EOL before comparing
 - Mock data / fixtures → see Data Fabrication section below
 
@@ -251,7 +247,6 @@ const CLAUDE_MD_EN = `# Project Guidelines
   - UI render-smoke/snapshot/existence assertions are judged the same; behavior-level component tests follow this section's naming standard and are not excluded for "not being E2E".
 
 ## Performance & Resource Bounds
-- 🟡 Confirm data scale (expected rows / file size / concurrency) before writing code that processes runtime data (queries, files, network, concurrency, bulk collection iteration — incl. test fixtures & test parallelism; whether fixtures may be written goes through the Data Fabrication section first, this rule only covers scale): openspec/config.yaml records take precedence; unknown and it would change the implementation shape (pagination/batching/indexing) → ask the user, otherwise stream by default
 - 🔴 Never read unbounded data into memory: whole-file reads, queries without LIMIT, accumulate-then-process — unless a confirmed upper bound exists (\`openspec/config.yaml\` record or user confirmation) and the single resident footprint is clearly below available memory (knowing only the current size doesn't count as confirmed; unsure → stream). Stream/batch by default (data side: streams/cursors/pagination/chunks; display side: pagination/virtual lists) with an explicit batch size
 - 🔴 Never make external calls without a timeout: network requests must carry an explicit timeout, otherwise a hung request is an unbounded wait
 - 🔴 Never fan out unbounded concurrency: launching a large batch of tasks all at once without a concurrency cap, or opening connections/processes/threads without a limit — bound them with an explicit pool/semaphore

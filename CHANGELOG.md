@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **docs(standards): 压缩规范到 200 行目标内**. 中文版 213→187 行、英文版 194→171 行：删掉与 §1 重复的「修复预算」条款，成组子条目并入主条；§7 的 DO「先确认数据量级」经删条款对照实验确认与同节 🔴 无界读取条重复后删除；§1 的临时方案条款压成一句，并把「升级触发条件」并入同节 `debt:` 规则——盲评 A/B 显示删整行会失去「先跑通最小端到端」（PASS 2/6→0/6），故保留该句。新增 `tests/standards-length.test.ts` 把 SSOT 锁在 190 行内，安装进 `AGENTS.md` 后中英分别 190/174 行，不再触发 Claude Code 的启动超长警告。
+  - `standards/employee-standards.md`、`standards/employee-standards.en.md`、`docs/script.js`、`tests/{docs-sync,standards-length}.test.ts`、`CHANGELOG.md`
+
 - **docs(standards): 新增 §0「核实与求助」条款**. 不确定属实的事实先核实再作答——已装源码/类型定义 → 官方文档 → 网络搜索，仍无法确认就问用户，不按记忆作答；英文 SSOT 与 docs 内嵌同步。
   - `standards/employee-standards.md`、`standards/employee-standards.en.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 - **fix(cli): 要求 OpenSpec 1.x CLI**. OpenSpec 2.x 不再生成 `/opsx:*` 命令文件，改为在 `.agents/skills/` 下安装 skill，本工具的流水线模板依赖这些 1.x 产物。安装命令统一钉 `@1`；`doctor` 检出 2.x、缺 CLI 或版本不可读时判为不支持并退出 1，`init` 在 CLI 为 2.x 或版本不可读时中止，`update` 只警告不阻断；npm 包不再携带 v1 生成的 `.claude/` 命令与 skill 副本。
@@ -31,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `package.json`、`package-lock.json`、`README.md`、`README.zh-CN.md`、`docs/index.html`、`CHANGELOG.md`
 - **fix(cli): 移除 codegraph MCP 安装提示**. init / update 的摘要与 doctor 的 `codegraph-mcp` 检查不再打印 `codegraph install --target=auto --location=local`；已建索引时只保留 `codegraph sync` 一行，未建索引时仍提示可选的 `codegraph init`。
   - `src/shared/codegraph.ts`、`src/commands/{doctor,init,update}.ts`、`tests/shared/codegraph.test.ts`、`tests/commands/doctor.test.ts`、`CHANGELOG.md`
-- **docs(standards): 新增大文件与外部制品源规范**. §8 要求 ≥1GB 制品先列国内可信源、国际官方源兜底；交互选择一次并记住，非交互只读配置；按官方元数据校验哈希；不按 IP/时区静默切换。§8 仅中文，英文 SSOT 覆盖 §0–§7。
+- **docs(standards): 新增大文件与外部制品源规范**. §8 要求 ≥1GB 制品按「显式指定 > 项目可信源 > 国际官方源」选源并确认版本，源不可用即显式失败并打印切换方法；改配置须用户选定，非交互只读；按官方元数据校验哈希；不按 IP/时区静默切换。§8 仅中文，英文 SSOT 覆盖 §0–§7。
   - `standards/employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 - **feat(cli): 新增员工规范语言选择**. `init` / `update` 支持 `--lang zh|en`，按「显式参数 > 已安装块 > 系统 locale > 英文」选择规范语言；新增英文 SSOT `standards/employee-standards.en.md`；语言文件缺失或英文 SSOT 缺 §0–§7 时显式失败；`doctor` 按已安装块语言比对；只读 locale，不判断地区。
   - `src/shared/standards-language.ts`、`src/commands/{init,update,doctor,standards-source}.ts`、`src/index.ts`、`src/shared/{drift,index}.ts`、`standards/employee-standards.en.md`、`package.json`、`README.md`、`README.zh-CN.md`、`tests/{docs-sync,drift,smoke}.test.ts`、`tests/update.standards.test.ts`、`tests/commands/{doctor,init-language}.test.ts`、`tests/shared/standards-language.test.ts`、`CHANGELOG.md`
