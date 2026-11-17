@@ -449,7 +449,10 @@ function isPristineRulesFile(
   return bodies.some(
     (body) =>
       normalized ===
-      `${title}\n\n${OPENSPEC_START}\n\n${body.trim()}\n\n${OPENSPEC_END}\n`,
+      `${title}\n\n${OPENSPEC_START}\n\n${body.trim()}\n\n${OPENSPEC_END}\n`.replace(
+        /\r\n/g,
+        "\n",
+      ),
   );
 }
 
