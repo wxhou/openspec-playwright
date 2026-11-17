@@ -33,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `src/shared/standards-language.ts`、`src/commands/{init,update,doctor,standards-source}.ts`、`src/index.ts`、`src/shared/{drift,index}.ts`、`standards/employee-standards.en.md`、`package.json`、`README.md`、`README.zh-CN.md`、`tests/{docs-sync,drift,smoke}.test.ts`、`tests/update.standards.test.ts`、`tests/commands/{doctor,init-language}.test.ts`、`tests/shared/standards-language.test.ts`、`CHANGELOG.md`
 - **chore(standards): 规范 SSOT 移到 `standards/`**. `employee-standards.md` 与 `employee-standards.en.md` 从仓库根移入 `standards/`；运行时读取、npm 打包与 `standards:sync` 脚本同步更新。
   - `standards/`、`package.json`、`scripts/sync-standards.mjs`、`src/commands/{init,update,editors/project-rules}.ts`、`src/shared/drift.ts`、`tests/{docs-sync,drift,smoke,standards-sync,editors,editors-codebuddy,update,update.standards}.test.ts`、`tests/commands/init-deselect.test.ts`、`CHANGELOG.md`
+- **docs(standards): 临时文件按写入日期分目录**. §5 要求临时文件放入 `tmp/` 下按写入当天建的日期目录（如 `tmp/20261117/`，当天首次写入时创建），文件名只需时间（`HHMMSS`，同名加序号），不再直接放在 `tmp/` 根下。
+  - `standards/employee-standards.md`、`standards/employee-standards.en.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 
 ## [0.3.119] - 2026-11-15
 - **fix(e2e): 修正认证检查与升级提示**. API/UI 的 `E2E_AUTH_CHECK_PATH` 检查禁用重定向，UI setup 也执行该检查；README 补旧 `auth.setup.ts`/workflow 的升级提示；skill 选择器表与 `docs/llms.txt` 的 explore 描述对齐。

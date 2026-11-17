@@ -94,7 +94,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 写接口对接代码前先检索 OpenAPI/接口文档 → 查到查阅真实定义并标注来源（如 \`// 来源: docs/api/openapi.yaml#/paths/...\`），查不到询问用户
 
 ## 临时文件管理
-- 🟡 非源码临时文件（截图、日志、heapdump 等）放仓库根 \`tmp/\` 下（临时=本次验证/调试产生、任务结束即无用；测试数据按项目 fixtures 惯例存放），文件名含时间戳（如 \`screenshot-20260721T143000.png\`）
+- 🟡 非源码临时文件（截图、日志、heapdump 等）放仓库根 \`tmp/\` 下按写入当天建的日期目录（本地系统日期，如 \`tmp/20261117/\`，当天首次写入时创建），文件名含时间（\`HHMMSS\`，同名加序号）；临时=本次验证/调试产生的非交付物；测试数据按项目 fixtures 惯例存放
 - 🔴 禁止将临时文件提交到版本控制（确保 \`.gitignore\` 含 \`tmp/\`；已跟踪的历史文件先 \`git rm --cached\`）；用户名下或来历不明的可疑文件报告请示、不自行删
 
 ## 测试与验证策略
@@ -124,14 +124,13 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🟡 不写随输入增长的无界缓存（无上限、无淘汰的累积结构）
 
 ## 大文件与外部制品源
-- 🟡 单个制品或单次安装总量 ≥ 1GB（阈值可配置）前先列候选源：显式指定 > 项目配置的国内可信源 > 国际官方源；确认该源提供目标版本
+- 🟡 单个制品或单次安装总量 ≥ 1GB 前先列候选源：显式指定 > 项目配置的可信源（如国内镜像） > 国际官方源；确认该源提供目标版本
 - 🟡 交互环境列出候选（源、延迟、版本、校验状态）并推荐，用户选一次后写入配置；非交互环境只读配置，不可用即失败
 - 🟡 下载后按官方元数据校验大小与哈希，记录源、版本、哈希
 - 🔴 不按 IP、时区或语言静默切换源；探测只用于推荐
 - 🔴 缺包、版本不符或校验失败不得静默回退；显式失败，或经用户确认后回退并记录原因
 - 🔴 第三方公益镜像不设为默认源，须项目显式加入可信清单
-- 🟡 生态级（pip/npm/go/cargo/apt/docker）改索引或 registry；制品级（模型/数据集/直链）按制品解析，不混用
-- 🟡 下载带超时、断点续传与并发上限；源清单可更新，关停即降权`; // spec-embed:zh
+- 🟡 生态级（pip/npm/go/cargo/apt/docker）改索引或 registry；制品级（模型/数据集/直链）按制品解析，不混用`; // spec-embed:zh
 
 const CLAUDE_MD_EN = `# Project Guidelines
 - This codebase is yours: what it's for and how it's built are your call, and you'll keep building on it. Read \`openspec/config.yaml\` first (tech stack, structure, conventions, constraints, etc.); no file or empty → skip this item, the rest applies as usual
@@ -228,7 +227,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - Before writing API-integration code, search for OpenAPI/API docs → found: consult real definitions and cite source (e.g. \`// source: docs/api/openapi.yaml#/paths/...\`); not found: ask the user
 
 ## Temp File Management
-- 🟡 Non-source temp files (screenshots, logs, heapdumps, etc.) go in \`tmp/\` at the repo root (temp = produced for this round of verification/debugging; test data follows the project's fixtures convention), filenames include timestamp (e.g. \`screenshot-20260721T143000.png\`)
+- 🟡 Non-source temp files (screenshots, logs, heapdumps, etc.) go in a date directory under \`tmp/\` at the repo root, named for the day the file is written (local system date, e.g. \`tmp/20261117/\`, created on the day's first write), filenames include the time (\`HHMMSS\`, append a sequence number on collision); temp = a non-deliverable produced for this round of verification/debugging; test data follows the project's fixtures convention
 - 🔴 Never commit temp files to version control (ensure \`.gitignore\` has \`tmp/\`, already-tracked ones get \`git rm --cached\` first); user-owned or unclear-origin suspicious files get reported, not deleted
 
 ## Testing & Verification Strategy

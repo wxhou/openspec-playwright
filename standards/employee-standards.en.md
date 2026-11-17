@@ -144,7 +144,9 @@
 
 > WHY: temp artifacts pollute repository history, and screenshots/logs/dumps often carry local paths and environment details.
 
-- 🟡 Non-source temp files (screenshots, logs, heapdumps, etc.) go in `tmp/` at the repo root (temp = produced for this round of verification/debugging and useless after the task; test data follows the project's fixtures convention), filenames include a timestamp (e.g. `screenshot-20260721T143000.png`)
+- 🟡 Non-source temp files (screenshots, logs, heapdumps, etc.) go in a date directory under `tmp/` at the repo root, named for the day the file is written (local system date, e.g. `tmp/20261117/`, created on the day's first write)
+  - Filenames include the time (`HHMMSS`), e.g. `tmp/20261117/screenshot-143000.png`; append a sequence number on collision (`screenshot-143000-2.png`)
+  - Temp = a non-deliverable produced for this round of verification/debugging; test data follows the project's fixtures convention
 - 🔴 Never commit temp files to version control (ensure `.gitignore` contains `tmp/`; already-tracked historical files get `git rm --cached` first); user-owned or unclear-origin suspicious files get reported, not deleted
 
 ---

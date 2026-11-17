@@ -92,6 +92,7 @@ const ZH_ANCHORS: [string, string][] = [
   ["§7 确认上界例外", "已有确认的上界"],
   ["§4 数据编撰禁令", "严禁主动编撰模拟现实实体"],
   ["§5 临时文件管理", "临时文件管理"],
+  ["§5 日期目录", "按写入当天建的日期目录"],
   ["§6 测试与验证策略", "测试与验证策略"],
   ["§6 截图≠行为", "仅截图不算通过"],
   ["§6 质量滤网", "点名不豁免"],
@@ -210,6 +211,7 @@ const EN_ANCHORS: [string, string][] = [
   ["§7 external call timeout", "Never make external calls without a timeout"],
   ["§4 data fabrication ban", "Never fabricate data simulating real entities"],
   ["§5 temp file management", "Temp File Management"],
+  ["§5 daily directory", "named for the day the file is written"],
   ["§0 experience-distillation carrier", "carrier the tooling does not own"],
 ];
 
