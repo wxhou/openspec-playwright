@@ -5,8 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
+## [0.3.120] - 2026-11-18
 - **docs(standards): 压缩规范到 200 行目标内**. 中文版 213→187 行、英文版 194→171 行：删掉与 §1 重复的「修复预算」条款，成组子条目并入主条；§7 的 DO「先确认数据量级」经删条款对照实验确认与同节 🔴 无界读取条重复后删除；§1 的临时方案条款压成一句，并把「升级触发条件」并入同节 `debt:` 规则——盲评 A/B 显示删整行会失去「先跑通最小端到端」（PASS 2/6→0/6），故保留该句。新增 `tests/standards-length.test.ts` 把 SSOT 锁在 190 行内，安装进 `AGENTS.md` 后中英分别 190/174 行，不再触发 Claude Code 的启动超长警告。
   - `standards/employee-standards.md`、`standards/employee-standards.en.md`、`docs/script.js`、`tests/{docs-sync,standards-length}.test.ts`、`CHANGELOG.md`
 
