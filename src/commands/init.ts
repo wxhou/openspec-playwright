@@ -13,7 +13,7 @@ import { readFile } from "fs/promises";
 import { hasCommand } from "../shared/exec.js";
 import {
   OPENSPEC_SUPPORTED_MAJOR,
-  detectOpenSpecMajorVersion,
+  detectOpenSpecVersion,
 } from "../shared/openspec-version.js";
 import { installStopHook, isHookTier, uninstallStopHook } from "./hooks.js";
 import {
@@ -408,11 +408,12 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   const hasNpm = hasCommand("npm", ["--version"], "npm", true);
   // The CLI major decides which workflow commands exist: 1.x ships
   // `/opsx:*` command files, 2.x ships skills under `.agents/skills/`.
-  const openspecMajor = detectOpenSpecMajorVersion();
-  if (openspecMajor === null) {
-    console.log(chalk.gray("  - OpenSpec not found (run: npm install -g @fission-ai/openspec@1)"));
-  } else if (openspecMajor !== OPENSPEC_SUPPORTED_MAJOR) {
-    console.log(chalk.red(`  ✗ OpenSpec ${openspecMajor}.x found — this tool needs ${OPENSPEC_SUPPORTED_MAJOR}.x (run: npm install -g @fission-ai/openspec@${OPENSPEC_SUPPORTED_MAJOR})`));
+  const openspec = detectOpenSpecVersion();
+  if (openspec.major === null) {
+    console.log(chalk.gray(`  - OpenSpec ${openspec.reason} (run: npm install -g @fission-ai/openspec@${OPENSPEC_SUPPORTED_MAJOR})`));
+  } else if (openspec.major !== OPENSPEC_SUPPORTED_MAJOR) {
+    console.log(chalk.red(`  ✗ OpenSpec ${openspec.major}.x found — this tool needs ${OPENSPEC_SUPPORTED_MAJOR}.x (run: npm install -g @fission-ai/openspec@${OPENSPEC_SUPPORTED_MAJOR})`));
+    process.exit(1);
   } else {
     console.log(chalk.green("  ✓ OpenSpec found"));
   }
@@ -428,7 +429,7 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     console.log(
       chalk.yellow("\n⚠ OpenSpec not initialized. Run these commands first:"),
     );
-    console.log(chalk.gray("  npm install -g @fission-ai/openspec@1"));
+    console.log(chalk.gray(`  npm install -g @fission-ai/openspec@${OPENSPEC_SUPPORTED_MAJOR}`));
     console.log(chalk.gray("  openspec init"));
     console.log(chalk.gray("  openspec config profile core"));
     console.log(chalk.gray("  openspec update\n"));

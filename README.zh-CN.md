@@ -56,7 +56,7 @@ npm install -g openspec-playwright@latest
    - **MiniMax Code**：合并到项目根 `.mcp.json` 的 `mcpServers["playwright-test"] = { "command": "npx", "args": ["playwright", "run-test-mcp-server"] }`（直接文件读写——MiniMax Code 自动加载项目根 `.mcp.json`）
    - **Pi**：无 MCP 客户端，跳过安装 — 浏览器探索改用 `openspec-pw explore`
 
-> **必须用 OpenSpec 1.x**：openspec-pw 依赖 OpenSpec 1.x CLI。OpenSpec 2.x 移除了 `/opsx:*` 命令与 `--profile` 参数，改为把工作流安装成 `.agents/skills/` 下的 skill，不再生成各编辑器的命令文件。`openspec-pw doctor` 会把 2.x 判为不支持。
+> **必须用 OpenSpec 1.x**：openspec-pw 依赖 OpenSpec 1.x CLI。OpenSpec 2.x 不再生成 `/opsx:*` 命令文件，改为把工作流安装成 `.agents/skills/` 下的 skill。`openspec-pw doctor` 会把 2.x 判为不支持，`openspec-pw init` 直接中止。
 
 > 项目级 server 首次交互使用时 Claude Code 会弹出批准提示（`claude mcp reset-project-choices` 可重置选择）。
 

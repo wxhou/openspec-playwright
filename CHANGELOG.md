@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **docs(standards): 新增 §0「核实与求助」条款**. 不确定属实的事实先核实再作答——已装源码/类型定义 → 官方文档 → 网络搜索，仍无法确认就问用户，不按记忆作答；英文 SSOT 与 docs 内嵌同步。
   - `standards/employee-standards.md`、`standards/employee-standards.en.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
-- **fix(cli): 要求 OpenSpec 1.x CLI**. OpenSpec 2.x 移除了 `/opsx:*` 命令与 `--profile`，改为在 `.agents/skills/` 下安装 skill，本工具的流水线模板依赖这些 1.x 产物。安装命令统一钉 `@1`；`init` 与 `doctor` 检出 2.x 时报错并给出安装命令；npm 包不再携带 v1 生成的 `.claude/` 命令与 skill 副本。
+- **fix(cli): 要求 OpenSpec 1.x CLI**. OpenSpec 2.x 不再生成 `/opsx:*` 命令文件，改为在 `.agents/skills/` 下安装 skill，本工具的流水线模板依赖这些 1.x 产物。安装命令统一钉 `@1`；`doctor` 检出 2.x 时判为不支持并退出 1，`init` 检出 2.x 时中止；npm 包不再携带 v1 生成的 `.claude/` 命令与 skill 副本。
   - `src/shared/openspec-version.ts`、`src/commands/{init,doctor}.ts`、`package.json`、`templates/{auto-pipeline,github-workflow}.yml`、`docs/index.html`、`README.md`、`README.zh-CN.md`、`tests/shared/openspec-version.test.ts`、`tests/smoke.test.ts`、`CHANGELOG.md`
 - **feat(cli): 新增 `install --claude`**. 只包装官方 native installer：默认打印命令，`--run` 才执行，`--verify` 检查安装；默认 `latest`，支持 `stable` 与指定版本；不含镜像、代理或地区绕过。
   - `src/index.ts`、`src/commands/install.ts`、`tests/commands/install.test.ts`、`tests/smoke.test.ts`、`README.md`、`README.zh-CN.md`、`docs/llms.txt`、`CHANGELOG.md`

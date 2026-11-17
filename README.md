@@ -452,7 +452,7 @@ Audit is **report-only** — it never deletes or edits tests; retiring a test is
    - **MiniMax Code**: merged into project-root `.mcp.json` under `mcpServers["playwright-test"] = { "command": "npx", "args": ["playwright", "run-test-mcp-server"] }` (direct file read/write — MiniMax Code auto-loads the project-root `.mcp.json`)
    - **Pi**: no MCP client, skipped — browser exploration uses `openspec-pw explore` instead
 
-> **OpenSpec 1.x required**: openspec-pw targets the OpenSpec 1.x CLI. OpenSpec 2.x dropped the `/opsx:*` commands and the `--profile` flag, and installs its workflows as skills under `.agents/skills/` instead of per-tool command files. `openspec-pw doctor` reports a 2.x install as unsupported.
+> **OpenSpec 1.x required**: openspec-pw targets the OpenSpec 1.x CLI. OpenSpec 2.x no longer generates the `/opsx:*` command files — it installs its workflows as skills under `.agents/skills/` instead. `openspec-pw doctor` reports a 2.x install as unsupported, and `openspec-pw init` stops.
 
 > Project-scoped servers prompt for approval the first time they are used interactively (`claude mcp reset-project-choices` resets those choices).
 

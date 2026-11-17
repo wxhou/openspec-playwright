@@ -30,7 +30,7 @@ import {
 import { bundledStandardsPath, compareBlock, OPENSPEC_START, hasLegacyTerritoryStart, extractRuleBlockContent } from "../shared/drift.js";
 import {
   OPENSPEC_SUPPORTED_MAJOR,
-  detectOpenSpecMajorVersion,
+  detectOpenSpecVersion,
 } from "../shared/openspec-version.js";
 import { hasRuleFileMarkers, wrapperRulesFile, wrapperHasMarkers } from "./editors/project-rules.js";
 
@@ -471,20 +471,20 @@ export async function doctor(options: DoctorOptions = {}) {
     message: specCount > 0 ? `${specCount} spec(s) found` : "no .spec.md files",
   });
 
-  // OpenSpec CLI major — 2.x retired the `/opsx:*` commands and `--profile`
+  // OpenSpec CLI major — 2.x stopped generating the `/opsx:*` command files
   // that this tool's workflow and templates rely on.
-  const openspecMajor = detectOpenSpecMajorVersion();
-  if (openspecMajor !== null) {
-    checks.push({
-      category: "OpenSpec",
-      name: "cli-version",
-      ok: openspecMajor === OPENSPEC_SUPPORTED_MAJOR,
-      message:
-        openspecMajor === OPENSPEC_SUPPORTED_MAJOR
-          ? `${openspecMajor}.x`
-          : `${openspecMajor}.x detected — install ${OPENSPEC_SUPPORTED_MAJOR}.x: npm install -g @fission-ai/openspec@${OPENSPEC_SUPPORTED_MAJOR}`,
-    });
-  }
+  const openspec = detectOpenSpecVersion();
+  checks.push({
+    category: "OpenSpec",
+    name: "cli-version",
+    ok: openspec.major === OPENSPEC_SUPPORTED_MAJOR,
+    message:
+      openspec.major === OPENSPEC_SUPPORTED_MAJOR
+        ? `${openspec.major}.x`
+        : openspec.major === null
+          ? `${openspec.reason} — install ${OPENSPEC_SUPPORTED_MAJOR}.x: npm install -g @fission-ai/openspec@${OPENSPEC_SUPPORTED_MAJOR}`
+          : `${openspec.major}.x detected — install ${OPENSPEC_SUPPORTED_MAJOR}.x: npm install -g @fission-ai/openspec@${OPENSPEC_SUPPORTED_MAJOR}`,
+  });
 
   // Playwright CLI (package installed) — gated on the scaffold presence
   // like the other Playwright-specific checks (minimal-mode projects have

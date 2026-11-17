@@ -10,12 +10,13 @@ import {
 import { tmpdir } from "os";
 import { basename, join } from "path";
 
-// init shells `npx openspec --version`, `node --version`, `npm --version`
+// init probes the OpenSpec CLI version, `node --version`, `npm --version`
 // during prerequisites — stub the command wrapper so hermetic runs don't depend on PATH.
 vi.mock("../src/shared/exec.js", () => ({
   execFileAsync: vi.fn(),
   hasCommand: vi.fn(() => true),
   execFileSync: vi.fn((file: string, args: string[]) => {
+    if (file === "openspec" && args[0] === "--version") return "1.17.0";
     if (file === "npx" && args[0] === "openspec") return "1.11.0";
     if (file === "npx" && args[0] === "playwright") return "1.62.1";
     if (file === "node") return "v22.0.0";

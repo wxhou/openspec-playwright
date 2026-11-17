@@ -378,6 +378,13 @@ const CRITICAL_PACKAGE_FILES = [
     );
   });
 
+  it("package.json excludes .claude from the published files", () => {
+    // The tarball check alone cannot fail on a fresh checkout — npm's files
+    // allowlist only ships .claude/ when the directory exists locally.
+    const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf-8"));
+    expect(pkg.files).not.toContain(".claude");
+  });
+
   it("bin script exists and has correct shebang", () => {
     const binPath = join(ROOT, "bin", "openspec-pw.js");
     const content = readFileSync(binPath, "utf-8");
