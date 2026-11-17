@@ -14,6 +14,12 @@ vi.mock("../../src/shared/exec.js", () => ({
   spawnSync: vi.fn(),
 }));
 
+// Mock the OpenSpec version probe — a healthy 1.x install.
+vi.mock("../../src/shared/openspec-version.js", () => ({
+  OPENSPEC_SUPPORTED_MAJOR: 1,
+  openSpecCliStatus: vi.fn(() => ({ ok: true, major: 1 })),
+}));
+
 // Mock fs modules
 vi.mock("fs", () => ({
   existsSync: vi.fn(),

@@ -72,7 +72,7 @@ jobs:
 
       - run: npx playwright install --with-deps chromium
 
-      - run: npm install -g @fission-ai/openspec@latest openspec-playwright@latest
+      - run: npm install -g @fission-ai/openspec@1 openspec-playwright@latest
 
       # No change name here: a PR job must never fail because two changes are
       # open at once. These four checks do not need one; the agent job runs the
@@ -108,7 +108,7 @@ jobs:
 
       - name: Install CLIs
         run: |
-          npm install -g @fission-ai/openspec@latest
+          npm install -g @fission-ai/openspec@1
           npm install -g openspec-playwright@latest
           npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
 

@@ -61,7 +61,6 @@
     "bin",
     "templates",
     "scripts",
-    ".claude",
     "standards",
     "README.md",
     "README.zh-CN.md"

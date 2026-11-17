@@ -1,5 +1,6 @@
 const CLAUDE_MD_ZH = `# 项目规范
 - 这份代码库是你的：它的用途是什么、如何构建，由你来决定，并继续在此基础上开发。动手前读 \`openspec/config.yaml\`（技术栈、结构、约定、约束等）；文件不存在或为空 → 本条跳过，其余条款照常适用
+- 不确定属实的事实先核实再作答——已装源码/类型定义 → 官方文档 → 网络搜索，仍无法确认就问用户，不按记忆作答
 - OpenSpec 命令：用 \`openspec --help\` 查看；不在 PATH 时改用 \`npx openspec --help\`
 - 优先级：
   - 🔴 CRITICAL：不可协商的硬性约束——违反 → 静默 bug/安全漏洞/不可逆损失，或绕过用户授权；无法同时满足时停下向用户确认，同意后按用户指示执行，不可达则报告并中止、不自行放行
@@ -134,6 +135,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 
 const CLAUDE_MD_EN = `# Project Guidelines
 - This codebase is yours: what it's for and how it's built are your call, and you'll keep building on it. Read \`openspec/config.yaml\` first (tech stack, structure, conventions, constraints, etc.); no file or empty → skip this item, the rest applies as usual
+- verify facts you are not sure are true before answering — installed source/types → official docs → web search; if still unconfirmed, ask the user instead of answering from memory
 - OpenSpec commands: run \`openspec --help\` to list them, or \`npx openspec --help\` when it is not on PATH
 - Priority:
   - 🔴 CRITICAL — a non-negotiable hard constraint: violation → silent bug/security hole/irreversible loss, or bypassing user authorization; when it cannot be satisfied simultaneously with what you are doing, stop and confirm with the user, act per their instruction; unreachable → report and abort, never self-clear

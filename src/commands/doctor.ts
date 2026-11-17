@@ -28,6 +28,10 @@ import {
   detectInstalledLanguage,
 } from "../shared/index.js";
 import { bundledStandardsPath, compareBlock, OPENSPEC_START, hasLegacyTerritoryStart, extractRuleBlockContent } from "../shared/drift.js";
+import {
+  OPENSPEC_SUPPORTED_MAJOR,
+  openSpecCliStatus,
+} from "../shared/openspec-version.js";
 import { hasRuleFileMarkers, wrapperRulesFile, wrapperHasMarkers } from "./editors/project-rules.js";
 
 /** Editors whose project rules file is a thin wrapper (not AGENTS.md). */
@@ -465,6 +469,16 @@ export async function doctor(options: DoctorOptions = {}) {
     name: "specs",
     ok: specCount > 0,
     message: specCount > 0 ? `${specCount} spec(s) found` : "no .spec.md files",
+  });
+
+  // OpenSpec CLI major — 2.x stopped generating the `/opsx:*` command files
+  // that this tool's workflow and templates rely on.
+  const openspec = openSpecCliStatus();
+  checks.push({
+    category: "OpenSpec",
+    name: "cli-version",
+    ok: openspec.ok,
+    message: openspec.ok ? `${openspec.major}.x` : openspec.message,
   });
 
   // Playwright CLI (package installed) — gated on the scaffold presence
@@ -1266,7 +1280,21 @@ export async function doctor(options: DoctorOptions = {}) {
     console.log(chalk.gray(`  Run: ${hints.join("  or  ")} <change-name>\n`));
   } else {
     console.log(chalk.red("  ❌ Some prerequisites are missing\n"));
-    console.log(chalk.gray("  Run: openspec-pw init to fix\n"));
+    const cliVersionFailed = checks.some(
+      (c) => c.name === "cli-version" && !c.ok,
+    );
+    if (cliVersionFailed) {
+      console.log(
+        chalk.gray(
+          `  Run: npm install -g @fission-ai/openspec@${OPENSPEC_SUPPORTED_MAJOR}\n`,
+        ),
+      );
+    }
+    // Init aborts on an unsupported or unreadable CLI, so only offer it when
+    // init can actually run (a missing CLI only makes it print instructions).
+    if (!cliVersionFailed || (!openspec.ok && openspec.kind === "missing")) {
+      console.log(chalk.gray("  Run: openspec-pw init to fix\n"));
+    }
     process.exit(1);
   }
 }
