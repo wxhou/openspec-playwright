@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+- **fix(cli): 规范语言默认跟随系统语言**. 未安装规范时优先读操作系统语言（macOS `AppleLanguages`/`AppleLocale`，Windows `PreferredUILanguages`/`LocaleName`），再回退终端 locale；`update` 自更新后的重执行保留 `--lang`；旧版无锚点中文块按 `## 0. 适用范围` 兜底识别，不再被翻成英文。
+  - `src/shared/standards-language.ts`、`src/commands/update.ts`、`src/index.ts`、`tests/shared/standards-language.test.ts`、`tests/update.test.ts`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
+
 ## [0.3.120] - 2026-11-18
 - **docs(standards): 压缩规范到 200 行目标内**. 中文版 213→187 行、英文版 194→171 行：删掉与 §1 重复的「修复预算」条款，成组子条目并入主条；§7 的 DO「先确认数据量级」经删条款对照实验确认与同节 🔴 无界读取条重复后删除；§1 的临时方案条款压成一句，并把「升级触发条件」并入同节 `debt:` 规则——盲评 A/B 显示删整行会失去「先跑通最小端到端」（PASS 2/6→0/6），故保留该句。新增 `tests/standards-length.test.ts` 把 SSOT 锁在 190 行内，安装进 `AGENTS.md` 后中英分别 190/174 行，不再触发 Claude Code 的启动超长警告。
   - `standards/employee-standards.md`、`standards/employee-standards.en.md`、`docs/script.js`、`tests/{docs-sync,standards-length}.test.ts`、`CHANGELOG.md`

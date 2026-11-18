@@ -471,10 +471,11 @@ describe("update.ts: --no-mcp registered + --no-cli recursion", () => {
     // The self-restart must spawn `openspec-pw update --no-cli` so the new
     // binary runs the remaining phases without re-updating the CLI (no loop).
     expect(src).toMatch(/execFileSync\(\s*"openspec-pw",\s*reExecArgs/);
-    // --no-mcp / --no-skill are forwarded to the restart so the restarted
-    // process honors the user's skip flags (regression guard).
+    // --no-mcp / --no-skill / --lang are forwarded to the restart so the
+    // restarted process honors the user's flags (regression guard).
     expect(src).toMatch(/if \(options\.mcp === false\) reExecArgs\.push\("--no-mcp"\)/);
     expect(src).toMatch(/if \(options\.skill === false\) reExecArgs\.push\("--no-skill"\)/);
+    expect(src).toMatch(/if \(options\.lang\) reExecArgs\.push\("--lang", options\.lang\)/);
   });
 });
 

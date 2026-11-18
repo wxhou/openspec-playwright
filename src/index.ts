@@ -77,7 +77,7 @@ program
   )
   .option(
     "--lang <lang>",
-    'employee standards language: "zh" or "en" (default: system locale)',
+    'employee standards language: "zh" or "en" (default: system language)',
   )
   .action(async (opts) => {
     // Raw-argv check, before any import or write: commander's .conflicts()
@@ -156,7 +156,7 @@ program
   .option("--no-mcp", "skip Playwright MCP install")
   .option(
     "--lang <lang>",
-    'employee standards language: "zh" or "en" (default: keep installed, else system locale)',
+    'employee standards language: "zh" or "en" (default: keep installed, else system language)',
   )
   .action(async (opts) => {
     const langError = validateLanguageFlag(opts.lang);

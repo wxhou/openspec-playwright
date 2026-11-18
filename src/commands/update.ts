@@ -126,11 +126,12 @@ export async function update(options: UpdateOptions) {
       );
       try {
         // Re-run with --no-cli (avoid re-updating the just-updated CLI) and
-        // forward the user's other skip flags so the restarted process honors
-        // them too (e.g. --no-mcp must still skip the MCP phase).
+        // forward the user's other flags so the restarted process honors them
+        // too (e.g. --no-mcp must still skip the MCP phase, --lang must switch).
         const reExecArgs = ["update", "--no-cli"];
         if (options.mcp === false) reExecArgs.push("--no-mcp");
         if (options.skill === false) reExecArgs.push("--no-skill");
+        if (options.lang) reExecArgs.push("--lang", options.lang);
         execFileSync("openspec-pw", reExecArgs, {
           stdio: "inherit",
           cwd: projectRoot,
