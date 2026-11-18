@@ -5,8 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
+## [0.3.121] - 2026-11-18
 - **fix(cli): 规范语言默认跟随系统语言**. 未安装规范时优先读操作系统语言（macOS `AppleLanguages`/`AppleLocale`，Windows `PreferredUILanguages`/`LocaleName`），再回退终端 locale；`update` 自更新后的重执行保留 `--lang`；旧版无锚点中文块按 `## 0. 适用范围` / `## 一、代码质量` 两种旧标题兜底识别，不再被翻成英文。
   - `src/shared/standards-language.ts`、`src/commands/update.ts`、`src/index.ts`、`tests/shared/standards-language.test.ts`、`tests/update.test.ts`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
 
