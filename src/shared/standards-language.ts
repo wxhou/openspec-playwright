@@ -175,7 +175,7 @@ export interface ResolveLanguageOptions extends SystemLanguageOptions {
   installed?: StandardsLanguage | null;
 }
 
-/** Explicit flag > installed block > system locale > English. */
+/** Explicit flag > installed block > system language (OS first) > English. */
 export function resolveStandardsLanguage(
   options: ResolveLanguageOptions = {},
 ): StandardsLanguage {

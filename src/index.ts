@@ -77,7 +77,7 @@ program
   )
   .option(
     "--lang <lang>",
-    'employee standards language: "zh" or "en" (default: system language)',
+    'employee standards language: "zh" or "en" (default: keep installed, else system language)',
   )
   .action(async (opts) => {
     // Raw-argv check, before any import or write: commander's .conflicts()
