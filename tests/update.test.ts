@@ -647,7 +647,7 @@ describe("update.ts: minimal-mode first-class sync", () => {
     // claudeAuthorized is computed by the caller as
     // hasCommandArtifacts(claude) || wrapperHasMarkers(claude, root) — this
     // fixture has no command artifacts, so the wrapper marker gates the sync.
-    syncEmployeeStandards(bundleDir, tmpRoot, true, true);
+    syncEmployeeStandards(bundleDir, tmpRoot, true, true, false, "zh");
     const refreshed = readFileSync(claudePath, "utf-8");
     // Marker block replaced with the bundled wrapper content; block-external
     // content (the preamble) is preserved.
@@ -735,6 +735,8 @@ describe("update.ts: minimal-mode block-removed alarm", () => {
         tmpRoot,
         wrapperHasMarkers(claudeAdapter, tmpRoot),
         true,
+        false,
+        "zh",
       );
     } finally {
       spy.mockRestore();

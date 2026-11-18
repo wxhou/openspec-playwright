@@ -7,10 +7,10 @@ export type StandardsLanguage = "zh" | "en";
  * other side's detection and its tests. */
 const ZH_ANCHOR = "这份代码库是你的";
 const EN_ANCHOR = "This codebase is yours";
-/** Pre-anchor Chinese blocks (before the language-selection release) start
- * their §0 with this heading; current blocks contain it too, so it is only a
- * fallback when neither current anchor matches. */
-const LEGACY_ZH_HEADING = "## 0. 适用范围";
+/** Pre-anchor Chinese blocks used either this §0 heading or the older
+ * `## 一、代码质量` §1 heading; current blocks contain the former too, so
+ * these only apply when neither current anchor matches. */
+const LEGACY_ZH_HEADINGS = ["## 0. 适用范围", "## 一、代码质量"];
 
 /** Returns null for a valid value (or no value), or an error message. */
 export function validateLanguageFlag(value: string | undefined): string | null {
@@ -167,7 +167,9 @@ export function detectInstalledLanguage(
   if (zh && en) return null;
   if (zh) return "zh";
   if (en) return "en";
-  return content.includes(LEGACY_ZH_HEADING) ? "zh" : null;
+  return LEGACY_ZH_HEADINGS.some((heading) => content.includes(heading))
+    ? "zh"
+    : null;
 }
 
 export interface ResolveLanguageOptions extends SystemLanguageOptions {

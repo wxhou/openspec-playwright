@@ -274,7 +274,7 @@ describe("syncEmployeeStandards codebuddy gating", () => {
 
   it("refreshes an authorized stale CODEBUDDY.md wrapper, preserving block-external content", () => {
     writeFileSync(join(tmpRoot, "CODEBUDDY.md"), "preamble\n<!-- OPENSPEC-PW:START -->\noutdated\n<!-- OPENSPEC-PW:END -->\n");
-    syncEmployeeStandards(bundle(), tmpRoot, false, true, true);
+    syncEmployeeStandards(bundle(), tmpRoot, false, true, true, "zh");
     const refreshed = readFileSync(join(tmpRoot, "CODEBUDDY.md"), "utf-8");
     expect(refreshed).toContain("preamble\n");
     expect(refreshed).toContain(claudeWrapperStandardsContent().trim());
@@ -282,12 +282,12 @@ describe("syncEmployeeStandards codebuddy gating", () => {
   });
 
   it("never creates CODEBUDDY.md when codebuddy is not authorized", () => {
-    syncEmployeeStandards(bundle(), tmpRoot, false, true, false);
+    syncEmployeeStandards(bundle(), tmpRoot, false, true, false, "zh");
     expect(existsSync(join(tmpRoot, "CODEBUDDY.md"))).toBe(false);
   });
 
   it("creates the wrapper when authorized but missing (partial-install drift)", () => {
-    syncEmployeeStandards(bundle(), tmpRoot, false, true, true);
+    syncEmployeeStandards(bundle(), tmpRoot, false, true, true, "zh");
     const content = readFileSync(join(tmpRoot, "CODEBUDDY.md"), "utf-8");
     expect(content).toContain(claudeWrapperStandardsContent().trim());
   });

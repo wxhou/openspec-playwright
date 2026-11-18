@@ -150,6 +150,10 @@ describe("detectInstalledLanguage", () => {
     ).toBe("zh");
   });
 
+  it("detects the oldest pre-anchor Chinese block by its §1 heading", () => {
+    expect(detectInstalledLanguage("## 一、代码质量\n### 校验与执行")).toBe("zh");
+  });
+
   it("keeps a block with both current anchors unknown", () => {
     expect(
       detectInstalledLanguage(

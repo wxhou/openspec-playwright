@@ -58,6 +58,7 @@ describe("init employee-standards language selection", () => {
     return logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
   }
 
+  // The exec mock makes the OS probe unavailable, so this pins the fallback path.
   function setSystemLocale(value: string): void {
     for (const key of ["LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"]) {
       delete process.env[key];
@@ -83,7 +84,7 @@ describe("init employee-standards language selection", () => {
     expect(logText()).toContain("installed in English");
   });
 
-  it("follows a Chinese system locale when --lang is omitted", async () => {
+  it("falls back to a Chinese terminal locale when the OS language is unavailable", async () => {
     setSystemLocale("zh_CN.UTF-8");
 
     await runInit();
