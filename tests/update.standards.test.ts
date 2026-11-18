@@ -112,8 +112,8 @@ describe("syncEmployeeStandards", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    // Pin the system locale so a machine without LANG cannot flip the default
-    // standards language and make these cases machine-dependent.
+    // The exec mock makes the OS probe unavailable; pin LANG so the env
+    // fallback is deterministic and these cases stay machine-independent.
     for (const key of ["LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"]) {
       delete process.env[key];
     }

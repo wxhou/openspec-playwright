@@ -134,10 +134,12 @@ for them.
 
 **Standards language.** The employee-standards block in `AGENTS.md` is
 written in Chinese or English. `init --lang zh|en` selects it explicitly;
-without the flag, an installed block's language wins, then the system locale
-(`LANGUAGE` > `LC_ALL` > `LC_MESSAGES` > `LANG`), then English. `update --lang`
-switches an installed block; without a block the flag has no effect. Only the
-locale is read — the region is never detected.
+without the flag, an installed block's language wins, then the operating
+system's language (macOS `AppleLanguages`/`AppleLocale`, Windows
+`PreferredUILanguages`/`LocaleName`), then the terminal locale (`LANGUAGE` >
+`LC_ALL` > `LC_MESSAGES` > `LANG`), then English. `update --lang` switches an
+installed block; without a block the flag has no effect. Neither IP nor region
+is detected.
 
 Init prints two output signals: the pre-select hint line (only when
 `--tools` is not given) — `Configured (pre-select):` on projects with

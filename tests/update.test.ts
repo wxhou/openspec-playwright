@@ -471,10 +471,11 @@ describe("update.ts: --no-mcp registered + --no-cli recursion", () => {
     // The self-restart must spawn `openspec-pw update --no-cli` so the new
     // binary runs the remaining phases without re-updating the CLI (no loop).
     expect(src).toMatch(/execFileSync\(\s*"openspec-pw",\s*reExecArgs/);
-    // --no-mcp / --no-skill are forwarded to the restart so the restarted
-    // process honors the user's skip flags (regression guard).
+    // --no-mcp / --no-skill / --lang are forwarded to the restart so the
+    // restarted process honors the user's flags (regression guard).
     expect(src).toMatch(/if \(options\.mcp === false\) reExecArgs\.push\("--no-mcp"\)/);
     expect(src).toMatch(/if \(options\.skill === false\) reExecArgs\.push\("--no-skill"\)/);
+    expect(src).toMatch(/if \(options\.lang\) reExecArgs\.push\("--lang", options\.lang\)/);
   });
 });
 
@@ -646,7 +647,7 @@ describe("update.ts: minimal-mode first-class sync", () => {
     // claudeAuthorized is computed by the caller as
     // hasCommandArtifacts(claude) || wrapperHasMarkers(claude, root) — this
     // fixture has no command artifacts, so the wrapper marker gates the sync.
-    syncEmployeeStandards(bundleDir, tmpRoot, true, true);
+    syncEmployeeStandards(bundleDir, tmpRoot, true, true, false, "zh");
     const refreshed = readFileSync(claudePath, "utf-8");
     // Marker block replaced with the bundled wrapper content; block-external
     // content (the preamble) is preserved.
@@ -734,6 +735,8 @@ describe("update.ts: minimal-mode block-removed alarm", () => {
         tmpRoot,
         wrapperHasMarkers(claudeAdapter, tmpRoot),
         true,
+        false,
+        "zh",
       );
     } finally {
       spy.mockRestore();
