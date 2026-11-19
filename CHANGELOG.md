@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+- **docs(standards): 经验沉淀改指项目 openspec/config.yaml**. §0 条款改为把防再犯规则写进项目的 `openspec/config.yaml` `context`，中英 SSOT、文档嵌入与测试锚点同步。
+  - `standards/employee-standards.md`、`standards/employee-standards.en.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
+- **feat(cli): 新增七个编辑器适配器**. 支持 Gemini CLI（TOML 命令）、Qwen Code、GitHub Copilot（VS Code prompt + 共享 `.mcp.json`）、Roo Code、Trae、Codex（与 MiniMax 共享技能）与 Kimi Code；命令产物新增 TOML 输出，MCP 配置新增可选的 `stdio` 类型，规则文件新增 `full` 模式（含父目录创建与 update 刷新），移除阶段新增共享命令产物保留；受管 gitignore 路径 24 → 40。
+  - `src/commands/editors/{types,shared,declaration,mcp-carriers,registry,removal}.ts`、`src/commands/editors/adapters/{gemini,qwen,github-copilot,roocode,trae,codex,kimi}.ts`、`src/commands/{init,update,doctor,remove}.ts`、`src/shared/gitignore-managed.ts`、`README.md`、`README.zh-CN.md`、`docs/index.html`、`tests/*`、`CHANGELOG.md`
+
 ## [0.3.121] - 2026-11-18
 - **fix(cli): 规范语言默认跟随系统语言**. 未安装规范时优先读操作系统语言（macOS `AppleLanguages`/`AppleLocale`，Windows `PreferredUILanguages`/`LocaleName`），再回退终端 locale；`update` 自更新后的重执行保留 `--lang`；旧版无锚点中文块按 `## 0. 适用范围` / `## 一、代码质量` 两种旧标题兜底识别，不再被翻成英文。
   - `src/shared/standards-language.ts`、`src/commands/update.ts`、`src/index.ts`、`tests/shared/standards-language.test.ts`、`tests/update.test.ts`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`

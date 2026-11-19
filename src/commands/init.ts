@@ -17,6 +17,10 @@ import {
 } from "../shared/openspec-version.js";
 import { installStopHook, isHookTier, uninstallStopHook } from "./hooks.js";
 import {
+  groupGitignoreCandidates,
+  promptSelectGitignorePaths,
+} from "./init-gitignore-prompt.js";
+import {
   assertScaffoldCompatible,
   generateMiniPlaywrightConfig,
   generateMiniProgramScaffold,
@@ -50,10 +54,12 @@ import {
   isInventoryEmpty,
   removeAdapterMcp,
   retainedMcpConfigFiles,
+  retainedCommandArtifactPaths,
   removeAdapterCommandArtifacts,
   removeOwnedVendoredAgents,
   removeLegacyArtifact,
   removeWrapper,
+  removeFullRulesBlock,
   removeMarkersFromFile,
   agentsFileHasCleanableMarkers,
   wrapperLinksToAgents,
@@ -197,89 +203,6 @@ export async function promptSelectEditors(
     })),
   });
   return selected as EditorId[];
-}
-
-/**
- * Grouping for the .gitignore opt-out prompt. A path missing here lands in
- * "Other" rather than disappearing, so a newly managed path still reaches
- * the prompt without a second edit.
- */
-const GITIGNORE_GROUPS: readonly {
-  label: string;
-  paths: readonly string[];
-}[] = [
-  {
-    label: "Editor directories",
-    paths: [
-      ".claude/",
-      ".cursor/",
-      ".opencode/",
-      ".cline/",
-      ".pi/",
-      ".omp/",
-      ".codebuddy/",
-      ".agents/skills/opsx-e2e/",
-      ".dsh/skills/opsx-e2e/",
-    ],
-  },
-  {
-    label: "Project files",
-    paths: [
-      "openspec/",
-      "CODEBUDDY.md",
-      "app-exploration.md",
-      "opencode.json",
-      ".mcp.json",
-    ],
-  },
-  {
-    label: "Local data and credentials",
-    paths: [
-      ".codegraph/",
-      ".playwright-mcp/",
-      "tmp/",
-      "playwright/.auth/",
-      "tests/playwright/test-results/",
-      "tests/playwright/screenshots/",
-      "tests/playwright/credentials.yaml",
-      "tests/playwright/credentials.yaml.bak",
-    ],
-  },
-];
-
-export function groupGitignoreCandidates(
-  candidates: readonly string[],
-): { label: string; paths: string[] }[] {
-  const known = new Set(GITIGNORE_GROUPS.flatMap((g) => g.paths));
-  const groups = GITIGNORE_GROUPS.map((g) => ({
-    label: g.label,
-    paths: candidates.filter((p) => g.paths.includes(p)),
-  })).filter((g) => g.paths.length > 0);
-  const rest = candidates.filter((p) => !known.has(p));
-  if (rest.length > 0) groups.push({ label: "Other", paths: rest });
-  return groups;
-}
-
-/**
- * Multi-select of managed paths that stay ignored — all checked, so Enter
- * keeps the previous behavior; unchecking records the path as a skip in the
- * block header.
- */
-export async function promptSelectGitignorePaths(
-  groups: readonly { label: string; paths: readonly string[] }[],
-): Promise<string[]> {
-  const { checkbox, Separator } = await import("@inquirer/prompts");
-  const choices = groups.flatMap((g, index) => [
-    ...(index === 0 ? [] : [new Separator(" ")]),
-    new Separator(g.label),
-    ...g.paths.map((p) => ({ name: p, value: p, checked: true })),
-  ]);
-  const selected = await checkbox({
-    message: "Generated paths to keep out of git (uncheck to commit)",
-    choices,
-    pageSize: 20,
-  });
-  return selected as string[];
 }
 
 /**
@@ -449,7 +372,7 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   const detected = detectAdapters(projectRoot, deps.homeDir);
   const projectDetected = detectProjectAdapters(projectRoot);
   const configuredIds = new Set(
-    detected
+    getAllAdapters()
       .filter((a) => isEditorConfigured(a, projectRoot))
       .map((a) => a.id),
   );
@@ -550,16 +473,22 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
 
   // No flag, non-TTY, and nothing detected → fail with --tools guidance.
   if (selectedIds === null && editors.length === 0) {
+    // Derived from the registry so a new adapter cannot leave this hint stale.
+    const markerHints = getAllAdapters()
+      .map((a) => a.declaration?.detection.projectPaths?.[0])
+      .filter((p): p is string => Boolean(p));
     console.log(
       chalk.yellow(
-        "\n  ⚠ No supported editor detected in the project (need .claude/, .opencode/, .cline/, .cursor/, .pi/, .omp/, .codebuddy/, .minimax/, or .dsh/).",
+        `\n  ⚠ No supported editor detected in the project (need one of: ${markerHints.join(", ")}).`,
       ),
     );
     console.log(
       chalk.gray("  For Cursor without an existing .cursor/ dir: mkdir -p .cursor\n"),
     );
     throw new Error(
-      'No supported editor detected and no --tools flag provided. Use --tools all, --tools none, or a comma-separated list: claude, opencode, cline, cursor, pi, omp, codebuddy, minimax, dsh (oh-my-pi aliases omp, minimax-code aliases minimax).',
+      `No supported editor detected and no --tools flag provided. Use --tools all, --tools none, or a comma-separated list: ${getAllAdapters()
+        .map((a) => a.id)
+        .join(", ")} (oh-my-pi aliases omp, minimax-code aliases minimax).`,
     );
   }
 
@@ -614,7 +543,10 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     // Removal candidates share the configured manifest: never-configured
     // editors own no products, so there is nothing to enumerate (and no
     // confirm noise for a merely-detected editor that was never set up).
-    const deselected = detected
+    // Removal candidates are "configured" editors, not "detected" ones: a
+    // full-rules adapter installed via --tools has no marker dir (e.g.
+    // GEMINI.md without .gemini/) and must still be deselectable.
+    const deselected = getAllAdapters()
       .filter(
         (a) =>
           !selectedIds!.includes(a.id) && configuredIds.has(a.id),
@@ -628,10 +560,21 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
       getAllAdapters().filter((a) => selectedIds!.includes(a.id)),
       projectRoot,
     );
+    // Command/skill artifacts still declared by a selected editor. Codex and
+    // MiniMax Code share `.agents/skills/opsx-<id>/SKILL.md`, so deselecting
+    // one must not delete the other's skill.
+    const retainedCommandPaths = retainedCommandArtifactPaths(
+      getAllAdapters().filter((a) => selectedIds!.includes(a.id)),
+    );
     const inventories = deselected
       .map((adapter) => ({
         adapter,
-        inv: enumerateAdapterArtifacts(adapter, projectRoot, retainedMcpFiles),
+        inv: enumerateAdapterArtifacts(
+          adapter,
+          projectRoot,
+          retainedMcpFiles,
+          retainedCommandPaths,
+        ),
       }))
       // Editors with nothing to remove are silent — no confirm-list noise.
       .filter(({ inv }) => !isInventoryEmpty(inv));
@@ -650,9 +593,13 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
       // Entries that are NOT removed are listed separately below — mixing
       // them into the "will be removed" list contradicts the heading.
       const keptMcpEntries: string[] = [];
+      const keptArtifactEntries: string[] = [];
       for (const { adapter, inv } of inventories) {
         for (const relPath of inv.commandPaths) {
           console.log(chalk.gray(`    - ${adapter.label}: ${relPath}`));
+        }
+        for (const relPath of inv.retainedCommandPaths) {
+          keptArtifactEntries.push(`${adapter.label}: ${relPath}`);
         }
         for (const relPath of inv.legacyArtifacts) {
           console.log(chalk.gray(`    - ${adapter.label}: ${relPath}/`));
@@ -665,6 +612,9 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
         }
         if (inv.hasWrapper) {
           console.log(chalk.gray(`    - ${adapter.label}: ${basename(adapter.projectRulesPath(projectRoot))} wrapper block`));
+        }
+        if (inv.hasFullRules) {
+          console.log(chalk.gray(`    - ${adapter.label}: ${basename(adapter.projectRulesPath(projectRoot))} rules block`));
         }
         // Consent-gated optional artifacts (vendored agents): only the
         // tool-owned files join the list — user-modified files are kept.
@@ -687,6 +637,16 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
           console.log(chalk.gray(`    - ${entry}`));
         }
       }
+      if (keptArtifactEntries.length > 0) {
+        console.log(
+          chalk.gray(
+            "  Kept — shared command/skill artifact also used by a selected editor:",
+          ),
+        );
+        for (const entry of keptArtifactEntries) {
+          console.log(chalk.gray(`    - ${entry}`));
+        }
+      }
 
       const agreed = await confirmPrompt("Proceed with removal?");
 
@@ -697,13 +657,21 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
       } else {
         for (const { adapter, inv } of inventories) {
           removeAdapterMcp(adapter, projectRoot, inv.mcpServers, retainedMcpFiles);
-          removeAdapterCommandArtifacts(adapter, projectRoot);
+          removeAdapterCommandArtifacts(
+            adapter,
+            projectRoot,
+            undefined,
+            retainedCommandPaths,
+          );
           removeOwnedVendoredAgents(projectRoot, adapter);
           for (const relPath of inv.legacyArtifacts) {
             removeLegacyArtifact(adapter, projectRoot, relPath);
           }
           if (inv.hasWrapper) {
             removeWrapper(adapter, projectRoot);
+          }
+          if (inv.hasFullRules) {
+            removeFullRulesBlock(adapter, projectRoot);
           }
         }
         if (agentsHasBlock) {
@@ -1199,7 +1167,7 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     console.log(chalk.bold("How it works:"));
     console.log(
       chalk.gray(
-        "  /opsx:e2e (Claude, CodeBuddy), /opsx-e2e (OpenCode/Cline/Cursor/Pi/Oh My Pi), opsx-e2e skill (MiniMax Code, DeepSeek Harness) read your OpenSpec specs",
+        "  Your editor's E2E command reads your OpenSpec specs",
       ),
     );
     console.log(

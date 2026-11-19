@@ -91,6 +91,7 @@ describe("codebuddyAdapter MCP", () => {
     expect(existsSync(mcpJson())).toBe(true);
     const parsed = JSON.parse(readFileSync(mcpJson(), "utf-8"));
     expect(parsed.mcpServers["playwright-test"]).toEqual({
+      type: "stdio",
       command: "npx",
       args: ["playwright", "run-test-mcp-server"],
     });
@@ -109,7 +110,11 @@ describe("codebuddyAdapter MCP", () => {
     codebuddyAdapter.installMcp(tmpRoot, "playwright-test", ["npx", "pw"]);
     const parsed = JSON.parse(readFileSync(mcpJson(), "utf-8"));
     expect(parsed.mcpServers["user-server"]).toEqual({ command: "uvx", args: ["foo"] });
-    expect(parsed.mcpServers["playwright-test"]).toEqual({ command: "npx", args: ["pw"] });
+    expect(parsed.mcpServers["playwright-test"]).toEqual({
+      type: "stdio",
+      command: "npx",
+      args: ["pw"],
+    });
   });
 
   it("removeMcp deletes only its own entry and keeps others", () => {
@@ -118,7 +123,11 @@ describe("codebuddyAdapter MCP", () => {
     codebuddyAdapter.removeMcp(tmpRoot, "playwright-test");
     const parsed = JSON.parse(readFileSync(mcpJson(), "utf-8"));
     expect(parsed.mcpServers["playwright-test"]).toBeUndefined();
-    expect(parsed.mcpServers["user-server"]).toEqual({ command: "uvx", args: ["foo"] });
+    expect(parsed.mcpServers["user-server"]).toEqual({
+      type: "stdio",
+      command: "uvx",
+      args: ["foo"],
+    });
   });
 
   it("removeMcp is a no-op when the server or file is missing", () => {

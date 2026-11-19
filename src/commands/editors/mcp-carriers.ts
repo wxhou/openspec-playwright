@@ -5,9 +5,9 @@
  * file path used by the removal guard.
  *
  * Four carriers:
- *   - none              → no MCP client (Pi)
+ *   - none               → no MCP client (Pi)
  *   - mcp-servers-file  → `{ "mcpServers": { ... } }` JSON (Cline, Cursor,
- *                          Oh My Pi, CodeBuddy, MiniMax)
+ *                          Oh My Pi, CodeBuddy, MiniMax, GitHub Copilot)
  *   - claude-cli        → read the project `.mcp.json`, write via the CLI
  *   - opencode-json     → exclusive `opencode.json(c)` (`mcp.<server>`)
  */
@@ -28,6 +28,7 @@ import type { McpSpec } from "./types.js";
 import {
   installMcpServerInFile,
   isMcpServerInFile,
+  readMcpServersFile,
   removeMcpServerFromFile,
 } from "./shared.js";
 
@@ -36,6 +37,8 @@ export interface McpRuntime {
   /** File whose entries may be shared with another selected adapter. */
   mcpConfigPath?: (root: string) => string;
   isMcpInstalled(root: string, serverName: string): boolean;
+  /** Name-presence check for removal paths; ignores entry-shape drift. */
+  isMcpEntryPresent(root: string, serverName: string): boolean;
   installMcp(root: string, serverName: string, command: string[]): void;
   removeMcp(root: string, serverName: string): void;
 }
@@ -48,19 +51,45 @@ export function buildMcpRuntime(spec: McpSpec): McpRuntime {
       return {
         supportsMcp: false,
         isMcpInstalled: () => false,
+        isMcpEntryPresent: () => false,
         installMcp: noop,
         removeMcp: noop,
       };
 
-    case "mcp-servers-file":
+    case "mcp-servers-file": {
+      const entryOptions = spec.serverType
+        ? { entryType: spec.serverType }
+        : undefined;
       return {
         supportsMcp: true,
         mcpConfigPath: spec.path,
         isMcpInstalled(root, serverName) {
+          const path = spec.path(root);
+          if (!isMcpServerInFile(path, serverName)) return false;
+          if (!spec.serverType) return true;
+          const config = readMcpServersFile(path);
+          const entry = config?.mcpServers as
+            | Record<string, { type?: string }>
+            | undefined;
+          return entry?.[serverName]?.type === spec.serverType;
+        },
+        isMcpEntryPresent(root, serverName) {
           return isMcpServerInFile(spec.path(root), serverName);
         },
         installMcp(root, serverName, command) {
-          installMcpServerInFile(spec.path(root), serverName, command);
+          const path = spec.path(root);
+          // A symlinked config (or parent) would route the write outside the
+          // project even though the declared path is lexical. Same guard as
+          // the remove path below.
+          if (!isPathInsideProjectRoot(root, path)) {
+            throw new Error(`${path} resolves outside the project (symlink)`);
+          }
+          installMcpServerInFile(
+            path,
+            serverName,
+            command,
+            entryOptions,
+          );
         },
         removeMcp(root, serverName) {
           const path = spec.path(root);
@@ -70,6 +99,7 @@ export function buildMcpRuntime(spec: McpSpec): McpRuntime {
           removeMcpServerFromFile(path, serverName);
         },
       };
+    }
 
     case "claude-cli":
       return {
@@ -80,7 +110,14 @@ export function buildMcpRuntime(spec: McpSpec): McpRuntime {
         isMcpInstalled(root, serverName) {
           return isMcpServerInFile(spec.configPath(root), serverName);
         },
+        isMcpEntryPresent(root, serverName) {
+          return isMcpServerInFile(spec.configPath(root), serverName);
+        },
         installMcp(root, serverName, command) {
+          const path = spec.configPath(root);
+          if (!isPathInsideProjectRoot(root, path)) {
+            throw new Error(`${path} resolves outside the project (symlink)`);
+          }
           execFileSync(
             "claude",
             ["mcp", "add", "--scope", "project", serverName, ...command],
@@ -121,6 +158,11 @@ export function buildMcpRuntime(spec: McpSpec): McpRuntime {
         mcpConfigPath: (root) =>
           findOpenCodeConfig(root)?.path ?? join(root, "opencode.jsonc"),
         isMcpInstalled(root, serverName) {
+          const config = findOpenCodeConfig(root);
+          if (!config) return false;
+          return readOpenCodeValue(config.text, ["mcp", serverName]) !== undefined;
+        },
+        isMcpEntryPresent(root, serverName) {
           const config = findOpenCodeConfig(root);
           if (!config) return false;
           return readOpenCodeValue(config.text, ["mcp", serverName]) !== undefined;
@@ -177,6 +219,13 @@ function setOpenCodeValue(
 ): void {
   const existing = findOpenCodeConfig(projectRoot);
   const targetPath = existing?.path ?? join(projectRoot, "opencode.jsonc");
+  // Throw like the file carriers do: a silent skip would print a false
+  // "installed" in ensureMcp while nothing was written.
+  if (!isPathInsideProjectRoot(projectRoot, targetPath)) {
+    throw new Error(
+      `${targetPath} resolves outside the project (symlink)`,
+    );
+  }
 
   if (!existing) {
     const scaffold: Record<string, unknown> = {

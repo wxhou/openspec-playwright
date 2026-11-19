@@ -121,7 +121,7 @@ const ZH_ANCHORS: [string, string][] = [
   ["§8 大文件与外部制品源", "大文件与外部制品源"],
   ["§8 不静默换源", "不按 IP、时区或语言静默切换源"],
   ["§8 哈希校验", "按官方元数据校验大小与哈希"],
-  ["§0 经验沉淀载体", "非工具托管的载体"],
+  ["§0 经验沉淀载体", "openspec/config.yaml"],
 ];
 
 const EN_ANCHORS: [string, string][] = [
@@ -213,7 +213,7 @@ const EN_ANCHORS: [string, string][] = [
   ["§4 data fabrication ban", "Never fabricate data simulating real entities"],
   ["§5 temp file management", "Temp File Management"],
   ["§5 daily directory", "named for the day the file is written"],
-  ["§0 experience-distillation carrier", "carrier the tooling does not own"],
+  ["§0 experience-distillation carrier", "openspec/config.yaml"],
 ];
 
 // The catch clause carries four sub-bullets. The mirrors must hold the same

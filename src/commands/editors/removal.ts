@@ -23,6 +23,7 @@ import { buildCommandMeta, type EditorAdapter } from "./types.js";
 import { listCommandArtifactPaths } from "./registry.js";
 import {
   claudeWrapperStandardsContent,
+  fullRulesFile,
   hasCleanableMarkers,
   removeMarkersFromFile,
   wrapperRulesFile,
@@ -58,8 +59,15 @@ export interface AdapterArtifactInventory {
    * KEPT because a still-selected editor shares the same MCP config file.
    */
   retainedMcpServers: string[];
+  /**
+   * Command/skill artifact paths KEPT because a still-selected editor
+   * declares the same path (Codex and MiniMax share `.agents/skills`).
+   */
+  retainedCommandPaths: string[];
   /** True when the adapter's wrapper file (CLAUDE.md / CODEBUDDY.md) holds an openspec-pw wrapper block. */
   hasWrapper: boolean;
+  /** True when the adapter's full-standards rules file holds an openspec-pw block. */
+  hasFullRules: boolean;
 }
 
 // ─── Shared MCP config files (multi-editor consumers) ─────────────────────
@@ -86,6 +94,24 @@ export function retainedMcpConfigFiles(
   return files;
 }
 
+/**
+ * Command/skill artifact paths still declared by the editors that remain
+ * selected. Shared paths (Codex + MiniMax both write
+ * `.agents/skills/opsx-<id>/SKILL.md`) must survive deselecting one of them.
+ */
+export function retainedCommandArtifactPaths(
+  selected: readonly EditorAdapter[],
+): Set<string> {
+  const paths = new Set<string>();
+  const meta = buildCommandMeta("");
+  for (const adapter of selected) {
+    for (const rel of listCommandArtifactPaths(adapter, meta)) {
+      paths.add(rel);
+    }
+  }
+  return paths;
+}
+
 /** True when this adapter's MCP entries live in a file another editor still needs. */
 function isMcpFileRetained(
   adapter: EditorAdapter,
@@ -97,17 +123,16 @@ function isMcpFileRetained(
   return !!path && retainedFiles.has(path);
 }
 
-/** Does the adapter's wrapper file carry an openspec-pw marker block we could remove? */
-function wrapperFileHasMarkersForRemoval(
-  adapter: EditorAdapter,
+/** Does the given rules file carry an openspec-pw marker block we could remove? */
+function rulesFileHasMarkersForRemoval(
+  dest: string | null,
   projectRoot: string,
 ): boolean {
-  const wrapper = wrapperRulesFile(adapter, projectRoot);
-  if (!wrapper) return false;
-  const dest = join(projectRoot, basename(wrapper));
+  if (!dest) return false;
+  if (!isPathInsideProjectRoot(projectRoot, dest)) return false;
   if (!existsSync(dest)) return false;
-  // A symlinked wrapper (typically → AGENTS.md) is never cleaned through —
-  // enumeration follows the same guard the removal does.
+  // A symlinked rules file is never cleaned through — enumeration follows the
+  // same guard the removal does.
   if (lstatSync(dest).isSymbolicLink()) return false;
   const content = readFileSync(dest, "utf-8");
   return hasCleanableMarkers(content);
@@ -124,12 +149,21 @@ export function enumerateAdapterArtifacts(
   adapter: EditorAdapter,
   projectRoot: string,
   retainedFiles?: ReadonlySet<string>,
+  retainedCommandPaths?: ReadonlySet<string>,
 ): AdapterArtifactInventory {
   const meta = buildCommandMeta("");
-  const commandPaths = listCommandArtifactPaths(adapter, meta).filter((rel) => {
-    const abs = join(projectRoot, rel);
-    return existsSync(abs) && isPathInsideProjectRoot(projectRoot, abs);
-  });
+  const existingCommandPaths = listCommandArtifactPaths(adapter, meta).filter(
+    (rel) => {
+      const abs = join(projectRoot, rel);
+      return existsSync(abs) && isPathInsideProjectRoot(projectRoot, abs);
+    },
+  );
+  const retainedCommands = retainedCommandPaths
+    ? existingCommandPaths.filter((rel) => retainedCommandPaths.has(rel))
+    : [];
+  const commandPaths = existingCommandPaths.filter(
+    (rel) => !retainedCommands.includes(rel),
+  );
   const legacyArtifacts = (adapter.declaration?.legacyArtifacts ?? []).filter(
     (rel) => {
       const abs = join(projectRoot, rel);
@@ -143,7 +177,13 @@ export function enumerateAdapterArtifacts(
     adapter.supportsMcp === false || !mcpConfigSafe
       ? []
       : OPENSPEC_PW_MCP_SERVERS.filter((server) =>
-          adapter.isMcpInstalled(projectRoot, server),
+          // Presence, not shape: legacy entries written before `type: "stdio"`
+          // still belong to this tool and must stay removable.
+          (adapter.isMcpEntryPresent ?? adapter.isMcpInstalled).call(
+            adapter,
+            projectRoot,
+            server,
+          ),
         );
   // An MCP entry in a shared config file is kept while another selected
   // editor depends on that file — it is reported separately so the confirm
@@ -151,20 +191,38 @@ export function enumerateAdapterArtifacts(
   const sharedFile = isMcpFileRetained(adapter, projectRoot, retainedFiles);
   const mcpServers = sharedFile ? [] : installedMcpServers;
   const retainedMcpServers = sharedFile ? installedMcpServers : [];
-  const hasWrapper =
-    wrapperRulesFile(adapter, projectRoot) !== null &&
-    wrapperFileHasMarkersForRemoval(adapter, projectRoot);
-  return { commandPaths, legacyArtifacts, mcpServers, retainedMcpServers, hasWrapper };
+  const hasWrapper = rulesFileHasMarkersForRemoval(
+    wrapperRulesFile(adapter, projectRoot),
+    projectRoot,
+  );
+  const hasFullRules = rulesFileHasMarkersForRemoval(
+    fullRulesFile(adapter, projectRoot),
+    projectRoot,
+  );
+  return {
+    commandPaths,
+    retainedCommandPaths: retainedCommands,
+    legacyArtifacts,
+    mcpServers,
+    retainedMcpServers,
+    hasWrapper,
+    hasFullRules,
+  };
 }
 
-/** True when this editor has nothing for init to remove. */
+/**
+ * True when this editor has nothing init could remove. Retained entries are
+ * deliberately excluded: an adapter whose only artifacts are shared with a
+ * still-selected editor must not trigger a removal confirmation that would
+ * delete nothing.
+ */
 export function isInventoryEmpty(inv: AdapterArtifactInventory): boolean {
   return (
     inv.commandPaths.length === 0 &&
     inv.legacyArtifacts.length === 0 &&
     inv.mcpServers.length === 0 &&
-    inv.retainedMcpServers.length === 0 &&
-    !inv.hasWrapper
+    !inv.hasWrapper &&
+    !inv.hasFullRules
   );
 }
 
@@ -211,10 +269,19 @@ export function removeAdapterCommandArtifacts(
   adapter: EditorAdapter,
   projectRoot: string,
   onRemoved?: (relPath: string) => void,
+  retainedPaths?: ReadonlySet<string>,
 ): string[] {
   const meta = buildCommandMeta("");
   const removed: string[] = [];
   for (const relPath of listCommandArtifactPaths(adapter, meta)) {
+    if (retainedPaths?.has(relPath)) {
+      console.log(
+        chalk.gray(
+          `  - ${adapter.label}: ${relPath} kept (a selected editor shares this artifact)`,
+        ),
+      );
+      continue;
+    }
     const absPath = join(projectRoot, relPath);
     if (!existsSync(absPath)) continue;
     if (!isPathInsideProjectRoot(projectRoot, absPath)) {
@@ -309,7 +376,8 @@ export function removeLegacyArtifact(
 export function removeWrapper(adapter: EditorAdapter, projectRoot: string): string | null {
   const wrapper = wrapperRulesFile(adapter, projectRoot);
   if (!wrapper) return null;
-  const dest = join(projectRoot, basename(wrapper));
+  const dest = wrapper;
+  if (!isPathInsideProjectRoot(projectRoot, dest)) return null;
   if (!existsSync(dest)) return null;
   if (lstatSync(dest).isSymbolicLink()) {
     console.log(
@@ -323,6 +391,7 @@ export function removeWrapper(adapter: EditorAdapter, projectRoot: string): stri
     dest,
     basename(wrapper),
     claudeWrapperStandardsContent(),
+    projectRoot,
   )
     ? basename(wrapper)
     : null;

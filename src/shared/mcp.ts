@@ -18,6 +18,22 @@ export function isMcpInstalled(
   return adapter.isMcpInstalled(projectRoot, serverName);
 }
 
+/**
+ * Presence check for removal paths: an entry whose shape drifted (a legacy
+ * entry predating `type: "stdio"`) must still be removable.
+ */
+export function isMcpEntryPresent(
+  adapter: EditorAdapter,
+  projectRoot: string,
+  serverName: string,
+): boolean {
+  if (adapter.supportsMcp === false) return false;
+  return (
+    adapter.isMcpEntryPresent?.(projectRoot, serverName) ??
+    adapter.isMcpInstalled(projectRoot, serverName)
+  );
+}
+
 /** Install an MCP server in this editor. Throws on failure. */
 export function ensureMcp(
   adapter: EditorAdapter,
@@ -66,7 +82,7 @@ export function removeMcp(
     console.log(`  - ${adapter.label}: ${serverName} MCP not supported (nothing to remove)`);
     return { removed: false };
   }
-  if (!isMcpInstalled(adapter, projectRoot, serverName)) {
+  if (!isMcpEntryPresent(adapter, projectRoot, serverName)) {
     console.log(`  - ${adapter.label}: ${serverName} MCP not installed (nothing to remove)`);
     return { removed: false };
   }

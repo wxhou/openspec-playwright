@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { join, basename } from "path";
 import chalk from "chalk";
 import { execFileSync } from "../shared/exec.js";
+import { readTextFileCapped } from "../shared/file-read.js";
 import {
   detectAdapters,
   getAllAdapters,
@@ -32,7 +33,7 @@ import {
   OPENSPEC_SUPPORTED_MAJOR,
   openSpecCliStatus,
 } from "../shared/openspec-version.js";
-import { hasRuleFileMarkers, wrapperRulesFile, wrapperHasMarkers } from "./editors/project-rules.js";
+import { hasRuleFileMarkers, wrapperRulesFile, fullRulesFile, wrapperHasMarkers } from "./editors/project-rules.js";
 
 /** Editors whose project rules file is a thin wrapper (not AGENTS.md). */
 const WRAPPER_EDITORS = [claudeAdapter, codebuddyAdapter];
@@ -603,7 +604,10 @@ export async function doctor(options: DoctorOptions = {}) {
       category: "Playwright MCP",
       name: "playwright-mcp",
       ok: false,
-      message: "no editors detected (configure .claude/, .opencode/, .cline/, .cursor/, .pi/, .omp/, .codebuddy/, .minimax/, or .dsh/)",
+      message: `no editors detected (configure one of: ${getAllAdapters()
+        .map((a) => a.declaration?.detection.projectPaths?.[0])
+        .filter((p): p is string => Boolean(p))
+        .join(", ")})`,
     });
   } else {
     for (const adapter of adapters) {
@@ -897,6 +901,42 @@ export async function doctor(options: DoctorOptions = {}) {
             : "standards in sync",
         });
       }
+    }
+
+    // Full-standards rules files (GEMINI.md, QWEN.md, copilot-instructions,
+    // Roo/Trae rule files): report drift only when our block is present.
+    for (const fullAdapter of getAllAdapters()) {
+      const fullFile = fullRulesFile(fullAdapter, projectRoot);
+      if (!fullFile || !existsSync(fullFile)) continue;
+      if (lstatSync(fullFile).isSymbolicLink()) continue;
+      const read = readTextFileCapped(fullFile);
+      if (read.kind === "too-large") {
+        checks.push({
+          category: "Sync",
+          name: `standards-${fullAdapter.id}`,
+          ok: false,
+          message: `${basename(fullFile)} is too large to verify (>1 MB) — reduce it, then run openspec-pw update`,
+        });
+        continue;
+      }
+      if (read.kind !== "ok") continue;
+      const fullContent = read.content;
+      if (!fullContent.includes(OPENSPEC_START)) continue;
+      const fullStandardsPath = bundledStandardsPath(
+        detectInstalledLanguage(extractRuleBlockContent(fullContent)) ?? "zh",
+      );
+      const fullExpected = existsSync(fullStandardsPath)
+        ? readFileSync(fullStandardsPath, "utf-8")
+        : "";
+      const fullStale = compareBlock(fullContent, fullExpected).stale;
+      checks.push({
+        category: "Sync",
+        name: `standards-${fullAdapter.id}`,
+        ok: !fullStale,
+        message: fullStale
+          ? `${basename(fullFile)} differs from bundled version — run openspec-pw update`
+          : "standards in sync",
+      });
     }
 
     // If a project is initialized but has no editor directories, AGENTS.md is

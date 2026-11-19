@@ -16,7 +16,7 @@
 - Clause conflicts resolve 🔴 > 🟡 > ⚪; for same-tier conflicts, if an existing clause already specifies the handling after its violation (e.g. the §1 gate auto-fix loop), follow that clause first — stop and ask the user only when none does
 - Explicit user instructions may override 🟡/⚪ rules and take effect immediately; if one conflicts with a 🔴 → restate the risk first, the user makes the final call
 
-**Experience capture**: when corrected by the user, land the prevention rule in a carrier the tooling does not own; in a user project write outside the `OPENSPEC-PW` marker block in the project's own rules file (the block is overwritten wholesale by `openspec-pw update`). Land it after user confirmation.
+**Experience capture**: when corrected by the user, write the prevention rule into the project's `openspec/config.yaml` `context`; land it after user confirmation.
 
 ---
 

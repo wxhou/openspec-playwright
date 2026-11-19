@@ -41,10 +41,15 @@ export function minimaxMcpPath(projectRoot: string): string {
  * Skills: `<root>/skills/<name>/SKILL.md` with YAML frontmatter
  * (name + description). Workspace roots include `.minimax/skills`,
  * `.claude/skills` and `.agents/skills`. Invoked as `/<name>`.
+ *
+ * `shared`: Codex writes the identical `.agents/skills/opsx-<id>/SKILL.md`,
+ * so the path cannot prove which editor installed it — it confers no
+ * configured status and no write authorization.
  */
 const MINIMAX_ARTIFACT: ArtifactSpec = {
   path: getMinimaxSkillPath,
   naming: "hyphen-prefix",
+  shared: true,
   frontmatter: { name: true, description: true },
 };
 
@@ -65,7 +70,12 @@ const minimaxDeclaration: AdapterDeclaration = {
     ],
   },
   // Shared with Claude Code and CodeBuddy CLI.
-  mcp: { kind: "mcp-servers-file", path: minimaxMcpPath },
+  mcp: {
+    kind: "mcp-servers-file",
+    path: minimaxMcpPath,
+    // Shared file also read by GitHub Copilot, which requires the type field.
+    serverType: "stdio",
+  },
   // MiniMax Code reads AGENTS.md natively — that's the default.
 };
 

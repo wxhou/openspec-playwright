@@ -56,6 +56,13 @@ const REGISTRATION_ORDER = [
   "codebuddy",
   "minimax",
   "dsh",
+  "gemini",
+  "qwen",
+  "github-copilot",
+  "roocode",
+  "trae",
+  "codex",
+  "kimi",
 ];
 
 const byId = () => new Map(getAllAdapters().map((a) => [a.id, a]));
@@ -137,6 +144,15 @@ describe("artifact formatting is byte-stable", () => {
       See /opsx:propose for planning.
 
       ",
+        "codex": "---
+      name: opsx-e2e
+      description: Run Playwright E2E verification for an OpenSpec change
+      ---
+
+      Run /opsx-e2e for the change.
+      See /opsx-propose for planning.
+
+      ",
         "cursor": "<!-- Change name: $1 (e.g. /opsx-e2e my-change) -->
 
       Run /opsx-e2e for the change.
@@ -144,6 +160,31 @@ describe("artifact formatting is byte-stable", () => {
 
       ",
         "dsh": "---
+      name: opsx-e2e
+      description: Run Playwright E2E verification for an OpenSpec change
+      ---
+
+      Run /opsx-e2e for the change.
+      See /opsx-propose for planning.
+
+      ",
+        "gemini": "description = "Run Playwright E2E verification for an OpenSpec change"
+
+      prompt = """
+      Run /opsx:e2e for the change.
+      See /opsx:propose for planning.
+
+      """
+      ",
+        "github-copilot": "---
+      description: Run Playwright E2E verification for an OpenSpec change
+      ---
+
+      Run /opsx-e2e for the change.
+      See /opsx-propose for planning.
+
+      ",
+        "kimi": "---
       name: opsx-e2e
       description: Run Playwright E2E verification for an OpenSpec change
       ---
@@ -181,6 +222,31 @@ describe("artifact formatting is byte-stable", () => {
         "pi": "---
       description: Run Playwright E2E verification for an OpenSpec change
       argument-hint: "<change-name>"
+      ---
+
+      Run /opsx-e2e for the change.
+      See /opsx-propose for planning.
+
+      ",
+        "qwen": "---
+      description: Run Playwright E2E verification for an OpenSpec change
+      ---
+
+      Run /opsx-e2e for the change.
+      See /opsx-propose for planning.
+
+      ",
+        "roocode": "# OPSX: E2E
+
+      Run Playwright E2E verification for an OpenSpec change
+
+      Run /opsx-e2e for the change.
+      See /opsx-propose for planning.
+
+      ",
+        "trae": "---
+      name: opsx-e2e
+      description: Run Playwright E2E verification for an OpenSpec change
       ---
 
       Run /opsx-e2e for the change.
@@ -282,6 +348,55 @@ describe("artifact formatting is byte-stable", () => {
           "path": ".dsh/skills/opsx-e2e/SKILL.md",
           "slash": "/opsx-e2e",
         },
+        {
+          "commandForm": "colon",
+          "extras": [],
+          "id": "gemini",
+          "path": ".gemini/commands/opsx/e2e.toml",
+          "slash": "/opsx:e2e",
+        },
+        {
+          "commandForm": "hyphen",
+          "extras": [],
+          "id": "qwen",
+          "path": ".qwen/commands/opsx-e2e.md",
+          "slash": "/opsx-e2e",
+        },
+        {
+          "commandForm": "hyphen",
+          "extras": [],
+          "id": "github-copilot",
+          "path": ".github/prompts/opsx-e2e.prompt.md",
+          "slash": "/opsx-e2e",
+        },
+        {
+          "commandForm": "hyphen",
+          "extras": [],
+          "id": "roocode",
+          "path": ".roo/commands/opsx-e2e.md",
+          "slash": "/opsx-e2e",
+        },
+        {
+          "commandForm": "hyphen",
+          "extras": [],
+          "id": "trae",
+          "path": ".trae/commands/opsx-e2e.md",
+          "slash": "/opsx-e2e",
+        },
+        {
+          "commandForm": "hyphen",
+          "extras": [],
+          "id": "codex",
+          "path": ".agents/skills/opsx-e2e/SKILL.md",
+          "slash": "$opsx-e2e",
+        },
+        {
+          "commandForm": "hyphen",
+          "extras": [],
+          "id": "kimi",
+          "path": ".kimi-code/skills/opsx-e2e/SKILL.md",
+          "slash": "/skill:opsx-e2e",
+        },
       ]
     `);
   });
@@ -294,6 +409,8 @@ interface DetectionRow {
   project: string[];
   global?: string;
   intent?: string;
+  /** Shared artifacts confer no project signal (Codex + MiniMax skill root). */
+  artifactSignal?: boolean;
 }
 
 const DETECTION: DetectionRow[] = [
@@ -306,6 +423,17 @@ const DETECTION: DetectionRow[] = [
   { id: "codebuddy", project: [".codebuddy"], intent: "CODEBUDDY.md" },
   { id: "minimax", project: [".minimax"], global: ".minimax-code" },
   { id: "dsh", project: [".dsh"], global: ".dsh" },
+  { id: "gemini", project: [".gemini"], global: ".gemini" },
+  { id: "qwen", project: [".qwen"], global: ".qwen" },
+  {
+    id: "github-copilot",
+    project: [".github/copilot-instructions.md"],
+    global: ".copilot",
+  },
+  { id: "roocode", project: [".roo"], global: ".roo" },
+  { id: "trae", project: [".trae"] },
+  { id: "codex", project: [".codex"], global: ".codex", artifactSignal: false },
+  { id: "kimi", project: [".kimi-code", ".kimi"], global: ".kimi-code" },
 ];
 
 describe("detection tiers", () => {
@@ -328,11 +456,12 @@ describe("detection tiers", () => {
       expect(adapter.projectSignal(marker)).toBe(true);
       expect(detectAdapters(marker, home).map((a) => a.id)).toContain(row.id);
 
-      // Tool-owned artifact present (with no marker for minimax).
+      // Tool-owned artifact present (with no marker for minimax). Shared
+      // artifacts (Codex's `.agents/skills`) deliberately confer no signal.
       const artifact = projectDir("detect", row.id, "artifact");
       installCommand(adapter, META, artifact);
-      expect(adapter.detect(artifact, home)).toBe(true);
-      expect(adapter.projectSignal(artifact)).toBe(true);
+      expect(adapter.detect(artifact, home)).toBe(row.artifactSignal ?? true);
+      expect(adapter.projectSignal(artifact)).toBe(row.artifactSignal ?? true);
 
       // Intent file alone: pre-select only — never detect / project signal.
       if (row.intent) {
@@ -350,12 +479,16 @@ describe("detection tiers", () => {
 
   it("hasCommandArtifacts recognizes every adapter's installed artifact", () => {
     // doctor/update gate "the project ran init" on this helper; a hardcoded
-    // per-editor path list silently drifted twice before.
+    // per-editor path list silently drifted twice before. Shared artifacts
+    // (Codex + MiniMax `.agents/skills`) deliberately confer no authorization.
     for (const adapter of getAllAdapters()) {
       const proj = projectDir("authored", adapter.id);
+      const authorizes = (adapter.declaration?.artifacts ?? []).some(
+        (artifact) => !artifact.shared,
+      );
       expect(hasCommandArtifacts(proj, adapter)).toBe(false);
       installCommand(adapter, META, proj);
-      expect(hasCommandArtifacts(proj, adapter)).toBe(true);
+      expect(hasCommandArtifacts(proj, adapter)).toBe(authorizes);
     }
   });
 
@@ -518,6 +651,34 @@ describe("removal inventory", () => {
         [
           "dsh",
           "/opsx-e2e",
+        ],
+        [
+          "gemini",
+          "/opsx:e2e",
+        ],
+        [
+          "qwen",
+          "/opsx-e2e",
+        ],
+        [
+          "github-copilot",
+          "/opsx-e2e",
+        ],
+        [
+          "roocode",
+          "/opsx-e2e",
+        ],
+        [
+          "trae",
+          "/opsx-e2e",
+        ],
+        [
+          "codex",
+          "$opsx-e2e",
+        ],
+        [
+          "kimi",
+          "/skill:opsx-e2e",
         ],
       ]
     `);

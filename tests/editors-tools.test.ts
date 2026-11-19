@@ -25,6 +25,13 @@ describe("resolveToolsArg", () => {
     "codebuddy",
     "minimax",
     "dsh",
+    "gemini",
+    "qwen",
+    "github-copilot",
+    "roocode",
+    "trae",
+    "codex",
+    "kimi",
   ];
 
   it("returns null when no --tools flag was provided", () => {
@@ -86,7 +93,7 @@ describe("resolveToolsArg", () => {
     expect(() => resolveToolsArg("claude,unknown-editor")).toThrow(
       /Available values: all, none, claude, opencode/,
     );
-    expect(() => resolveToolsArg("claude,unknown-editor")).toThrow(/dsh$/);
+    expect(() => resolveToolsArg("claude,unknown-editor")).toThrow(/kimi$/);
   });
 
   it("throws when reserved values are mixed with specific ids", () => {
@@ -163,6 +170,15 @@ describe("hasCommandArtifacts (write authorization)", () => {
     mkdirSync(join(tmp, ".omp", "commands"), { recursive: true });
     writeFileSync(join(tmp, ".omp", "commands", "opsx-e2e.md"), "x");
     expect(hasCommandArtifacts(tmp, omp)).toBe(true);
+  });
+
+  it("does not treat the shared .agents skill as write authorization", () => {
+    // Same physical file Codex and MiniMax install — the path cannot prove
+    // which editor owns it.
+    mkdirSync(join(tmp, ".agents", "skills", "opsx-e2e"), { recursive: true });
+    writeFileSync(join(tmp, ".agents", "skills", "opsx-e2e", "SKILL.md"), "x");
+    expect(hasCommandArtifacts(tmp, getAdapter("codex")!)).toBe(false);
+    expect(hasCommandArtifacts(tmp, getAdapter("minimax")!)).toBe(false);
   });
 
   it("filters the full adapter list down to authorized editors only", () => {

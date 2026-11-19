@@ -185,3 +185,38 @@ describe("formatArtifact", () => {
     expect(out).toContain('argument-hint: "say \\"hi\\""');
   });
 });
+
+describe("TOML artifacts (Gemini CLI)", () => {
+  const tomlSpec: ArtifactSpec = {
+    path: () => "cmd.toml",
+    naming: "namespace-dir",
+    format: "toml",
+  };
+
+  it("renders a description and a multi-line prompt", () => {
+    const out = formatArtifact(tomlSpec, META);
+    expect(out.startsWith('description = "')).toBe(true);
+    expect(out).toContain('\n\nprompt = """\n');
+    expect(out.endsWith('\n"""\n')).toBe(true);
+    // namespace-dir keeps the colon form inside the prompt
+    expect(out).toContain("/opsx:e2e");
+  });
+
+  it("doubles backslashes and splits a triple-quote run", () => {
+    const out = formatArtifact(
+      tomlSpec,
+      buildCommandMeta('C:\\path and """quoted"""'),
+    );
+    expect(out).toContain("C:\\\\path");
+    expect(out).toContain('""\\"quoted""\\"');
+  });
+
+  it("normalizes CRLF and escapes control characters", () => {
+    const out = formatArtifact(
+      tomlSpec,
+      buildCommandMeta("line1\r\nline2\u0007"),
+    );
+    expect(out).not.toContain("\r");
+    expect(out).toContain("line1\nline2\\u0007");
+  });
+});

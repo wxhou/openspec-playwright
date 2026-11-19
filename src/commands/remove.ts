@@ -10,7 +10,6 @@ import {
   cleanProjectRules,
   cleanupEmptyDirs,
   claudeAdapter,
-  codebuddyAdapter,
   detectAdapters,
   enumerateVendoredAgents,
   getAllAdapters,
@@ -20,9 +19,11 @@ import {
   removeAdapterCommandArtifacts,
   removeOwnedVendoredAgents,
   hasCleanableMarkers,
-  hasRuleFileMarkers,
+  rulesFileHasCleanableMarkers,
+  agentsFileHasCleanableMarkers,
   normalizeEol,
   wrapperRulesFile,
+  fullRulesFile,
 } from "./editors.js";
 import {
   removeMcp,
@@ -46,18 +47,31 @@ import { readTextFileCapped } from "../shared/file-read.js";
 import { hasRemovableManagedBlock } from "../shared/gitignore-managed.js";
 import { GITHUB_WORKFLOW_REL } from "../shared/constants.js";
 import { isPathInsideProjectRoot } from "../shared/path-guard.js";
+import { isMcpEntryPresent } from "../shared/mcp.js";
 import type { EditorAdapter } from "./editors/types.js";
 import { AUTO_PIPELINE_REL, AUTO_PIPELINE_TEMPLATE } from "./pipeline.js";
 
 const WORKFLOW_TEMPLATE = "github-workflow.yml";
 
-/** Managed paths holding secrets — warn when the block is gone but they stay. */
-const SENSITIVE_MANAGED_PATHS = [
-  ".mcp.json",
+/** Non-MCP managed paths holding secrets — warn when the block is gone but they stay. */
+const SENSITIVE_LOCAL_PATHS = [
   "playwright/.auth",
   "tests/playwright/credentials.yaml",
   "tests/playwright/credentials.yaml.bak",
 ];
+
+/**
+ * Every managed path that may hold secrets. MCP configs are derived from the
+ * adapters, so a new editor's config file cannot be forgotten here.
+ */
+function sensitiveManagedPaths(projectRoot: string): string[] {
+  const paths = new Set<string>(SENSITIVE_LOCAL_PATHS);
+  for (const adapter of getAllAdapters()) {
+    const configPath = adapter.mcpConfigPath?.(projectRoot);
+    if (configPath) paths.add(relative(projectRoot, configPath));
+  }
+  return [...paths];
+}
 
 /**
  * A removal that failed. `modified` tells the batch orchestrator how far the
@@ -153,7 +167,7 @@ export async function removeInProject(
       }
       const installed = servers.filter((serverName) => {
         try {
-          return adapter.isMcpInstalled(projectRoot, serverName);
+          return isMcpEntryPresent(adapter, projectRoot, serverName);
         } catch {
           // Unreadable MCP config for this editor — treat as absent.
           return false;
@@ -196,11 +210,12 @@ export async function removeInProject(
       }
     }
 
-    // 2. Remove E2E command (+ extraArtifacts) for each detected editor —
-    // delegates to the removal.ts primitive (same rm + empty-dir cascade +
-    // per-path success line as the original inline loop).
+    // 2. Remove E2E command (+ extraArtifacts) for every adapter — an
+    // explicit `--tools` install can leave artifacts without a marker
+    // directory (Codex writes only the shared `.agents/skills` root).
+    // Skip lines stay limited to detected editors, so the log stays readable.
     console.log(chalk.blue("\n─── Removing E2E Commands ───"));
-    for (const adapter of detected) {
+    for (const adapter of getAllAdapters()) {
       const relPaths = listCommandArtifactPaths(adapter, meta);
       let removedAny = false;
       for (const relPath of relPaths) {
@@ -225,7 +240,7 @@ export async function removeInProject(
         )) {
           track(relPath);
         }
-      } else {
+      } else if (detectedIds.has(adapter.id)) {
         console.log(
           chalk.gray(`  - ${adapter.label}: E2E command not found, skipping`),
         );
@@ -511,21 +526,21 @@ export async function removeInProject(
       });
       agentsCleaned = true;
     };
-    for (const adapter of detected) {
+    // Clean every adapter's rules file that actually carries our block —
+    // not only detected editors. A full-rules adapter installed via --tools
+    // has no marker dir (GEMINI.md without .gemini/), and detection misses it.
+    const ruleAdapters = getAllAdapters().filter((adapter) =>
+      rulesFileHasCleanableMarkers(adapter, projectRoot),
+    );
+    if (
+      ruleAdapters.length === 0 &&
+      agentsFileHasCleanableMarkers(projectRoot)
+    ) {
+      // AGENTS.md alone (e.g. minimal mode with no editor-specific file).
+      ruleAdapters.push(claudeAdapter);
+    }
+    for (const adapter of ruleAdapters) {
       cleanRules(adapter);
-    }
-    // Minimal-mode projects carry standards without command artifacts (and
-    // without a marker dir for the wrapper editors) — detection may miss
-    // claude/codebuddy entirely (or the project may mix a detected editor
-    // with a wrapper-only editor). Clean the rules files whenever a wrapper
-    // editor is not among the detected editors but our territory is present;
-    // removeMarkersFromFile stays quiet-ish (gray info lines) when the files
-    // carry no markers.
-    if (!detected.some((a) => a.id === "claude") && hasRuleFileMarkers(projectRoot)) {
-      cleanRules(claudeAdapter);
-    }
-    if (!detected.some((a) => a.id === "codebuddy") && hasRuleFileMarkers(projectRoot)) {
-      cleanRules(codebuddyAdapter);
     }
 
     // 5b. Remove the managed .gitignore block. Idempotent — no block is a
@@ -539,7 +554,7 @@ export async function removeInProject(
       // Everything the block ignored is now committable. Secrets that stay on
       // disk (user MCP servers, auth state, credentials) need a warning, or a
       // later `git add -A` could leak them.
-      for (const rel of SENSITIVE_MANAGED_PATHS) {
+      for (const rel of sensitiveManagedPaths(projectRoot)) {
         if (existsSync(join(projectRoot, rel))) {
           console.log(
             chalk.yellow(
@@ -589,7 +604,7 @@ export async function removeInProject(
     // entry. Only entries still on disk are real failures.
     const remaining = mcpFailures.filter(({ adapter, serverName }) => {
       try {
-        return adapter.isMcpInstalled(projectRoot, serverName);
+        return isMcpEntryPresent(adapter, projectRoot, serverName);
       } catch {
         return true;
       }
@@ -809,20 +824,24 @@ export async function runRemoveAll(options: RemoveAllOptions = {}): Promise<numb
 /** Read-only summary of the tool-owned artifacts present in one project. */
 export function describePlan(projectRoot: string): string[] {
   const groups: string[] = [];
-  const detected = detectAdapters(projectRoot);
   const meta = buildCommandMeta("");
   // Plan and execution must render the same mini-program workflow, or the
   // plan hides a file that --yes then deletes.
   const workflowTarget = resolveProjectTarget(projectRoot);
   const workflowBuild = resolveBuildCommand(projectRoot);
 
-  let commands = 0;
-  for (const adapter of detected) {
-    commands += listCommandArtifactPaths(adapter, meta).filter((rel) => {
+  // Dedupe by physical path: Codex and MiniMax declare the same
+  // `.agents/skills/opsx-e2e/SKILL.md`, which the execution removes once.
+  const commandPaths = new Set<string>();
+  for (const adapter of getAllAdapters()) {
+    for (const rel of listCommandArtifactPaths(adapter, meta)) {
       const abs = join(projectRoot, rel);
-      return existsSync(abs) && isPathInsideProjectRoot(projectRoot, abs);
-    }).length;
+      if (existsSync(abs) && isPathInsideProjectRoot(projectRoot, abs)) {
+        commandPaths.add(abs);
+      }
+    }
   }
+  const commands = commandPaths.size;
   // MCP entries are removed for every adapter (an editor can carry a project
   // entry without its marker directory), so the plan must count them the same
   // way. Batch mode leaves the ambiguous legacy `playwright` name alone.
@@ -834,7 +853,7 @@ export function describePlan(projectRoot: string): string[] {
     if (sharedPath && !isPathInsideProjectRoot(projectRoot, sharedPath)) continue;
     for (const serverName of ["playwright-test"]) {
       try {
-        if (adapter.isMcpInstalled(projectRoot, serverName)) {
+        if (isMcpEntryPresent(adapter, projectRoot, serverName)) {
           mcpKeys.add(mcpEntryKey(adapter, projectRoot, serverName));
         }
       } catch {
@@ -1043,6 +1062,8 @@ function hasCleanableRuleMarkers(projectRoot: string): boolean {
   for (const adapter of getAllAdapters()) {
     const wrapper = wrapperRulesFile(adapter, projectRoot);
     if (wrapper) files.add(wrapper);
+    const full = fullRulesFile(adapter, projectRoot);
+    if (full) files.add(full);
   }
   for (const file of files) {
     try {

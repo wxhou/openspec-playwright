@@ -49,8 +49,9 @@ import {
 import { execFileAsync, execFileSync } from "../shared/exec.js";
 import { openSpecCliStatus } from "../shared/openspec-version.js";
 import { compareBlock, OPENSPEC_START, hasLegacyTerritoryStart, extractRuleBlockContent } from "../shared/drift.js";
+import { readTextFileCapped } from "../shared/file-read.js";
 import { pipelineGitignoreOmit } from "./pipeline.js";
-import { wrapperHasMarkers, hasRuleFileMarkers } from "./editors/project-rules.js";
+import { fullRulesFile, wrapperHasMarkers, hasRuleFileMarkers } from "./editors/project-rules.js";
 import type { EditorAdapter } from "./editors.js";
 
 /** Editors whose project rules file is a thin wrapper (not AGENTS.md), with their installers. */
@@ -65,6 +66,29 @@ export interface UpdateOptions {
   mcp?: boolean;
   /** Employee standards language (`--lang zh|en`); invalid values are rejected by the CLI. */
   lang?: string;
+}
+
+/**
+ * Adapters whose full-standards rules file carries our marker block but
+ * differs from `standards`. Files without markers belong to the user and are
+ * never reported.
+ */
+export function staleFullRulesAdapters(
+  projectRoot: string,
+  standards: string,
+): EditorAdapter[] {
+  const stale: EditorAdapter[] = [];
+  for (const adapter of getAllAdapters()) {
+    const full = fullRulesFile(adapter, projectRoot);
+    if (!full || !existsSync(full)) continue;
+    if (lstatSync(full).isSymbolicLink()) continue;
+    const read = readTextFileCapped(full);
+    if (read.kind !== "ok") continue;
+    const content = read.content;
+    if (!content.includes(OPENSPEC_START)) continue;
+    if (compareBlock(content, standards).stale) stale.push(adapter);
+  }
+  return stale;
 }
 
 export async function update(options: UpdateOptions) {
@@ -569,7 +593,11 @@ async function fetchLatestBundle(): Promise<string> {
 export function syncCommandArtifacts(projectRoot: string, body: string): void {
   const meta = buildCommandMeta(body);
   for (const adapter of getAllAdapters()) {
-    if (!hasCommandArtifacts(projectRoot, adapter)) {
+    const relPath = adapter.commandFilePath(meta.id);
+    const absPath = join(projectRoot, relPath);
+    // Shared artifacts (Codex + MiniMax) never authorize writes, but an
+    // existing file is still this tool's artifact — update maintains it.
+    if (!hasCommandArtifacts(projectRoot, adapter) && !existsSync(absPath)) {
       console.log(
         chalk.gray(
           `  - ${adapter.label}: not configured in this project (run "openspec-pw init --tools ${adapter.id}" to add)`,
@@ -579,8 +607,6 @@ export function syncCommandArtifacts(projectRoot: string, body: string): void {
     }
     // Drift-aware: only rewrite a command file when its content differs
     // from the formatted template. Untouched files keep their mtime.
-    const relPath = adapter.commandFilePath(meta.id);
-    const absPath = join(projectRoot, relPath);
     const expected = adapter.formatCommand(meta);
     let needsWrite = !existsSync(absPath);
     if (!needsWrite) {
@@ -792,7 +818,17 @@ export function syncEmployeeStandards(
     if (wrapperStale) staleWrapperInstallers.push(installer);
   }
 
-  if (agentsStale || staleWrapperInstallers.length > 0) {
+  // Full-standards rules files (GEMINI.md, QWEN.md, copilot-instructions,
+  // Roo/Trae rule files) carry our block directly. Refresh them when the
+  // block is present and differs from the bundled standards; a file without
+  // our markers belongs to the user and is left alone.
+  const staleFullRules = staleFullRulesAdapters(projectRoot, standards);
+
+  if (
+    agentsStale ||
+    staleWrapperInstallers.length > 0 ||
+    staleFullRules.length > 0
+  ) {
     console.log(
       chalk.gray(
         "  检测到非模板内容将被覆盖 — OPENSPEC block differs from bundled version",
@@ -803,6 +839,9 @@ export function syncEmployeeStandards(
     }
     for (const installer of staleWrapperInstallers) {
       installer(projectRoot);
+    }
+    for (const adapter of staleFullRules) {
+      installOpenSpecBlock(projectRoot, standards, adapter);
     }
   } else if (agentsInTerritory) {
     console.log(chalk.green("  ✓ employee-grade standards already in sync"));

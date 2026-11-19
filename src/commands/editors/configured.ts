@@ -13,7 +13,7 @@ import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import type { EditorAdapter } from "./types.js";
 import { hasCommandArtifacts } from "./registry.js";
-import { enumerateAdapterArtifacts, isInventoryEmpty } from "./removal.js";
+import { enumerateAdapterArtifacts } from "./removal.js";
 import {
   hasLegacyTerritoryStart,
   LEGACY_OPENSPEC_END,
@@ -37,7 +37,16 @@ export function isEditorConfigured(
   projectRoot: string,
 ): boolean {
   if (hasCommandArtifacts(projectRoot, adapter)) return true;
-  return !isInventoryEmpty(enumerateAdapterArtifacts(adapter, projectRoot));
+  // Shared artifacts (Codex + MiniMax `.agents/skills`) are excluded by
+  // hasCommandArtifacts; the inventory's commandPaths must not re-introduce
+  // them here either. Only non-command signals count.
+  const inv = enumerateAdapterArtifacts(adapter, projectRoot);
+  return (
+    inv.legacyArtifacts.length > 0 ||
+    inv.mcpServers.length > 0 ||
+    inv.hasWrapper ||
+    inv.hasFullRules
+  );
 }
 
 /** True when any of the adapters has been configured in this project. */

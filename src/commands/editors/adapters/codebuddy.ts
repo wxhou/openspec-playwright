@@ -41,7 +41,12 @@ const codebuddyDeclaration: AdapterDeclaration = {
     intentPaths: ["CODEBUDDY.md"],
   },
   // Shared with Claude Code and MiniMax Code.
-  mcp: { kind: "mcp-servers-file", path: (root) => join(root, ".mcp.json") },
+  mcp: {
+    kind: "mcp-servers-file",
+    path: (root) => join(root, ".mcp.json"),
+    // Shared file also read by GitHub Copilot, which requires the type field.
+    serverType: "stdio",
+  },
   // CodeBuddy prefers CODEBUDDY.md over AGENTS.md when both exist — the
   // wrapper (installProjectRules phase) keeps the standards reachable.
   rules: { path: (root) => join(root, "CODEBUDDY.md") },

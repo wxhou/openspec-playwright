@@ -16,7 +16,8 @@
  * Re-export order matters for adapter self-registration: importing the
  * adapter modules loads them, and each calls `registerAdapter()` — the
  * order below fixes ADAPTERS registration order (claude → opencode →
- * cline → cursor → pi → omp → codebuddy → minimax → dsh), which
+ * cline → cursor → pi → omp → codebuddy → minimax → dsh → gemini → qwen →
+ * github-copilot → roocode → trae → codex → kimi), which
  * `resolveToolsArg("all")`, the interactive prompt order, and
  * tests/editors-tools.test.ts depend on.
  */
@@ -138,6 +139,50 @@ export {
   hasDshProjectSignal,
   dshAdapter,
 } from "./editors/adapters/dsh.js";
+export {
+  formatGeminiCommand,
+  getGeminiCommandPath,
+  hasGemini,
+  geminiAdapter,
+} from "./editors/adapters/gemini.js";
+export {
+  formatQwenCommand,
+  getQwenCommandPath,
+  hasQwen,
+  qwenAdapter,
+} from "./editors/adapters/qwen.js";
+export {
+  formatCopilotPrompt,
+  getCopilotPromptPath,
+  hasGithubCopilot,
+  githubCopilotAdapter,
+} from "./editors/adapters/github-copilot.js";
+export {
+  formatRooCodeCommand,
+  getRooCodeCommandPath,
+  getRooCodeRulesPath,
+  hasRooCode,
+  roocodeAdapter,
+} from "./editors/adapters/roocode.js";
+export {
+  formatTraeCommand,
+  getTraeCommandPath,
+  getTraeRulesPath,
+  hasTrae,
+  traeAdapter,
+} from "./editors/adapters/trae.js";
+export {
+  formatCodexSkill,
+  getCodexSkillPath,
+  hasCodex,
+  codexAdapter,
+} from "./editors/adapters/codex.js";
+export {
+  formatKimiSkill,
+  getKimiSkillPath,
+  hasKimi,
+  kimiAdapter,
+} from "./editors/adapters/kimi.js";
 
 // Tool selection (--tools flag parsing)
 export { resolveToolsArg } from "./editors/tool-selection.js";
@@ -150,6 +195,7 @@ export {
   enumerateAdapterArtifacts,
   isInventoryEmpty,
   retainedMcpConfigFiles,
+  retainedCommandArtifactPaths,
   removeAdapterMcp,
   removeAdapterCommandArtifacts,
   removeOwnedVendoredAgents,
@@ -202,7 +248,10 @@ export {
   agentsFileHasCleanableMarkers,
   readEmployeeStandards,
   hasRuleFileMarkers,
+  rulesFileHasCleanableMarkers,
   wrapperRulesFile,
+  fullRulesFile,
+  removeFullRulesBlock,
   wrapperHasMarkers,
   wrapperLinksToAgents,
 } from "./editors/project-rules.js";

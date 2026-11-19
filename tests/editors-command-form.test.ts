@@ -10,13 +10,14 @@ import {
 // and still be hinted with the wrong command form. The form now travels
 // with the adapter.
 
-const COLON_FORM = ["claude", "codebuddy"];
+const COLON_FORM = ["claude", "codebuddy", "gemini"];
 
 describe("slash-command form comes from the adapter", () => {
   it("derives the hint from commandForm, not from the adapter id", () => {
     for (const adapter of getAllAdapters()) {
       const expected =
-        adapter.commandForm === "colon" ? "/opsx:e2e" : "/opsx-e2e";
+        adapter.declaration?.invocationHint ??
+        (adapter.commandForm === "colon" ? "/opsx:e2e" : "/opsx-e2e");
       expect(slashCommandForAdapter(adapter)).toBe(expected);
     }
   });

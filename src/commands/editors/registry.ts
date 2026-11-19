@@ -5,13 +5,15 @@
  * the dependency graph stays acyclic (adapters -> registry).
  *
  * Registration order is load order and MUST stay:
- *   claude, opencode, cline, cursor, pi, omp, codebuddy, minimax, dsh
+ *   claude, opencode, cline, cursor, pi, omp, codebuddy, minimax, dsh,
+ *   gemini, qwen, github-copilot, roocode, trae, codex, kimi
  * (editors.ts re-exports the adapter modules in exactly that order;
  * tests/editors-tools.test.ts asserts it.)
  */
 import { mkdirSync, writeFileSync, existsSync, readFileSync } from "fs";
 import { dirname, resolve as pathResolve } from "path";
 import chalk from "chalk";
+import { isPathInsideProjectRoot } from "../../shared/path-guard.js";
 import type { CommandMeta, EditorAdapter, EditorId } from "./types.js";
 import { buildCommandMeta } from "./types.js";
 import { preselectSignalFor } from "./declaration.js";
@@ -77,7 +79,18 @@ export function hasCommandArtifacts(
   projectRoot: string,
   adapter: EditorAdapter,
 ): boolean {
-  const paths = listCommandArtifactPaths(adapter, buildCommandMeta(""));
+  const meta = buildCommandMeta("");
+  // Shared artifacts (Codex + MiniMax both write `.agents/skills/opsx-*`)
+  // cannot prove which editor installed them, so they confer no configured
+  // status and no write authorization.
+  const shared = new Set(
+    (adapter.declaration?.artifacts ?? [])
+      .filter((artifact) => artifact.shared)
+      .map((artifact) => artifact.path(meta.id)),
+  );
+  const paths = listCommandArtifactPaths(adapter, meta).filter(
+    (rel) => !shared.has(rel),
+  );
   return paths.some((rel) => existsSync(pathResolve(projectRoot, rel)));
 }
 
@@ -91,6 +104,9 @@ export function registerAdapter(adapter: EditorAdapter): void {
  * skill-based ones — so a new adapter cannot drift out of the hint.
  */
 export function slashCommandForAdapter(adapter: EditorAdapter): string {
+  if (adapter.declaration?.invocationHint) {
+    return adapter.declaration.invocationHint;
+  }
   return adapter.commandForm === "colon" ? "/opsx:e2e" : "/opsx-e2e";
 }
 
@@ -137,6 +153,14 @@ export function installOptionalArtifacts(
   const manifest = readAgentsManifest(installedAgentsSnapshotDir());
   for (const extra of extras) {
     const absPath = pathResolve(projectRoot, extra.relativePath);
+    if (!isPathInsideProjectRoot(projectRoot, absPath)) {
+      console.log(
+        chalk.gray(
+          `  - ${adapter.label}: ${extra.relativePath} resolves outside the project (symlink) — skipping`,
+        ),
+      );
+      continue;
+    }
     if (existsSync(absPath) && manifest) {
       const state = classifyAgentFile(projectRoot, extra.relativePath, extra.contents, manifest);
       if (state === "modified") {
@@ -173,12 +197,30 @@ export function installCommand(
 ): void {
   const relPath = adapter.commandFilePath(meta.id);
   const absPath = pathResolve(projectRoot, relPath);
+  // A symlinked parent (`./.roo` linked elsewhere) would write outside the
+  // project even though the artifact path itself is lexical.
+  if (!isPathInsideProjectRoot(projectRoot, absPath)) {
+    console.log(
+      chalk.gray(
+        `  - ${adapter.label}: ${relPath} resolves outside the project (symlink) — skipping`,
+      ),
+    );
+    return;
+  }
   mkdirSync(dirname(absPath), { recursive: true });
   writeFileSync(absPath, adapter.formatCommand(meta));
   console.log(chalk.green(`  ✓ ${adapter.label}: ${relPath}`));
 
   for (const extra of adapter.extraArtifacts?.(meta) ?? []) {
     const extraAbs = pathResolve(projectRoot, extra.relativePath);
+    if (!isPathInsideProjectRoot(projectRoot, extraAbs)) {
+      console.log(
+        chalk.gray(
+          `  - ${adapter.label}: ${extra.relativePath} resolves outside the project (symlink) — skipping`,
+        ),
+      );
+      continue;
+    }
     mkdirSync(dirname(extraAbs), { recursive: true });
     writeFileSync(extraAbs, extra.contents);
     console.log(chalk.green(`  ✓ ${adapter.label}: ${extra.relativePath}`));
