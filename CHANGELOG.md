@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.122] - 2026-11-19
 - **docs(standards): 精简三处与 §0 重复的措辞**. §1 关键假设改为引用 §0 核实梯（删两处重述），注释纪律条目去掉与标题逐字重复的前缀，`lint-guidelines.md` 的未安装括注只保留首次出现；条数与语义不变。中英 SSOT、`docs/script.js` 内嵌与 `AGENTS.md` 镜像同步。
   - `standards/employee-standards.md`、`standards/employee-standards.en.md`、`docs/script.js`、`AGENTS.md`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 - **docs(standards): 经验沉淀改指项目 openspec/config.yaml**. §0 条款改为把防再犯规则写进项目的 `openspec/config.yaml` `context`，中英 SSOT、文档嵌入与测试锚点同步。
