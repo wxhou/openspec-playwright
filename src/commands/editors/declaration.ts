@@ -136,6 +136,7 @@ export function defineAdapter(decl: AdapterDeclaration): EditorAdapter {
     formatCommand: (meta) => formatArtifact(primary, meta),
     projectRulesPath: rulesPath,
     isMcpInstalled: mcp.isMcpInstalled,
+    isMcpEntryPresent: mcp.isMcpEntryPresent,
     installMcp: mcp.installMcp,
     removeMcp: mcp.removeMcp,
     mcpConfigPath: mcp.mcpConfigPath,

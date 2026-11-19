@@ -13,6 +13,7 @@
 import { mkdirSync, writeFileSync, existsSync, readFileSync } from "fs";
 import { dirname, resolve as pathResolve } from "path";
 import chalk from "chalk";
+import { isPathInsideProjectRoot } from "../../shared/path-guard.js";
 import type { CommandMeta, EditorAdapter, EditorId } from "./types.js";
 import { buildCommandMeta } from "./types.js";
 import { preselectSignalFor } from "./declaration.js";
@@ -152,6 +153,14 @@ export function installOptionalArtifacts(
   const manifest = readAgentsManifest(installedAgentsSnapshotDir());
   for (const extra of extras) {
     const absPath = pathResolve(projectRoot, extra.relativePath);
+    if (!isPathInsideProjectRoot(projectRoot, absPath)) {
+      console.log(
+        chalk.gray(
+          `  - ${adapter.label}: ${extra.relativePath} resolves outside the project (symlink) — skipping`,
+        ),
+      );
+      continue;
+    }
     if (existsSync(absPath) && manifest) {
       const state = classifyAgentFile(projectRoot, extra.relativePath, extra.contents, manifest);
       if (state === "modified") {
@@ -188,12 +197,30 @@ export function installCommand(
 ): void {
   const relPath = adapter.commandFilePath(meta.id);
   const absPath = pathResolve(projectRoot, relPath);
+  // A symlinked parent (`./.roo` linked elsewhere) would write outside the
+  // project even though the artifact path itself is lexical.
+  if (!isPathInsideProjectRoot(projectRoot, absPath)) {
+    console.log(
+      chalk.gray(
+        `  - ${adapter.label}: ${relPath} resolves outside the project (symlink) — skipping`,
+      ),
+    );
+    return;
+  }
   mkdirSync(dirname(absPath), { recursive: true });
   writeFileSync(absPath, adapter.formatCommand(meta));
   console.log(chalk.green(`  ✓ ${adapter.label}: ${relPath}`));
 
   for (const extra of adapter.extraArtifacts?.(meta) ?? []) {
     const extraAbs = pathResolve(projectRoot, extra.relativePath);
+    if (!isPathInsideProjectRoot(projectRoot, extraAbs)) {
+      console.log(
+        chalk.gray(
+          `  - ${adapter.label}: ${extra.relativePath} resolves outside the project (symlink) — skipping`,
+        ),
+      );
+      continue;
+    }
     mkdirSync(dirname(extraAbs), { recursive: true });
     writeFileSync(extraAbs, extra.contents);
     console.log(chalk.green(`  ✓ ${adapter.label}: ${extra.relativePath}`));

@@ -271,7 +271,9 @@ describe("shared command artifacts (Codex + MiniMax)", () => {
     expect(inv.retainedCommandPaths).toEqual([
       join(".agents", "skills", "opsx-e2e", "SKILL.md"),
     ]);
-    expect(isInventoryEmpty(inv)).toBe(false);
+    // A retained entry never makes the inventory non-empty: the adapter has
+    // nothing of its own left to remove.
+    expect(isInventoryEmpty(inv)).toBe(true);
 
     removeAdapterCommandArtifacts(codexAdapter, projectRoot, undefined, retained);
     expect(existsSync(sharedSkill())).toBe(true);

@@ -1,7 +1,8 @@
 /**
  * GitHub Copilot adapter (VS Code surface): prompt file at
- * `.github/prompts/opsx-<id>.prompt.md`, MCP in `.vscode/mcp.json`
- * (`servers` map with `type: "stdio"` entries), full standards in
+ * `.github/prompts/opsx-<id>.prompt.md`, MCP in the workspace-root
+ * `.mcp.json` (`mcpServers` map; stdio entries carry `type: "stdio"`,
+ * shared with Claude/CodeBuddy/MiniMax), full standards in
  * `.github/copilot-instructions.md`.
  *
  * Detection uses Copilot-specific markers only — a bare `.github/` (present
@@ -47,8 +48,9 @@ const githubCopilotDeclaration: AdapterDeclaration = {
     globalPaths: [".copilot"],
   },
   mcp: {
-    kind: "vscode-servers-file",
-    path: (root) => join(root, ".vscode", "mcp.json"),
+    kind: "mcp-servers-file",
+    path: (root) => join(root, ".mcp.json"),
+    serverType: "stdio",
   },
   rules: {
     path: (root) => join(root, ".github", "copilot-instructions.md"),

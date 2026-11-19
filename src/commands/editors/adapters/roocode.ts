@@ -44,7 +44,7 @@ const roocodeDeclaration: AdapterDeclaration = {
     path: (root) => join(root, ".roo", "mcp.json"),
   },
   rules: {
-    path: (root) => join(root, ".roo", "rules", "openspec-pw.md"),
+    path: (root) => join(root, getRooCodeRulesPath()),
     mode: "full",
   },
 };

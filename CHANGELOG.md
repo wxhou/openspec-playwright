@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 - **docs(standards): 经验沉淀改指项目 openspec/config.yaml**. §0 条款改为把防再犯规则写进项目的 `openspec/config.yaml` `context`，中英 SSOT、文档嵌入与测试锚点同步。
   - `standards/employee-standards.md`、`standards/employee-standards.en.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
-- **feat(cli): 新增七个编辑器适配器**. 支持 Gemini CLI（TOML 命令）、Qwen Code、GitHub Copilot（VS Code prompt + `.vscode/mcp.json`）、Roo Code、Trae、Codex（与 MiniMax 共享技能）与 Kimi Code；命令产物新增 TOML 输出，MCP 新增 `vscode-servers-file` 载体，规则文件新增 `full` 模式（含父目录创建与 update 刷新），移除阶段新增共享命令产物保留；受管 gitignore 路径 24 → 41。
+- **feat(cli): 新增七个编辑器适配器**. 支持 Gemini CLI（TOML 命令）、Qwen Code、GitHub Copilot（VS Code prompt + 共享 `.mcp.json`）、Roo Code、Trae、Codex（与 MiniMax 共享技能）与 Kimi Code；命令产物新增 TOML 输出，MCP 配置新增可选的 `stdio` 类型，规则文件新增 `full` 模式（含父目录创建与 update 刷新），移除阶段新增共享命令产物保留；受管 gitignore 路径 24 → 40。
   - `src/commands/editors/{types,shared,declaration,mcp-carriers,registry,removal}.ts`、`src/commands/editors/adapters/{gemini,qwen,github-copilot,roocode,trae,codex,kimi}.ts`、`src/commands/{init,update,doctor,remove}.ts`、`src/shared/gitignore-managed.ts`、`README.md`、`README.zh-CN.md`、`docs/index.html`、`tests/*`、`CHANGELOG.md`
 
 ## [0.3.121] - 2026-11-18

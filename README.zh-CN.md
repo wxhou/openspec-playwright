@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Node >= 22](https://img.shields.io/badge/node-%3E%3D22-brightgreen.svg)](https://nodejs.org)
 
-**OpenSpec 项目获得与代码同住的 AI 驱动 E2E 验证。** 一条 `/opsx:e2e <change>` 命令（支持九款编辑器）按 spec 规划、生成、执行并自愈 Playwright 测试，附每 change 报告，无需手搭脚手架。
+**OpenSpec 项目获得与代码同住的 AI 驱动 E2E 验证。** 一条 `/opsx:e2e <change>` 命令（支持十六款编辑器）按 spec 规划、生成、执行并自愈 Playwright 测试，附每 change 报告，无需手搭脚手架。
 
 > **为什么有这个工具**：spec 驱动的开发没有测试自动化是半截闭环。本工具把它补完——写 change spec，跑一条命令，拿到可追溯到 spec 锚的测试，外加一份说明什么通过、什么自愈、什么留待人工的报告。
 
@@ -89,7 +89,7 @@ openspec-pw init          # 安装 Playwright E2E 集成（--tools 选编辑器�
 | **DeepSeek Harness**（`dsh`） | `opsx-e2e` 技能 | **无项目级载体**——需在 `$DSH_HOME` 的 profile patch 中配置 Playwright MCP | 原生（`AGENTS.md`） |
 | **Gemini CLI** | `/opsx:e2e` | 是（`.gemini/settings.json`） | `GEMINI.md` |
 | **Qwen Code** | `/opsx-e2e` | 是（`.qwen/settings.json`） | `QWEN.md` |
-| **GitHub Copilot**（VS Code） | `/opsx-e2e` | 是（`.vscode/mcp.json`） | `.github/copilot-instructions.md` |
+| **GitHub Copilot**（VS Code） | `/opsx-e2e` | 是（项目根 `.mcp.json`） | `.github/copilot-instructions.md` |
 | **Roo Code** | `/opsx-e2e` | 是（`.roo/mcp.json`） | `.roo/rules/openspec-pw.md` |
 | **Trae** | `/opsx-e2e` | 是（`.trae/mcp.json`，Project MCP beta） | `.trae/rules/project_rules.md` |
 | **Codex** | `$opsx-e2e` 技能 | **无 JSON 载体**——项目级 MCP 在 `.codex/config.toml`（TOML，暂不支持） | 原生（`AGENTS.md`） |
@@ -131,7 +131,7 @@ openspec-pw init          # 安装 Playwright E2E 集成（--tools 选编辑器�
 - **DeepSeek Harness**：工作流以 **Skill** 形式装在 `.dsh/skills/opsx-e2e/SKILL.md`——dsh 的 rank 100 项目级根，优先级高于 MiniMax 方案留下的 `.agents/skills` 副本。dsh 没有项目级 MCP 载体（MCP 服务器在 `$DSH_HOME` 的 profile patch 层、默认关闭），浏览器探索回退到 `openspec-pw explore`，测试执行走 `npx playwright test`。dsh 仍是 developer preview，适配器只依赖其已文档化的技能发现契约。
 - **Gemini CLI**：命令为 TOML（`description` + `prompt`），命令正文保留 `/opsx:` 冒号形式。MCP 写入 `.gemini/settings.json` 的 `mcpServers`，规范块写入 `GEMINI.md`。
 - **Qwen Code**：带 `description` frontmatter 的 Markdown 命令；MCP 写入 `.qwen/settings.json`，规范写入 `QWEN.md`。
-- **GitHub Copilot**：面向 VS Code——prompt 文件在 `.github/prompts/`，MCP 在 `.vscode/mcp.json`（`servers` 映射，stdio 条目带 `type: "stdio"`），规范在 `.github/copilot-instructions.md`。不触碰 Copilot CLI 的 `.mcp.json`（`type: "local"`）。检测只用 Copilot 专属标记，任意仓库的 `.github/` 目录不算。
+- **GitHub Copilot**：面向 VS Code——prompt 文件在 `.github/prompts/`，MCP 在工作区根 `.mcp.json`（`mcpServers` 映射，stdio 条目带 `type: "stdio"`，与 Claude/CodeBuddy/MiniMax 共享），规范在 `.github/copilot-instructions.md`。检测只用 Copilot 专属标记，任意仓库的 `.github/` 目录不算。
 - **Roo Code**：标题 + 说明的 Markdown 命令；MCP 在 `.roo/mcp.json`；规范写入本工具专属的 `.roo/rules/openspec-pw.md`（Roo 会加载该目录下全部文件）。
 - **Trae**：name/description frontmatter 的 Markdown 命令；项目级 MCP 在 `.trae/mcp.json`（Project MCP，beta——旧版 IDE 可能忽略）；规范写入 `.trae/rules/project_rules.md`。
 - **Codex**：工作流以 **Skill** 形式装在 `.agents/skills/opsx-e2e/SKILL.md`，用 `$opsx-e2e` 调用。该目录与 MiniMax Code 共用：取消勾选 Codex 但保留 MiniMax 时技能文件保留。Codex 的项目级 MCP 在 `.codex/config.toml`（TOML），本工具不做合并——浏览器探索回退 `openspec-pw explore`，测试执行走 `npx playwright test`。
@@ -382,7 +382,7 @@ audit **只报告、绝不删除**——测试退役永远是人工决策。存�
 
 如果你的应用需要登录，配置一次凭证后，所有测试自动以已登录状态运行。
 
-> **凭据自动忽略**：init 和 update 会在 `.gitignore` 尾部维护一个标记块，忽略 `tests/playwright/credentials.yaml`、其 `.bak`、`tests/playwright/test-results/` 和探索截图（`tests/playwright/screenshots/`——随开发过时，本地留档）——以及 auth storageState（`playwright/.auth/`，已登录会话 cookie）、MCP 配置（`.mcp.json`、`.gemini/settings.json`、`.qwen/settings.json`、`.vscode/mcp.json`、`.roo/mcp.json`、`.trae/mcp.json`、`.kimi-code/mcp.json`——用户自加的 server 常在 env/headers 里放 API key）、工具本地数据（`.codegraph/`、`.playwright-mcp/`）、第一层名如 `.claude/`、`.cursor/`、`.codebuddy/`、`.agents/skills/opsx-e2e/`、`.dsh/skills/opsx-e2e/`、`.gemini/commands/opsx/e2e.toml`、`.qwen/commands/opsx-e2e.md`、`.github/prompts/opsx-e2e.prompt.md`、`.roo/commands/opsx-e2e.md`、`.trae/commands/opsx-e2e.md`、`.kimi-code/skills/opsx-e2e/`、`openspec/`、`AGENTS.md`、`CLAUDE.md`、`CODEBUDDY.md`、`GEMINI.md`、`QWEN.md`、`.github/copilot-instructions.md`、`.roo/rules/openspec-pw.md`、`.trae/rules/project_rules.md`（生成的产物按设计留在本地）。标记块幂等、不碰你自己的规则，`remove` 时自动清理。无法写入时会降级为警告并列出未覆盖路径。注意：ignore 规则对已被 git 追踪的文件无效——若凭据曾提交过，请执行 `git rm --cached tests/playwright/credentials.yaml`。也可以改用 `E2E_USERNAME` / `E2E_PASSWORD` 环境变量。
+> **凭据自动忽略**：init 和 update 会在 `.gitignore` 尾部维护一个标记块，忽略 `tests/playwright/credentials.yaml`、其 `.bak`、`tests/playwright/test-results/` 和探索截图（`tests/playwright/screenshots/`——随开发过时，本地留档）——以及 auth storageState（`playwright/.auth/`，已登录会话 cookie）、MCP 配置（`.mcp.json`、`.gemini/settings.json`、`.qwen/settings.json`、`.roo/mcp.json`、`.trae/mcp.json`、`.kimi-code/mcp.json`——用户自加的 server 常在 env/headers 里放 API key）、工具本地数据（`.codegraph/`、`.playwright-mcp/`）、第一层名如 `.claude/`、`.cursor/`、`.codebuddy/`、`.agents/skills/opsx-e2e/`、`.dsh/skills/opsx-e2e/`、`.gemini/commands/opsx/e2e.toml`、`.qwen/commands/opsx-e2e.md`、`.github/prompts/opsx-e2e.prompt.md`、`.roo/commands/opsx-e2e.md`、`.trae/commands/opsx-e2e.md`、`.kimi-code/skills/opsx-e2e/`、`openspec/`、`AGENTS.md`、`CLAUDE.md`、`CODEBUDDY.md`、`GEMINI.md`、`QWEN.md`、`.github/copilot-instructions.md`、`.roo/rules/openspec-pw.md`、`.trae/rules/project_rules.md`（生成的产物按设计留在本地）。标记块幂等、不碰你自己的规则，`remove` 时自动清理。无法写入时会降级为警告并列出未覆盖路径。注意：ignore 规则对已被 git 追踪的文件无效——若凭据曾提交过，请执行 `git rm --cached tests/playwright/credentials.yaml`。也可以改用 `E2E_USERNAME` / `E2E_PASSWORD` 环境变量。
 
 ```bash
 # 1.（可选）编辑测试用户（角色测试）

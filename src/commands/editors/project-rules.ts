@@ -8,13 +8,15 @@ import {
   lstatSync,
   mkdirSync,
   realpathSync,
+  rmdirSync,
   rmSync,
   readFileSync,
   statSync,
   writeFileSync,
 } from "fs";
-import { dirname, join, basename } from "path";
+import { dirname, join, basename, resolve as pathResolve, sep } from "path";
 import chalk from "chalk";
+import { isPathInsideProjectRoot } from "../../shared/path-guard.js";
 // The marker constants hold no regex metacharacters, so they are safe to
 // interpolate into the RegExp below.
 import {
@@ -90,6 +92,14 @@ export function installOpenSpecBlock(
   if (destIsLink) {
     console.log(
       chalk.gray(`  - ${fileLabel} is a symlink — skipping (would write through to its target)`),
+    );
+    return;
+  }
+  // A symlinked parent (e.g. `.roo` linked to a shared checkout) would route
+  // the write outside the project even though the file itself is not a link.
+  if (!isPathInsideProjectRoot(projectRoot, dest)) {
+    console.log(
+      chalk.gray(`  - ${fileLabel} resolves outside the project (symlink) — skipping`),
     );
     return;
   }
@@ -224,6 +234,23 @@ export function fullRulesFile(
   if (adapter.declaration?.rules?.mode !== "full") return null;
   const dest = adapter.projectRulesPath(projectRoot);
   return basename(dest) === "AGENTS.md" ? null : dest;
+}
+
+/**
+ * True when the adapter's declared rules file (wrapper or full mode) carries
+ * an openspec-pw block we can remove. Used by `remove` to clean editors that
+ * are not detected (e.g. `--tools gemini` in a project without `.gemini/`).
+ */
+export function rulesFileHasCleanableMarkers(
+  adapter: EditorAdapter,
+  projectRoot: string,
+): boolean {
+  const dest =
+    fullRulesFile(adapter, projectRoot) ??
+    wrapperRulesFile(adapter, projectRoot);
+  if (!dest || !existsSync(dest) || isSymlink(dest)) return false;
+  if (!isPathInsideProjectRoot(projectRoot, dest)) return false;
+  return hasCleanableMarkers(readFileSync(dest, "utf-8"));
 }
 
 /**
@@ -499,6 +526,20 @@ function rulesFileTitle(projectRoot: string): string {
   return basename(projectRoot) || "Project";
 }
 
+/** Remove empty parent directories up to (not including) the project root. */
+function pruneEmptyDirs(startDir: string, projectRoot: string): void {
+  const stop = pathResolve(projectRoot);
+  let dir = startDir;
+  while (dir !== stop && dir.startsWith(stop + sep)) {
+    try {
+      rmdirSync(dir);
+    } catch {
+      return;
+    }
+    dir = dirname(dir);
+  }
+}
+
 /**
  * True when `content` is exactly what `installOpenSpecBlock` writes for a
  * fresh file: the generated title plus the marker block around `body`. Lets
@@ -564,6 +605,12 @@ export function removeMarkersFromFile(
     );
     return false;
   }
+  if (!isPathInsideProjectRoot(projectRoot, dest)) {
+    console.log(
+      chalk.gray(`  - ${fileLabel} resolves outside the project (symlink) — skipping`),
+    );
+    return false;
+  }
   const existing = readFileSync(dest, "utf-8");
 
   const pristineBodies =
@@ -577,6 +624,7 @@ export function removeMarkersFromFile(
     isPristineRulesFile(projectRoot, existing, pristineBodies)
   ) {
     rmSync(dest);
+    pruneEmptyDirs(dirname(dest), projectRoot);
     console.log(chalk.green(`  ✓ Removed ${fileLabel}`));
     return true;
   }

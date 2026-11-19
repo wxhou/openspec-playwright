@@ -54,7 +54,6 @@ export const MANAGED_GITIGNORE_PATHS = [
   ".mcp.json",
   ".gemini/settings.json",
   ".qwen/settings.json",
-  ".vscode/mcp.json",
   ".roo/mcp.json",
   ".trae/mcp.json",
   ".kimi-code/mcp.json",

@@ -248,6 +248,7 @@ export {
   agentsFileHasCleanableMarkers,
   readEmployeeStandards,
   hasRuleFileMarkers,
+  rulesFileHasCleanableMarkers,
   wrapperRulesFile,
   fullRulesFile,
   removeFullRulesBlock,

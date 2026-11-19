@@ -57,30 +57,26 @@ describe("mcp-servers-file carrier", () => {
   });
 });
 
-describe("vscode-servers-file carrier", () => {
+describe("mcp-servers-file carrier with serverType", () => {
   const runtime = () =>
     buildMcpRuntime({
-      kind: "vscode-servers-file",
-      path: (r) => join(r, ".vscode", "mcp.json"),
+      kind: "mcp-servers-file",
+      path: (r) => join(r, ".mcp.json"),
+      serverType: "stdio",
     });
 
-  it("writes a typed stdio entry under servers and preserves the rest", () => {
-    const configPath = join(root, ".vscode", "mcp.json");
-    mkdirSync(join(root, ".vscode"), { recursive: true });
-    writeFileSync(
-      configPath,
-      JSON.stringify({
-        inputs: [{ id: "token" }],
-        servers: { other: { command: "other" } },
-      }),
-    );
-
+  it("writes the type field and requires it when detecting", () => {
     const mcp = runtime();
+    // A typeless entry (older Claude CLI) is not counted as installed.
+    writeFileSync(
+      join(root, ".mcp.json"),
+      JSON.stringify({ mcpServers: { "playwright-test": { command: "npx" } } }),
+    );
+    expect(mcp.isMcpInstalled(root, "playwright-test")).toBe(false);
+
     mcp.installMcp(root, "playwright-test", COMMAND);
-    const parsed = JSON.parse(readFileSync(configPath, "utf-8"));
-    expect(parsed.inputs).toEqual([{ id: "token" }]);
-    expect(parsed.servers.other).toEqual({ command: "other" });
-    expect(parsed.servers["playwright-test"]).toEqual({
+    const parsed = JSON.parse(readFileSync(join(root, ".mcp.json"), "utf-8"));
+    expect(parsed.mcpServers["playwright-test"]).toEqual({
       type: "stdio",
       command: "npx",
       args: ["playwright", "run-test-mcp-server"],
@@ -88,9 +84,7 @@ describe("vscode-servers-file carrier", () => {
     expect(mcp.isMcpInstalled(root, "playwright-test")).toBe(true);
 
     mcp.removeMcp(root, "playwright-test");
-    const after = JSON.parse(readFileSync(configPath, "utf-8"));
-    expect(after.servers["playwright-test"]).toBeUndefined();
-    expect(after.servers.other).toEqual({ command: "other" });
+    expect(mcp.isMcpInstalled(root, "playwright-test")).toBe(false);
   });
 });
 

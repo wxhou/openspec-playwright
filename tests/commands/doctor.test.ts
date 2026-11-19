@@ -1416,7 +1416,7 @@ describe("doctor MiniMax Code reporting", () => {
       spy.mockRestore();
     }
 
-    expect(logs.join("\n")).toContain("/opsx-e2e (in MiniMax Code)");
+    expect(logs.join("\n")).toMatch(/\/opsx-e2e \(in [^)]*MiniMax Code/);
   });
 
   it("reports the MiniMax Code MCP check through the generic adapter path", async () => {

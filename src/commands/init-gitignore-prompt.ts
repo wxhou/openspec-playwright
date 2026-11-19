@@ -48,7 +48,6 @@ const GITIGNORE_GROUPS: readonly {
       ".mcp.json",
       ".gemini/settings.json",
       ".qwen/settings.json",
-      ".vscode/mcp.json",
       ".roo/mcp.json",
       ".trae/mcp.json",
       ".kimi-code/mcp.json",

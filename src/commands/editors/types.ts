@@ -143,16 +143,18 @@ export interface DetectionSpec {
  *   - none               → no MCP client (Pi).
  *   - mcp-servers-file   → `{ "mcpServers": { ... } }` JSON file; `path` may
  *                          be shared with other adapters (project `.mcp.json`).
- *   - vscode-servers-file→ `{ "servers": { ... } }` JSON file (VS Code);
- *                          stdio entries carry `"type": "stdio"`.
  *   - claude-cli         → the file is read directly but written through
  *                          `claude mcp add/remove --scope project`.
  *   - opencode-json      → exclusive `opencode.json(c)` (`mcp.<server>`).
  */
 export type McpSpec =
   | { kind: "none" }
-  | { kind: "mcp-servers-file"; path(root: string): string }
-  | { kind: "vscode-servers-file"; path(root: string): string }
+  | {
+      kind: "mcp-servers-file";
+      path(root: string): string;
+      /** Value written as the entry's `type` and required when detected. */
+      serverType?: "stdio";
+    }
   | { kind: "claude-cli"; configPath(root: string): string }
   | { kind: "opencode-json" };
 
@@ -243,6 +245,12 @@ export interface EditorAdapter {
   projectRulesPath(projectRoot: string): string;
   /** True if MCP server `serverName` is already configured. */
   isMcpInstalled(projectRoot: string, serverName: string): boolean;
+  /**
+   * Optional: the entry exists under `serverName` even when its shape drifted
+   * (e.g. a legacy entry without `type: "stdio"`). Removal paths use this so
+   * old entries stay reachable; install and detection keep the strict check.
+   */
+  isMcpEntryPresent?(projectRoot: string, serverName: string): boolean;
   /** Install MCP server config in this editor. */
   installMcp(projectRoot: string, serverName: string, command: string[]): void;
   /** Remove MCP server config from this editor. */

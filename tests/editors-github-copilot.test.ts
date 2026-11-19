@@ -51,12 +51,12 @@ describe("GitHub Copilot adapter", () => {
     expect(githubCopilotAdapter.projectSignal(root)).toBe(true);
   });
 
-  it("writes MCP into .vscode/mcp.json under servers with type stdio", () => {
+  it("writes MCP into the workspace .mcp.json with type stdio", () => {
     githubCopilotAdapter.installMcp(root, "playwright-test", ["npx", "pw"]);
     const config = JSON.parse(
-      readFileSync(join(root, ".vscode", "mcp.json"), "utf-8"),
+      readFileSync(join(root, ".mcp.json"), "utf-8"),
     );
-    expect(config.servers["playwright-test"]).toEqual({
+    expect(config.mcpServers["playwright-test"]).toEqual({
       type: "stdio",
       command: "npx",
       args: ["pw"],

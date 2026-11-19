@@ -4,12 +4,10 @@
  * methods (`isMcpInstalled` / `installMcp` / `removeMcp`) plus the shared
  * file path used by the removal guard.
  *
- * Five carriers:
+ * Four carriers:
  *   - none               → no MCP client (Pi)
  *   - mcp-servers-file  → `{ "mcpServers": { ... } }` JSON (Cline, Cursor,
- *                          Oh My Pi, CodeBuddy, MiniMax)
- *   - vscode-servers-file → `{ "servers": { ... } }` JSON with `type: "stdio"`
- *                          entries (VS Code / GitHub Copilot)
+ *                          Oh My Pi, CodeBuddy, MiniMax, GitHub Copilot)
  *   - claude-cli        → read the project `.mcp.json`, write via the CLI
  *   - opencode-json     → exclusive `opencode.json(c)` (`mcp.<server>`)
  */
@@ -30,20 +28,17 @@ import type { McpSpec } from "./types.js";
 import {
   installMcpServerInFile,
   isMcpServerInFile,
+  readMcpServersFile,
   removeMcpServerFromFile,
-  type McpServerFileOptions,
 } from "./shared.js";
-
-const VSCODE_SERVERS: McpServerFileOptions = {
-  serversKey: "servers",
-  entryType: "stdio",
-};
 
 export interface McpRuntime {
   supportsMcp: boolean;
   /** File whose entries may be shared with another selected adapter. */
   mcpConfigPath?: (root: string) => string;
   isMcpInstalled(root: string, serverName: string): boolean;
+  /** Name-presence check for removal paths; ignores entry-shape drift. */
+  isMcpEntryPresent(root: string, serverName: string): boolean;
   installMcp(root: string, serverName: string, command: string[]): void;
   removeMcp(root: string, serverName: string): void;
 }
@@ -56,19 +51,38 @@ export function buildMcpRuntime(spec: McpSpec): McpRuntime {
       return {
         supportsMcp: false,
         isMcpInstalled: () => false,
+        isMcpEntryPresent: () => false,
         installMcp: noop,
         removeMcp: noop,
       };
 
-    case "mcp-servers-file":
+    case "mcp-servers-file": {
+      const entryOptions = spec.serverType
+        ? { entryType: spec.serverType }
+        : undefined;
       return {
         supportsMcp: true,
         mcpConfigPath: spec.path,
         isMcpInstalled(root, serverName) {
+          const path = spec.path(root);
+          if (!isMcpServerInFile(path, serverName)) return false;
+          if (!spec.serverType) return true;
+          const config = readMcpServersFile(path);
+          const entry = config?.mcpServers as
+            | Record<string, { type?: string }>
+            | undefined;
+          return entry?.[serverName]?.type === spec.serverType;
+        },
+        isMcpEntryPresent(root, serverName) {
           return isMcpServerInFile(spec.path(root), serverName);
         },
         installMcp(root, serverName, command) {
-          installMcpServerInFile(spec.path(root), serverName, command);
+          installMcpServerInFile(
+            spec.path(root),
+            serverName,
+            command,
+            entryOptions,
+          );
         },
         removeMcp(root, serverName) {
           const path = spec.path(root);
@@ -78,25 +92,7 @@ export function buildMcpRuntime(spec: McpSpec): McpRuntime {
           removeMcpServerFromFile(path, serverName);
         },
       };
-
-    case "vscode-servers-file":
-      return {
-        supportsMcp: true,
-        mcpConfigPath: spec.path,
-        isMcpInstalled(root, serverName) {
-          return isMcpServerInFile(spec.path(root), serverName, VSCODE_SERVERS);
-        },
-        installMcp(root, serverName, command) {
-          installMcpServerInFile(spec.path(root), serverName, command, VSCODE_SERVERS);
-        },
-        removeMcp(root, serverName) {
-          const path = spec.path(root);
-          if (!isPathInsideProjectRoot(root, path)) {
-            throw new Error(`${path} resolves outside the project (symlink)`);
-          }
-          removeMcpServerFromFile(path, serverName, VSCODE_SERVERS);
-        },
-      };
+    }
 
     case "claude-cli":
       return {
@@ -105,6 +101,9 @@ export function buildMcpRuntime(spec: McpSpec): McpRuntime {
         // through the CLI: an entry in it serves every editor reading it.
         mcpConfigPath: spec.configPath,
         isMcpInstalled(root, serverName) {
+          return isMcpServerInFile(spec.configPath(root), serverName);
+        },
+        isMcpEntryPresent(root, serverName) {
           return isMcpServerInFile(spec.configPath(root), serverName);
         },
         installMcp(root, serverName, command) {
@@ -148,6 +147,11 @@ export function buildMcpRuntime(spec: McpSpec): McpRuntime {
         mcpConfigPath: (root) =>
           findOpenCodeConfig(root)?.path ?? join(root, "opencode.jsonc"),
         isMcpInstalled(root, serverName) {
+          const config = findOpenCodeConfig(root);
+          if (!config) return false;
+          return readOpenCodeValue(config.text, ["mcp", serverName]) !== undefined;
+        },
+        isMcpEntryPresent(root, serverName) {
           const config = findOpenCodeConfig(root);
           if (!config) return false;
           return readOpenCodeValue(config.text, ["mcp", serverName]) !== undefined;

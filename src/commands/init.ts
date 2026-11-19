@@ -372,7 +372,7 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   const detected = detectAdapters(projectRoot, deps.homeDir);
   const projectDetected = detectProjectAdapters(projectRoot);
   const configuredIds = new Set(
-    detected
+    getAllAdapters()
       .filter((a) => isEditorConfigured(a, projectRoot))
       .map((a) => a.id),
   );
@@ -543,7 +543,10 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     // Removal candidates share the configured manifest: never-configured
     // editors own no products, so there is nothing to enumerate (and no
     // confirm noise for a merely-detected editor that was never set up).
-    const deselected = detected
+    // Removal candidates are "configured" editors, not "detected" ones: a
+    // full-rules adapter installed via --tools has no marker dir (e.g.
+    // GEMINI.md without .gemini/) and must still be deselectable.
+    const deselected = getAllAdapters()
       .filter(
         (a) =>
           !selectedIds!.includes(a.id) && configuredIds.has(a.id),
@@ -1164,7 +1167,7 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     console.log(chalk.bold("How it works:"));
     console.log(
       chalk.gray(
-        "  /opsx:e2e (Claude, CodeBuddy), /opsx-e2e (OpenCode/Cline/Cursor/Pi/Oh My Pi), opsx-e2e skill (MiniMax Code, DeepSeek Harness) read your OpenSpec specs",
+        "  Your editor's E2E command reads your OpenSpec specs",
       ),
     );
     console.log(

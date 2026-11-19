@@ -108,7 +108,9 @@ describe("formatMinimaxSkill", () => {
     const dest = join(tmpRoot, ".agents", "skills", "opsx-e2e", "SKILL.md");
     expect(existsSync(dest)).toBe(true);
     expect(readFileSync(dest, "utf-8")).toContain("name: opsx-e2e");
-    expect(hasCommandArtifacts(tmpRoot, minimaxAdapter)).toBe(true);
+    // Shared with Codex: installation succeeds, but confers no
+    // write authorization.
+    expect(hasCommandArtifacts(tmpRoot, minimaxAdapter)).toBe(false);
   });
 });
 
@@ -200,6 +202,7 @@ describe("minimaxAdapter MCP", () => {
     ]);
     const parsed = JSON.parse(readFileSync(mcpJson(), "utf-8"));
     expect(parsed.mcpServers["playwright-test"]).toEqual({
+      type: "stdio",
       command: "npx",
       args: ["playwright", "run-test-mcp-server"],
     });
@@ -214,7 +217,11 @@ describe("minimaxAdapter MCP", () => {
     minimaxAdapter.installMcp(tmpRoot, "playwright-test", ["npx", "pw"]);
     const parsed = JSON.parse(readFileSync(mcpJson(), "utf-8"));
     expect(parsed.mcpServers["user-server"]).toEqual({ command: "uvx", args: ["foo"] });
-    expect(parsed.mcpServers["playwright-test"]).toEqual({ command: "npx", args: ["pw"] });
+    expect(parsed.mcpServers["playwright-test"]).toEqual({
+      type: "stdio",
+      command: "npx",
+      args: ["pw"],
+    });
   });
 
   it("removeMcp deletes only its own entry and keeps others", () => {
@@ -223,7 +230,11 @@ describe("minimaxAdapter MCP", () => {
     minimaxAdapter.removeMcp(tmpRoot, "playwright-test");
     const parsed = JSON.parse(readFileSync(mcpJson(), "utf-8"));
     expect(parsed.mcpServers["playwright-test"]).toBeUndefined();
-    expect(parsed.mcpServers["user-server"]).toEqual({ command: "uvx", args: ["foo"] });
+    expect(parsed.mcpServers["user-server"]).toEqual({
+      type: "stdio",
+      command: "uvx",
+      args: ["foo"],
+    });
   });
 
   it("removeMcp is a no-op when the server or file is missing", () => {

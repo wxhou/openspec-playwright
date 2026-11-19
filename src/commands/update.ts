@@ -590,7 +590,11 @@ async function fetchLatestBundle(): Promise<string> {
 export function syncCommandArtifacts(projectRoot: string, body: string): void {
   const meta = buildCommandMeta(body);
   for (const adapter of getAllAdapters()) {
-    if (!hasCommandArtifacts(projectRoot, adapter)) {
+    const relPath = adapter.commandFilePath(meta.id);
+    const absPath = join(projectRoot, relPath);
+    // Shared artifacts (Codex + MiniMax) never authorize writes, but an
+    // existing file is still this tool's artifact — update maintains it.
+    if (!hasCommandArtifacts(projectRoot, adapter) && !existsSync(absPath)) {
       console.log(
         chalk.gray(
           `  - ${adapter.label}: not configured in this project (run "openspec-pw init --tools ${adapter.id}" to add)`,
@@ -600,8 +604,6 @@ export function syncCommandArtifacts(projectRoot: string, body: string): void {
     }
     // Drift-aware: only rewrite a command file when its content differs
     // from the formatted template. Untouched files keep their mtime.
-    const relPath = adapter.commandFilePath(meta.id);
-    const absPath = join(projectRoot, relPath);
     const expected = adapter.formatCommand(meta);
     let needsWrite = !existsSync(absPath);
     if (!needsWrite) {

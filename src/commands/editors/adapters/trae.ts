@@ -44,7 +44,7 @@ const traeDeclaration: AdapterDeclaration = {
     path: (root) => join(root, ".trae", "mcp.json"),
   },
   rules: {
-    path: (root) => join(root, ".trae", "rules", "project_rules.md"),
+    path: (root) => join(root, getTraeRulesPath()),
     mode: "full",
   },
 };

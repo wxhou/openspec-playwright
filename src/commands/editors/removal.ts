@@ -177,7 +177,13 @@ export function enumerateAdapterArtifacts(
     adapter.supportsMcp === false || !mcpConfigSafe
       ? []
       : OPENSPEC_PW_MCP_SERVERS.filter((server) =>
-          adapter.isMcpInstalled(projectRoot, server),
+          // Presence, not shape: legacy entries written before `type: "stdio"`
+          // still belong to this tool and must stay removable.
+          (adapter.isMcpEntryPresent ?? adapter.isMcpInstalled).call(
+            adapter,
+            projectRoot,
+            server,
+          ),
         );
   // An MCP entry in a shared config file is kept while another selected
   // editor depends on that file — it is reported separately so the confirm
@@ -204,14 +210,17 @@ export function enumerateAdapterArtifacts(
   };
 }
 
-/** True when this editor has nothing for init to remove. */
+/**
+ * True when this editor has nothing init could remove. Retained entries are
+ * deliberately excluded: an adapter whose only artifacts are shared with a
+ * still-selected editor must not trigger a removal confirmation that would
+ * delete nothing.
+ */
 export function isInventoryEmpty(inv: AdapterArtifactInventory): boolean {
   return (
     inv.commandPaths.length === 0 &&
-    inv.retainedCommandPaths.length === 0 &&
     inv.legacyArtifacts.length === 0 &&
     inv.mcpServers.length === 0 &&
-    inv.retainedMcpServers.length === 0 &&
     !inv.hasWrapper &&
     !inv.hasFullRules
   );

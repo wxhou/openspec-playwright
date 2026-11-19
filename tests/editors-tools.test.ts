@@ -172,12 +172,13 @@ describe("hasCommandArtifacts (write authorization)", () => {
     expect(hasCommandArtifacts(tmp, omp)).toBe(true);
   });
 
-  it("does not treat the shared .agents skill as Codex write authorization", () => {
-    // Same physical file MiniMax installs — the path cannot prove Codex owns it.
+  it("does not treat the shared .agents skill as write authorization", () => {
+    // Same physical file Codex and MiniMax install — the path cannot prove
+    // which editor owns it.
     mkdirSync(join(tmp, ".agents", "skills", "opsx-e2e"), { recursive: true });
     writeFileSync(join(tmp, ".agents", "skills", "opsx-e2e", "SKILL.md"), "x");
     expect(hasCommandArtifacts(tmp, getAdapter("codex")!)).toBe(false);
-    expect(hasCommandArtifacts(tmp, getAdapter("minimax")!)).toBe(true);
+    expect(hasCommandArtifacts(tmp, getAdapter("minimax")!)).toBe(false);
   });
 
   it("filters the full adapter list down to authorized editors only", () => {
