@@ -219,11 +219,12 @@ function setOpenCodeValue(
 ): void {
   const existing = findOpenCodeConfig(projectRoot);
   const targetPath = existing?.path ?? join(projectRoot, "opencode.jsonc");
+  // Throw like the file carriers do: a silent skip would print a false
+  // "installed" in ensureMcp while nothing was written.
   if (!isPathInsideProjectRoot(projectRoot, targetPath)) {
-    console.log(
-      `  - opencode config resolves outside the project (symlink) — skipping`,
+    throw new Error(
+      `${targetPath} resolves outside the project (symlink)`,
     );
-    return;
   }
 
   if (!existing) {

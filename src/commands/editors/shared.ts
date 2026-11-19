@@ -257,9 +257,17 @@ export function installMcpServerInFile(
   const key = serversKeyOf(options);
   const servers = serversMap(config, key);
   // Replace only the fields this tool owns; user fields such as `env` or
-  // `cwd` on an existing entry survive an upgrade.
+  // `cwd` on an existing entry survive an upgrade. Spread only a plain
+  // object — spreading a string/number would splat it into indexed keys.
+  const existingEntry = servers[serverName];
+  const base =
+    existingEntry !== null &&
+    typeof existingEntry === "object" &&
+    !Array.isArray(existingEntry)
+      ? existingEntry
+      : {};
   servers[serverName] = {
-    ...servers[serverName],
+    ...base,
     ...(options?.entryType ? { type: options.entryType } : {}),
     command: command[0],
     args: command.slice(1),

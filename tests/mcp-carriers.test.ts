@@ -143,6 +143,20 @@ describe("mcp-servers-file carrier with serverType", () => {
     });
   });
 
+  it("replaces a malformed non-object entry instead of splatting it", () => {
+    writeFileSync(
+      join(root, ".mcp.json"),
+      JSON.stringify({ mcpServers: { "playwright-test": "http://example" } }),
+    );
+    runtime().installMcp(root, "playwright-test", COMMAND);
+    const parsed = JSON.parse(readFileSync(join(root, ".mcp.json"), "utf-8"));
+    expect(parsed.mcpServers["playwright-test"]).toEqual({
+      type: "stdio",
+      command: "npx",
+      args: ["playwright", "run-test-mcp-server"],
+    });
+  });
+
   it("refuses an array-shaped server map instead of dropping the entry", () => {
     writeFileSync(join(root, ".mcp.json"), JSON.stringify({ mcpServers: [] }));
     expect(() =>
@@ -208,11 +222,13 @@ describe("opencode-json carrier", () => {
       writeFileSync(external, JSON.stringify({ mcp: {} }));
       symlinkSync(external, join(root, "opencode.json"));
 
-      buildMcpRuntime({ kind: "opencode-json" }).installMcp(
-        root,
-        "playwright-test",
-        COMMAND,
-      );
+      expect(() =>
+        buildMcpRuntime({ kind: "opencode-json" }).installMcp(
+          root,
+          "playwright-test",
+          COMMAND,
+        ),
+      ).toThrow(/outside the project/);
 
       expect(JSON.parse(readFileSync(external, "utf-8"))).toEqual({ mcp: {} });
     } finally {
