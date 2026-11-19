@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- **docs(standards): 精简三处与 §0 重复的措辞**. §1 关键假设改为引用 §0 核实梯（删两处重述），注释纪律条目去掉与标题逐字重复的前缀，`lint-guidelines.md` 的未安装括注只保留首次出现；条数与语义不变。中英 SSOT、`docs/script.js` 内嵌与 `AGENTS.md` 镜像同步。
+  - `standards/employee-standards.md`、`standards/employee-standards.en.md`、`docs/script.js`、`AGENTS.md`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 - **docs(standards): 经验沉淀改指项目 openspec/config.yaml**. §0 条款改为把防再犯规则写进项目的 `openspec/config.yaml` `context`，中英 SSOT、文档嵌入与测试锚点同步。
   - `standards/employee-standards.md`、`standards/employee-standards.en.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
 - **feat(cli): 新增七个编辑器适配器**. 支持 Gemini CLI（TOML 命令）、Qwen Code、GitHub Copilot（VS Code prompt + 共享 `.mcp.json`）、Roo Code、Trae、Codex（与 MiniMax 共享技能）与 Kimi Code；命令产物新增 TOML 输出，MCP 配置新增可选的 `stdio` 类型，规则文件新增 `full` 模式（含父目录创建与 update 刷新），移除阶段新增共享命令产物保留；受管 gitignore 路径 24 → 40。
