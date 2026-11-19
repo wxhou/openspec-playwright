@@ -6,6 +6,7 @@
 import {
   existsSync,
   lstatSync,
+  mkdirSync,
   realpathSync,
   rmSync,
   readFileSync,
@@ -94,6 +95,9 @@ export function installOpenSpecBlock(
   }
 
   if (!existsSync(dest)) {
+    // Full-mode rules files can live in a nested directory (`.roo/rules/`,
+    // `.trae/rules/`) that does not exist on a fresh install.
+    mkdirSync(dirname(dest), { recursive: true });
     const content = `# ${rulesFileTitle(projectRoot)}\n\n${markerStart}\n\n${standardsContent.trim()}\n\n${markerEnd}\n`;
     writeFileSync(dest, content);
     console.log(
@@ -193,13 +197,31 @@ export function claudeWrapperStandardsContent(): string {
 
 /**
  * The adapter's thin wrapper file (CLAUDE.md for claude, CODEBUDDY.md for
- * codebuddy), or null when the adapter reads AGENTS.md natively — the
- * wrapper-aware generalization of the claude-only pattern.
+ * codebuddy), or null when the adapter reads AGENTS.md natively or declares
+ * a full-standards rules file — the wrapper-aware generalization of the
+ * claude-only pattern.
  */
 export function wrapperRulesFile(
   adapter: EditorAdapter,
   projectRoot: string,
 ): string | null {
+  const dest = adapter.projectRulesPath(projectRoot);
+  if (basename(dest) === "AGENTS.md") return null;
+  if (fullRulesFile(adapter, projectRoot) !== null) return null;
+  return dest;
+}
+
+/**
+ * The adapter's full-standards rules file (GEMINI.md, QWEN.md,
+ * `.github/copilot-instructions.md`, `.roo/rules/openspec-pw.md`,
+ * `.trae/rules/project_rules.md`), or null for AGENTS.md and wrapper-mode
+ * adapters.
+ */
+export function fullRulesFile(
+  adapter: EditorAdapter,
+  projectRoot: string,
+): string | null {
+  if (adapter.declaration?.rules?.mode !== "full") return null;
   const dest = adapter.projectRulesPath(projectRoot);
   return basename(dest) === "AGENTS.md" ? null : dest;
 }
@@ -309,11 +331,12 @@ export function installProjectRules(
   // AGENTS.md is always the single source of truth
   installOpenSpecBlock(projectRoot, standardsContent, opencodeAdapter);
 
-  // Thin wrapper for every editor whose rules file is not AGENTS.md
-  // (CLAUDE.md, CODEBUDDY.md). Derived from the adapter's rules path — no
-  // per-editor branch.
+  // Full-standards rules files carry the complete block themselves; wrapper
+  // files (CLAUDE.md, CODEBUDDY.md) only import AGENTS.md.
   for (const adapter of detected) {
-    if (wrapperRulesFile(adapter, projectRoot) !== null) {
+    if (fullRulesFile(adapter, projectRoot) !== null) {
+      installOpenSpecBlock(projectRoot, standardsContent, adapter);
+    } else if (wrapperRulesFile(adapter, projectRoot) !== null) {
       installThinWrapper(adapter, projectRoot);
     }
   }
@@ -365,6 +388,7 @@ export function cleanProjectRules(
         agents,
         "AGENTS.md",
         linked ? undefined : bundledStandardsContents(),
+        projectRoot,
       );
       if (removedAgents) options.onChanged?.();
       changed = removedAgents || changed;
@@ -385,12 +409,53 @@ export function cleanProjectRules(
         wrapper,
         basename(wrapper),
         claudeWrapperStandardsContent(),
+        projectRoot,
       );
       if (removedWrapper) options.onChanged?.();
       changed = removedWrapper || changed;
     }
   }
+
+  // Full-standards rules files (GEMINI.md, QWEN.md,
+  // `.github/copilot-instructions.md`, nested Roo/Trae rule files).
+  const full = fullRulesFile(adapter, projectRoot);
+  if (full) {
+    if (isSymlink(full)) {
+      console.log(
+        chalk.gray(
+          `  - ${basename(full)} is a symlink — skipping (would write through to its target)`,
+        ),
+      );
+    } else {
+      const removedFull = removeMarkersFromFile(
+        full,
+        basename(full),
+        bundledStandardsContents(),
+        projectRoot,
+      );
+      if (removedFull) options.onChanged?.();
+      changed = removedFull || changed;
+    }
+  }
   return changed;
+}
+
+/**
+ * Remove one adapter's full-standards rules block (init deselect flow).
+ * Symlink guard and pristine-file deletion come from removeMarkersFromFile.
+ */
+export function removeFullRulesBlock(
+  adapter: EditorAdapter,
+  projectRoot: string,
+): boolean {
+  const full = fullRulesFile(adapter, projectRoot);
+  if (!full || isSymlink(full)) return false;
+  return removeMarkersFromFile(
+    full,
+    basename(full),
+    bundledStandardsContents(),
+    projectRoot,
+  );
 }
 
 function isSymlink(path: string): boolean {
@@ -440,11 +505,11 @@ function rulesFileTitle(projectRoot: string): string {
  * removal delete the file instead of leaving a title-only shell.
  */
 function isPristineRulesFile(
-  dest: string,
+  projectRoot: string,
   content: string,
   bodies: string[],
 ): boolean {
-  const title = `# ${rulesFileTitle(dirname(dest))}`;
+  const title = `# ${rulesFileTitle(projectRoot)}`;
   const normalized = content.replace(/\r\n/g, "\n");
   return bodies.some(
     (body) =>
@@ -484,6 +549,7 @@ export function removeMarkersFromFile(
   dest: string,
   fileLabel: string,
   pristineBody?: string | string[],
+  projectRoot: string = dirname(dest),
 ): boolean {
   if (!existsSync(dest)) {
     console.log(chalk.gray(`  - ${fileLabel} not found, skipping`));
@@ -508,7 +574,7 @@ export function removeMarkersFromFile(
         : [pristineBody];
   if (
     pristineBodies !== undefined &&
-    isPristineRulesFile(dest, existing, pristineBodies)
+    isPristineRulesFile(projectRoot, existing, pristineBodies)
   ) {
     rmSync(dest);
     console.log(chalk.green(`  ✓ Removed ${fileLabel}`));
@@ -762,6 +828,8 @@ export function hasRuleFileMarkers(
   for (const adapter of getAllAdapters()) {
     const wrapper = wrapperRulesFile(adapter, projectRoot);
     if (wrapper) files.add(wrapper);
+    const full = fullRulesFile(adapter, projectRoot);
+    if (full) files.add(full);
   }
   for (const path of files) {
     if (!existsSync(path)) continue;

@@ -352,7 +352,7 @@ describe("doctor CodeGraph category", () => {
     expect(text).toContain("codegraph-mcp: n/a");
   });
 
-  it("names .dsh/ in the guidance when no editor is detected", async () => {
+  it("names every project marker in the guidance when no editor is detected", async () => {
     detectAdaptersMock.mockReturnValue([]);
     const logs: string[] = [];
     const spy = vi.spyOn(console, "log").mockImplementation((...args) => {
@@ -368,7 +368,10 @@ describe("doctor CodeGraph category", () => {
       spy.mockRestore();
       exitSpy.mockRestore();
     }
-    expect(logs.join("\n")).toContain(".minimax/, or .dsh/)");
+    const text = logs.join("\n");
+    expect(text).toContain(".minimax");
+    expect(text).toContain(".dsh");
+    expect(text).toContain(".kimi-code");
   });
 
   it("reports version, initialized index, and installed adapters when present", async () => {

@@ -5,7 +5,8 @@
  * the dependency graph stays acyclic (adapters -> registry).
  *
  * Registration order is load order and MUST stay:
- *   claude, opencode, cline, cursor, pi, omp, codebuddy, minimax, dsh
+ *   claude, opencode, cline, cursor, pi, omp, codebuddy, minimax, dsh,
+ *   gemini, qwen, github-copilot, roocode, trae, codex, kimi
  * (editors.ts re-exports the adapter modules in exactly that order;
  * tests/editors-tools.test.ts asserts it.)
  */
@@ -77,7 +78,18 @@ export function hasCommandArtifacts(
   projectRoot: string,
   adapter: EditorAdapter,
 ): boolean {
-  const paths = listCommandArtifactPaths(adapter, buildCommandMeta(""));
+  const meta = buildCommandMeta("");
+  // Shared artifacts (Codex + MiniMax both write `.agents/skills/opsx-*`)
+  // cannot prove which editor installed them, so they confer no configured
+  // status and no write authorization.
+  const shared = new Set(
+    (adapter.declaration?.artifacts ?? [])
+      .filter((artifact) => artifact.shared)
+      .map((artifact) => artifact.path(meta.id)),
+  );
+  const paths = listCommandArtifactPaths(adapter, meta).filter(
+    (rel) => !shared.has(rel),
+  );
   return paths.some((rel) => existsSync(pathResolve(projectRoot, rel)));
 }
 
@@ -91,6 +103,9 @@ export function registerAdapter(adapter: EditorAdapter): void {
  * skill-based ones — so a new adapter cannot drift out of the hint.
  */
 export function slashCommandForAdapter(adapter: EditorAdapter): string {
+  if (adapter.declaration?.invocationHint) {
+    return adapter.declaration.invocationHint;
+  }
   return adapter.commandForm === "colon" ? "/opsx:e2e" : "/opsx-e2e";
 }
 

@@ -23,6 +23,7 @@ import {
   hasRuleFileMarkers,
   normalizeEol,
   wrapperRulesFile,
+  fullRulesFile,
 } from "./editors.js";
 import {
   removeMcp,
@@ -196,11 +197,12 @@ export async function removeInProject(
       }
     }
 
-    // 2. Remove E2E command (+ extraArtifacts) for each detected editor —
-    // delegates to the removal.ts primitive (same rm + empty-dir cascade +
-    // per-path success line as the original inline loop).
+    // 2. Remove E2E command (+ extraArtifacts) for every adapter — an
+    // explicit `--tools` install can leave artifacts without a marker
+    // directory (Codex writes only the shared `.agents/skills` root).
+    // Skip lines stay limited to detected editors, so the log stays readable.
     console.log(chalk.blue("\n─── Removing E2E Commands ───"));
-    for (const adapter of detected) {
+    for (const adapter of getAllAdapters()) {
       const relPaths = listCommandArtifactPaths(adapter, meta);
       let removedAny = false;
       for (const relPath of relPaths) {
@@ -225,7 +227,7 @@ export async function removeInProject(
         )) {
           track(relPath);
         }
-      } else {
+      } else if (detectedIds.has(adapter.id)) {
         console.log(
           chalk.gray(`  - ${adapter.label}: E2E command not found, skipping`),
         );
@@ -809,7 +811,6 @@ export async function runRemoveAll(options: RemoveAllOptions = {}): Promise<numb
 /** Read-only summary of the tool-owned artifacts present in one project. */
 export function describePlan(projectRoot: string): string[] {
   const groups: string[] = [];
-  const detected = detectAdapters(projectRoot);
   const meta = buildCommandMeta("");
   // Plan and execution must render the same mini-program workflow, or the
   // plan hides a file that --yes then deletes.
@@ -817,7 +818,7 @@ export function describePlan(projectRoot: string): string[] {
   const workflowBuild = resolveBuildCommand(projectRoot);
 
   let commands = 0;
-  for (const adapter of detected) {
+  for (const adapter of getAllAdapters()) {
     commands += listCommandArtifactPaths(adapter, meta).filter((rel) => {
       const abs = join(projectRoot, rel);
       return existsSync(abs) && isPathInsideProjectRoot(projectRoot, abs);
@@ -1043,6 +1044,8 @@ function hasCleanableRuleMarkers(projectRoot: string): boolean {
   for (const adapter of getAllAdapters()) {
     const wrapper = wrapperRulesFile(adapter, projectRoot);
     if (wrapper) files.add(wrapper);
+    const full = fullRulesFile(adapter, projectRoot);
+    if (full) files.add(full);
   }
   for (const file of files) {
     try {

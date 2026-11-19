@@ -39,7 +39,14 @@ export type EditorId =
   | "omp"
   | "codebuddy"
   | "minimax"
-  | "dsh";
+  | "dsh"
+  | "gemini"
+  | "qwen"
+  | "github-copilot"
+  | "roocode"
+  | "trae"
+  | "codex"
+  | "kimi";
 
 export interface ExtraArtifact {
   relativePath: string;
@@ -85,6 +92,19 @@ export interface ArtifactSpec {
   /** Relative path inside the project. */
   path(id: string): string;
   naming: ArtifactNaming;
+  /**
+   * Serialization of the artifact file. `markdown` (default) emits optional
+   * YAML frontmatter/header plus the command body; `toml` emits Gemini CLI's
+   * `description` + `prompt` pair and ignores frontmatter/header.
+   */
+  format?: "markdown" | "toml";
+  /**
+   * True when another adapter writes the same path (Codex and MiniMax share
+   * `.agents/skills/opsx-<id>/SKILL.md`). Shared artifacts are still installed
+   * and removed, but they confer no write authorization and no configured
+   * status — the path cannot prove which editor installed it.
+   */
+  shared?: boolean;
   frontmatter?: ArtifactFrontmatter;
   /** Text emitted after the frontmatter and before the body (Cursor's `$1` comment). */
   header?: string | ((meta: CommandMeta) => string);
@@ -123,6 +143,8 @@ export interface DetectionSpec {
  *   - none               → no MCP client (Pi).
  *   - mcp-servers-file   → `{ "mcpServers": { ... } }` JSON file; `path` may
  *                          be shared with other adapters (project `.mcp.json`).
+ *   - vscode-servers-file→ `{ "servers": { ... } }` JSON file (VS Code);
+ *                          stdio entries carry `"type": "stdio"`.
  *   - claude-cli         → the file is read directly but written through
  *                          `claude mcp add/remove --scope project`.
  *   - opencode-json      → exclusive `opencode.json(c)` (`mcp.<server>`).
@@ -130,6 +152,7 @@ export interface DetectionSpec {
 export type McpSpec =
   | { kind: "none" }
   | { kind: "mcp-servers-file"; path(root: string): string }
+  | { kind: "vscode-servers-file"; path(root: string): string }
   | { kind: "claude-cli"; configPath(root: string): string }
   | { kind: "opencode-json" };
 
@@ -137,6 +160,14 @@ export type McpSpec =
 export interface RulesSpec {
   /** Absolute path of the editor's project rules file. */
   path(root: string): string;
+  /**
+   * How the file carries the standards:
+   *   - `wrapper` (default): a thin `@AGENTS.md` import (CLAUDE.md /
+   *     CODEBUDDY.md); AGENTS.md keeps the full standards.
+   *   - `full`: the file itself carries the complete standards block. Used by
+   *     editors that do not support the `@AGENTS.md` import convention.
+   */
+  mode?: "wrapper" | "full";
   /** Register the rules file in the editor's own config (OpenCode). */
   registerInConfig?: "opencode-json";
 }
@@ -156,6 +187,12 @@ export interface AdapterDeclaration {
   mcp: McpSpec;
   /** Defaults to `<root>/AGENTS.md` with no config registration. */
   rules?: RulesSpec;
+  /**
+   * Overrides the user-facing invocation hint derived from `commandForm`
+   * (e.g. Codex `$opsx-e2e`, Kimi `/skill:opsx-e2e`). The command body rewrite
+   * stays governed by the artifact naming.
+   */
+  invocationHint?: string;
   /** Retired artifact directories to clean up (project-relative). */
   legacyArtifacts?: string[];
   /** Consent-gated, ownership-aware extra files (Claude's vendored agents). */

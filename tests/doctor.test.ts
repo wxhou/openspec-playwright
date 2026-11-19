@@ -210,31 +210,26 @@ describe("doctor.ts: fallback command hint", () => {
     const hint = allEditorCommandHints();
     const groups = new Map<string, string[]>();
     for (const group of hint.split("  or  ")) {
-      const match = /^(\/opsx[:-]e2e) \(in (.+)\)$/.exec(group);
+      const match = /^(\S+) \(in (.+)\)$/.exec(group);
       expect(match, `unparsable hint group: ${group}`).not.toBeNull();
       groups.set(match![1], match![2].split(/, or |, | or /));
     }
 
-    const colon = groups.get("/opsx:e2e") ?? [];
-    const hyphen = groups.get("/opsx-e2e") ?? [];
-    expect(colon.sort()).toEqual(["Claude Code", "CodeBuddy CLI"]);
-    expect(hyphen.sort()).toEqual([
-      "Cline",
-      "Cursor",
-      "DeepSeek Harness",
-      "MiniMax Code",
-      "Oh My Pi",
-      "OpenCode",
-      "Pi",
-    ]);
-
-    // Every registered adapter is listed exactly once, under its own form.
-    const mentioned = [...colon, ...hyphen];
-    expect(mentioned.length).toBe(getAllAdapters().length);
+    // Every registered adapter is listed exactly once, under its own hint.
+    const expected = new Map<string, string[]>();
     for (const adapter of getAllAdapters()) {
-      const group =
-        slashCommandForAdapter(adapter) === "/opsx:e2e" ? colon : hyphen;
-      expect(group).toContain(adapter.displayName);
+      const command = slashCommandForAdapter(adapter);
+      expected.set(command, [
+        ...(expected.get(command) ?? []),
+        adapter.displayName,
+      ]);
+    }
+    expect([...groups.keys()].sort()).toEqual([...expected.keys()].sort());
+    expect(
+      [...groups.values()].reduce((sum, names) => sum + names.length, 0),
+    ).toBe(getAllAdapters().length);
+    for (const [command, names] of expected) {
+      expect((groups.get(command) ?? []).sort()).toEqual(names.sort());
     }
   });
 

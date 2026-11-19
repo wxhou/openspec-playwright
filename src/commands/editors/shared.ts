@@ -47,6 +47,43 @@ export function formatTagsArray(tags: string[]): string {
   return `[${tags.map((t) => escapeYamlValue(t)).join(", ")}]`;
 }
 
+// ─── TOML helpers (Gemini CLI command files) ─────────────────────────────
+
+/** C0 controls (except tab/newline/CR) plus DEL are invalid raw in TOML strings. */
+const TOML_CONTROL_CHARS = new RegExp(
+  "[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]",
+  "g",
+);
+
+/** Escape a value for a single-line TOML basic string. */
+export function escapeTomlBasicString(value: string): string {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r")
+    .replace(/\t/g, "\\t")
+    .replace(TOML_CONTROL_CHARS, (c) =>
+      `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`,
+    );
+}
+
+/**
+ * Escape a value for a TOML multi-line basic string: raw newlines/tabs stay,
+ * backslashes are doubled, CRLF is normalized, a run of three quotes would
+ * terminate the string, and control characters must be escaped.
+ */
+export function escapeTomlMultilineBasicString(value: string): string {
+  return value
+    .replace(/\r\n/g, "\n")
+    .replace(/\\/g, "\\\\")
+    .replace(/"""/g, '""\\"')
+    .replace(/\r/g, "\\r")
+    .replace(TOML_CONTROL_CHARS, (c) =>
+      `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`,
+    );
+}
+
 // ─── Body transform ──────────────────────────────────────────────────────
 
 /**
@@ -75,6 +112,12 @@ export function formatArtifact(spec: ArtifactSpec, meta: CommandMeta): string {
     spec.naming === "hyphen-prefix"
       ? transformToHyphenCommands(meta.body)
       : meta.body;
+
+  // TOML artifacts (Gemini CLI) carry no frontmatter/header — the whole file
+  // is the description/prompt pair.
+  if (spec.format === "toml") {
+    return `description = "${escapeTomlBasicString(meta.description)}"\n\nprompt = """\n${escapeTomlMultilineBasicString(body)}\n"""\n`;
+  }
 
   let out = "";
 
@@ -109,30 +152,55 @@ export function formatArtifact(spec: ArtifactSpec, meta: CommandMeta): string {
 // ─── Shared mcpServers JSON helpers (Cline + Cursor) ─────────────────────
 
 export interface McpStdioServer {
+  type?: string;
   command: string;
   args: string[];
 }
 
-export type McpServersFile = Record<string, unknown> & {
-  mcpServers: Record<string, McpStdioServer>;
-};
+/** A parsed JSON config whose server map lives under a configurable key. */
+export type McpServersFile = Record<string, unknown>;
+
+export interface McpServerFileOptions {
+  /** Top-level map key: `mcpServers` (most editors) or `servers` (VS Code). */
+  serversKey?: string;
+  /** Field added to newly written entries, e.g. `stdio` for VS Code. */
+  entryType?: string;
+}
+
+function serversKeyOf(options: McpServerFileOptions | undefined): string {
+  return options?.serversKey ?? "mcpServers";
+}
+
+function serversMap(
+  config: McpServersFile,
+  serversKey: string,
+): Record<string, McpStdioServer> {
+  const map = config[serversKey];
+  return map && typeof map === "object"
+    ? (map as Record<string, McpStdioServer>)
+    : {};
+}
 
 /**
- * Read an MCP config file with a top-level `mcpServers` map, or null if
+ * Read an MCP config file with a top-level server map, or null if
  * missing/unparseable. Preserves unknown top-level fields.
  */
-export function readMcpServersFile(configPath: string): McpServersFile | null {
+export function readMcpServersFile(
+  configPath: string,
+  options?: McpServerFileOptions,
+): McpServersFile | null {
   if (!existsSync(configPath)) return null;
   try {
     const raw = JSON.parse(readFileSync(configPath, "utf-8")) as Record<
       string,
       unknown
     >;
-    if (raw.mcpServers && typeof raw.mcpServers === "object") {
-      return raw as McpServersFile;
+    const key = serversKeyOf(options);
+    if (raw[key] && typeof raw[key] === "object") {
+      return raw;
     }
-    raw.mcpServers = {};
-    return raw as McpServersFile;
+    raw[key] = {};
+    return raw;
   } catch {
     return null;
   }
@@ -150,32 +218,53 @@ export function writeMcpServersFile(
 export function isMcpServerInFile(
   configPath: string,
   serverName: string,
+  options?: McpServerFileOptions,
 ): boolean {
-  const config = readMcpServersFile(configPath);
+  const config = readMcpServersFile(configPath, options);
   if (!config) return false;
-  return config.mcpServers[serverName] !== undefined;
+  return serversMap(config, serversKeyOf(options))[serverName] !== undefined;
 }
 
 export function installMcpServerInFile(
   configPath: string,
   serverName: string,
   command: string[],
+  options?: McpServerFileOptions,
 ): void {
-  const config = readMcpServersFile(configPath) ?? { mcpServers: {} };
-  config.mcpServers[serverName] = {
+  let config: McpServersFile = {};
+  if (existsSync(configPath)) {
+    // A present but unparseable config is user state — refuse to replace it
+    // with an empty object rather than silently losing their settings.
+    const parsed = readMcpServersFile(configPath, options);
+    if (parsed === null) {
+      throw new Error(
+        `${configPath} exists but is not valid JSON — refusing to overwrite it`,
+      );
+    }
+    config = parsed;
+  }
+  const key = serversKeyOf(options);
+  const servers = serversMap(config, key);
+  servers[serverName] = {
+    ...(options?.entryType ? { type: options.entryType } : {}),
     command: command[0],
     args: command.slice(1),
   };
+  config[key] = servers;
   writeMcpServersFile(configPath, config);
 }
 
 export function removeMcpServerFromFile(
   configPath: string,
   serverName: string,
+  options?: McpServerFileOptions,
 ): void {
-  const config = readMcpServersFile(configPath);
+  const config = readMcpServersFile(configPath, options);
   if (!config) return;
-  if (config.mcpServers[serverName] === undefined) return;
-  delete config.mcpServers[serverName];
+  const key = serversKeyOf(options);
+  const servers = serversMap(config, key);
+  if (servers[serverName] === undefined) return;
+  delete servers[serverName];
+  config[key] = servers;
   writeMcpServersFile(configPath, config);
 }

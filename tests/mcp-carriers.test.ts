@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import {
@@ -43,6 +43,54 @@ describe("mcp-servers-file carrier", () => {
 
     mcp.removeMcp(root, "playwright-test");
     expect(mcp.isMcpInstalled(root, "playwright-test")).toBe(false);
+  });
+
+  it("refuses to overwrite a config file that is not valid JSON", () => {
+    const configPath = join(root, ".editor", "mcp.json");
+    mkdirSync(join(root, ".editor"), { recursive: true });
+    writeFileSync(configPath, "{ not json");
+
+    expect(() =>
+      runtime().installMcp(root, "playwright-test", COMMAND),
+    ).toThrow(/not valid JSON/);
+    expect(readFileSync(configPath, "utf-8")).toBe("{ not json");
+  });
+});
+
+describe("vscode-servers-file carrier", () => {
+  const runtime = () =>
+    buildMcpRuntime({
+      kind: "vscode-servers-file",
+      path: (r) => join(r, ".vscode", "mcp.json"),
+    });
+
+  it("writes a typed stdio entry under servers and preserves the rest", () => {
+    const configPath = join(root, ".vscode", "mcp.json");
+    mkdirSync(join(root, ".vscode"), { recursive: true });
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        inputs: [{ id: "token" }],
+        servers: { other: { command: "other" } },
+      }),
+    );
+
+    const mcp = runtime();
+    mcp.installMcp(root, "playwright-test", COMMAND);
+    const parsed = JSON.parse(readFileSync(configPath, "utf-8"));
+    expect(parsed.inputs).toEqual([{ id: "token" }]);
+    expect(parsed.servers.other).toEqual({ command: "other" });
+    expect(parsed.servers["playwright-test"]).toEqual({
+      type: "stdio",
+      command: "npx",
+      args: ["playwright", "run-test-mcp-server"],
+    });
+    expect(mcp.isMcpInstalled(root, "playwright-test")).toBe(true);
+
+    mcp.removeMcp(root, "playwright-test");
+    const after = JSON.parse(readFileSync(configPath, "utf-8"));
+    expect(after.servers["playwright-test"]).toBeUndefined();
+    expect(after.servers.other).toEqual({ command: "other" });
   });
 });
 

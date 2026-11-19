@@ -13,7 +13,9 @@ import { join } from "path";
 import {
   claudeAdapter,
   clineAdapter,
+  codexAdapter,
   cursorAdapter,
+  minimaxAdapter,
   piAdapter,
 } from "../src/commands/editors.js";
 import {
@@ -23,6 +25,7 @@ import {
   removeAdapterMcp,
   removeLegacyArtifact,
   removeWrapper,
+  retainedCommandArtifactPaths,
   CLAUDE_LEGACY_SKILL_REL,
   OPENSPEC_PW_MCP_SERVERS,
 } from "../src/commands/editors/removal.js";
@@ -247,3 +250,40 @@ describe("removeWrapper", () => {
 function artifactRelPaths(removed: string[]): string {
   return join(projectRoot, removed[0]);
 }
+describe("shared command artifacts (Codex + MiniMax)", () => {
+  const sharedSkill = () =>
+    join(projectRoot, ".agents", "skills", "opsx-e2e", "SKILL.md");
+
+  it("retains the shared skill while another selected editor declares it", () => {
+    mkdirSync(join(projectRoot, ".agents", "skills", "opsx-e2e"), {
+      recursive: true,
+    });
+    writeFileSync(sharedSkill(), "skill");
+    const retained = retainedCommandArtifactPaths([minimaxAdapter]);
+
+    const inv = enumerateAdapterArtifacts(
+      codexAdapter,
+      projectRoot,
+      undefined,
+      retained,
+    );
+    expect(inv.commandPaths).toEqual([]);
+    expect(inv.retainedCommandPaths).toEqual([
+      join(".agents", "skills", "opsx-e2e", "SKILL.md"),
+    ]);
+    expect(isInventoryEmpty(inv)).toBe(false);
+
+    removeAdapterCommandArtifacts(codexAdapter, projectRoot, undefined, retained);
+    expect(existsSync(sharedSkill())).toBe(true);
+  });
+
+  it("removes the shared skill when no selected editor declares it", () => {
+    mkdirSync(join(projectRoot, ".agents", "skills", "opsx-e2e"), {
+      recursive: true,
+    });
+    writeFileSync(sharedSkill(), "skill");
+
+    removeAdapterCommandArtifacts(codexAdapter, projectRoot);
+    expect(existsSync(sharedSkill())).toBe(false);
+  });
+});

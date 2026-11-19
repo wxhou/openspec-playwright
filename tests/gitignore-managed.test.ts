@@ -331,12 +331,18 @@ describe("init-time opt-outs recorded in the block header", () => {
       "AGENTS.md",
       "CLAUDE.md",
       "CODEBUDDY.md",
+      "GEMINI.md",
+      "QWEN.md",
+      ".github/copilot-instructions.md",
+      ".roo/rules/openspec-pw.md",
+      ".trae/rules/project_rules.md",
     ]);
     const candidates = skippableManagedPaths();
-    expect(candidates).not.toContain("AGENTS.md");
-    expect(candidates).not.toContain("CLAUDE.md");
-    expect(candidates).not.toContain("CODEBUDDY.md");
+    for (const locked of LOCKED_GITIGNORE_PATHS) {
+      expect(candidates).not.toContain(locked);
+    }
     expect(candidates).toContain(".claude/");
+    expect(candidates).toContain(".gemini/settings.json");
     expect(skippableManagedPaths(["tmp/"])).not.toContain("tmp/");
   });
 

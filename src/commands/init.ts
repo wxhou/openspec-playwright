@@ -50,10 +50,12 @@ import {
   isInventoryEmpty,
   removeAdapterMcp,
   retainedMcpConfigFiles,
+  retainedCommandArtifactPaths,
   removeAdapterCommandArtifacts,
   removeOwnedVendoredAgents,
   removeLegacyArtifact,
   removeWrapper,
+  removeFullRulesBlock,
   removeMarkersFromFile,
   agentsFileHasCleanableMarkers,
   wrapperLinksToAgents,
@@ -220,6 +222,12 @@ const GITIGNORE_GROUPS: readonly {
       ".codebuddy/",
       ".agents/skills/opsx-e2e/",
       ".dsh/skills/opsx-e2e/",
+      ".gemini/commands/opsx/e2e.toml",
+      ".qwen/commands/opsx-e2e.md",
+      ".github/prompts/opsx-e2e.prompt.md",
+      ".roo/commands/opsx-e2e.md",
+      ".trae/commands/opsx-e2e.md",
+      ".kimi-code/skills/opsx-e2e/",
     ],
   },
   {
@@ -227,9 +235,20 @@ const GITIGNORE_GROUPS: readonly {
     paths: [
       "openspec/",
       "CODEBUDDY.md",
+      "GEMINI.md",
+      "QWEN.md",
+      ".github/copilot-instructions.md",
+      ".roo/rules/openspec-pw.md",
+      ".trae/rules/project_rules.md",
       "app-exploration.md",
       "opencode.json",
       ".mcp.json",
+      ".gemini/settings.json",
+      ".qwen/settings.json",
+      ".vscode/mcp.json",
+      ".roo/mcp.json",
+      ".trae/mcp.json",
+      ".kimi-code/mcp.json",
     ],
   },
   {
@@ -550,16 +569,22 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
 
   // No flag, non-TTY, and nothing detected → fail with --tools guidance.
   if (selectedIds === null && editors.length === 0) {
+    // Derived from the registry so a new adapter cannot leave this hint stale.
+    const markerHints = getAllAdapters()
+      .map((a) => a.declaration?.detection.projectPaths?.[0])
+      .filter((p): p is string => Boolean(p));
     console.log(
       chalk.yellow(
-        "\n  ⚠ No supported editor detected in the project (need .claude/, .opencode/, .cline/, .cursor/, .pi/, .omp/, .codebuddy/, .minimax/, or .dsh/).",
+        `\n  ⚠ No supported editor detected in the project (need one of: ${markerHints.join(", ")}).`,
       ),
     );
     console.log(
       chalk.gray("  For Cursor without an existing .cursor/ dir: mkdir -p .cursor\n"),
     );
     throw new Error(
-      'No supported editor detected and no --tools flag provided. Use --tools all, --tools none, or a comma-separated list: claude, opencode, cline, cursor, pi, omp, codebuddy, minimax, dsh (oh-my-pi aliases omp, minimax-code aliases minimax).',
+      `No supported editor detected and no --tools flag provided. Use --tools all, --tools none, or a comma-separated list: ${getAllAdapters()
+        .map((a) => a.id)
+        .join(", ")} (oh-my-pi aliases omp, minimax-code aliases minimax).`,
     );
   }
 
@@ -628,10 +653,21 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
       getAllAdapters().filter((a) => selectedIds!.includes(a.id)),
       projectRoot,
     );
+    // Command/skill artifacts still declared by a selected editor. Codex and
+    // MiniMax Code share `.agents/skills/opsx-<id>/SKILL.md`, so deselecting
+    // one must not delete the other's skill.
+    const retainedCommandPaths = retainedCommandArtifactPaths(
+      getAllAdapters().filter((a) => selectedIds!.includes(a.id)),
+    );
     const inventories = deselected
       .map((adapter) => ({
         adapter,
-        inv: enumerateAdapterArtifacts(adapter, projectRoot, retainedMcpFiles),
+        inv: enumerateAdapterArtifacts(
+          adapter,
+          projectRoot,
+          retainedMcpFiles,
+          retainedCommandPaths,
+        ),
       }))
       // Editors with nothing to remove are silent — no confirm-list noise.
       .filter(({ inv }) => !isInventoryEmpty(inv));
@@ -650,9 +686,13 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
       // Entries that are NOT removed are listed separately below — mixing
       // them into the "will be removed" list contradicts the heading.
       const keptMcpEntries: string[] = [];
+      const keptArtifactEntries: string[] = [];
       for (const { adapter, inv } of inventories) {
         for (const relPath of inv.commandPaths) {
           console.log(chalk.gray(`    - ${adapter.label}: ${relPath}`));
+        }
+        for (const relPath of inv.retainedCommandPaths) {
+          keptArtifactEntries.push(`${adapter.label}: ${relPath}`);
         }
         for (const relPath of inv.legacyArtifacts) {
           console.log(chalk.gray(`    - ${adapter.label}: ${relPath}/`));
@@ -665,6 +705,9 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
         }
         if (inv.hasWrapper) {
           console.log(chalk.gray(`    - ${adapter.label}: ${basename(adapter.projectRulesPath(projectRoot))} wrapper block`));
+        }
+        if (inv.hasFullRules) {
+          console.log(chalk.gray(`    - ${adapter.label}: ${basename(adapter.projectRulesPath(projectRoot))} rules block`));
         }
         // Consent-gated optional artifacts (vendored agents): only the
         // tool-owned files join the list — user-modified files are kept.
@@ -687,6 +730,16 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
           console.log(chalk.gray(`    - ${entry}`));
         }
       }
+      if (keptArtifactEntries.length > 0) {
+        console.log(
+          chalk.gray(
+            "  Kept — shared command/skill artifact also used by a selected editor:",
+          ),
+        );
+        for (const entry of keptArtifactEntries) {
+          console.log(chalk.gray(`    - ${entry}`));
+        }
+      }
 
       const agreed = await confirmPrompt("Proceed with removal?");
 
@@ -697,13 +750,21 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
       } else {
         for (const { adapter, inv } of inventories) {
           removeAdapterMcp(adapter, projectRoot, inv.mcpServers, retainedMcpFiles);
-          removeAdapterCommandArtifacts(adapter, projectRoot);
+          removeAdapterCommandArtifacts(
+            adapter,
+            projectRoot,
+            undefined,
+            retainedCommandPaths,
+          );
           removeOwnedVendoredAgents(projectRoot, adapter);
           for (const relPath of inv.legacyArtifacts) {
             removeLegacyArtifact(adapter, projectRoot, relPath);
           }
           if (inv.hasWrapper) {
             removeWrapper(adapter, projectRoot);
+          }
+          if (inv.hasFullRules) {
+            removeFullRulesBlock(adapter, projectRoot);
           }
         }
         if (agentsHasBlock) {

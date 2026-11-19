@@ -4,10 +4,12 @@
  * methods (`isMcpInstalled` / `installMcp` / `removeMcp`) plus the shared
  * file path used by the removal guard.
  *
- * Four carriers:
- *   - none              → no MCP client (Pi)
+ * Five carriers:
+ *   - none               → no MCP client (Pi)
  *   - mcp-servers-file  → `{ "mcpServers": { ... } }` JSON (Cline, Cursor,
  *                          Oh My Pi, CodeBuddy, MiniMax)
+ *   - vscode-servers-file → `{ "servers": { ... } }` JSON with `type: "stdio"`
+ *                          entries (VS Code / GitHub Copilot)
  *   - claude-cli        → read the project `.mcp.json`, write via the CLI
  *   - opencode-json     → exclusive `opencode.json(c)` (`mcp.<server>`)
  */
@@ -29,7 +31,13 @@ import {
   installMcpServerInFile,
   isMcpServerInFile,
   removeMcpServerFromFile,
+  type McpServerFileOptions,
 } from "./shared.js";
+
+const VSCODE_SERVERS: McpServerFileOptions = {
+  serversKey: "servers",
+  entryType: "stdio",
+};
 
 export interface McpRuntime {
   supportsMcp: boolean;
@@ -68,6 +76,25 @@ export function buildMcpRuntime(spec: McpSpec): McpRuntime {
             throw new Error(`${path} resolves outside the project (symlink)`);
           }
           removeMcpServerFromFile(path, serverName);
+        },
+      };
+
+    case "vscode-servers-file":
+      return {
+        supportsMcp: true,
+        mcpConfigPath: spec.path,
+        isMcpInstalled(root, serverName) {
+          return isMcpServerInFile(spec.path(root), serverName, VSCODE_SERVERS);
+        },
+        installMcp(root, serverName, command) {
+          installMcpServerInFile(spec.path(root), serverName, command, VSCODE_SERVERS);
+        },
+        removeMcp(root, serverName) {
+          const path = spec.path(root);
+          if (!isPathInsideProjectRoot(root, path)) {
+            throw new Error(`${path} resolves outside the project (symlink)`);
+          }
+          removeMcpServerFromFile(path, serverName, VSCODE_SERVERS);
         },
       };
 
