@@ -434,6 +434,55 @@ describe("init deselect-removal: re-init pre-select behavior", () => {
 });
 // ─── Shared MCP config file (claude + codebuddy both use project .mcp.json) ──
 
+describe("init deselect-removal: full-rules adapter without its marker dir", () => {
+  let tmpRoot: string;
+  let cwdSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    tmpRoot = mkdtempSync(join(tmpdir(), "ospw-pw-full-rules-"));
+    mkdirSync(join(tmpRoot, "openspec"), { recursive: true });
+    // claude remains selected and keeps the shared AGENTS.md block
+    mkdirSync(join(tmpRoot, ".claude", "commands", "opsx"), { recursive: true });
+    writeFileSync(join(tmpRoot, ".claude", "commands", "opsx", "e2e.md"), "cmd");
+    // gemini was installed via --tools: GEMINI.md carries our block, but no
+    // .gemini/ marker dir exists, so detection alone would miss it.
+    writeFileSync(
+      join(tmpRoot, "GEMINI.md"),
+      "team rules\n\n<!-- OPENSPEC-PW:START -->\nstandards\n<!-- OPENSPEC-PW:END -->\n",
+    );
+    cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(tmpRoot);
+  });
+
+  afterEach(() => {
+    cwdSpy.mockRestore();
+    rmSync(tmpRoot, { recursive: true, force: true });
+  });
+
+  it("removes the deselected editor's full-rules block and lists it", async () => {
+    const logs: string[] = [];
+    const logSpy = vi.spyOn(console, "log").mockImplementation((m) => {
+      logs.push(String(m));
+    });
+    try {
+      await init(
+        { mcp: false },
+        {
+          isTTY: true,
+          prompt: async () => ["claude"], // deselect gemini
+          confirm: async () => true,
+        },
+      );
+    } finally {
+      logSpy.mockRestore();
+    }
+
+    const after = readFileSync(join(tmpRoot, "GEMINI.md"), "utf-8");
+    expect(after).toContain("team rules");
+    expect(after).not.toContain("OPENSPEC-PW:START");
+    expect(logs.join("\n")).toContain("GEMINI.md rules block");
+  });
+});
+
 describe("init deselect-removal: shared .mcp.json entry is kept for a selected editor", () => {
   let tmpRoot: string;
   let cwdSpy: ReturnType<typeof vi.spyOn>;

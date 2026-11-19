@@ -77,8 +77,15 @@ export function buildMcpRuntime(spec: McpSpec): McpRuntime {
           return isMcpServerInFile(spec.path(root), serverName);
         },
         installMcp(root, serverName, command) {
+          const path = spec.path(root);
+          // A symlinked config (or parent) would route the write outside the
+          // project even though the declared path is lexical. Same guard as
+          // the remove path below.
+          if (!isPathInsideProjectRoot(root, path)) {
+            throw new Error(`${path} resolves outside the project (symlink)`);
+          }
           installMcpServerInFile(
-            spec.path(root),
+            path,
             serverName,
             command,
             entryOptions,
@@ -107,6 +114,10 @@ export function buildMcpRuntime(spec: McpSpec): McpRuntime {
           return isMcpServerInFile(spec.configPath(root), serverName);
         },
         installMcp(root, serverName, command) {
+          const path = spec.configPath(root);
+          if (!isPathInsideProjectRoot(root, path)) {
+            throw new Error(`${path} resolves outside the project (symlink)`);
+          }
           execFileSync(
             "claude",
             ["mcp", "add", "--scope", "project", serverName, ...command],
@@ -208,6 +219,12 @@ function setOpenCodeValue(
 ): void {
   const existing = findOpenCodeConfig(projectRoot);
   const targetPath = existing?.path ?? join(projectRoot, "opencode.jsonc");
+  if (!isPathInsideProjectRoot(projectRoot, targetPath)) {
+    console.log(
+      `  - opencode config resolves outside the project (symlink) — skipping`,
+    );
+    return;
+  }
 
   if (!existing) {
     const scaffold: Record<string, unknown> = {

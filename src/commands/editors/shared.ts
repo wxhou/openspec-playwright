@@ -260,7 +260,16 @@ export function removeMcpServerFromFile(
   options?: McpServerFileOptions,
 ): void {
   const config = readMcpServersFile(configPath, options);
-  if (!config) return;
+  if (!config) {
+    // "No file" is a quiet no-op; an unparseable file is user state we cannot
+    // safely edit — surface it instead of reporting a successful removal.
+    if (existsSync(configPath)) {
+      throw new Error(
+        `${configPath} exists but is not valid JSON — cannot remove ${serverName}`,
+      );
+    }
+    return;
+  }
   const key = serversKeyOf(options);
   const servers = serversMap(config, key);
   if (servers[serverName] === undefined) return;

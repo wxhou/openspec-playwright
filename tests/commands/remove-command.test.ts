@@ -684,6 +684,35 @@ describe("removeInProject() mixed project: cursor detected, claude wrapper only"
   });
 });
 
+describe("removeInProject() sensitive managed paths", () => {
+  it("warns about every adapter MCP config left on disk", async () => {
+    writeFileSync(
+      join(tmp, ".gitignore"),
+      "# openspec-pw: begin managed block\n.mcp.json\n# openspec-pw: end managed block\n",
+    );
+    mkdirSync(join(tmp, ".gemini"), { recursive: true });
+    writeFileSync(
+      join(tmp, ".gemini", "settings.json"),
+      JSON.stringify({ mcpServers: { "playwright-test": { command: "npx" } } }),
+    );
+    writeFileSync(join(tmp, ".mcp.json"), JSON.stringify({ mcpServers: {} }));
+
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((m) => {
+      logs.push(String(m));
+    });
+    try {
+      await removeInProject(tmp);
+    } finally {
+      spy.mockRestore();
+    }
+
+    const output = logs.join("\n");
+    expect(output).toMatch(/\.mcp\.json kept on disk/);
+    expect(output).toMatch(/\.gemini[\\/]settings\.json kept on disk/);
+  });
+});
+
 describe("removeInProject() symlink safety", () => {
   it("does not recurse into a symlinked skills directory", async () => {
     if (process.platform === "win32") return;

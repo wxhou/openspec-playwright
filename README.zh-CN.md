@@ -99,7 +99,7 @@ openspec-pw init          # 安装 Playwright E2E 集成（--tools 选编辑器�
 
 ## 使用
 
-选匹配你项目的编辑器，发同一命令。十六款编辑器共用同一工作流——`/opsx:` 在安装时改写为 `/opsx-`，正文完全一致，只有命令工件的落盘位置不同。
+选匹配你项目的编辑器，发对应的命令。十六款编辑器共用同一工作流；命令形态的编辑器保留 `/opsx:`，技能形态的编辑器使用 `/opsx-e2e`。只有命令工件的落盘位置不同。
 
 | 编辑器 | 命令 | 安装位置 |
 |---|---|---|
@@ -160,7 +160,7 @@ init 打印两种输出信号：预选提示行（仅未传 `--tools` 时出现�
 
 **规范语言。** `AGENTS.md` 里的员工级规范块以中文或英文写入。`init --lang zh|en` 显式选择；未传时优先沿用已安装块的语言，其次看操作系统语言（macOS `AppleLanguages`/`AppleLocale`，Windows `PreferredUILanguages`/`LocaleName`），再回退终端 locale（`LANGUAGE` > `LC_ALL` > `LC_MESSAGES` > `LANG`），最后英文。`update --lang` 切换已安装块的语言；没有规范块时该参数不生效。不判断 IP 或地区。
 
-**取消勾选 = 移除**。交互式多选里，*已被探测但你取消勾选的*编辑器的 openspec-pw 产物会被移除——命令/技能文件、该编辑器的 openspec-pw MCP 条目（含 claude 的 wrapper 块与 legacy 技能目录，以及归本工具所有的 vendored agents），前置一次列出全部待移除项的确认（拒绝则保持旧行为：本次仅跳过写入）。只动 openspec-pw 自有领土——同一文件中你自有的配置条目不受影响；你手改过的 vendored agent 文件会被保留并报告，绝不删除。共享规则：AGENTS.md 的 openspec-pw 块仅在**没有任何编辑器保留**时移除；symlink 的 CLAUDE.md 永不穿透写入。MCP 条目按**配置文件**判定：Claude Code / CodeBuddy CLI / MiniMax Code 共用项目根 `.mcp.json`，只要仍有被选中的编辑器读取该文件，共享条目即保留（确认清单中标注为「保留」）——该文件是这几个编辑器运行时直接读取的，删掉会连带切断仍被选中编辑器的 Playwright MCP；把三者全部取消勾选时条目照常移除。`--tools` 与非 TTY 运行不做任何移除（`--tools` 是显式授权清单）。移除直接反哺预选：被移除的编辑器下次 init 不再预勾选（预选读 openspec-pw 清单——保留的 `mcp.json`、你自己的文件、全局目录都不再重要）；*全部*取消并确认的项目下次 init 重置回首-运行预选语义。
+**取消勾选 = 移除**。交互式多选里，*已被探测但你取消勾选的*编辑器的 openspec-pw 产物会被移除——命令/技能文件、该编辑器的 openspec-pw MCP 条目（含 claude 的 wrapper 块与 legacy 技能目录，以及归本工具所有的 vendored agents），前置一次列出全部待移除项的确认（拒绝则保持旧行为：本次仅跳过写入）。只动 openspec-pw 自有领土——同一文件中你自有的配置条目不受影响；你手改过的 vendored agent 文件会被保留并报告，绝不删除。共享规则：AGENTS.md 的 openspec-pw 块仅在**没有任何编辑器保留**时移除；symlink 的 CLAUDE.md 永不穿透写入。MCP 条目按**配置文件**判定：Claude Code / CodeBuddy CLI / MiniMax Code / GitHub Copilot 共用项目根 `.mcp.json`，只要仍有被选中的编辑器读取该文件，共享条目即保留（确认清单中标注为「保留」）——该文件是这几个编辑器运行时直接读取的，删掉会连带切断仍被选中编辑器的 Playwright MCP；把四者全部取消勾选时条目照常移除。`--tools` 与非 TTY 运行不做任何移除（`--tools` 是显式授权清单）。移除直接反哺预选：被移除的编辑器下次 init 不再预勾选（预选读 openspec-pw 清单——保留的 `mcp.json`、你自己的文件、全局目录都不再重要）；*全部*取消并确认的项目下次 init 重置回首-运行预选语义。
 
 **编辑器领土**：`update` 只维护项目内已有 openspec-pw 命令工件的编辑器——不会新增编辑器（全局配置目录或手建的 `.cursor/` 不构成写入授权）。给已初始化项目新增编辑器请重跑 `openspec-pw init --tools <id>`（幂等）。
 

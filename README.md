@@ -73,7 +73,7 @@ The command body is identical across editors (`/opsx:` → `/opsx-` rewrite at i
 
 ## Usage
 
-Pick the editor that matches your project and invoke the same command. All sixteen editors share an identical workflow — `/opsx:` is rewritten to `/opsx-` at install time, only the file location of the command artifact differs.
+Pick the editor that matches your project and invoke its command. All sixteen editors run the same workflow; command-style editors keep the `/opsx:` form, while skill-style editors use `/opsx-e2e`. Only the artifact location differs.
 
 | Editor | Command | Install location |
 |---|---|---|
@@ -176,8 +176,10 @@ files, local data and credentials) with everything checked — pressing Enter
 keeps the previous behavior. Uncheck a path to keep it committable; the
 choice is recorded on the block's header line (`# openspec-pw: skip=…`) so
 `update` never re-adds it, and re-running init with the path checked takes it
-back. `AGENTS.md`, `CLAUDE.md` and `CODEBUDDY.md` are not offered: every
-init injects the standards block into them. Non-interactive runs (including
+back. `AGENTS.md`, `CLAUDE.md`, `CODEBUDDY.md`, `GEMINI.md`, `QWEN.md`,
+`.github/copilot-instructions.md`, `.roo/rules/openspec-pw.md` and
+`.trae/rules/project_rules.md` are not offered: every init injects the
+standards block into them. Non-interactive runs (including
 a piped stdin) skip the prompt and keep whatever an earlier interactive run
 recorded; a fresh project ignores everything managed.
 
@@ -192,11 +194,11 @@ config entries in the same files stay (user-modified vendored agent files
 are kept and reported, never deleted). Shared rules: the AGENTS.md
 openspec-pw block is removed only when **no** editor remains selected; a
 symlinked CLAUDE.md is never written through. MCP entries are judged per
-**config file**: Claude Code, CodeBuddy CLI and MiniMax Code share the
-project-root `.mcp.json`, so the shared entry is kept (and reported as kept
+**config file**: Claude Code, CodeBuddy CLI, MiniMax Code and GitHub Copilot
+share the project-root `.mcp.json`, so the shared entry is kept (and reported as kept
 in the confirmation list) while any still-selected editor reads that file —
 those editors load it at runtime, and deleting it would cut the Playwright
-MCP of an editor you kept. Deselect all three and the entry goes as usual. `--tools` and non-TTY runs
+MCP of an editor you kept. Deselect all four and the entry goes as usual. `--tools` and non-TTY runs
 never remove anything (`--tools` is an explicit allow list). Removal
 feeds straight back into the pre-select: a removed editor is no longer
 pre-checked on the next init (the pre-select reads the openspec-pw

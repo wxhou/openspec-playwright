@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import {
@@ -55,6 +55,36 @@ describe("mcp-servers-file carrier", () => {
     ).toThrow(/not valid JSON/);
     expect(readFileSync(configPath, "utf-8")).toBe("{ not json");
   });
+
+  it("refuses to remove from a config file that is not valid JSON", () => {
+    const configPath = join(root, ".editor", "mcp.json");
+    mkdirSync(join(root, ".editor"), { recursive: true });
+    writeFileSync(configPath, "{ not json");
+
+    expect(() =>
+      runtime().removeMcp(root, "playwright-test"),
+    ).toThrow(/not valid JSON/);
+    expect(readFileSync(configPath, "utf-8")).toBe("{ not json");
+  });
+
+  it("does not write through a symlinked config file", () => {
+    if (process.platform === "win32") return;
+    const outside = mkdtempSync(join(tmpdir(), "ospw-carrier-outside-"));
+    try {
+      const external = join(outside, "mcp.json");
+      writeFileSync(external, JSON.stringify({ mcpServers: {} }));
+      mkdirSync(join(root, ".editor"), { recursive: true });
+      symlinkSync(external, join(root, ".editor", "mcp.json"));
+
+      expect(() =>
+        runtime().installMcp(root, "playwright-test", COMMAND),
+      ).toThrow(/outside the project/);
+      const parsed = JSON.parse(readFileSync(external, "utf-8"));
+      expect(parsed.mcpServers["playwright-test"]).toBeUndefined();
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("mcp-servers-file carrier with serverType", () => {
@@ -73,6 +103,8 @@ describe("mcp-servers-file carrier with serverType", () => {
       JSON.stringify({ mcpServers: { "playwright-test": { command: "npx" } } }),
     );
     expect(mcp.isMcpInstalled(root, "playwright-test")).toBe(false);
+    // Removal still sees the entry: a typeless legacy entry is removable.
+    expect(mcp.isMcpEntryPresent(root, "playwright-test")).toBe(true);
 
     mcp.installMcp(root, "playwright-test", COMMAND);
     const parsed = JSON.parse(readFileSync(join(root, ".mcp.json"), "utf-8"));
@@ -132,6 +164,26 @@ describe("opencode-json carrier", () => {
     expect(readOpenCodeInstructions(root)).toBeUndefined();
     writeOpenCodeInstructions(root, ["AGENTS.md"]);
     expect(readOpenCodeInstructions(root)).toEqual(["AGENTS.md"]);
+  });
+
+  it("does not write through a symlinked opencode config", () => {
+    if (process.platform === "win32") return;
+    const outside = mkdtempSync(join(tmpdir(), "ospw-carrier-outside-"));
+    try {
+      const external = join(outside, "opencode.json");
+      writeFileSync(external, JSON.stringify({ mcp: {} }));
+      symlinkSync(external, join(root, "opencode.json"));
+
+      buildMcpRuntime({ kind: "opencode-json" }).installMcp(
+        root,
+        "playwright-test",
+        COMMAND,
+      );
+
+      expect(JSON.parse(readFileSync(external, "utf-8"))).toEqual({ mcp: {} });
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
   });
 });
 

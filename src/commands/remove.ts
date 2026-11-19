@@ -53,13 +53,25 @@ import { AUTO_PIPELINE_REL, AUTO_PIPELINE_TEMPLATE } from "./pipeline.js";
 
 const WORKFLOW_TEMPLATE = "github-workflow.yml";
 
-/** Managed paths holding secrets — warn when the block is gone but they stay. */
-const SENSITIVE_MANAGED_PATHS = [
-  ".mcp.json",
+/** Non-MCP managed paths holding secrets — warn when the block is gone but they stay. */
+const SENSITIVE_LOCAL_PATHS = [
   "playwright/.auth",
   "tests/playwright/credentials.yaml",
   "tests/playwright/credentials.yaml.bak",
 ];
+
+/**
+ * Every managed path that may hold secrets. MCP configs are derived from the
+ * adapters, so a new editor's config file cannot be forgotten here.
+ */
+function sensitiveManagedPaths(projectRoot: string): string[] {
+  const paths = new Set<string>(SENSITIVE_LOCAL_PATHS);
+  for (const adapter of getAllAdapters()) {
+    const configPath = adapter.mcpConfigPath?.(projectRoot);
+    if (configPath) paths.add(relative(projectRoot, configPath));
+  }
+  return [...paths];
+}
 
 /**
  * A removal that failed. `modified` tells the batch orchestrator how far the
@@ -542,7 +554,7 @@ export async function removeInProject(
       // Everything the block ignored is now committable. Secrets that stay on
       // disk (user MCP servers, auth state, credentials) need a warning, or a
       // later `git add -A` could leak them.
-      for (const rel of SENSITIVE_MANAGED_PATHS) {
+      for (const rel of sensitiveManagedPaths(projectRoot)) {
         if (existsSync(join(projectRoot, rel))) {
           console.log(
             chalk.yellow(
