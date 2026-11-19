@@ -11,7 +11,7 @@ const CLAUDE_MD_ZH = `# 项目规范
   - 用户显式指令可偏离 🟡/⚪ 即刻生效；与 🔴 冲突 → 先复述风险，用户终裁后执行
 - **修复预算**：同一失败（同一检查或断言）最多修复 2 轮，不同失败分别计；连续 3 轮失败项未减少即停
 
-- 被用户纠正后，把防再犯规则沉淀到非工具托管的载体；用户项目写自有规则文件中 \`OPENSPEC-PW\` 标记块之外（块内会被 \`openspec-pw update\` 整块覆盖）。经用户确认后合入
+- 被用户纠正后，把防再犯规则写进项目 \`openspec/config.yaml\` 的 \`context\`；经用户确认后合入
 
 ## 代码质量
 - 🔴 **lint+typecheck 每次编辑后自动执行，通过才算成功**
@@ -142,7 +142,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
   - clause conflicts resolve 🔴 > 🟡 > ⚪; for same-tier conflicts, if an existing clause already specifies the handling after its violation (e.g. the Code Quality auto-fix loop), follow that clause first — stop and ask the user only when none does
   - explicit user instructions may override 🟡/⚪ rules and take effect immediately; if one conflicts with a 🔴 → restate the risk first, the user makes the final call
 - **Repair budget**: one failure (the same check or assertion) gets at most 2 rounds of repair; different failures count separately; stop after 3 rounds with no reduction in failing items
-- When corrected by the user, land the prevention rule in a carrier the tooling does not own; in a user project write outside the \`OPENSPEC-PW\` marker block in the project's own rules file (the block is overwritten wholesale by \`openspec-pw update\`). Land it after user confirmation
+- When corrected by the user, write the prevention rule into the project's \`openspec/config.yaml\` \`context\`; land it after user confirmation
 
 ## Code Quality
 - 🔴 **lint+typecheck runs after every edit, both must pass**
