@@ -44,7 +44,6 @@ export function isEditorConfigured(
   return (
     inv.legacyArtifacts.length > 0 ||
     inv.mcpServers.length > 0 ||
-    inv.retainedMcpServers.length > 0 ||
     inv.hasWrapper ||
     inv.hasFullRules
   );

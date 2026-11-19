@@ -191,12 +191,23 @@ export function readMcpServersFile(
 ): McpServersFile | null {
   if (!existsSync(configPath)) return null;
   try {
-    const raw = JSON.parse(readFileSync(configPath, "utf-8")) as Record<
-      string,
-      unknown
-    >;
+    const parsed: unknown = JSON.parse(readFileSync(configPath, "utf-8"));
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return null;
+    }
+    const raw = parsed as McpServersFile;
     const key = serversKeyOf(options);
-    if (raw[key] && typeof raw[key] === "object") {
+    const servers = raw[key];
+    if (servers !== undefined) {
+      // `typeof [] === "object"`, but JSON.stringify drops named properties on
+      // arrays — writing into one would silently lose the entry.
+      if (
+        servers === null ||
+        typeof servers !== "object" ||
+        Array.isArray(servers)
+      ) {
+        return null;
+      }
       return raw;
     }
     raw[key] = {};
@@ -238,14 +249,17 @@ export function installMcpServerInFile(
     const parsed = readMcpServersFile(configPath, options);
     if (parsed === null) {
       throw new Error(
-        `${configPath} exists but is not valid JSON — refusing to overwrite it`,
+        `${configPath} exists but is not a valid MCP config — refusing to overwrite it`,
       );
     }
     config = parsed;
   }
   const key = serversKeyOf(options);
   const servers = serversMap(config, key);
+  // Replace only the fields this tool owns; user fields such as `env` or
+  // `cwd` on an existing entry survive an upgrade.
   servers[serverName] = {
+    ...servers[serverName],
     ...(options?.entryType ? { type: options.entryType } : {}),
     command: command[0],
     args: command.slice(1),
@@ -265,7 +279,7 @@ export function removeMcpServerFromFile(
     // safely edit — surface it instead of reporting a successful removal.
     if (existsSync(configPath)) {
       throw new Error(
-        `${configPath} exists but is not valid JSON — cannot remove ${serverName}`,
+        `${configPath} exists but is not a valid MCP config — cannot remove ${serverName}`,
       );
     }
     return;

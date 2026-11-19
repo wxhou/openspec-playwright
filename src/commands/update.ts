@@ -49,6 +49,7 @@ import {
 import { execFileAsync, execFileSync } from "../shared/exec.js";
 import { openSpecCliStatus } from "../shared/openspec-version.js";
 import { compareBlock, OPENSPEC_START, hasLegacyTerritoryStart, extractRuleBlockContent } from "../shared/drift.js";
+import { readTextFileCapped } from "../shared/file-read.js";
 import { pipelineGitignoreOmit } from "./pipeline.js";
 import { fullRulesFile, wrapperHasMarkers, hasRuleFileMarkers } from "./editors/project-rules.js";
 import type { EditorAdapter } from "./editors.js";
@@ -81,7 +82,9 @@ export function staleFullRulesAdapters(
     const full = fullRulesFile(adapter, projectRoot);
     if (!full || !existsSync(full)) continue;
     if (lstatSync(full).isSymbolicLink()) continue;
-    const content = readFileSync(full, "utf-8");
+    const read = readTextFileCapped(full);
+    if (read.kind !== "ok") continue;
+    const content = read.content;
     if (!content.includes(OPENSPEC_START)) continue;
     if (compareBlock(content, standards).stale) stale.push(adapter);
   }

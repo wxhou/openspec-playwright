@@ -751,6 +751,31 @@ describe("update.ts: minimal-mode block-removed alarm", () => {
 
 // ─── syncCommandArtifacts (update refresh, per-adapter) ──────────────────────
 
+describe("staleFullRulesAdapters", () => {
+  let projectDir: string;
+
+  beforeEach(() => {
+    projectDir = mkdtempSync(join(tmpdir(), "ospw-pw-stale-full-rules-"));
+  });
+
+  afterEach(() => {
+    rmSync(projectDir, { recursive: true, force: true });
+  });
+
+  it("does not read a full-rules file beyond the ownership cap", async () => {
+    const { staleFullRulesAdapters } = await import(
+      "../../src/commands/update.js"
+    );
+    const big =
+      "<!-- OPENSPEC-PW:START -->\n" +
+      "x".repeat(1024 * 1024) +
+      "\n<!-- OPENSPEC-PW:END -->\n";
+    writeFileSync(join(projectDir, "GEMINI.md"), big);
+
+    expect(staleFullRulesAdapters(projectDir, "standards")).toEqual([]);
+  });
+});
+
 describe("syncCommandArtifacts", () => {
   let projectDir: string;
 

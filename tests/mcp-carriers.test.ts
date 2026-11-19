@@ -52,7 +52,7 @@ describe("mcp-servers-file carrier", () => {
 
     expect(() =>
       runtime().installMcp(root, "playwright-test", COMMAND),
-    ).toThrow(/not valid JSON/);
+    ).toThrow(/not a valid MCP config/);
     expect(readFileSync(configPath, "utf-8")).toBe("{ not json");
   });
 
@@ -63,7 +63,7 @@ describe("mcp-servers-file carrier", () => {
 
     expect(() =>
       runtime().removeMcp(root, "playwright-test"),
-    ).toThrow(/not valid JSON/);
+    ).toThrow(/not a valid MCP config/);
     expect(readFileSync(configPath, "utf-8")).toBe("{ not json");
   });
 
@@ -117,6 +117,40 @@ describe("mcp-servers-file carrier with serverType", () => {
 
     mcp.removeMcp(root, "playwright-test");
     expect(mcp.isMcpInstalled(root, "playwright-test")).toBe(false);
+  });
+
+  it("preserves user fields when upgrading a legacy entry", () => {
+    writeFileSync(
+      join(root, ".mcp.json"),
+      JSON.stringify({
+        mcpServers: {
+          "playwright-test": {
+            command: "npx",
+            args: ["old"],
+            env: { BROWSER: "firefox" },
+          },
+        },
+      }),
+    );
+    const mcp = runtime();
+    mcp.installMcp(root, "playwright-test", COMMAND);
+    const parsed = JSON.parse(readFileSync(join(root, ".mcp.json"), "utf-8"));
+    expect(parsed.mcpServers["playwright-test"]).toEqual({
+      env: { BROWSER: "firefox" },
+      type: "stdio",
+      command: "npx",
+      args: ["playwright", "run-test-mcp-server"],
+    });
+  });
+
+  it("refuses an array-shaped server map instead of dropping the entry", () => {
+    writeFileSync(join(root, ".mcp.json"), JSON.stringify({ mcpServers: [] }));
+    expect(() =>
+      runtime().installMcp(root, "playwright-test", COMMAND),
+    ).toThrow(/not a valid MCP config/);
+    expect(JSON.parse(readFileSync(join(root, ".mcp.json"), "utf-8"))).toEqual({
+      mcpServers: [],
+    });
   });
 });
 

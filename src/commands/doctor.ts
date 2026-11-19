@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { join, basename } from "path";
 import chalk from "chalk";
 import { execFileSync } from "../shared/exec.js";
+import { readTextFileCapped } from "../shared/file-read.js";
 import {
   detectAdapters,
   getAllAdapters,
@@ -908,7 +909,18 @@ export async function doctor(options: DoctorOptions = {}) {
       const fullFile = fullRulesFile(fullAdapter, projectRoot);
       if (!fullFile || !existsSync(fullFile)) continue;
       if (lstatSync(fullFile).isSymbolicLink()) continue;
-      const fullContent = readFileSync(fullFile, "utf-8");
+      const read = readTextFileCapped(fullFile);
+      if (read.kind === "too-large") {
+        checks.push({
+          category: "Sync",
+          name: `standards-${fullAdapter.id}`,
+          ok: false,
+          message: `${basename(fullFile)} is too large to verify (>1 MB) — reduce it, then run openspec-pw update`,
+        });
+        continue;
+      }
+      if (read.kind !== "ok") continue;
+      const fullContent = read.content;
       if (!fullContent.includes(OPENSPEC_START)) continue;
       const fullStandardsPath = bundledStandardsPath(
         detectInstalledLanguage(extractRuleBlockContent(fullContent)) ?? "zh",
