@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+- **docs(site): 补齐编辑器清单的中文入口**. Claude Code、Gemini CLI、Qwen Code、GitHub Copilot 的中文模式改指官方中文文档，Trae 指向中国站 `trae.cn`，Codex 指向官方中文页；英文模式保持原链接。
+  - `docs/index.html`、`CHANGELOG.md`
+
 ## [0.3.122] - 2026-11-19
 - **docs(standards): 精简三处与 §0 重复的措辞**. §1 关键假设改为引用 §0 核实梯（删两处重述），注释纪律条目去掉与标题逐字重复的前缀，`lint-guidelines.md` 的未安装括注只保留首次出现；条数与语义不变。中英 SSOT、`docs/script.js` 内嵌与 `AGENTS.md` 镜像同步。
   - `standards/employee-standards.md`、`standards/employee-standards.en.md`、`docs/script.js`、`AGENTS.md`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
