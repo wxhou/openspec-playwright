@@ -991,6 +991,29 @@ describe("doctor authorization tiers", () => {
     expect(wrapper?.message).toContain("run openspec-pw update");
   });
 
+  it("recorded rule-copy opt-out keeps a missing wrapper from failing", async () => {
+    existingPaths.add(
+      join(fixtureRoot, ".claude", "commands", "opsx", "e2e.md").replace(/\\/g, "/"),
+    );
+    existingPaths.add(join(fixtureRoot, ".gitignore").replace(/\\/g, "/"));
+    readFileMock.mockImplementation((p: Parameters<typeof readFileSync>[0]) => {
+      const s = String(p);
+      if (s.endsWith(".mcp.json")) return "{}";
+      if (s.endsWith(".gitignore")) {
+        return (
+          "# openspec-pw: begin managed block\n" +
+          "# openspec-pw: skip=CLAUDE.md\n" +
+          "# openspec-pw: end managed block\n"
+        );
+      }
+      return "";
+    });
+    const checks = await doctorJsonChecks();
+    const wrapper = checks.find((c) => c.name === "standards-claude");
+    expect(wrapper?.ok).toBe(true);
+    expect(wrapper?.message).toContain("--no-rule-files");
+  });
+
   it("minimal-mode codebuddy project: wrapper drift is checked (standards-codebuddy)", async () => {
     const drift = await import("../../src/shared/drift.js");
     // compareBlock is consumed first by the standards-agents check, then by

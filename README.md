@@ -178,8 +178,9 @@ choice is recorded on the block's header line (`# openspec-pw: skip=…`) so
 `update` never re-adds it, and re-running init with the path checked takes it
 back. `AGENTS.md`, `CLAUDE.md`, `CODEBUDDY.md`, `GEMINI.md`, `QWEN.md`,
 `.github/copilot-instructions.md`, `.roo/rules/openspec-pw.md` and
-`.trae/rules/project_rules.md` are not offered: every init injects the
-standards block into them. Non-interactive runs (including
+`.trae/rules/project_rules.md` are not offered; by default every init injects
+the standards block into them (use `--no-rule-files` to install only AGENTS.md).
+Non-interactive runs (including
 a piped stdin) skip the prompt and keep whatever an earlier interactive run
 recorded; a fresh project ignores everything managed.
 
@@ -363,7 +364,7 @@ into a `/opsx:e2e` delivery.
 
 ```bash
 openspec-pw -v            # Print version (also -V / --version)
-openspec-pw init          # Initialize integration (--tools all|none|ids… to select editors; --agents adds the official agents; --frontend/--no-frontend force the install mode; --miniprogram/--no-miniprogram select the mini-program target; --lint-config generates/extends ESLint and ruff config for the swallow-error checklist; --hook[=static|full] installs a Claude Code Stop hook; --auto-pipeline generates the headless CI workflow; --lang zh|en selects the employee-standards language)
+openspec-pw init          # Initialize integration (--tools all|none|ids… to select editors; --agents adds the official agents; --frontend/--no-frontend force the install mode; --miniprogram/--no-miniprogram select the mini-program target; --rule-files/--no-rule-files toggle per-editor rules copies; --lint-config generates/extends ESLint and ruff config for the swallow-error checklist; --hook[=static|full] installs a Claude Code Stop hook; --auto-pipeline generates the headless CI workflow; --lang zh|en selects the employee-standards language)
 openspec-pw update        # Update CLI and commands to latest version (--lang zh|en switches an installed standards block)
 openspec-pw doctor        # Check prerequisites (Node, Playwright, OpenSpec, config, tests) + app server diagnostics
 openspec-pw install --claude # Install or verify Claude Code via the official native installer (default: print only; --run executes; --verify checks)
@@ -575,7 +576,7 @@ If your project already has `playwright.config.ts`, `openspec-pw init` will not 
 
 If your app requires login, set up credentials once, then all tests run authenticated automatically.
 
-> **Credentials are ignored automatically**: init and update maintain a marked block at the tail of your `.gitignore` that ignores `tests/playwright/credentials.yaml`, its `.bak`, `tests/playwright/test-results/`, and exploration screenshots (`tests/playwright/screenshots/` — they age as the app evolves; stay local like app-exploration.md) — plus auth storageState (`playwright/.auth/`, logged-in session cookies), MCP config (`.mcp.json`, `.gemini/settings.json`, `.qwen/settings.json`, `.roo/mcp.json`, `.trae/mcp.json`, `.kimi-code/mcp.json` — user-added servers often carry API keys in env/headers), tool-local data (`.codegraph/`, `.playwright-mcp/`), and first-tier names like `.claude/`, `.cursor/`, `.codebuddy/`, `.agents/skills/opsx-e2e/`, `.dsh/skills/opsx-e2e/`, `.gemini/commands/opsx/e2e.toml`, `.qwen/commands/opsx-e2e.md`, `.github/prompts/opsx-e2e.prompt.md`, `.roo/commands/opsx-e2e.md`, `.trae/commands/opsx-e2e.md`, `.kimi-code/skills/opsx-e2e/`, `openspec/`, `AGENTS.md`, `CLAUDE.md`, `CODEBUDDY.md`, `GEMINI.md`, `QWEN.md`, `.github/copilot-instructions.md`, `.roo/rules/openspec-pw.md`, `.trae/rules/project_rules.md` (the generated products stay local, per design). The block is idempotent, never touches your own rules, and is cleaned up by `remove`. If the block cannot be written, a warning lists the uncovered paths instead. Note: ignore rules do not apply to already-tracked files — if credentials were committed before, run `git rm --cached tests/playwright/credentials.yaml`. Alternatively keep credentials in the `E2E_USERNAME` / `E2E_PASSWORD` env vars. Interactive init can uncheck individual paths; the opt-outs are stored on the block's `# openspec-pw: skip=…` header line and honored by every later `update`.
+> **Credentials are ignored automatically**: init and update maintain a marked block at the tail of your `.gitignore` that ignores `tests/playwright/credentials.yaml`, its `.bak`, `tests/playwright/test-results/`, and exploration screenshots (`tests/playwright/screenshots/` — they age as the app evolves; stay local like app-exploration.md) — plus auth storageState (`playwright/.auth/`, logged-in session cookies), MCP config (`.mcp.json`, `opencode.json(c)`, `.gemini/settings.json`, `.qwen/settings.json`, `.roo/mcp.json`, `.trae/mcp.json`, `.kimi-code/mcp.json` — user-added servers often carry API keys in env/headers), tool-local data (`.codegraph/`, `.playwright-mcp/`), and first-tier names like `.claude/`, `.cursor/`, `.codebuddy/`, `.agents/skills/opsx-e2e/`, `.dsh/skills/opsx-e2e/`, `.gemini/commands/opsx/e2e.toml`, `.qwen/commands/opsx-e2e.md`, `.github/prompts/opsx-e2e.prompt.md`, `.roo/commands/opsx-e2e.md`, `.trae/commands/opsx-e2e.md`, `.kimi-code/skills/opsx-e2e/`, `openspec/`, `AGENTS.md`, `CLAUDE.md`, `CODEBUDDY.md`, `GEMINI.md`, `QWEN.md`, `.github/copilot-instructions.md`, `.roo/rules/openspec-pw.md`, `.trae/rules/project_rules.md` (the generated products stay local, per design). The block is idempotent, never touches your own rules, and is cleaned up by `remove`. If the block cannot be written, a warning lists the uncovered paths instead. Note: ignore rules do not apply to already-tracked files — if credentials were committed before, run `git rm --cached tests/playwright/credentials.yaml`. Alternatively keep credentials in the `E2E_USERNAME` / `E2E_PASSWORD` env vars. Interactive init can uncheck individual paths; the opt-outs are stored on the block's `# openspec-pw: skip=…` header line and honored by every later `update`.
 
 ```bash
 # 1. (Optional) Edit test users for role-based tests
@@ -659,6 +660,14 @@ their own native rules files (GEMINI.md, QWEN.md, `.github/copilot-instructions.
 block directly. CodeBuddy CLI loads them
 the same way Claude Code does, via a thin CODEBUDDY.md wrapper with the same `@AGENTS.md`
 import (CodeBuddy prefers CODEBUDDY.md over AGENTS.md when both exist).
+
+**Per-editor rules copies.** AGENTS.md is the only mandatory rules file; the wrapper and
+full-standards files above are convenience copies. `init --no-rule-files` installs AGENTS.md
+and skips those copies (removing pristine ones left by an earlier run), while
+`init --rule-files` restores them. The opt-out is recorded on the managed `.gitignore`
+block's `# openspec-pw: skip=…` line, so later `init` / `update` runs honor it without
+repeating the flag; a re-run with neither flag keeps the recorded decision, and `doctor`
+reports a skipped carrier as intentionally disabled rather than missing.
 
 > **Coexisting with the official `@fission-ai/openspec` CLI**: its `openspec update` runs a
 > "legacy cleanup" that deletes any root AGENTS.md/CLAUDE.md block wrapped in plain

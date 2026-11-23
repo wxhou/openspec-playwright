@@ -64,6 +64,9 @@ import {
   agentsFileHasCleanableMarkers,
   wrapperLinksToAgents,
   normalizeEol,
+  cleanProjectRules,
+  fullRulesFile,
+  wrapperRulesFile,
 } from "./editors.js";
 import {
   isEditorConfigured,
@@ -87,6 +90,9 @@ import {
   findUncoveredManagedPaths,
   skippableManagedPaths,
   readManagedSkips,
+  readManagedSkipsSafe,
+  RULE_COPY_GITIGNORE_PATHS,
+  managedPathFor,
   detectTrackedFiles,
   isIgnoredPath,
   managedBlockAdvisoryHint,
@@ -146,6 +152,12 @@ export interface InitOptions {
   autoPipeline?: boolean;
   /** Employee standards language (`--lang zh|en`); invalid values are rejected by the CLI. */
   lang?: string;
+  /**
+   * Per-editor rules copies (`--rule-files` / `--no-rule-files`): true
+   * installs them, false skips and cleans them, undefined follows the
+   * recorded skip (install when nothing is recorded).
+   */
+  ruleFiles?: boolean;
 }
 
 export interface InitDeps {
@@ -220,6 +232,37 @@ export function resolveInitMode(
   if (options.frontend === true) return "frontend";
   if (options.frontend === false) return "minimal";
   return frontendSignal === true ? "frontend" : "minimal";
+}
+
+/** The per-editor rules file a rule-copy decision applies to, if any. */
+function carrierRulesFile(
+  adapter: EditorAdapter,
+  projectRoot: string,
+): string | null {
+  return (
+    fullRulesFile(adapter, projectRoot) ?? wrapperRulesFile(adapter, projectRoot)
+  );
+}
+
+/**
+ * Per-adapter rule-copy decision: `--no-rule-files` opts every adapter out,
+ * `--rule-files` opts in, and the default follows the skip record written by
+ * an earlier opt-out run.
+ */
+function ruleCopyPredicate(
+  options: InitOptions,
+  projectRoot: string,
+): (adapter: EditorAdapter) => boolean {
+  if (options.ruleFiles === false) return () => true;
+  if (options.ruleFiles === true) return () => false;
+  const recorded = new Set(readManagedSkipsSafe(projectRoot));
+  const carriers = new Set<string>(RULE_COPY_GITIGNORE_PATHS);
+  return (adapter) => {
+    const file = carrierRulesFile(adapter, projectRoot);
+    if (!file) return false;
+    const rel = managedPathFor(projectRoot, file);
+    return recorded.has(rel) && carriers.has(rel);
+  };
 }
 
 /** Project-relative display path; ancestor configs stay absolute. */
@@ -936,6 +979,17 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
               ...gitignoreCandidates.filter((p) => !selectedPaths.includes(p)),
             ]),
           ];
+    // Rule-copy opt-out shares the skip record: carrier paths leave the
+    // managed block (a user-owned same-name file must stay committable) and
+    // drive the install/cleanup decision in step 8.
+    if (options.ruleFiles === false) {
+      skippedPaths = [
+        ...new Set([...skippedPaths, ...RULE_COPY_GITIGNORE_PATHS]),
+      ];
+    } else if (options.ruleFiles === true) {
+      const carriers = new Set<string>(RULE_COPY_GITIGNORE_PATHS);
+      skippedPaths = skippedPaths.filter((p) => !carriers.has(p));
+    }
     const result = ensureGitignoreEntries(projectRoot, {
       omit: pipelineOmit,
       skip: skippedPaths,
@@ -965,6 +1019,23 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     ]);
     if (uncovered.length > 0) {
       console.log(chalk.yellow(`\n  ⚠ ${managedBlockAdvisoryHint(uncovered)}`));
+    }
+    if (options.ruleFiles === false) {
+      console.log(
+        chalk.yellow(
+          "\n  ⚠ The rule-copy opt-out could not be recorded — this run still skips" +
+            ' the copies, but a later "openspec-pw update" may recreate them.' +
+            " Fix .gitignore, then re-run with --no-rule-files.",
+        ),
+      );
+    } else if (options.ruleFiles === true) {
+      console.log(
+        chalk.yellow(
+          "\n  ⚠ The rule-copy restoration could not be recorded — the copies were" +
+            ' written, but the stale skip record keeps "openspec-pw update" from' +
+            " refreshing them. Fix .gitignore, then re-run with --rule-files.",
+        ),
+      );
     }
   }
   const tracked = detectTrackedFiles(projectRoot, [
@@ -1019,6 +1090,15 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   }
 
   // 8. Install employee-grade standards (AGENTS.md + CLAUDE.md wrapper if Claude)
+  // The opt-out cleans existing copies even with no editor selected
+  // (--tools none) — absent carriers stay silent.
+  if (options.ruleFiles === false) {
+    for (const adapter of getAllAdapters()) {
+      const file = carrierRulesFile(adapter, projectRoot);
+      if (!file || !existsSync(file)) continue;
+      cleanProjectRules(adapter, projectRoot, { agents: false });
+    }
+  }
   if (editors.length > 0) {
     console.log(chalk.blue("\n─── Installing Employee Standards ───"));
     const loaded = loadProjectStandards(
@@ -1036,7 +1116,9 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
       editors.some((a) => a.id === "claude"),
       editors.some((a) => a.id === "codebuddy"),
     );
-    installProjectRules(projectRoot, standards, editors);
+    installProjectRules(projectRoot, standards, editors, {
+      skipCopyFor: ruleCopyPredicate(options, projectRoot),
+    });
     console.log(
       chalk.gray(
         `  ✓ Employee standards installed in ${language === "en" ? "English" : "Chinese"} — switch with --lang ${language === "en" ? "zh" : "en"}`,

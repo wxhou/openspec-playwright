@@ -27,6 +27,8 @@ import {
   resolveWxaProject,
   resolveBuildCommand,
   detectInstalledLanguage,
+  readManagedSkipsSafe,
+  managedPathFor,
 } from "../shared/index.js";
 import { bundledStandardsPath, compareBlock, OPENSPEC_START, hasLegacyTerritoryStart, extractRuleBlockContent } from "../shared/drift.js";
 import {
@@ -850,6 +852,10 @@ export async function doctor(options: DoctorOptions = {}) {
       });
     }
 
+    // Rule-copy opt-out (--no-rule-files) is recorded on the managed block's
+    // skip line; those files are expected to be absent, not missing.
+    const ruleSkips = new Set(readManagedSkipsSafe(projectRoot));
+
     // Wrapper files (CLAUDE.md / CODEBUDDY.md) are checked when their editor
     // is authorized (command artifacts) OR the wrapper marker block itself
     // is present (minimal-mode projects have standards but no command files
@@ -864,6 +870,15 @@ export async function doctor(options: DoctorOptions = {}) {
       const authorized =
         hasCommandArtifacts(projectRoot, wrapperAdapter) || wrapperHasMarkers(wrapperAdapter, projectRoot);
       if (!authorized) continue;
+      if (ruleSkips.has(managedPathFor(projectRoot, wrapperFile))) {
+        checks.push({
+          category: "Sync",
+          name: `standards-${wrapperAdapter.id}`,
+          ok: true,
+          message: `${wrapperLabel}: rules copies disabled (--no-rule-files)`,
+        });
+        continue;
+      }
       // A symlinked wrapper (→ AGENTS.md, the official reuse pattern) is
       // covered by the standards-agents check above — comparing it against
       // the wrapper expectation would false-positive.
@@ -908,6 +923,7 @@ export async function doctor(options: DoctorOptions = {}) {
     for (const fullAdapter of getAllAdapters()) {
       const fullFile = fullRulesFile(fullAdapter, projectRoot);
       if (!fullFile || !existsSync(fullFile)) continue;
+      if (ruleSkips.has(managedPathFor(projectRoot, fullFile))) continue;
       if (lstatSync(fullFile).isSymbolicLink()) continue;
       const read = readTextFileCapped(fullFile);
       if (read.kind === "too-large") {

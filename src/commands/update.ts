@@ -43,6 +43,8 @@ import {
   managedBlockAdvisoryHint,
   ensureGitignoreEntries,
   readManagedSkips,
+  readManagedSkipsSafe,
+  managedPathFor,
   installOrRefreshChecklist,
   LINT_GUIDELINES_RELPATH,
 } from "../shared/index.js";
@@ -782,6 +784,10 @@ export function syncEmployeeStandards(
     }
   }
 
+  // Rule-copy opt-out (--no-rule-files) lives on the managed block's skip
+  // line; those files are neither recreated nor refreshed below.
+  const ruleSkips = new Set(readManagedSkipsSafe(projectRoot));
+
   // Wrapper files (CLAUDE.md / CODEBUDDY.md) are only maintained when their
   // editor is authorized. A bare `@AGENTS.md` import without markers is left
   // untouched (added by the openspec CLI or the user) — not stale.
@@ -791,6 +797,12 @@ export function syncEmployeeStandards(
     if (!authorized) continue;
     const wrapperPath = adapter.projectRulesPath(projectRoot);
     const wrapperLabel = basename(wrapperPath);
+    if (ruleSkips.has(managedPathFor(projectRoot, wrapperPath))) {
+      console.log(
+        chalk.gray(`  - ${wrapperLabel}: rules copy disabled (--no-rule-files)`),
+      );
+      continue;
+    }
     // A symlinked wrapper (→ AGENTS.md, the official reuse pattern)
     // is what the editor reads; the AGENTS.md check above already
     // tracks its content drift, and rewriting a wrapper would overwrite
@@ -822,7 +834,12 @@ export function syncEmployeeStandards(
   // Roo/Trae rule files) carry our block directly. Refresh them when the
   // block is present and differs from the bundled standards; a file without
   // our markers belongs to the user and is left alone.
-  const staleFullRules = staleFullRulesAdapters(projectRoot, standards);
+  const staleFullRules = staleFullRulesAdapters(projectRoot, standards).filter(
+    (adapter) => {
+      const full = fullRulesFile(adapter, projectRoot);
+      return !(full && ruleSkips.has(managedPathFor(projectRoot, full)));
+    },
+  );
 
   if (
     agentsStale ||

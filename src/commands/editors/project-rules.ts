@@ -352,6 +352,7 @@ export function installProjectRules(
   projectRoot: string,
   standardsContent: string,
   detected: EditorAdapter[],
+  options: { skipCopyFor?: (adapter: EditorAdapter) => boolean } = {},
 ): void {
   if (detected.length === 0) return;
 
@@ -361,6 +362,7 @@ export function installProjectRules(
   // Full-standards rules files carry the complete block themselves; wrapper
   // files (CLAUDE.md, CODEBUDDY.md) only import AGENTS.md.
   for (const adapter of detected) {
+    if (options.skipCopyFor?.(adapter)) continue;
     if (fullRulesFile(adapter, projectRoot) !== null) {
       installOpenSpecBlock(projectRoot, standardsContent, adapter);
     } else if (wrapperRulesFile(adapter, projectRoot) !== null) {

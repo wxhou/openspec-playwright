@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- **fix(cli): 修正共享产物的配置归属并支持退出规则副本**. Codex 从共享 `.agents/skills` 正确预选、共享 `.mcp.json` 不再把四家编辑器一并标为已配置、`opencode.jsonc` 纳入受管 gitignore；新增 `init --rule-files/--no-rule-files`，退出记录写在受管块 skip 行，`update` 不重建、`doctor` 不判红。
+  - `src/commands/{init,update,doctor}.ts`、`src/commands/editors/{configured,project-rules}.ts`、`src/shared/{gitignore-managed,index}.ts`、`src/index.ts`、`README.md`、`README.zh-CN.md`、`tests/{update,smoke,gitignore-managed}.test.ts`、`tests/commands/{doctor,init-preselect,init-rule-files}.test.ts`、`CHANGELOG.md`
 - **docs(site): 补齐编辑器清单的中文入口**. Claude Code、Gemini CLI、Qwen Code、GitHub Copilot 的中文模式改指官方中文文档，Trae 指向中国站 `trae.cn`，Codex 指向官方中文页；英文模式保持原链接。
   - `docs/index.html`、`CHANGELOG.md`
 

@@ -41,6 +41,10 @@ import {
   cursorAdapter,
   piAdapter,
   opencodeAdapter,
+  codebuddyAdapter,
+  minimaxAdapter,
+  codexAdapter,
+  githubCopilotAdapter,
 } from "../../src/commands/editors.js";
 
 const CURSOR_COMMAND = join(".cursor", "commands", "opsx-e2e.md");
@@ -89,6 +93,53 @@ describe("configured predicates (isEditorConfigured)", () => {
       JSON.stringify({ mcpServers: { "playwright-test": { command: "npx", args: [] } } }),
     );
     expect(isEditorConfigured(cursorAdapter, projectRoot)).toBe(true);
+  });
+
+  it("shared skill is attributed to Codex when no declarer owns a project signal", () => {
+    mkdirSync(join(projectRoot, ".agents", "skills", "opsx-e2e"), { recursive: true });
+    writeFileSync(join(projectRoot, ".agents", "skills", "opsx-e2e", "SKILL.md"), "skill");
+    // Ambiguous: the path cannot prove ownership, so both declarers may claim it.
+    expect(isEditorConfigured(codexAdapter, projectRoot)).toBe(true);
+    expect(isEditorConfigured(minimaxAdapter, projectRoot)).toBe(true);
+  });
+
+  it("shared skill stops counting for Codex once MiniMax owns it", () => {
+    mkdirSync(join(projectRoot, ".agents", "skills", "opsx-e2e"), { recursive: true });
+    writeFileSync(join(projectRoot, ".agents", "skills", "opsx-e2e", "SKILL.md"), "skill");
+    mkdirSync(join(projectRoot, ".minimax"), { recursive: true });
+    expect(isEditorConfigured(minimaxAdapter, projectRoot)).toBe(true);
+    expect(isEditorConfigured(codexAdapter, projectRoot)).toBe(false);
+  });
+
+  it("both editors keep their own signal when both project dirs exist", () => {
+    mkdirSync(join(projectRoot, ".agents", "skills", "opsx-e2e"), { recursive: true });
+    writeFileSync(join(projectRoot, ".agents", "skills", "opsx-e2e", "SKILL.md"), "skill");
+    mkdirSync(join(projectRoot, ".codex"), { recursive: true });
+    mkdirSync(join(projectRoot, ".minimax"), { recursive: true });
+    expect(isEditorConfigured(codexAdapter, projectRoot)).toBe(true);
+    expect(isEditorConfigured(minimaxAdapter, projectRoot)).toBe(true);
+  });
+
+  it("a shared .mcp.json entry alone does not pre-select every reader", () => {
+    mkdirSync(join(projectRoot, ".claude", "commands", "opsx"), { recursive: true });
+    writeFileSync(join(projectRoot, CLAUDE_COMMAND), "cmd");
+    writeFileSync(
+      join(projectRoot, ".mcp.json"),
+      JSON.stringify({ mcpServers: { "playwright-test": { command: "npx", args: [] } } }),
+    );
+    expect(isEditorConfigured(claudeAdapter, projectRoot)).toBe(true);
+    expect(isEditorConfigured(codebuddyAdapter, projectRoot)).toBe(false);
+    expect(isEditorConfigured(minimaxAdapter, projectRoot)).toBe(false);
+    expect(isEditorConfigured(githubCopilotAdapter, projectRoot)).toBe(false);
+  });
+
+  it("a shared .mcp.json entry counts when the editor has its own project marker", () => {
+    mkdirSync(join(projectRoot, ".codebuddy"), { recursive: true });
+    writeFileSync(
+      join(projectRoot, ".mcp.json"),
+      JSON.stringify({ mcpServers: { "playwright-test": { command: "npx", args: [] } } }),
+    );
+    expect(isEditorConfigured(codebuddyAdapter, projectRoot)).toBe(true);
   });
 
   it("anyEditorConfigured + agentsFileHasMarkers", () => {
@@ -151,6 +202,7 @@ describe("init pre-select: artifact manifest tier", () => {
       {
         isTTY: true,
         prompt: async (allEditors, pre, configured) => {
+          if (!configured) throw new Error("configured set missing on re-init");
           preselected = [...pre];
           names = allEditors
             .map((a) => configured.has(a.id) ? `${a.displayName} (configured)` : a.displayName);
@@ -163,6 +215,26 @@ describe("init pre-select: artifact manifest tier", () => {
     expect(preselected).toEqual(["claude"]);
     expect(names).toContain("Claude Code (configured)");
     expect(names).not.toContain("Cursor (configured)");
+  });
+
+  it("Codex alone is pre-selected from the shared skill artifact", async () => {
+    mkdirSync(join(tmpRoot, ".agents", "skills", "opsx-e2e"), { recursive: true });
+    writeFileSync(join(tmpRoot, ".agents", "skills", "opsx-e2e", "SKILL.md"), "skill");
+
+    let preselected: string[] = [];
+    await init(
+      { mcp: false },
+      {
+        isTTY: true,
+        prompt: async (_allEditors, pre) => {
+          preselected = [...pre];
+          return ["codex"];
+        },
+        confirm: async () => true,
+      },
+    );
+
+    expect(preselected).toContain("codex");
   });
 
   it("first-run bypass: zero openspec-pw state → project-level detected pre-selected, no suffix", async () => {
@@ -181,7 +253,7 @@ describe("init pre-select: artifact manifest tier", () => {
           homeDir: home,
           prompt: async (allEditors, pre, configured) => {
             preselected = [...pre];
-            names = allEditors.map((a) => (configured.has(a.id) ? "(configured)" : ""));
+            names = allEditors.map((a) => (configured?.has(a.id) ? "(configured)" : ""));
             return ["claude"];
           },
           confirm: async () => true,

@@ -657,6 +657,24 @@ describe("update.ts: minimal-mode first-class sync", () => {
     expect(refreshed).not.toContain("outdated");
   });
 
+  it("syncEmployeeStandards: an unrecorded missing wrapper is still created", async () => {
+    const { syncEmployeeStandards } = await import("../../src/commands/update.js");
+    syncEmployeeStandards(bundleDir, tmpRoot, true, true, false, "zh");
+    expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(true);
+  });
+
+  it("syncEmployeeStandards: a recorded rule-copy opt-out is not recreated", async () => {
+    const { syncEmployeeStandards } = await import("../../src/commands/update.js");
+    const { ensureGitignoreEntries } = await import("../../src/shared/gitignore-managed.js");
+    writeFileSync(
+      join(tmpRoot, "AGENTS.md"),
+      "<!-- OPENSPEC-PW:START -->\nold\n<!-- OPENSPEC-PW:END -->\n",
+    );
+    ensureGitignoreEntries(tmpRoot, { skip: ["CLAUDE.md"] });
+    syncEmployeeStandards(bundleDir, tmpRoot, true, true, false, "zh");
+    expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(false);
+  });
+
   it("syncProjectTemplates: hints on tests/README drift without overwriting (user README safe)", async () => {
     const { syncProjectTemplates } = await import("../../src/commands/update.js");
     mkdirSync(join(tmpRoot, "tests"), { recursive: true });

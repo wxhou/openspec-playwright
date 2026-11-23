@@ -63,6 +63,14 @@ program
     "force the web target even when a mini-program signal is detected",
   )
   .option(
+    "--rule-files",
+    "install per-editor rules copies (GEMINI.md, CLAUDE.md wrapper, …); default follows the recorded opt-out",
+  )
+  .option(
+    "--no-rule-files",
+    "skip per-editor rules copies and clean existing ones; AGENTS.md standards are still installed",
+  )
+  .option(
     "--lint-config",
     "generate/adjust ESLint and ruff config for the swallow-error checklist (opt-in)",
   )
@@ -90,6 +98,14 @@ program
       console.error(
         chalk.red(
           "\n  ✗ Conflicting flags: use either --miniprogram or --no-miniprogram, and do not combine --miniprogram with --no-frontend.\n",
+        ),
+      );
+      process.exit(2);
+    }
+    if (argv.includes("--rule-files") && argv.includes("--no-rule-files")) {
+      console.error(
+        chalk.red(
+          "\n  ✗ Conflicting flags: use either --rule-files or --no-rule-files.\n",
         ),
       );
       process.exit(2);

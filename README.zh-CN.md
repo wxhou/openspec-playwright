@@ -230,7 +230,7 @@ openspec-pw init --tools claude --agents   # 额外安装官方 planner agent �
 
 ```bash
 openspec-pw -v            # 打印版本（也支持 -V / --version）
-openspec-pw init          # 初始化集成（--tools all|none|ids… 可选编辑器；--agents 加装官方 agents；--frontend/--no-frontend 强制安装模式；--miniprogram/--no-miniprogram 选择小程序目标；--lint-config 生成/扩展吞错清单的 ESLint 与 ruff 配置；--hook[=static|full] 安装 Claude Code Stop hook；--auto-pipeline 生成无头 CI 工作流；--lang zh|en 选择员工规范语言）
+openspec-pw init          # 初始化集成（--tools all|none|ids… 可选编辑器；--agents 加装官方 agents；--frontend/--no-frontend 强制安装模式；--miniprogram/--no-miniprogram 选择小程序目标；--rule-files/--no-rule-files 开关各编辑器的规则副本；--lint-config 生成/扩展吞错清单的 ESLint 与 ruff 配置；--hook[=static|full] 安装 Claude Code Stop hook；--auto-pipeline 生成无头 CI 工作流；--lang zh|en 选择员工规范语言）
 openspec-pw update        # 更新 CLI 和命令到最新版本（--lang zh|en 切换已安装的规范块语言）
 openspec-pw doctor        # 检查前置条件 (Node, Playwright, OpenSpec, 配置, 测试) + 应用服务器诊断
 openspec-pw install --claude # 通过官方 native installer 安装或验证 Claude Code（默认只打印；--run 才执行；--verify 检查）
@@ -382,7 +382,7 @@ audit **只报告、绝不删除**——测试退役永远是人工决策。存�
 
 如果你的应用需要登录，配置一次凭证后，所有测试自动以已登录状态运行。
 
-> **凭据自动忽略**：init 和 update 会在 `.gitignore` 尾部维护一个标记块，忽略 `tests/playwright/credentials.yaml`、其 `.bak`、`tests/playwright/test-results/` 和探索截图（`tests/playwright/screenshots/`——随开发过时，本地留档）——以及 auth storageState（`playwright/.auth/`，已登录会话 cookie）、MCP 配置（`.mcp.json`、`.gemini/settings.json`、`.qwen/settings.json`、`.roo/mcp.json`、`.trae/mcp.json`、`.kimi-code/mcp.json`——用户自加的 server 常在 env/headers 里放 API key）、工具本地数据（`.codegraph/`、`.playwright-mcp/`）、第一层名如 `.claude/`、`.cursor/`、`.codebuddy/`、`.agents/skills/opsx-e2e/`、`.dsh/skills/opsx-e2e/`、`.gemini/commands/opsx/e2e.toml`、`.qwen/commands/opsx-e2e.md`、`.github/prompts/opsx-e2e.prompt.md`、`.roo/commands/opsx-e2e.md`、`.trae/commands/opsx-e2e.md`、`.kimi-code/skills/opsx-e2e/`、`openspec/`、`AGENTS.md`、`CLAUDE.md`、`CODEBUDDY.md`、`GEMINI.md`、`QWEN.md`、`.github/copilot-instructions.md`、`.roo/rules/openspec-pw.md`、`.trae/rules/project_rules.md`（生成的产物按设计留在本地）。标记块幂等、不碰你自己的规则，`remove` 时自动清理。无法写入时会降级为警告并列出未覆盖路径。注意：ignore 规则对已被 git 追踪的文件无效——若凭据曾提交过，请执行 `git rm --cached tests/playwright/credentials.yaml`。也可以改用 `E2E_USERNAME` / `E2E_PASSWORD` 环境变量。
+> **凭据自动忽略**：init 和 update 会在 `.gitignore` 尾部维护一个标记块，忽略 `tests/playwright/credentials.yaml`、其 `.bak`、`tests/playwright/test-results/` 和探索截图（`tests/playwright/screenshots/`——随开发过时，本地留档）——以及 auth storageState（`playwright/.auth/`，已登录会话 cookie）、MCP 配置（`.mcp.json`、`opencode.json(c)`、`.gemini/settings.json`、`.qwen/settings.json`、`.roo/mcp.json`、`.trae/mcp.json`、`.kimi-code/mcp.json`——用户自加的 server 常在 env/headers 里放 API key）、工具本地数据（`.codegraph/`、`.playwright-mcp/`）、第一层名如 `.claude/`、`.cursor/`、`.codebuddy/`、`.agents/skills/opsx-e2e/`、`.dsh/skills/opsx-e2e/`、`.gemini/commands/opsx/e2e.toml`、`.qwen/commands/opsx-e2e.md`、`.github/prompts/opsx-e2e.prompt.md`、`.roo/commands/opsx-e2e.md`、`.trae/commands/opsx-e2e.md`、`.kimi-code/skills/opsx-e2e/`、`openspec/`、`AGENTS.md`、`CLAUDE.md`、`CODEBUDDY.md`、`GEMINI.md`、`QWEN.md`、`.github/copilot-instructions.md`、`.roo/rules/openspec-pw.md`、`.trae/rules/project_rules.md`（生成的产物按设计留在本地）。标记块幂等、不碰你自己的规则，`remove` 时自动清理。无法写入时会降级为警告并列出未覆盖路径。注意：ignore 规则对已被 git 追踪的文件无效——若凭据曾提交过，请执行 `git rm --cached tests/playwright/credentials.yaml`。也可以改用 `E2E_USERNAME` / `E2E_PASSWORD` 环境变量。
 
 ```bash
 # 1.（可选）编辑测试用户（角色测试）
@@ -459,6 +459,8 @@ CLI (openspec-pw)
 导入仍生效；OpenCode 在 `opencode.jsonc` 的 `instructions` 中注册 AGENTS.md；
 Cline、Cursor、MiniMax Code、DeepSeek Harness、Codex 与 Kimi Code 原生自动识别 `AGENTS.md`，无需包装文件。Gemini CLI、Qwen Code、GitHub Copilot、Roo Code 与 Trae 读取各自的规则文件（GEMINI.md、QWEN.md、`.github/copilot-instructions.md`、`.roo/rules/openspec-pw.md`、`.trae/rules/project_rules.md`），这些文件直接承载完整规范块。CodeBuddy CLI 加载方式与 Claude Code 相同——
 thin CODEBUDDY.md wrapper，同样的 `@AGENTS.md` 导入（CodeBuddy 双文件并存时优先读 CODEBUDDY.md）。
+
+**规则副本退出。** AGENTS.md 是唯一必需的规则文件，上面的 wrapper 与 full 规则文件都只是便利副本。`init --no-rule-files` 只装 AGENTS.md，跳过这些副本并清理上次遗留的纯净副本；`init --rule-files` 恢复它们。退出记录写在受管 `.gitignore` 块头的 `# openspec-pw: skip=…` 行，后续 `init` / `update` 无需重复传参即沿用；两个开关都不传时保持已记录的退出决定，`doctor` 把已退出的载体报告为「主动禁用」而非缺失。
 
 > **与官方 `@fission-ai/openspec` CLI 共存**：官方 `openspec update` 内置「legacy 清理」，会删除根
 > AGENTS.md/CLAUDE.md 中以普通 `OPENSPEC:START/END` 包裹的块（2026-08-28 曾因此误删本工具的规范块）。
