@@ -6,7 +6,6 @@ import chalk from "chalk";
 import { uninstallStopHook, isStopHookInstalled, isStopHookRemovable } from "./hooks.js";
 import {
   buildCommandMeta,
-  CLAUDE_LEGACY_SKILL_REL,
   cleanProjectRules,
   cleanupEmptyDirs,
   claudeAdapter,
@@ -18,12 +17,14 @@ import {
   OPENSPEC_PW_MCP_SERVERS,
   removeAdapterCommandArtifacts,
   removeOwnedVendoredAgents,
+  resolveArtifactStyle,
   hasCleanableMarkers,
   rulesFileHasCleanableMarkers,
   agentsFileHasCleanableMarkers,
   normalizeEol,
   wrapperRulesFile,
   fullRulesFile,
+  type ArtifactStyle,
 } from "./editors.js";
 import {
   removeMcp,
@@ -47,6 +48,7 @@ import { readTextFileCapped } from "../shared/file-read.js";
 import { hasRemovableManagedBlock } from "../shared/gitignore-managed.js";
 import { GITHUB_WORKFLOW_REL } from "../shared/constants.js";
 import { isPathInsideProjectRoot } from "../shared/path-guard.js";
+import { bundledTemplatePath } from "../shared/drift.js";
 import { isMcpEntryPresent } from "../shared/mcp.js";
 import type { EditorAdapter } from "./editors/types.js";
 import { AUTO_PIPELINE_REL, AUTO_PIPELINE_TEMPLATE } from "./pipeline.js";
@@ -212,38 +214,65 @@ export async function removeInProject(
 
     // 2. Remove E2E command (+ extraArtifacts) for every adapter — an
     // explicit `--tools` install can leave artifacts without a marker
-    // directory (Codex writes only the shared `.agents/skills` root).
+    // directory (Codex writes only the shared `.agents/skills` root). 2.x
+    // also cleans 1.x leftovers; 1.x leaves `openspec-e2e` alone.
     // Skip lines stay limited to detected editors, so the log stays readable.
     console.log(chalk.blue("\n─── Removing E2E Commands ───"));
-    for (const adapter of getAllAdapters()) {
-      const relPaths = listCommandArtifactPaths(adapter, meta);
-      let removedAny = false;
-      for (const relPath of relPaths) {
-        if (existsSync(join(projectRoot, relPath))) {
-          removedAny = true;
-        }
-      }
-      if (removedAny) {
-        // Track only after an actual removal: a first-file failure touched
-        // nothing and must classify as skipped, not failed.
-        let marked = false;
-        const markOnce = () => {
-          if (!marked) {
-            marked = true;
-            track(`commands:${adapter.id}`);
+    const currentStyle = resolveArtifactStyle();
+    const styles =
+      currentStyle === "openspec"
+        ? (["opsx", "openspec"] as const)
+        : (["opsx"] as const);
+    const keptOldStyle = new Set<string>();
+    const pristineOldStyle = oldStylePristinePaths(projectRoot, currentStyle, keptOldStyle);
+    for (const style of styles) {
+      const isOldStyle = style !== currentStyle;
+      for (const adapter of getAllAdapters(style)) {
+        const relPaths = listCommandArtifactPaths(adapter, meta);
+        const removable = isOldStyle
+          ? relPaths.filter((rel) => pristineOldStyle.has(rel))
+          : relPaths;
+        let removedAny = false;
+        for (const relPath of removable) {
+          if (existsSync(join(projectRoot, relPath))) {
+            removedAny = true;
           }
-        };
-        for (const relPath of removeAdapterCommandArtifacts(
-          adapter,
-          projectRoot,
-          markOnce,
-        )) {
-          track(relPath);
         }
-      } else if (detectedIds.has(adapter.id)) {
-        console.log(
-          chalk.gray(`  - ${adapter.label}: E2E command not found, skipping`),
-        );
+        if (removedAny) {
+          // Track only after an actual removal: a first-file failure touched
+          // nothing and must classify as skipped, not failed.
+          let marked = false;
+          const markOnce = () => {
+            if (!marked) {
+              marked = true;
+              track(`commands:${adapter.id}:${style}`);
+            }
+          };
+          for (const relPath of removeAdapterCommandArtifacts(
+            adapter,
+            projectRoot,
+            markOnce,
+            isOldStyle ? keptOldStyle : undefined,
+            "differs from this tool's 1.x output",
+          )) {
+            track(relPath);
+          }
+        } else if (isOldStyle) {
+          // Nothing to delete, but the edited 1.x files are still worth naming.
+          for (const rel of relPaths) {
+            if (keptOldStyle.has(rel)) {
+              console.log(
+                chalk.gray(
+                  `  - ${adapter.label}: ${rel} kept (differs from this tool's 1.x output)`,
+                ),
+              );
+            }
+          }
+        } else if (adapter.style === currentStyle && detectedIds.has(adapter.id)) {
+          console.log(
+            chalk.gray(`  - ${adapter.label}: E2E command not found, skipping`),
+          );
+        }
       }
     }
 
@@ -414,24 +443,7 @@ export async function removeInProject(
       console.log(chalk.gray(`  - ${LINT_ESLINT_CONFIG_FILE} not found, skipping`));
     }
 
-    // 3. Remove legacy skill directory (if present from older versions)
-    console.log(chalk.blue("\n─── Removing Legacy Skill ───"));
-    const skillDir = join(projectRoot, CLAUDE_LEGACY_SKILL_REL);
-    if (!existsSync(skillDir)) {
-      console.log(chalk.gray("  - Legacy skill directory not found, skipping"));
-    } else if (!isPathInsideProjectRoot(projectRoot, skillDir)) {
-      console.log(
-        chalk.yellow(
-          "  ⚠ .claude/skills/openspec-e2e/ resolves outside the project (symlink) — skipping",
-        ),
-      );
-    } else {
-      rmSync(skillDir, { recursive: true, force: true });
-      track(CLAUDE_LEGACY_SKILL_REL);
-      console.log(chalk.green("  ✓ Removed .claude/skills/openspec-e2e/"));
-    }
-
-    // 4. Remove schema
+    // 3. Remove schema
     console.log(chalk.blue("\n─── Removing Schema ───"));
     const schemaDir = join(projectRoot, "openspec", "schemas", "playwright-e2e");
     if (!existsSync(schemaDir)) {
@@ -448,7 +460,7 @@ export async function removeInProject(
       console.log(chalk.green("  ✓ Removed openspec/schemas/playwright-e2e/"));
     }
 
-    // 4b. Remove the minimal-mode scaffold (tests/README.md) — content-owned:
+    // 3b. Remove the minimal-mode scaffold (tests/README.md) — content-owned:
     // byte-identical to the bundled template → tool-owned → removed; anything
     // else is user-owned → kept with a notice.
     console.log(chalk.blue("\n─── Removing Minimal Scaffold ───"));
@@ -493,7 +505,7 @@ export async function removeInProject(
       }
     }
 
-    // 4c. Remove the mini-program contract doc — same content-owned rule.
+    // 3c. Remove the mini-program contract doc — same content-owned rule.
     const miniReadmeRel = join("tests", "playwright", "README.md");
     if (
       isPristineCopy(projectRoot, miniReadmeRel, "miniprogram/tests-readme.md")
@@ -509,7 +521,7 @@ export async function removeInProject(
       );
     }
 
-    // 5. Clean rules file markers for each detected editor
+    // 4. Clean rules file markers for each detected editor
     console.log(chalk.blue("\n─── Cleaning Rules Files ───"));
     let markedRules = false;
     let agentsCleaned = false;
@@ -543,7 +555,7 @@ export async function removeInProject(
       cleanRules(adapter);
     }
 
-    // 5b. Remove the managed .gitignore block. Idempotent — no block is a
+    // 4b. Remove the managed .gitignore block. Idempotent — no block is a
     // silent no-op. Credentials stay on disk: deleting user credentials is
     // data loss — they just lose the ignore protection.
     console.log(chalk.blue("\n─── Removing Managed .gitignore Block ───"));
@@ -821,6 +833,44 @@ export async function runRemoveAll(options: RemoveAllOptions = {}): Promise<numb
   return failed > 0 ? 1 : 0;
 }
 
+/**
+ * 1.x-style e2e paths that still hold this tool's own text. 2.x cleanup only
+ * deletes those — the 1.x name also matches user-authored files. Paths with
+ * other content go into `kept` and are reported, not removed.
+ */
+function oldStylePristinePaths(
+  projectRoot: string,
+  currentStyle: ArtifactStyle,
+  kept: Set<string>,
+): Set<string> {
+  const pristine = new Set<string>();
+  if (currentStyle !== "openspec") return pristine;
+  const meta = buildCommandMeta(
+    readFileSync(bundledTemplatePath("templates/e2e-command.md"), "utf-8"),
+  );
+  for (const adapter of getAllAdapters("opsx")) {
+    const expected = new Map<string, string>();
+    expected.set(adapter.commandFilePath(meta.id), adapter.formatCommand(meta));
+    for (const extra of adapter.extraArtifacts?.(meta) ?? []) {
+      expected.set(extra.relativePath, extra.contents);
+    }
+    for (const [rel, contents] of expected) {
+      const abs = join(projectRoot, rel);
+      if (!existsSync(abs) || !isPathInsideProjectRoot(projectRoot, abs)) continue;
+      let untouched = false;
+      try {
+        untouched =
+          normalizeEol(readFileSync(abs, "utf-8")) === normalizeEol(contents);
+      } catch {
+        // Unreadable → not provably ours, so it is kept.
+      }
+      if (untouched) pristine.add(rel);
+      else kept.add(rel);
+    }
+  }
+  return pristine;
+}
+
 /** Read-only summary of the tool-owned artifacts present in one project. */
 export function describePlan(projectRoot: string): string[] {
   const groups: string[] = [];
@@ -833,11 +883,28 @@ export function describePlan(projectRoot: string): string[] {
   // Dedupe by physical path: Codex and MiniMax declare the same
   // `.agents/skills/opsx-e2e/SKILL.md`, which the execution removes once.
   const commandPaths = new Set<string>();
-  for (const adapter of getAllAdapters()) {
-    for (const rel of listCommandArtifactPaths(adapter, meta)) {
-      const abs = join(projectRoot, rel);
-      if (existsSync(abs) && isPathInsideProjectRoot(projectRoot, abs)) {
-        commandPaths.add(abs);
+  // 2.x cleans both naming families; 1.x must not touch `openspec-e2e` (the
+  // path no longer carries a legacy identity, so it cannot be distinguished
+  // from user data). The plan and execution share this enumeration.
+  const currentStyle = resolveArtifactStyle();
+  const styles =
+    currentStyle === "openspec"
+      ? (["opsx", "openspec"] as const)
+      : (["opsx"] as const);
+  // Edited 1.x files survive the execution, so the plan must not count them.
+  const pristineOldStyle = oldStylePristinePaths(
+    projectRoot,
+    currentStyle,
+    new Set<string>(),
+  );
+  for (const style of styles) {
+    for (const adapter of getAllAdapters(style)) {
+      for (const rel of listCommandArtifactPaths(adapter, meta)) {
+        if (style !== currentStyle && !pristineOldStyle.has(rel)) continue;
+        const abs = join(projectRoot, rel);
+        if (existsSync(abs) && isPathInsideProjectRoot(projectRoot, abs)) {
+          commandPaths.add(abs);
+        }
       }
     }
   }
@@ -864,12 +931,6 @@ export function describePlan(projectRoot: string): string[] {
   const mcp = mcpKeys.size;
   if (commands > 0) groups.push(`commands ${commands}`);
   if (mcp > 0) groups.push(`MCP ${mcp}`);
-  if (
-    existsSync(join(projectRoot, CLAUDE_LEGACY_SKILL_REL)) &&
-    isPathInsideProjectRoot(projectRoot, join(projectRoot, CLAUDE_LEGACY_SKILL_REL))
-  ) {
-    groups.push("legacy skill");
-  }
   if (
     existsSync(join(projectRoot, "openspec", "schemas", "playwright-e2e")) &&
     isPathInsideProjectRoot(projectRoot, join(projectRoot, "openspec", "schemas", "playwright-e2e"))

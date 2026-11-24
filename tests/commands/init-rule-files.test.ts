@@ -16,7 +16,7 @@ import { join } from "path";
 // The OpenSpec CLI version comes from the machine — pin it so the suite does
 // not depend on which CLI is installed.
 vi.mock("../../src/shared/openspec-version.js", () => ({
-  OPENSPEC_SUPPORTED_MAJOR: 1,
+  OPENSPEC_LATEST_MAJOR: 2,
   openSpecCliStatus: vi.fn(() => ({ ok: true, major: 1 })),
 }));
 
@@ -160,6 +160,41 @@ describe("init rule-copy opt-out (--no-rule-files)", () => {
 
       expect(logs.join("\n")).toContain("restoration could not be recorded");
       expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(true);
+    },
+  );
+
+  it.skipIf(process.platform === "win32")(
+    "keeps pipeline-committed paths out of the failure advisory",
+    async () => {
+      writeFileSync(join(tmpRoot, ".gitignore"), "node_modules/\n");
+      chmodSync(join(tmpRoot, ".gitignore"), 0o444);
+      const logs: string[] = [];
+      const logSpy = vi
+        .spyOn(console, "log")
+        .mockImplementation((message: unknown) => {
+          logs.push(String(message));
+        });
+      try {
+        await init(
+          { mcp: false, ruleFiles: false, autoPipeline: true },
+          {
+            isTTY: true,
+            prompt: async () => ["claude"],
+            confirm: async () => true,
+          },
+        );
+      } finally {
+        logSpy.mockRestore();
+        chmodSync(join(tmpRoot, ".gitignore"), 0o644);
+      }
+
+      const advisory = logs.find((line) =>
+        line.includes("Could not update .gitignore"),
+      );
+      expect(advisory).toBeDefined();
+      // openspec/ is committed for the pipeline, so it must not be reported
+      // as an uncovered path.
+      expect(advisory).not.toContain("openspec/");
     },
   );
 

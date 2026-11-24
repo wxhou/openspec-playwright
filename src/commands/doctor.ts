@@ -1,13 +1,15 @@
 import { existsSync, lstatSync, readdirSync, readFileSync } from "fs";
 import { homedir } from "os";
 import { createRequire } from "node:module";
-import { join, basename } from "path";
+import { join, basename, sep } from "path";
 import chalk from "chalk";
 import { execFileSync } from "../shared/exec.js";
 import { readTextFileCapped } from "../shared/file-read.js";
 import {
+  buildCommandMeta,
   detectAdapters,
   getAllAdapters,
+  listCommandArtifactPaths,
   hasCommandArtifacts,
   slashCommandForAdapter,
   claudeAdapter,
@@ -32,7 +34,7 @@ import {
 } from "../shared/index.js";
 import { bundledStandardsPath, compareBlock, OPENSPEC_START, hasLegacyTerritoryStart, extractRuleBlockContent } from "../shared/drift.js";
 import {
-  OPENSPEC_SUPPORTED_MAJOR,
+  OPENSPEC_LATEST_MAJOR,
   openSpecCliStatus,
 } from "../shared/openspec-version.js";
 import { hasRuleFileMarkers, wrapperRulesFile, fullRulesFile, wrapperHasMarkers } from "./editors/project-rules.js";
@@ -474,8 +476,8 @@ export async function doctor(options: DoctorOptions = {}) {
     message: specCount > 0 ? `${specCount} spec(s) found` : "no .spec.md files",
   });
 
-  // OpenSpec CLI major — 2.x stopped generating the `/opsx:*` command files
-  // that this tool's workflow and templates rely on.
+  // OpenSpec CLI major — 1.x ships `/opsx:*` command files, 2.x ships skills
+  // under `.agents/skills/`; both are supported.
   const openspec = openSpecCliStatus();
   checks.push({
     category: "OpenSpec",
@@ -719,14 +721,16 @@ export async function doctor(options: DoctorOptions = {}) {
     const cursor = adapters.find((a) => a.id === "cursor");
     if (cursor) {
       const cursorAuthorized = hasCommandArtifacts(projectRoot, cursor);
-      const cmdPath = join(projectRoot, ".cursor", "commands", "opsx-e2e.md");
-      const skillPath = join(
-        projectRoot,
-        ".cursor",
-        "skills",
-        "opsx-e2e",
-        "SKILL.md",
+      // Resolve the active style's paths instead of hardcoding the 1.x names.
+      const cursorPaths = listCommandArtifactPaths(
+        cursor,
+        buildCommandMeta(""),
       );
+      const cmdPath = join(projectRoot, cursorPaths[0]);
+      const skillRel = cursorPaths.find((p) => p.endsWith("SKILL.md"));
+      const skillPath = join(projectRoot, skillRel ?? cursorPaths[0]);
+      const cmdLabel = cursorPaths[0].split(sep).join("/");
+      const skillLabel = (skillRel ?? cursorPaths[0]).split(sep).join("/");
       const hasCmd = existsSync(cmdPath);
       const hasSkill = existsSync(skillPath);
       const notConfigured =
@@ -738,8 +742,8 @@ export async function doctor(options: DoctorOptions = {}) {
         authorized: cursorAuthorized,
         message: cursorAuthorized
           ? hasCmd
-            ? ".cursor/commands/opsx-e2e.md found"
-            : ".cursor/commands/opsx-e2e.md missing"
+            ? `${cmdLabel} found`
+            : `${cmdLabel} missing`
           : notConfigured,
       });
       checks.push({
@@ -749,8 +753,8 @@ export async function doctor(options: DoctorOptions = {}) {
         authorized: cursorAuthorized,
         message: cursorAuthorized
           ? hasSkill
-            ? ".cursor/skills/opsx-e2e/SKILL.md found"
-            : ".cursor/skills/opsx-e2e/SKILL.md missing"
+            ? `${skillLabel} found`
+            : `${skillLabel} missing`
           : notConfigured,
       });
     }
@@ -1342,7 +1346,7 @@ export async function doctor(options: DoctorOptions = {}) {
     if (cliVersionFailed) {
       console.log(
         chalk.gray(
-          `  Run: npm install -g @fission-ai/openspec@${OPENSPEC_SUPPORTED_MAJOR}\n`,
+          `  Run: npm install -g @fission-ai/openspec@${OPENSPEC_LATEST_MAJOR}\n`,
         ),
       );
     }

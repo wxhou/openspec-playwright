@@ -11,7 +11,6 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import {
   buildCommandMeta,
-  CLAUDE_LEGACY_SKILL_REL,
   enumerateVendoredAgents,
   getAllAdapters,
   hasRuleFileMarkers,
@@ -23,7 +22,6 @@ import {
 import { isStopHookInstalled } from "../commands/hooks.js";
 import { AUTO_PIPELINE_REL } from "../commands/pipeline.js";
 import { hasRemovableManagedBlock } from "./gitignore-managed.js";
-import { isPathInsideProjectRoot } from "./path-guard.js";
 import {
   isChecklistUnmodified,
   isToolGeneratedEslintConfig,
@@ -93,9 +91,13 @@ export interface DiscoverResult {
 /** Does this directory carry any openspec-pw territory? Read-only, signal per design D4. */
 export function hasOpenspecPwTerritory(projectRoot: string): boolean {
   const meta = buildCommandMeta("");
-  for (const adapter of getAllAdapters()) {
-    for (const rel of listCommandArtifactPaths(adapter, meta)) {
-      if (existsSync(join(projectRoot, rel))) return true;
+  // Both naming families: a 2.x project must be found even when the scanning
+  // machine runs a 1.x CLI (and vice versa).
+  for (const style of ["opsx", "openspec"] as const) {
+    for (const adapter of getAllAdapters(style)) {
+      for (const rel of listCommandArtifactPaths(adapter, meta)) {
+        if (existsSync(join(projectRoot, rel))) return true;
+      }
     }
   }
 
@@ -166,15 +168,6 @@ function hasContentOwnedTerritory(projectRoot: string): boolean {
   for (const name of ["pyproject.toml", ".ruff.toml", "ruff.toml"]) {
     const content = readSmall(join(projectRoot, name));
     if (content !== null && isToolOwnedRuffBlock(content)) return true;
-  }
-
-  // Legacy skill directory from pre-command installs — remove deletes it.
-  const legacySkill = join(projectRoot, CLAUDE_LEGACY_SKILL_REL);
-  if (
-    existsSync(legacySkill) &&
-    isPathInsideProjectRoot(projectRoot, legacySkill)
-  ) {
-    return true;
   }
 
   // Vendored agents are content-owned; an edited copy alone is not a signal

@@ -451,7 +451,20 @@ describe("managed gitignore coverage for OpenCode JSONC config", () => {
   it("manages opencode.json and opencode.jsonc with the same standing", () => {
     expect(MANAGED_GITIGNORE_PATHS).toContain("opencode.json");
     expect(MANAGED_GITIGNORE_PATHS).toContain("opencode.jsonc");
-    expect(MANAGED_GITIGNORE_PATHS.length).toBe(41);
+    expect(MANAGED_GITIGNORE_PATHS.length).toBe(49);
+    // 2.x e2e artifacts join their 1.x siblings.
+    expect(MANAGED_GITIGNORE_PATHS).toEqual(
+      expect.arrayContaining([
+        ".agents/skills/openspec-e2e/",
+        ".dsh/skills/openspec-e2e/",
+        ".gemini/commands/openspec-e2e.toml",
+        ".qwen/commands/openspec-e2e.md",
+        ".github/prompts/openspec-e2e.prompt.md",
+        ".roo/commands/openspec-e2e.md",
+        ".trae/commands/openspec-e2e.md",
+        ".kimi-code/skills/openspec-e2e/",
+      ]),
+    );
     const result = ensureGitignoreEntries(projectRoot);
     expect(result.added).toEqual(
       expect.arrayContaining(["opencode.json", "opencode.jsonc"]),

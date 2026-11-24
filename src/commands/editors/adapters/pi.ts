@@ -20,8 +20,18 @@ export function getPiCommandPath(id: string): string {
   return join(".pi", "prompts", `opsx-${id}.md`);
 }
 
+export function getPiCommandPath2(id: string): string {
+  return join(".pi", "prompts", `openspec-${id}.md`);
+}
+
 const PI_ARTIFACT: ArtifactSpec = {
   path: getPiCommandPath,
+  naming: "hyphen-prefix",
+  frontmatter: { description: true, argumentHint: "<change-name>" },
+};
+
+const PI_ARTIFACT2: ArtifactSpec = {
+  path: getPiCommandPath2,
   naming: "hyphen-prefix",
   frontmatter: { description: true, argumentHint: "<change-name>" },
 };
@@ -31,6 +41,7 @@ const piDeclaration: AdapterDeclaration = {
   label: "pi",
   displayName: "Pi",
   artifacts: [PI_ARTIFACT],
+  artifacts2: [PI_ARTIFACT2],
   detection: {
     projectPaths: [".pi"],
     // Global install root: pre-select suggestion only — never a write
@@ -43,6 +54,7 @@ const piDeclaration: AdapterDeclaration = {
 };
 
 export const piAdapter = defineAdapter(piDeclaration);
+export const piAdapter2 = defineAdapter(piDeclaration, "openspec");
 
 // ─── Named exports (derived from the declaration) ────────────────────────
 
@@ -55,3 +67,4 @@ export function hasPi(projectRoot: string, homeDir?: string): boolean {
 }
 
 registerAdapter(piAdapter);
+registerAdapter(piAdapter2);

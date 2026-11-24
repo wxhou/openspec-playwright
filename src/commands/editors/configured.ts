@@ -62,14 +62,10 @@ function hasAttributedSharedArtifact(
   projectRoot: string,
 ): boolean {
   const meta = buildCommandMeta("");
-  for (const artifact of adapter.declaration?.artifacts ?? []) {
-    if (!artifact.shared) continue;
-    const rel = artifact.path(meta.id);
+  for (const rel of adapter.sharedArtifactPaths?.(meta) ?? []) {
     if (!existsSync(pathResolve(projectRoot, rel))) continue;
     const declarers = getAllAdapters().filter((other) =>
-      (other.declaration?.artifacts ?? []).some(
-        (candidate) => candidate.shared && candidate.path(meta.id) === rel,
-      ),
+      (other.sharedArtifactPaths?.(meta) ?? []).includes(rel),
     );
     const signalHolders = declarers.filter((other) =>
       hasExclusiveProjectSignal(other, projectRoot),
@@ -86,8 +82,8 @@ function hasAttributedSharedArtifact(
 
 /**
  * True when openspec-pw has configured this editor in the project: any
- * command/extraArtifacts product, any openspec-pw MCP entry, or (claude
- * only) the legacy skill directory from pre-0.3.74 installs.
+ * command/extraArtifacts product, any openspec-pw MCP entry, a rules/wrapper
+ * block, or a shared artifact attributable to this adapter.
  *
  * Shared paths are attributed by ownership: a shared command artifact counts
  * only when no other declarer owns it via an exclusive project signal; a
@@ -114,7 +110,6 @@ export function isEditorConfigured(
     (!isSharedMcpConfigPath(adapter, projectRoot) ||
       hasExclusiveProjectSignal(adapter, projectRoot));
   return (
-    inv.legacyArtifacts.length > 0 ||
     mcpSignal ||
     inv.hasWrapper ||
     inv.hasFullRules ||

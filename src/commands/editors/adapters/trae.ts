@@ -20,6 +20,10 @@ export function getTraeCommandPath(id: string): string {
   return join(".trae", "commands", `opsx-${id}.md`);
 }
 
+export function getTraeCommandPath2(id: string): string {
+  return join(".trae", "commands", `openspec-${id}.md`);
+}
+
 export function getTraeRulesPath(): string {
   return join(".trae", "rules", "project_rules.md");
 }
@@ -30,11 +34,18 @@ const TRAE_COMMAND: ArtifactSpec = {
   frontmatter: { name: true, description: true },
 };
 
+const TRAE_COMMAND2: ArtifactSpec = {
+  path: getTraeCommandPath2,
+  naming: "hyphen-prefix",
+  frontmatter: { name: true, description: true },
+};
+
 const traeDeclaration: AdapterDeclaration = {
   id: "trae",
   label: "trae",
   displayName: "Trae",
   artifacts: [TRAE_COMMAND],
+  artifacts2: [TRAE_COMMAND2],
   detection: {
     // No reliable user-level `.trae` config-dir convention: project only.
     projectPaths: [".trae"],
@@ -50,6 +61,7 @@ const traeDeclaration: AdapterDeclaration = {
 };
 
 export const traeAdapter = defineAdapter(traeDeclaration);
+export const traeAdapter2 = defineAdapter(traeDeclaration, "openspec");
 
 // ─── Named exports (derived from the declaration) ────────────────────────
 
@@ -62,3 +74,4 @@ export function hasTrae(projectRoot: string, homeDir?: string): boolean {
 }
 
 registerAdapter(traeAdapter);
+registerAdapter(traeAdapter2);

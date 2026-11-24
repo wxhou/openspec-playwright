@@ -12,7 +12,7 @@ import { join } from "path";
 // The OpenSpec CLI version comes from the machine — pin it so the suite does
 // not depend on which CLI is installed.
 vi.mock("../../src/shared/openspec-version.js", () => ({
-  OPENSPEC_SUPPORTED_MAJOR: 1,
+  OPENSPEC_LATEST_MAJOR: 2,
   openSpecCliStatus: vi.fn(() => ({ ok: true, major: 1 })),
 }));
 
@@ -80,9 +80,13 @@ describe("configured predicates (isEditorConfigured)", () => {
     expect(isEditorConfigured(piAdapter, projectRoot)).toBe(false);
   });
 
-  it("legacy skill directory counts as configured (claude only)", () => {
+  it("pre-0.3.74 skill directory no longer counts as configured", () => {
     mkdirSync(join(projectRoot, ".claude", "skills", "openspec-e2e"), { recursive: true });
-    expect(isEditorConfigured(claudeAdapter, projectRoot)).toBe(true);
+    writeFileSync(
+      join(projectRoot, ".claude", "skills", "openspec-e2e", "SKILL.md"),
+      "old\n",
+    );
+    expect(isEditorConfigured(claudeAdapter, projectRoot)).toBe(false);
     expect(isEditorConfigured(cursorAdapter, projectRoot)).toBe(false);
   });
 

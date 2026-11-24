@@ -1,14 +1,27 @@
 /**
  * OpenSpec CLI version probe.
  *
- * This tool targets the OpenSpec 1.x CLI. OpenSpec 2.x stopped generating the
- * `/opsx:*` command files and installs its workflows as skills under
- * `.agents/skills/` instead.
+ * Supports the 1.x and 2.x CLIs. 1.x generates `/opsx:*` command files; 2.x
+ * installs its workflows as skills under `.agents/skills/` instead.
  */
 import { execFileSync } from "./exec.js";
 
-/** The OpenSpec CLI major version this tool supports. */
-export const OPENSPEC_SUPPORTED_MAJOR = 1;
+/** OpenSpec CLI major versions this tool supports. */
+export const OPENSPEC_SUPPORTED_MAJORS = [1, 2] as const;
+
+/** Newest supported major — what install hints point at. */
+export const OPENSPEC_LATEST_MAJOR = 2;
+
+/** Human-readable supported range for messages. */
+export const OPENSPEC_SUPPORTED_RANGE = "1.x and 2.x";
+
+/** True when the probed major belongs to the supported set. */
+export function isOpenSpecMajorSupported(major: number | null): boolean {
+  return (
+    major !== null &&
+    (OPENSPEC_SUPPORTED_MAJORS as readonly number[]).includes(major)
+  );
+}
 
 export interface OpenSpecVersionProbe {
   /** Major version of the installed CLI; null when it could not be read. */
@@ -119,15 +132,15 @@ export function detectOpenSpecVersion(): OpenSpecVersionProbe {
 export function openSpecCliStatus(
   probe: OpenSpecVersionProbe = detectOpenSpecVersion(),
 ): OpenSpecCliStatus {
-  if (probe.major === OPENSPEC_SUPPORTED_MAJOR) {
+  if (probe.major !== null && isOpenSpecMajorSupported(probe.major)) {
     return { ok: true, major: probe.major };
   }
-  const install = `npm install -g @fission-ai/openspec@${OPENSPEC_SUPPORTED_MAJOR}`;
+  const install = `npm install -g @fission-ai/openspec@${OPENSPEC_LATEST_MAJOR}`;
   if (probe.missing) {
     return {
       ok: false,
       kind: "missing",
-      message: `OpenSpec CLI not found — install ${OPENSPEC_SUPPORTED_MAJOR}.x: ${install}`,
+      message: `OpenSpec CLI not found — install a supported major (${OPENSPEC_SUPPORTED_RANGE}): ${install}`,
     };
   }
   if (probe.major === null) {
@@ -140,6 +153,6 @@ export function openSpecCliStatus(
   return {
     ok: false,
     kind: "unsupported",
-    message: `OpenSpec ${probe.major}.x detected — this tool needs ${OPENSPEC_SUPPORTED_MAJOR}.x — install ${OPENSPEC_SUPPORTED_MAJOR}.x: ${install}`,
+    message: `OpenSpec ${probe.major}.x detected — this tool supports ${OPENSPEC_SUPPORTED_RANGE} — install ${OPENSPEC_LATEST_MAJOR}.x: ${install}`,
   };
 }

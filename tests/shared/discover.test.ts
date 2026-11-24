@@ -114,12 +114,28 @@ describe("hasOpenspecPwTerritory", () => {
     }
   });
 
-  it("detects the legacy skill directory alone", () => {
+  it("does not treat a pre-0.3.74 skill directory as territory", () => {
     const root = makeTemp("ospw-discover-legacy-skill-");
     try {
       mkdirSync(join(root, ".claude", "skills", "openspec-e2e"), {
         recursive: true,
       });
+      expect(hasOpenspecPwTerritory(root)).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("detects a 2.x-named skill even when the scanning CLI is 1.x", () => {
+    const root = makeTemp("ospw-discover-openspec-skill-");
+    try {
+      mkdirSync(join(root, ".agents", "skills", "openspec-e2e"), {
+        recursive: true,
+      });
+      writeFileSync(
+        join(root, ".agents", "skills", "openspec-e2e", "SKILL.md"),
+        "skill\n",
+      );
       expect(hasOpenspecPwTerritory(root)).toBe(true);
     } finally {
       rmSync(root, { recursive: true, force: true });

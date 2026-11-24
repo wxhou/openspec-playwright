@@ -65,19 +65,8 @@ const REGISTRATION_ORDER = [
   "kimi",
 ];
 
-const byId = () => new Map(getAllAdapters().map((a) => [a.id, a]));
+const byId = () => new Map(getAllAdapters("opsx").map((a) => [a.id, a]));
 
-/**
- * Inventory legacy field: `legacySkillPath` before the contract refactor,
- * `legacyArtifacts` after it. Asserting the semantic list keeps this test
- * stable across the planned field rename.
- */
-function legacyPaths(inv: Record<string, unknown>): string[] {
-  const list = inv.legacyArtifacts as string[] | undefined;
-  if (Array.isArray(list)) return list;
-  const single = inv.legacySkillPath as string | null | undefined;
-  return single ? [single] : [];
-}
 
 /**
  * Adapter paths are built with `join()`, so they carry the host separator.
@@ -113,7 +102,7 @@ describe("artifact formatting is byte-stable", () => {
   it("formatCommand output per adapter", () => {
     expect(
       Object.fromEntries(
-        getAllAdapters().map((a) => [a.id, a.formatCommand(META)]),
+        getAllAdapters("opsx").map((a) => [a.id, a.formatCommand(META)]),
       ),
     ).toMatchInlineSnapshot(`
       {
@@ -259,7 +248,7 @@ describe("artifact formatting is byte-stable", () => {
 
   it("paths, secondary artifacts, and slash hints", () => {
     expect(
-      getAllAdapters().map((a) => ({
+      getAllAdapters("opsx").map((a) => ({
         id: a.id,
         commandForm: a.commandForm,
         path: posix(a.commandFilePath("e2e")),
@@ -481,7 +470,7 @@ describe("detection tiers", () => {
     // doctor/update gate "the project ran init" on this helper; a hardcoded
     // per-editor path list silently drifted twice before. Shared artifacts
     // (Codex + MiniMax `.agents/skills`) deliberately confer no authorization.
-    for (const adapter of getAllAdapters()) {
+    for (const adapter of getAllAdapters("opsx")) {
       const proj = projectDir("authored", adapter.id);
       const authorizes = (adapter.declaration?.artifacts ?? []).some(
         (artifact) => !artifact.shared,
@@ -575,22 +564,14 @@ describe("MCP carriers", () => {
 // ─── 1.4 Removal inventory + slash hints ─────────────────────────────────
 
 describe("removal inventory", () => {
-  it("lists command artifacts, the claude legacy dir, and MCP entries", () => {
+  it("lists command artifacts and MCP entries", () => {
     const proj = projectDir("inventory");
     installCommand(claudeAdapter, META, proj);
-    mkdirSync(join(proj, ".claude", "skills", "openspec-e2e"), {
-      recursive: true,
-    });
-    writeFileSync(
-      join(proj, ".claude", "skills", "openspec-e2e", "SKILL.md"),
-      "legacy\n",
-    );
     minimaxAdapter.installMcp(proj, "playwright-test", ["npx", "pw"]);
 
     const inv = enumerateAdapterArtifacts(claudeAdapter, proj);
     expect({
       commandPaths: inv.commandPaths.map(posix),
-      legacy: legacyPaths(inv as unknown as Record<string, unknown>).map(posix),
       mcpServers: inv.mcpServers,
       retainedMcpServers: inv.retainedMcpServers,
       hasWrapper: inv.hasWrapper,
@@ -600,9 +581,6 @@ describe("removal inventory", () => {
           ".claude/commands/opsx/e2e.md",
         ],
         "hasWrapper": false,
-        "legacy": [
-          ".claude/skills/openspec-e2e",
-        ],
         "mcpServers": [
           "playwright-test",
         ],
@@ -613,7 +591,7 @@ describe("removal inventory", () => {
 
   it("slash hints follow the adapter", () => {
     expect(
-      getAllAdapters().map((a) => [a.id, slashCommandForAdapter(a)]),
+      getAllAdapters("opsx").map((a) => [a.id, slashCommandForAdapter(a)]),
     ).toMatchInlineSnapshot(`
       [
         [
@@ -689,6 +667,6 @@ describe("removal inventory", () => {
 
 describe("registration order", () => {
   it("matches the documented order", () => {
-    expect(getAllAdapters().map((a) => a.id)).toEqual(REGISTRATION_ORDER);
+    expect(getAllAdapters("opsx").map((a) => a.id)).toEqual(REGISTRATION_ORDER);
   });
 });

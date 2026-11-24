@@ -26,7 +26,12 @@ vi.mock("../../src/shared/index.js", async (importOriginal) => {
 vi.mock("../../src/commands/editors.js", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("../../src/commands/editors.js")>();
-  return { ...actual, detectAdapters: vi.fn() };
+  return {
+    ...actual,
+    detectAdapters: vi.fn(),
+    // Deterministic style: the real resolver shells out to the OpenSpec CLI.
+    resolveArtifactStyle: vi.fn(() => "opsx" as const),
+  };
 });
 
 import {
@@ -35,7 +40,15 @@ import {
   generatedEslintConfigVariants,
   renderWorkflowTemplate,
 } from "../../src/shared/index.js";
-import { detectAdapters, cursorAdapter } from "../../src/commands/editors.js";
+import {
+  buildCommandMeta,
+  detectAdapters,
+  cursorAdapter,
+  getAdapter,
+  installCommand,
+  resolveArtifactStyle,
+} from "../../src/commands/editors.js";
+import { bundledTemplatePath } from "../../src/shared/drift.js";
 import {
   describePlan,
   removeInProject,
@@ -46,6 +59,7 @@ import {
 const mockedDetectCodeGraphStatus = vi.mocked(detectCodeGraphStatus);
 const mockedDetectAdapters = vi.mocked(detectAdapters);
 const mockedRemoveChecklist = vi.mocked(removeChecklist);
+const mockedResolveArtifactStyle = vi.mocked(resolveArtifactStyle);
 
 let tmp: string;
 
@@ -54,6 +68,8 @@ beforeEach(() => {
   mockedDetectCodeGraphStatus.mockReset();
   mockedDetectAdapters.mockReset();
   mockedDetectAdapters.mockReturnValue([]);
+  mockedResolveArtifactStyle.mockReset();
+  mockedResolveArtifactStyle.mockReturnValue("opsx");
   mockedDetectCodeGraphStatus.mockReturnValue({
     cliInstalled: false,
     indexed: false,
@@ -98,7 +114,7 @@ describe("removeInProject() CodeGraph cleanup note", () => {
 // ─── Characterization: section order + artifact removal ───────────────────
 
 describe("removeInProject() characterization (section output + file removal)", () => {
-  it("removes cursor artifacts + MCP entry + legacy skill + AGENTS.md block in section order", async () => {
+  it("removes cursor artifacts + MCP entry + AGENTS.md block in section order", async () => {
     mockedDetectAdapters.mockReturnValue([cursorAdapter]);
 
     mkdirSync(join(tmp, ".cursor", "commands"), { recursive: true });
@@ -112,7 +128,7 @@ describe("removeInProject() characterization (section output + file removal)", (
       }),
     );
     mkdirSync(join(tmp, ".claude", "skills", "openspec-e2e"), { recursive: true });
-    writeFileSync(join(tmp, ".claude", "skills", "openspec-e2e", "SKILL.md"), "legacy");
+    writeFileSync(join(tmp, ".claude", "skills", "openspec-e2e", "SKILL.md"), "old");
     writeFileSync(
       join(tmp, "AGENTS.md"),
       "user\n\n<!-- OPENSPEC-PW:START -->\nstandards\n<!-- OPENSPEC-PW:END -->\n",
@@ -130,7 +146,6 @@ describe("removeInProject() characterization (section output + file removal)", (
     const sectionOrder = [
       "Removing Playwright MCP",
       "Removing E2E Commands",
-      "Removing Legacy Skill",
       "Removing Schema",
       "Cleaning Rules Files",
       "Summary",
@@ -146,10 +161,57 @@ describe("removeInProject() characterization (section output + file removal)", (
     expect(existsSync(join(tmp, ".cursor", "skills", "opsx-e2e", "SKILL.md"))).toBe(false);
     const mcpAfter = JSON.parse(readFileSync(join(tmp, ".cursor", "mcp.json"), "utf-8"));
     expect(mcpAfter.mcpServers["playwright-test"]).toBeUndefined();
-    expect(existsSync(join(tmp, ".claude", "skills", "openspec-e2e"))).toBe(false);
+    // A pre-0.3.74 skill directory is no longer tool territory — left in place.
+    expect(existsSync(join(tmp, ".claude", "skills", "openspec-e2e"))).toBe(true);
     const agentsAfter = readFileSync(join(tmp, "AGENTS.md"), "utf-8");
     expect(agentsAfter).toContain("user");
     expect(agentsAfter).not.toContain("OPENSPEC-PW:START");
+  });
+});
+
+// ─── 2.x cross-style cleanup ──────────────────────────────────────────────
+
+describe("removeInProject() 2.x cleanup of 1.x leftovers", () => {
+  const meta = () =>
+    buildCommandMeta(
+      readFileSync(bundledTemplatePath("templates/e2e-command.md"), "utf-8"),
+    );
+
+  it("deletes an untouched 1.x artifact and keeps a user-edited one", async () => {
+    mockedResolveArtifactStyle.mockReturnValue("openspec");
+    const cursorOld = getAdapter("cursor", "opsx")!;
+    const claudeOld = getAdapter("claude", "opsx")!;
+    installCommand(cursorOld, meta(), tmp);
+    installCommand(claudeOld, meta(), tmp);
+    writeFileSync(join(tmp, claudeOld.commandFilePath("e2e")), "my own workflow\n");
+
+    const lines: string[] = [];
+    const spy = vi.spyOn(console, "log");
+    spy.mockImplementation((msg?: unknown) => lines.push(String(msg)));
+    try {
+      await removeInProject(tmp);
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(existsSync(join(tmp, cursorOld.commandFilePath("e2e")))).toBe(false);
+    expect(existsSync(join(tmp, ".cursor", "skills", "opsx-e2e"))).toBe(false);
+    expect(readFileSync(join(tmp, claudeOld.commandFilePath("e2e")), "utf-8")).toBe(
+      "my own workflow\n",
+    );
+    expect(lines.join("\n")).toContain("differs from this tool's 1.x output");
+  });
+
+  it("keeps edited 1.x artifacts out of the removal plan", async () => {
+    mockedResolveArtifactStyle.mockReturnValue("openspec");
+    const claudeOld = getAdapter("claude", "opsx")!;
+    installCommand(claudeOld, meta(), tmp);
+    writeFileSync(join(tmp, claudeOld.commandFilePath("e2e")), "my own workflow\n");
+
+    expect(describePlan(tmp)).not.toContain("commands");
+
+    installCommand(getAdapter("cursor", "opsx")!, meta(), tmp);
+    expect(describePlan(tmp)).toContain("commands 2");
   });
 });
 

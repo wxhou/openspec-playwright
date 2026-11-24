@@ -31,6 +31,7 @@ export {
   type EditorAdapter,
   type AdapterDeclaration,
   type ArtifactSpec,
+  type ArtifactStyle,
   type ArtifactFrontmatter,
   type ArtifactNaming,
   type ArtifactRoot,
@@ -52,6 +53,8 @@ export {
   escapeYamlValue,
   formatTagsArray,
   transformToHyphenCommands,
+  transformToOpenSpecCommands,
+  artifactName,
   formatArtifact,
   type McpStdioServer,
   type McpServersFile,
@@ -65,6 +68,7 @@ export {
 // Registry (lookup / detection / install helpers) — no adapter imports here
 export {
   registerAdapter,
+  resolveArtifactStyle,
   getAdapter,
   getAllAdapters,
   detectAdapters,
@@ -73,6 +77,7 @@ export {
   hasCommandArtifacts,
   slashCommandForAdapter,
   listCommandArtifactPaths,
+  migrateOldStyleArtifacts,
   listOptionalArtifactPaths,
   installCommand,
   installOptionalArtifacts,
@@ -81,107 +86,142 @@ export {
 // Adapters — import order = registration order (do not reorder)
 export {
   formatClaudeCommand,
+  formatClaudeSkill,
   getClaudeCommandPath,
+  getClaudeSkillPath,
+  getClaudeSharedSkillPath,
   hasClaudeCode,
   claudeAdapter,
+  claudeAdapter2,
 } from "./editors/adapters/claude.js";
 export {
   formatOpenCodeCommand,
   getOpenCodeCommandPath,
+  getOpenCodeCommandPath2,
   hasOpenCode,
   opencodeAdapter,
+  opencodeAdapter2,
   readOpenCodeInstructions,
 } from "./editors/adapters/opencode.js";
 export {
   formatClineCommand,
   getClineCommandPath,
+  getClineCommandPath2,
   hasCline,
   clineAdapter,
+  clineAdapter2,
 } from "./editors/adapters/cline.js";
 export {
   formatCursorCommand,
   getCursorCommandPath,
+  getCursorCommandPath2,
   getCursorSkillPath,
+  getCursorSkillPath2,
   formatCursorSkill,
   hasCursor,
   cursorAdapter,
+  cursorAdapter2,
 } from "./editors/adapters/cursor.js";
 export {
   formatPiCommand,
   getPiCommandPath,
+  getPiCommandPath2,
   hasPi,
   piAdapter,
+  piAdapter2,
 } from "./editors/adapters/pi.js";
 export {
   formatOmpCommand,
   getOmpCommandPath,
+  getOmpCommandPath2,
   hasOmp,
   ompAdapter,
+  ompAdapter2,
 } from "./editors/adapters/omp.js";
 export {
   formatCodebuddyCommand,
   getCodebuddyCommandPath,
+  getCodebuddyCommandPath2,
   hasCodebuddy,
   codebuddyAdapter,
+  codebuddyAdapter2,
 } from "./editors/adapters/codebuddy.js";
 export {
   formatMinimaxSkill,
   getMinimaxSkillPath,
+  getMinimaxSkillPath2,
   hasMinimax,
   hasMinimaxProjectSignal,
   minimaxAdapter,
+  minimaxAdapter2,
   minimaxMcpPath,
 } from "./editors/adapters/minimax.js";
 export {
   formatDshSkill,
   getDshSkillPath,
+  getDshSkillPath2,
   hasDsh,
   hasDshProjectSignal,
   dshAdapter,
+  dshAdapter2,
 } from "./editors/adapters/dsh.js";
 export {
   formatGeminiCommand,
   getGeminiCommandPath,
+  getGeminiCommandPath2,
   hasGemini,
   geminiAdapter,
+  geminiAdapter2,
 } from "./editors/adapters/gemini.js";
 export {
   formatQwenCommand,
   getQwenCommandPath,
+  getQwenCommandPath2,
   hasQwen,
   qwenAdapter,
+  qwenAdapter2,
 } from "./editors/adapters/qwen.js";
 export {
   formatCopilotPrompt,
   getCopilotPromptPath,
+  getCopilotPromptPath2,
   hasGithubCopilot,
   githubCopilotAdapter,
+  githubCopilotAdapter2,
 } from "./editors/adapters/github-copilot.js";
 export {
   formatRooCodeCommand,
   getRooCodeCommandPath,
+  getRooCodeCommandPath2,
   getRooCodeRulesPath,
   hasRooCode,
   roocodeAdapter,
+  roocodeAdapter2,
 } from "./editors/adapters/roocode.js";
 export {
   formatTraeCommand,
   getTraeCommandPath,
+  getTraeCommandPath2,
   getTraeRulesPath,
   hasTrae,
   traeAdapter,
+  traeAdapter2,
 } from "./editors/adapters/trae.js";
 export {
   formatCodexSkill,
   getCodexSkillPath,
+  getCodexSkillPath2,
   hasCodex,
   codexAdapter,
+  codexAdapter2,
 } from "./editors/adapters/codex.js";
 export {
   formatKimiSkill,
   getKimiSkillPath,
+  getKimiSkillPath2,
   hasKimi,
   kimiAdapter,
+  kimiAdapter2,
 } from "./editors/adapters/kimi.js";
 
 // Tool selection (--tools flag parsing)
@@ -190,7 +230,6 @@ export { resolveToolsArg } from "./editors/tool-selection.js";
 // Per-editor artifact removal (init deselect + remove cleanup)
 export {
   OPENSPEC_PW_MCP_SERVERS,
-  CLAUDE_LEGACY_SKILL_REL,
   type AdapterArtifactInventory,
   enumerateAdapterArtifacts,
   isInventoryEmpty,
@@ -199,7 +238,6 @@ export {
   removeAdapterMcp,
   removeAdapterCommandArtifacts,
   removeOwnedVendoredAgents,
-  removeLegacyArtifact,
   removeWrapper,
   cleanupEmptyDirs,
 } from "./editors/removal.js";

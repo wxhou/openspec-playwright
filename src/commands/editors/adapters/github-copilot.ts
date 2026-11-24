@@ -24,9 +24,19 @@ export function getCopilotPromptPath(id: string): string {
   return join(".github", "prompts", `opsx-${id}.prompt.md`);
 }
 
+export function getCopilotPromptPath2(id: string): string {
+  return join(".github", "prompts", `openspec-${id}.prompt.md`);
+}
+
 /** VS Code prompt files: markdown with a `description` frontmatter field. */
 const COPILOT_PROMPT: ArtifactSpec = {
   path: getCopilotPromptPath,
+  naming: "hyphen-prefix",
+  frontmatter: { description: true },
+};
+
+const COPILOT_PROMPT2: ArtifactSpec = {
+  path: getCopilotPromptPath2,
   naming: "hyphen-prefix",
   frontmatter: { description: true },
 };
@@ -36,6 +46,7 @@ const githubCopilotDeclaration: AdapterDeclaration = {
   label: "github-copilot",
   displayName: "GitHub Copilot",
   artifacts: [COPILOT_PROMPT],
+  artifacts2: [COPILOT_PROMPT2],
   detection: {
     projectPaths: [
       ".github/copilot-instructions.md",
@@ -59,6 +70,7 @@ const githubCopilotDeclaration: AdapterDeclaration = {
 };
 
 export const githubCopilotAdapter = defineAdapter(githubCopilotDeclaration);
+export const githubCopilotAdapter2 = defineAdapter(githubCopilotDeclaration, "openspec");
 
 // ─── Named exports (derived from the declaration) ────────────────────────
 
@@ -74,3 +86,4 @@ export function hasGithubCopilot(
 }
 
 registerAdapter(githubCopilotAdapter);
+registerAdapter(githubCopilotAdapter2);

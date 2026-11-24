@@ -18,10 +18,20 @@ export function getGeminiCommandPath(id: string): string {
   return join(".gemini", "commands", "opsx", `${id}.toml`);
 }
 
+export function getGeminiCommandPath2(id: string): string {
+  return join(".gemini", "commands", `openspec-${id}.toml`);
+}
+
 /** Gemini custom commands are TOML: `description` + multi-line `prompt`. */
 const GEMINI_COMMAND: ArtifactSpec = {
   path: getGeminiCommandPath,
   naming: "namespace-dir",
+  format: "toml",
+};
+
+const GEMINI_COMMAND2: ArtifactSpec = {
+  path: getGeminiCommandPath2,
+  naming: "hyphen-prefix",
   format: "toml",
 };
 
@@ -30,6 +40,7 @@ const geminiDeclaration: AdapterDeclaration = {
   label: "gemini",
   displayName: "Gemini CLI",
   artifacts: [GEMINI_COMMAND],
+  artifacts2: [GEMINI_COMMAND2],
   detection: {
     projectPaths: [".gemini"],
     globalPaths: [".gemini"],
@@ -45,6 +56,7 @@ const geminiDeclaration: AdapterDeclaration = {
 };
 
 export const geminiAdapter = defineAdapter(geminiDeclaration);
+export const geminiAdapter2 = defineAdapter(geminiDeclaration, "openspec");
 
 // ─── Named exports (derived from the declaration) ────────────────────────
 
@@ -57,3 +69,4 @@ export function hasGemini(projectRoot: string, homeDir?: string): boolean {
 }
 
 registerAdapter(geminiAdapter);
+registerAdapter(geminiAdapter2);

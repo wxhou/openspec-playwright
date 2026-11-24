@@ -19,6 +19,10 @@ export function getRooCodeCommandPath(id: string): string {
   return join(".roo", "commands", `opsx-${id}.md`);
 }
 
+export function getRooCodeCommandPath2(id: string): string {
+  return join(".roo", "commands", `openspec-${id}.md`);
+}
+
 export function getRooCodeRulesPath(): string {
   return join(".roo", "rules", "openspec-pw.md");
 }
@@ -30,11 +34,18 @@ const ROOCODE_COMMAND: ArtifactSpec = {
   header: (meta) => `# ${meta.name}\n\n${meta.description}`,
 };
 
+const ROOCODE_COMMAND2: ArtifactSpec = {
+  path: getRooCodeCommandPath2,
+  naming: "hyphen-prefix",
+  header: (meta) => `# ${meta.name}\n\n${meta.description}`,
+};
+
 const roocodeDeclaration: AdapterDeclaration = {
   id: "roocode",
   label: "roocode",
   displayName: "Roo Code",
   artifacts: [ROOCODE_COMMAND],
+  artifacts2: [ROOCODE_COMMAND2],
   detection: {
     projectPaths: [".roo"],
     globalPaths: [".roo"],
@@ -50,6 +61,7 @@ const roocodeDeclaration: AdapterDeclaration = {
 };
 
 export const roocodeAdapter = defineAdapter(roocodeDeclaration);
+export const roocodeAdapter2 = defineAdapter(roocodeDeclaration, "openspec");
 
 // ─── Named exports (derived from the declaration) ────────────────────────
 
@@ -62,3 +74,4 @@ export function hasRooCode(projectRoot: string, homeDir?: string): boolean {
 }
 
 registerAdapter(roocodeAdapter);
+registerAdapter(roocodeAdapter2);

@@ -3,8 +3,10 @@ import { mkdtempSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import {
-  OPENSPEC_SUPPORTED_MAJOR,
+  OPENSPEC_LATEST_MAJOR,
+  OPENSPEC_SUPPORTED_MAJORS,
   detectOpenSpecVersion,
+  isOpenSpecMajorSupported,
   openSpecCliStatus,
   parseOpenSpecMajor,
   probeOpenSpecVersion,
@@ -156,6 +158,12 @@ describe("openSpecCliStatus", () => {
     ).toEqual({ ok: true, major: 1 });
   });
 
+  it("accepts a supported 2.x CLI", () => {
+    expect(
+      openSpecCliStatus({ major: 2, reason: null, missing: false }),
+    ).toEqual({ ok: true, major: 2 });
+  });
+
   it("reports a missing CLI as missing", () => {
     const status = openSpecCliStatus({
       major: null,
@@ -165,19 +173,22 @@ describe("openSpecCliStatus", () => {
     expect(status.ok).toBe(false);
     if (status.ok) throw new Error("expected a failure status");
     expect(status.kind).toBe("missing");
+    expect(status.message).toContain("npm install -g @fission-ai/openspec@2");
+    expect(status.message).not.toContain("openspec@1");
   });
 
-  it("reports a 2.x CLI as unsupported and names the 1.x install command", () => {
+  it("reports a 3.x CLI as unsupported and names the supported range", () => {
     const status = openSpecCliStatus({
-      major: 2,
+      major: 3,
       reason: null,
       missing: false,
     });
     expect(status.ok).toBe(false);
     if (status.ok) throw new Error("expected a failure status");
     expect(status.kind).toBe("unsupported");
-    expect(status.message).toContain("2.x detected");
-    expect(status.message).toContain("npm install -g @fission-ai/openspec@1");
+    expect(status.message).toContain("3.x detected");
+    expect(status.message).toContain("1.x and 2.x");
+    expect(status.message).toContain("npm install -g @fission-ai/openspec@2");
   });
 
   it("reports an unreadable version as unreadable, not missing", () => {
@@ -203,8 +214,13 @@ describe("detectOpenSpecVersion", () => {
   });
 });
 
-describe("supported OpenSpec major", () => {
-  it("is 1.x — 2.x stopped generating the /opsx:* command files", () => {
-    expect(OPENSPEC_SUPPORTED_MAJOR).toBe(1);
+describe("supported OpenSpec majors", () => {
+  it("accepts 1.x and 2.x, rejects 3.x and unreadable versions", () => {
+    expect([...OPENSPEC_SUPPORTED_MAJORS]).toEqual([1, 2]);
+    expect(OPENSPEC_LATEST_MAJOR).toBe(2);
+    expect(isOpenSpecMajorSupported(1)).toBe(true);
+    expect(isOpenSpecMajorSupported(2)).toBe(true);
+    expect(isOpenSpecMajorSupported(3)).toBe(false);
+    expect(isOpenSpecMajorSupported(null)).toBe(false);
   });
 });

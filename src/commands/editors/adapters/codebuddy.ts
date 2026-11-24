@@ -22,6 +22,10 @@ export function getCodebuddyCommandPath(id: string): string {
   return join(".codebuddy", "commands", "opsx", `${id}.md`);
 }
 
+export function getCodebuddyCommandPath2(id: string): string {
+  return join(".codebuddy", "commands", `openspec-${id}.md`);
+}
+
 const CODEBUDDY_ARTIFACT: ArtifactSpec = {
   path: getCodebuddyCommandPath,
   naming: "namespace-dir",
@@ -31,11 +35,18 @@ const CODEBUDDY_ARTIFACT: ArtifactSpec = {
   frontmatter: { description: true, argumentHint: "<change-name|all>" },
 };
 
+const CODEBUDDY_ARTIFACT2: ArtifactSpec = {
+  path: getCodebuddyCommandPath2,
+  naming: "hyphen-prefix",
+  frontmatter: { description: true, argumentHint: "<change-name|all>" },
+};
+
 const codebuddyDeclaration: AdapterDeclaration = {
   id: "codebuddy",
   label: "codebuddy",
   displayName: "CodeBuddy CLI",
   artifacts: [CODEBUDDY_ARTIFACT],
+  artifacts2: [CODEBUDDY_ARTIFACT2],
   detection: {
     projectPaths: [".codebuddy"],
     intentPaths: ["CODEBUDDY.md"],
@@ -53,6 +64,7 @@ const codebuddyDeclaration: AdapterDeclaration = {
 };
 
 export const codebuddyAdapter = defineAdapter(codebuddyDeclaration);
+export const codebuddyAdapter2 = defineAdapter(codebuddyDeclaration, "openspec");
 
 // ─── Named exports (derived from the declaration) ────────────────────────
 
@@ -65,3 +77,4 @@ export function hasCodebuddy(projectRoot: string, homeDir?: string): boolean {
 }
 
 registerAdapter(codebuddyAdapter);
+registerAdapter(codebuddyAdapter2);

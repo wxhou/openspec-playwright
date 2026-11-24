@@ -10,11 +10,25 @@
  * (editors.ts re-exports the adapter modules in exactly that order;
  * tests/editors-tools.test.ts asserts it.)
  */
-import { mkdirSync, writeFileSync, existsSync, readFileSync } from "fs";
+import {
+  mkdirSync,
+  writeFileSync,
+  existsSync,
+  readFileSync,
+  readdirSync,
+  rmdirSync,
+  rmSync,
+} from "fs";
 import { dirname, resolve as pathResolve } from "path";
 import chalk from "chalk";
 import { isPathInsideProjectRoot } from "../../shared/path-guard.js";
-import type { CommandMeta, EditorAdapter, EditorId } from "./types.js";
+import { openSpecCliStatus } from "../../shared/openspec-version.js";
+import type {
+  ArtifactStyle,
+  CommandMeta,
+  EditorAdapter,
+  EditorId,
+} from "./types.js";
 import { buildCommandMeta } from "./types.js";
 import { preselectSignalFor } from "./declaration.js";
 import {
@@ -30,20 +44,36 @@ const ADAPTERS: EditorAdapter[] = [
   // Adapters are registered after const declarations at the bottom of this file.
 ];
 
-export function getAdapter(id: EditorId): EditorAdapter | undefined {
-  return ADAPTERS.find((a) => a.id === id);
+/**
+ * Which artifact style the installed CLI calls for: 2.x uses the
+ * `openspec-*` family; 1.x, an unreadable version, and a missing CLI use
+ * `opsx-*` (a project may be initialized before the CLI exists).
+ */
+export function resolveArtifactStyle(): ArtifactStyle {
+  const status = openSpecCliStatus();
+  return status.ok && status.major >= 2 ? "openspec" : "opsx";
 }
 
-/** All registered editors, regardless of detection. */
-export function getAllAdapters(): EditorAdapter[] {
-  return [...ADAPTERS];
+export function getAdapter(
+  id: EditorId,
+  style: ArtifactStyle = resolveArtifactStyle(),
+): EditorAdapter | undefined {
+  return ADAPTERS.find((a) => a.id === id && a.style === style);
+}
+
+/** All registered editors of one naming style, regardless of detection. */
+export function getAllAdapters(
+  style: ArtifactStyle = resolveArtifactStyle(),
+): EditorAdapter[] {
+  return ADAPTERS.filter((a) => a.style === style);
 }
 
 export function detectAdapters(
   projectRoot: string,
   homeDir?: string,
+  style: ArtifactStyle = resolveArtifactStyle(),
 ): EditorAdapter[] {
-  return ADAPTERS.filter((a) => a.detect(projectRoot, homeDir));
+  return ADAPTERS.filter((a) => a.style === style && a.detect(projectRoot, homeDir));
 }
 
 /**
@@ -52,17 +82,26 @@ export function detectAdapters(
  * authorization additionally requires tool-owned artifacts (see
  * hasCommandArtifacts).
  */
-export function detectProjectAdapters(projectRoot: string): EditorAdapter[] {
-  return ADAPTERS.filter((a) => a.projectSignal(projectRoot));
+export function detectProjectAdapters(
+  projectRoot: string,
+  style: ArtifactStyle = resolveArtifactStyle(),
+): EditorAdapter[] {
+  return ADAPTERS.filter(
+    (a) => a.style === style && a.projectSignal(projectRoot),
+  );
 }
 
 /**
  * Interactive first-run pre-select set: project signals plus the adapter's
  * declared intent files. Never authorizes writes (see hasCommandArtifacts).
  */
-export function preselectAdapters(projectRoot: string): EditorAdapter[] {
+export function preselectAdapters(
+  projectRoot: string,
+  style: ArtifactStyle = resolveArtifactStyle(),
+): EditorAdapter[] {
   return ADAPTERS.filter(
     (a) =>
+      a.style === style &&
       a.declaration !== undefined &&
       preselectSignalFor(projectRoot, a.declaration.detection),
   );
@@ -80,14 +119,11 @@ export function hasCommandArtifacts(
   adapter: EditorAdapter,
 ): boolean {
   const meta = buildCommandMeta("");
-  // Shared artifacts (Codex + MiniMax both write `.agents/skills/opsx-*`)
-  // cannot prove which editor installed them, so they confer no configured
-  // status and no write authorization.
-  const shared = new Set(
-    (adapter.declaration?.artifacts ?? [])
-      .filter((artifact) => artifact.shared)
-      .map((artifact) => artifact.path(meta.id)),
-  );
+  // Shared artifacts (several adapters write the same shared skill) cannot
+  // prove which editor installed them, so they confer no configured status
+  // and no write authorization. The set comes from the adapter variant's own
+  // style, not from the 1.x declaration.
+  const shared = new Set(adapter.sharedArtifactPaths?.(meta) ?? []);
   const paths = listCommandArtifactPaths(adapter, meta).filter(
     (rel) => !shared.has(rel),
   );
@@ -104,10 +140,61 @@ export function registerAdapter(adapter: EditorAdapter): void {
  * skill-based ones — so a new adapter cannot drift out of the hint.
  */
 export function slashCommandForAdapter(adapter: EditorAdapter): string {
-  if (adapter.declaration?.invocationHint) {
-    return adapter.declaration.invocationHint;
+  if (adapter.invocationHint) {
+    return adapter.invocationHint;
+  }
+  if (adapter.style === "openspec") {
+    return "/openspec-e2e";
   }
   return adapter.commandForm === "colon" ? "/opsx:e2e" : "/opsx-e2e";
+}
+
+/**
+ * Remove one editor's 1.x e2e artifacts when the 2.x install replaces them.
+ * Only byte-identical (EOL-normalized) copies of this tool's 1.x render are
+ * deleted — a user-edited file is kept and reported. Returns removed paths.
+ */
+export function migrateOldStyleArtifacts(
+  adapter: EditorAdapter,
+  projectRoot: string,
+  meta: CommandMeta,
+): string[] {
+  if (adapter.style !== "openspec") return [];
+  const old = getAdapter(adapter.id, "opsx");
+  if (!old) return [];
+  const expected = new Map<string, string>();
+  expected.set(old.commandFilePath(meta.id), old.formatCommand(meta));
+  for (const extra of old.extraArtifacts?.(meta) ?? []) {
+    expected.set(extra.relativePath, extra.contents);
+  }
+  const removed: string[] = [];
+  for (const [rel, contents] of expected) {
+    const abs = pathResolve(projectRoot, rel);
+    if (!existsSync(abs) || !isPathInsideProjectRoot(projectRoot, abs)) continue;
+    if (normalizeEol(readFileSync(abs, "utf-8")) !== normalizeEol(contents)) {
+      console.log(
+        chalk.gray(
+          `  - ${adapter.label}: ${rel} differs from this tool's 1.x output — kept`,
+        ),
+      );
+      continue;
+    }
+    rmSync(abs);
+    // Skill artifacts live alone in their own directory — drop it so the 1.x
+    // name does not linger as an empty skill folder.
+    const parent = dirname(abs);
+    if (
+      parent !== pathResolve(projectRoot) &&
+      isPathInsideProjectRoot(projectRoot, parent) &&
+      existsSync(parent) &&
+      readdirSync(parent).length === 0
+    ) {
+      rmdirSync(parent);
+    }
+    console.log(chalk.green(`  ✓ ${adapter.label}: ${rel} migrated to the 2.x name`));
+    removed.push(rel);
+  }
+  return removed;
 }
 
 /** Relative paths installCommand writes for this adapter + meta. */

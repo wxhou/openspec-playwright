@@ -27,8 +27,18 @@ export function getDshSkillPath(id: string): string {
   return join(".dsh", "skills", `opsx-${id}`, "SKILL.md");
 }
 
+export function getDshSkillPath2(id: string): string {
+  return join(".dsh", "skills", `openspec-${id}`, "SKILL.md");
+}
+
 const DSH_SKILL: ArtifactSpec = {
   path: getDshSkillPath,
+  naming: "hyphen-prefix",
+  frontmatter: { name: true, description: true },
+};
+
+const DSH_SKILL2: ArtifactSpec = {
+  path: getDshSkillPath2,
   naming: "hyphen-prefix",
   frontmatter: { name: true, description: true },
 };
@@ -38,6 +48,7 @@ const dshDeclaration: AdapterDeclaration = {
   label: "dsh",
   displayName: "DeepSeek Harness",
   artifacts: [DSH_SKILL],
+  artifacts2: [DSH_SKILL2],
   detection: {
     projectPaths: [".dsh"],
     // ~/.dsh (DSH_HOME) — any-scope detection only, never a write authorization.
@@ -47,6 +58,7 @@ const dshDeclaration: AdapterDeclaration = {
 };
 
 export const dshAdapter = defineAdapter(dshDeclaration);
+export const dshAdapter2 = defineAdapter(dshDeclaration, "openspec");
 
 // ─── Named exports (derived from the declaration) ────────────────────────
 
@@ -63,3 +75,4 @@ export function hasDshProjectSignal(projectRoot: string): boolean {
 }
 
 registerAdapter(dshAdapter);
+registerAdapter(dshAdapter2);

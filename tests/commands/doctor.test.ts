@@ -16,7 +16,7 @@ vi.mock("../../src/shared/exec.js", () => ({
 
 // Mock the OpenSpec version probe — a healthy 1.x install.
 vi.mock("../../src/shared/openspec-version.js", () => ({
-  OPENSPEC_SUPPORTED_MAJOR: 1,
+  OPENSPEC_LATEST_MAJOR: 2,
   openSpecCliStatus: vi.fn(() => ({ ok: true, major: 1 })),
 }));
 

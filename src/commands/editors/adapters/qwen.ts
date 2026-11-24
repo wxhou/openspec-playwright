@@ -18,9 +18,19 @@ export function getQwenCommandPath(id: string): string {
   return join(".qwen", "commands", `opsx-${id}.md`);
 }
 
+export function getQwenCommandPath2(id: string): string {
+  return join(".qwen", "commands", `openspec-${id}.md`);
+}
+
 /** Qwen custom commands: markdown with a `description` frontmatter field. */
 const QWEN_COMMAND: ArtifactSpec = {
   path: getQwenCommandPath,
+  naming: "hyphen-prefix",
+  frontmatter: { description: true },
+};
+
+const QWEN_COMMAND2: ArtifactSpec = {
+  path: getQwenCommandPath2,
   naming: "hyphen-prefix",
   frontmatter: { description: true },
 };
@@ -30,6 +40,7 @@ const qwenDeclaration: AdapterDeclaration = {
   label: "qwen",
   displayName: "Qwen Code",
   artifacts: [QWEN_COMMAND],
+  artifacts2: [QWEN_COMMAND2],
   detection: {
     projectPaths: [".qwen"],
     globalPaths: [".qwen"],
@@ -45,6 +56,7 @@ const qwenDeclaration: AdapterDeclaration = {
 };
 
 export const qwenAdapter = defineAdapter(qwenDeclaration);
+export const qwenAdapter2 = defineAdapter(qwenDeclaration, "openspec");
 
 // ─── Named exports (derived from the declaration) ────────────────────────
 
@@ -57,3 +69,4 @@ export function hasQwen(projectRoot: string, homeDir?: string): boolean {
 }
 
 registerAdapter(qwenAdapter);
+registerAdapter(qwenAdapter2);

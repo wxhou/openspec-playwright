@@ -44,7 +44,7 @@ npm install -g openspec-playwright@latest
 
 1. **Node.js >= 22**
 2. **至少一个受支持编辑器** — 见 [支持的 AI 编码助手](#支持的-ai-编码助手) 表。Pi、Oh My Pi、MiniMax Code、DeepSeek Harness、Gemini CLI、Qwen Code、GitHub Copilot、Roo Code、Codex 与 Kimi Code 也会通过全局配置目录（`~/.pi/agent/`、`~/.omp/agent/`、`~/.minimax-code/`、`~/.dsh/`、`~/.gemini/`、`~/.qwen/`、`~/.copilot/`、`~/.roo/`、`~/.codex/`、`~/.kimi-code/`）检测。
-3. **OpenSpec** 已初始化：`npm install -g @fission-ai/openspec@1 && openspec init`
+3. **OpenSpec** 已初始化：`npm install -g @fission-ai/openspec@2 && openspec init --scope project`（也支持 1.x：安装 `@1` 后运行 `openspec init`）
 4. **Playwright MCP**（用于测试执行 + Healer）— `openspec-pw init` 会在检测到前端信号时按编辑器自动安装（纯 API 项目跳过——API 测试用 `request` fixture），**全部项目级**（写入项目内文件；Claude Code 用 `--scope project` 写项目根 `.mcp.json`，不碰全局 `~/.claude.json`）。安装**单个** server，与 Playwright 官方 `playwright init-agents` 布局一致：
    - `playwright-test` — 官方 test-runner server（`npx playwright run-test-mcp-server`，`playwright` 包自带）。是 `@playwright/mcp` 的**超集**：一个条目同时暴露 `browser_*` 浏览器工具（探索 + Healer 页面检查）和结构化的 `test_run` / `test_debug` / `test_list` 工作流工具（Healer 闭环）。
    - **Claude Code**：`claude mcp add --scope project playwright-test npx playwright run-test-mcp-server`（写入项目根 `.mcp.json`；受管 `.gitignore` 块默认忽略以保护凭据——自加 server 常含 API key，团队确需共享须显式 `git add -f .mcp.json`）
@@ -56,7 +56,7 @@ npm install -g openspec-playwright@latest
    - **MiniMax Code**：合并到项目根 `.mcp.json` 的 `mcpServers["playwright-test"] = { "command": "npx", "args": ["playwright", "run-test-mcp-server"] }`（直接文件读写——MiniMax Code 自动加载项目根 `.mcp.json`）
    - **Pi**：无 MCP 客户端，跳过安装 — 浏览器探索改用 `openspec-pw explore`
 
-> **必须用 OpenSpec 1.x**：openspec-pw 依赖 OpenSpec 1.x CLI。OpenSpec 2.x 不再生成 `/opsx:*` 命令文件，改为把工作流安装成 `.agents/skills/` 下的 skill。`openspec-pw doctor` 会把 2.x 判为不支持，`openspec-pw init` 直接中止。
+> **同时支持 OpenSpec 1.x 与 2.x**：命名跟随已装主版本。1.x 使用 `/opsx:e2e` 与 `opsx-e2e` 产物；2.x 使用 `/openspec-e2e` 与 `openspec-e2e` 产物（装在 `.agents/skills/` 下的 skill）。`openspec-pw doctor` 对两者均通过，3.x 会被拒绝。
 
 > 项目级 server 首次交互使用时 Claude Code 会弹出批准提示（`claude mcp reset-project-choices` 可重置选择）。
 
@@ -75,6 +75,8 @@ openspec-pw init          # 安装 Playwright E2E 集成（--tools 选编辑器�
 > **注意**：运行 `openspec-pw init` 后，手动安装 Chromium 浏览器：`npx playwright install chromium`
 
 ## 支持的 AI 编码助手
+
+命名跟随已装 OpenSpec 主版本：下表为 1.x 名称；2.x 下同一批产物改名为 `openspec-e2e`（调用 `/openspec-e2e`，个别编辑器为 `$openspec-e2e` / `/skill:openspec-e2e`）。
 
 | 编辑器 | 命令 | Playwright MCP | AGENTS.md 加载方式 |
 |---|---|---|---|
@@ -343,7 +345,7 @@ audit **只报告、绝不删除**——测试退役永远是人工决策。存�
 | 步骤 | 命令 | 失败时快速修复 |
 |------|------|----------------|
 | 1. 安装 CLI | `npm install -g openspec-playwright@latest` | 检查 Node.js 版本 `node -v`（需 >= 22） |
-| 2. 安装 OpenSpec | `npm install -g @fission-ai/openspec@1 && openspec init` | `npm cache clean -f && npm install -g @fission-ai/openspec@1` |
+| 2. 安装 OpenSpec | `npm install -g @fission-ai/openspec@2 && openspec init --scope project` | `npm cache clean -f && npm install -g @fission-ai/openspec@2` |
 | 3. 初始化 E2E | `openspec-pw init` | 运行 `openspec-pw doctor` 查看具体缺失项 |
 | 4. 安装浏览器 | `npx playwright install chromium` | Linux CI 镜像可能需系统依赖：`npx playwright install --with-deps chromium`（macOS 可能需先运行 `xcode-select --install`） |
 | 5. 启动开发服务器 | `npm run dev`（在另一个终端） | 确认端口，配置 `BASE_URL` |
@@ -362,7 +364,7 @@ audit **只报告、绝不删除**——测试退役永远是人工决策。存�
 | **Node.js** | `node` 版本 | `engines` 兼容性（对比 `package.json`） |
 | **npm** | `npm` 可用性 | — |
 | **Playwright 配置** | 配置文件存在（`ts`/`js`/`mjs`/`mts`） | — |
-| **OpenSpec** | 目录已初始化、CLI 为 1.x（CLI 缺失或为 2.x 即失败） | `.spec.md` 规范文件数量 |
+| **OpenSpec** | 目录已初始化、CLI 主版本为 1 或 2（缺失、不可读或 3.x 即失败） | `.spec.md` 规范文件数量 |
 | **Playwright 浏览器** | CLI 版本、Chromium 二进制已下载 | — |
 | **Playwright 测试框架** | `@playwright/test` 已安装 | — |
 | **小程序** | Chrome、`@open-wxa/wxa-runner-playwright`、`@playwright/test` >=1.64、`wxaProject` 产物（仅小程序目标） | — |

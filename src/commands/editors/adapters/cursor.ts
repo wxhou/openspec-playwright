@@ -23,6 +23,14 @@ export function getCursorSkillPath(id: string): string {
   return join(".cursor", "skills", `opsx-${id}`, "SKILL.md");
 }
 
+export function getCursorCommandPath2(id: string): string {
+  return join(".cursor", "commands", `openspec-${id}.md`);
+}
+
+export function getCursorSkillPath2(id: string): string {
+  return join(".cursor", "skills", `openspec-${id}`, "SKILL.md");
+}
+
 /**
  * Cursor slash commands are plain markdown (no frontmatter); the filename
  * is the command name. `$1` is the change-name argument.
@@ -48,11 +56,29 @@ const CURSOR_SKILL: ArtifactSpec = {
   },
 };
 
+const CURSOR_COMMAND2: ArtifactSpec = {
+  path: getCursorCommandPath2,
+  naming: "hyphen-prefix",
+  header: (meta) =>
+    `<!-- Change name: $1 (e.g. /openspec-${meta.id} my-change) -->`,
+};
+
+const CURSOR_SKILL2: ArtifactSpec = {
+  path: getCursorSkillPath2,
+  naming: "hyphen-prefix",
+  frontmatter: {
+    name: true,
+    description: true,
+    disableModelInvocation: true,
+  },
+};
+
 const cursorDeclaration: AdapterDeclaration = {
   id: "cursor",
   label: "cursor",
   displayName: "Cursor",
   artifacts: [CURSOR_COMMAND, CURSOR_SKILL],
+  artifacts2: [CURSOR_COMMAND2, CURSOR_SKILL2],
   detection: {
     projectPaths: [".cursor"],
     intentPaths: [".cursorrules"],
@@ -65,6 +91,7 @@ const cursorDeclaration: AdapterDeclaration = {
 };
 
 export const cursorAdapter = defineAdapter(cursorDeclaration);
+export const cursorAdapter2 = defineAdapter(cursorDeclaration, "openspec");
 
 // ─── Named exports (derived from the declaration) ────────────────────────
 
@@ -81,3 +108,4 @@ export function hasCursor(projectRoot: string, homeDir?: string): boolean {
 }
 
 registerAdapter(cursorAdapter);
+registerAdapter(cursorAdapter2);

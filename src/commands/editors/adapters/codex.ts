@@ -27,8 +27,19 @@ export function getCodexSkillPath(id: string): string {
   return join(".agents", "skills", `opsx-${id}`, "SKILL.md");
 }
 
+export function getCodexSkillPath2(id: string): string {
+  return join(".agents", "skills", `openspec-${id}`, "SKILL.md");
+}
+
 const CODEX_SKILL: ArtifactSpec = {
   path: getCodexSkillPath,
+  naming: "hyphen-prefix",
+  shared: true,
+  frontmatter: { name: true, description: true },
+};
+
+const CODEX_SKILL2: ArtifactSpec = {
+  path: getCodexSkillPath2,
   naming: "hyphen-prefix",
   shared: true,
   frontmatter: { name: true, description: true },
@@ -39,6 +50,7 @@ const codexDeclaration: AdapterDeclaration = {
   label: "codex",
   displayName: "Codex",
   artifacts: [CODEX_SKILL],
+  artifacts2: [CODEX_SKILL2],
   detection: {
     // `.agents/skills` is shared with MiniMax Code — never a detection signal.
     projectPaths: [".codex"],
@@ -46,9 +58,11 @@ const codexDeclaration: AdapterDeclaration = {
   },
   mcp: { kind: "none" },
   invocationHint: "$opsx-e2e",
+  invocationHint2: "$openspec-e2e",
 };
 
 export const codexAdapter = defineAdapter(codexDeclaration);
+export const codexAdapter2 = defineAdapter(codexDeclaration, "openspec");
 
 // ─── Named exports (derived from the declaration) ────────────────────────
 
@@ -61,3 +75,4 @@ export function hasCodex(projectRoot: string, homeDir?: string): boolean {
 }
 
 registerAdapter(codexAdapter);
+registerAdapter(codexAdapter2);

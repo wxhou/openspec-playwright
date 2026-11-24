@@ -15,6 +15,7 @@ import chalk from "chalk";
 import * as tar from "tar";
 import {
   buildCommandMeta,
+  migrateOldStyleArtifacts,
   getAllAdapters,
   hasCommandArtifacts,
   installCommand,
@@ -55,6 +56,20 @@ import { readTextFileCapped } from "../shared/file-read.js";
 import { pipelineGitignoreOmit } from "./pipeline.js";
 import { fullRulesFile, wrapperHasMarkers, hasRuleFileMarkers } from "./editors/project-rules.js";
 import type { EditorAdapter } from "./editors.js";
+
+/** Any openspec-pw command artifact in either naming family exists. */
+function hasAnyCommandArtifacts(projectRoot: string): boolean {
+  for (const style of ["opsx", "openspec"] as const) {
+    if (
+      getAllAdapters(style).some((adapter) =>
+        hasCommandArtifacts(projectRoot, adapter),
+      )
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
 
 /** Editors whose project rules file is a thin wrapper (not AGENTS.md), with their installers. */
 const WRAPPER_EDITORS: Array<[EditorAdapter, (root: string) => void]> = [
@@ -99,9 +114,7 @@ export async function update(options: UpdateOptions) {
   const projectRoot = process.cwd();
 
   // Check if init has been run
-  const hasCommand = getAllAdapters().some((adapter) =>
-    hasCommandArtifacts(projectRoot, adapter),
-  );
+  const hasCommand = hasAnyCommandArtifacts(projectRoot);
   const hasOpenSpec = existsSync(join(projectRoot, "openspec"));
   if (!hasCommand && !hasOpenSpec) {
     console.log(chalk.yellow("  ⚠ OpenSpec + Playwright E2E not initialized."));
@@ -111,8 +124,8 @@ export async function update(options: UpdateOptions) {
     return;
   }
 
-  // A 2.x OpenSpec CLI drops the `/opsx:*` command files this tool's workflow
-  // relies on. Updating still works, so warn instead of blocking.
+  // 1.x and 2.x are both supported; an unsupported or unreadable CLI is
+  // reported but does not block the update itself.
   const openspec = openSpecCliStatus();
   if (!openspec.ok && openspec.kind !== "missing") {
     console.log(chalk.yellow(`  ⚠ ${openspec.message}`));
@@ -246,10 +259,18 @@ export async function update(options: UpdateOptions) {
       // Write authorization = tool-owned artifacts exist ("existing artifacts
       // are the manifest") — never detect(): a global config dir or a
       // hand-created marker directory does not authorize writes. update
-      // maintains territory; it never expands it.
-      const authorized = getAllAdapters().filter((a) =>
-        hasCommandArtifacts(projectRoot, a),
-      );
+      // maintains territory; it never expands it. Both naming families
+      // authorize: a project still on 1.x artifacts must be migratable after
+      // the CLI upgrade.
+      const authorized = (() => {
+        const ids = new Set<string>();
+        for (const style of ["opsx", "openspec"] as const) {
+          for (const a of getAllAdapters(style)) {
+            if (hasCommandArtifacts(projectRoot, a)) ids.add(a.id);
+          }
+        }
+        return getAllAdapters().filter((a) => ids.has(a.id));
+      })();
       if (authorized.length === 0) {
         console.log(
           chalk.gray(
@@ -257,6 +278,10 @@ export async function update(options: UpdateOptions) {
           ),
         );
       } else if (body) {
+        const meta = buildCommandMeta(body);
+        for (const adapter of authorized) {
+          migrateOldStyleArtifacts(adapter, projectRoot, meta);
+        }
         syncCommandArtifacts(projectRoot, body);
       }
 
@@ -330,7 +355,7 @@ export async function update(options: UpdateOptions) {
         tmpDir,
         projectRoot,
         hasCommandArtifacts(projectRoot, claudeAdapter) || wrapperHasMarkers(claudeAdapter, projectRoot),
-        getAllAdapters().some((a) => hasCommandArtifacts(projectRoot, a)) || hasRuleFileMarkers(projectRoot),
+        hasAnyCommandArtifacts(projectRoot) || hasRuleFileMarkers(projectRoot),
         hasCommandArtifacts(projectRoot, codebuddyAdapter) || wrapperHasMarkers(codebuddyAdapter, projectRoot),
         options.lang,
       );

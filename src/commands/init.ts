@@ -12,7 +12,7 @@ import chalk from "chalk";
 import { readFile } from "fs/promises";
 import { hasCommand } from "../shared/exec.js";
 import {
-  OPENSPEC_SUPPORTED_MAJOR,
+  OPENSPEC_LATEST_MAJOR,
   openSpecCliStatus,
 } from "../shared/openspec-version.js";
 import { installStopHook, isHookTier, uninstallStopHook } from "./hooks.js";
@@ -43,6 +43,8 @@ import {
   getAllAdapters,
   installCommand,
   installOptionalArtifacts,
+  migrateOldStyleArtifacts,
+  resolveArtifactStyle,
   installProjectRules,
   migrateLegacyMarkers,
   readEmployeeStandards,
@@ -57,21 +59,19 @@ import {
   retainedCommandArtifactPaths,
   removeAdapterCommandArtifacts,
   removeOwnedVendoredAgents,
-  removeLegacyArtifact,
   removeWrapper,
   removeFullRulesBlock,
   removeMarkersFromFile,
   agentsFileHasCleanableMarkers,
   wrapperLinksToAgents,
   normalizeEol,
-  cleanProjectRules,
-  fullRulesFile,
-  wrapperRulesFile,
 } from "./editors.js";
 import {
   isEditorConfigured,
   agentsFileHasMarkers,
 } from "./editors/configured.js";
+import { cleanOptedOutCopies, ruleCopyPredicate } from "./init-rules-copy.js";
+import { maintainManagedGitignore } from "./init-gitignore-block.js";
 import type { EditorAdapter, EditorId } from "./editors.js";
 import {
   ensureTestRunnerMcp,
@@ -86,16 +86,8 @@ import {
   type TemplateTarget,
   detectCodeGraphStatus,
   codegraphHintLines,
-  ensureGitignoreEntries,
-  findUncoveredManagedPaths,
   skippableManagedPaths,
-  readManagedSkips,
-  readManagedSkipsSafe,
-  RULE_COPY_GITIGNORE_PATHS,
-  managedPathFor,
-  detectTrackedFiles,
   isIgnoredPath,
-  managedBlockAdvisoryHint,
   installOrRefreshChecklist,
   installLintConfig,
   LINT_ESLINT_SNIPPET,
@@ -234,37 +226,6 @@ export function resolveInitMode(
   return frontendSignal === true ? "frontend" : "minimal";
 }
 
-/** The per-editor rules file a rule-copy decision applies to, if any. */
-function carrierRulesFile(
-  adapter: EditorAdapter,
-  projectRoot: string,
-): string | null {
-  return (
-    fullRulesFile(adapter, projectRoot) ?? wrapperRulesFile(adapter, projectRoot)
-  );
-}
-
-/**
- * Per-adapter rule-copy decision: `--no-rule-files` opts every adapter out,
- * `--rule-files` opts in, and the default follows the skip record written by
- * an earlier opt-out run.
- */
-function ruleCopyPredicate(
-  options: InitOptions,
-  projectRoot: string,
-): (adapter: EditorAdapter) => boolean {
-  if (options.ruleFiles === false) return () => true;
-  if (options.ruleFiles === true) return () => false;
-  const recorded = new Set(readManagedSkipsSafe(projectRoot));
-  const carriers = new Set<string>(RULE_COPY_GITIGNORE_PATHS);
-  return (adapter) => {
-    const file = carrierRulesFile(adapter, projectRoot);
-    if (!file) return false;
-    const rel = managedPathFor(projectRoot, file);
-    return recorded.has(rel) && carriers.has(rel);
-  };
-}
-
 /** Project-relative display path; ancestor configs stay absolute. */
 function displayPath(projectRoot: string, file: string): string {
   const rel = relative(projectRoot, file);
@@ -391,13 +352,21 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
 
   // 2. Check OpenSpec
   if (!existsSync(join(projectRoot, "openspec"))) {
+    // Point at the major the project will actually run: the installed one when
+    // the CLI is healthy, the newest supported one when it is absent.
+    const targetMajor = openspec.ok ? openspec.major : OPENSPEC_LATEST_MAJOR;
     console.log(
       chalk.yellow("\n⚠ OpenSpec not initialized. Run these commands first:"),
     );
-    console.log(chalk.gray(`  npm install -g @fission-ai/openspec@${OPENSPEC_SUPPORTED_MAJOR}`));
-    console.log(chalk.gray("  openspec init"));
-    console.log(chalk.gray("  openspec config profile core"));
-    console.log(chalk.gray("  openspec update\n"));
+    console.log(chalk.gray(`  npm install -g @fission-ai/openspec@${targetMajor}`));
+    if (targetMajor >= 2) {
+      console.log(chalk.gray("  openspec init --scope project"));
+      console.log(chalk.gray("  openspec update\n"));
+    } else {
+      console.log(chalk.gray("  openspec init"));
+      console.log(chalk.gray("  openspec config profile core"));
+      console.log(chalk.gray("  openspec update\n"));
+    }
     console.log(chalk.gray("  Then run openspec-pw init again.\n"));
     return;
   }
@@ -501,7 +470,7 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     selectedIds === null
       ? projectDetected
       : selectedIds
-          .map(getAdapter)
+          .map((id) => getAdapter(id))
           .filter((a): a is EditorAdapter => a !== undefined);
 
   // The actual install set — what this run will configure. The Selected
@@ -644,9 +613,6 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
         for (const relPath of inv.retainedCommandPaths) {
           keptArtifactEntries.push(`${adapter.label}: ${relPath}`);
         }
-        for (const relPath of inv.legacyArtifacts) {
-          console.log(chalk.gray(`    - ${adapter.label}: ${relPath}/`));
-        }
         for (const server of inv.mcpServers) {
           console.log(chalk.gray(`    - ${adapter.label}: ${server} MCP entry`));
         }
@@ -707,9 +673,6 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
             retainedCommandPaths,
           );
           removeOwnedVendoredAgents(projectRoot, adapter);
-          for (const relPath of inv.legacyArtifacts) {
-            removeLegacyArtifact(adapter, projectRoot, relPath);
-          }
           if (inv.hasWrapper) {
             removeWrapper(adapter, projectRoot);
           }
@@ -839,8 +802,10 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   if (claudeEditor && mode === "frontend") {
     let agentsConsent = options.agents === true;
     if (!agentsConsent && interactiveSelection) {
+      const e2eName =
+        resolveArtifactStyle() === "openspec" ? "/openspec-e2e" : "/opsx:e2e";
       agentsConsent = await confirmPrompt(
-        "Install the official Playwright planner agent into .claude/agents/? (delegation target for /opsx:e2e exploration-to-plan)",
+        `Install the official Playwright planner agent into .claude/agents/? (delegation target for ${e2eName} exploration-to-plan)`,
       );
     }
     if (agentsConsent) {
@@ -869,6 +834,7 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     const body = await readFile(E2E_COMMAND_SRC, "utf-8");
     const meta = buildCommandMeta(body);
     for (const adapter of editors) {
+      migrateOldStyleArtifacts(adapter, projectRoot, meta);
       installCommand(adapter, meta, projectRoot);
     }
   } else if (editors.length > 0) {
@@ -929,19 +895,12 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     }
   }
 
-  // 7a. Managed .gitignore block: auto-ignore runtime output and test
-  // credentials (revised from v0.3.86's advisory-only stance — the block
-  // is tool-owned territory inside .gitignore; lines outside are never
-  // touched). Then a best-effort check for ALREADY-TRACKED managed paths:
-  // git does not apply ignore rules to tracked files, so those need a
-  // manual `git rm --cached` (user decision — never auto-executed).
-  // Detection-only credential advisory now runs only on the degradation
-  // path (block write failed) — on success the managed block covers them.
-  // The auto pipeline keeps the OpenSpec artifacts committable: CI checks
-  // out the repository, and without `openspec/` there is nothing to apply.
-  // The flag covers the current run (the workflow is written after this
-  // step); the helper covers a workflow an earlier run left behind, so a
-  // plain re-init never re-ignores what the pipeline needs committed.
+  // 7a. Managed .gitignore block (mechanics: init-gitignore-block.ts). The
+  // auto pipeline keeps the OpenSpec artifacts committable: CI checks out the
+  // repository, and without `openspec/` there is nothing to apply. The flag
+  // covers the current run (the workflow is written after this step); the
+  // helper covers a workflow an earlier run left behind, so a plain re-init
+  // never re-ignores what the pipeline needs committed.
   const pipelineOmit = [
     ...new Set([
       ...(options.autoPipeline ? [...PIPELINE_TRACKED_PATHS] : []),
@@ -963,94 +922,13 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
         groupGitignoreCandidates(gitignoreCandidates),
       )
     : undefined;
-  let skippedPaths: string[] = [];
-  try {
-    // Not asking ≠ "ignore everything again": a non-interactive run keeps
-    // the opt-outs an earlier interactive run recorded, exactly like update.
-    // Recorded paths outside the candidate set (openspec/ while the pipeline
-    // owns it) stay recorded.
-    const recordedSkips = readManagedSkips(projectRoot);
-    skippedPaths =
-      selectedPaths === undefined
-        ? recordedSkips
-        : [
-            ...new Set([
-              ...recordedSkips.filter((p) => !gitignoreCandidates.includes(p)),
-              ...gitignoreCandidates.filter((p) => !selectedPaths.includes(p)),
-            ]),
-          ];
-    // Rule-copy opt-out shares the skip record: carrier paths leave the
-    // managed block (a user-owned same-name file must stay committable) and
-    // drive the install/cleanup decision in step 8.
-    if (options.ruleFiles === false) {
-      skippedPaths = [
-        ...new Set([...skippedPaths, ...RULE_COPY_GITIGNORE_PATHS]),
-      ];
-    } else if (options.ruleFiles === true) {
-      const carriers = new Set<string>(RULE_COPY_GITIGNORE_PATHS);
-      skippedPaths = skippedPaths.filter((p) => !carriers.has(p));
-    }
-    const result = ensureGitignoreEntries(projectRoot, {
-      omit: pipelineOmit,
-      skip: skippedPaths,
-    });
-    if (result.changed) {
-      const delta = [
-        result.added.length ? `+${result.added.length}` : "",
-        result.removed.length ? `-${result.removed.length}` : "",
-      ]
-        .filter(Boolean)
-        .join(" ");
-      console.log(
-        chalk.green(`  ✓ .gitignore: managed block updated (${delta})`),
-      );
-    }
-    if (result.removed.length > 0) {
-      console.log(
-        chalk.gray(
-          `    kept committable: ${result.removed.join(", ")}`,
-        ),
-      );
-    }
-  } catch {
-    const uncovered = findUncoveredManagedPaths(projectRoot, [
-      ...pipelineOmit,
-      ...skippedPaths,
-    ]);
-    if (uncovered.length > 0) {
-      console.log(chalk.yellow(`\n  ⚠ ${managedBlockAdvisoryHint(uncovered)}`));
-    }
-    if (options.ruleFiles === false) {
-      console.log(
-        chalk.yellow(
-          "\n  ⚠ The rule-copy opt-out could not be recorded — this run still skips" +
-            ' the copies, but a later "openspec-pw update" may recreate them.' +
-            " Fix .gitignore, then re-run with --no-rule-files.",
-        ),
-      );
-    } else if (options.ruleFiles === true) {
-      console.log(
-        chalk.yellow(
-          "\n  ⚠ The rule-copy restoration could not be recorded — the copies were" +
-            ' written, but the stale skip record keeps "openspec-pw update" from' +
-            " refreshing them. Fix .gitignore, then re-run with --rule-files.",
-        ),
-      );
-    }
-  }
-  const tracked = detectTrackedFiles(projectRoot, [
-    ...pipelineOmit,
-    ...skippedPaths,
-  ]);
-  if (tracked.length > 0) {
-    console.log(
-      chalk.yellow(
-        `\n  ⚠ These generated files/dirs are already git-tracked — ignore rules do NOT apply to them:` +
-          `\n    ${tracked.join("\n    ")}` +
-          `\n    Fix: git rm -r --cached <path> (then commit to share with your team)`,
-      ),
-    );
-  }
+  maintainManagedGitignore({
+    projectRoot,
+    selectedPaths,
+    candidates: gitignoreCandidates,
+    omit: pipelineOmit,
+    ruleFiles: options.ruleFiles,
+  });
 
   // 7b. Generate GitHub Actions workflow (if --ci; frontend mode only —
   // the workflow runs Playwright, which minimal-mode projects don't have)
@@ -1091,13 +969,9 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
 
   // 8. Install employee-grade standards (AGENTS.md + CLAUDE.md wrapper if Claude)
   // The opt-out cleans existing copies even with no editor selected
-  // (--tools none) — absent carriers stay silent.
+  // (--tools none); absent carriers stay silent.
   if (options.ruleFiles === false) {
-    for (const adapter of getAllAdapters()) {
-      const file = carrierRulesFile(adapter, projectRoot);
-      if (!file || !existsSync(file)) continue;
-      cleanProjectRules(adapter, projectRoot, { agents: false });
-    }
+    cleanOptedOutCopies(projectRoot);
   }
   if (editors.length > 0) {
     console.log(chalk.blue("\n─── Installing Employee Standards ───"));
@@ -1117,7 +991,7 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
       editors.some((a) => a.id === "codebuddy"),
     );
     installProjectRules(projectRoot, standards, editors, {
-      skipCopyFor: ruleCopyPredicate(options, projectRoot),
+      skipCopyFor: ruleCopyPredicate(options.ruleFiles, projectRoot),
     });
     console.log(
       chalk.gray(

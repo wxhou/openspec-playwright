@@ -11,6 +11,13 @@ import { join } from "path";
 import { tmpdir } from "os";
 import { fileURLToPath } from "url";
 
+// The CLI probe is overridden per test; the real classification is the default.
+vi.mock("../src/shared/openspec-version.js", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../src/shared/openspec-version.js")>();
+  return { ...actual, openSpecCliStatus: vi.fn(actual.openSpecCliStatus) };
+});
+
 // Complete §0–§7 body: syncEmployeeStandards rejects an English SSOT that is
 // missing any of those sections, so fixtures must look like the real file.
 const EN_STANDARDS_STUB = ["0", "1", "2", "3", "4", "5", "6", "7"]
@@ -856,5 +863,31 @@ describe("syncCommandArtifacts", () => {
     expect(existsSync(join(projectDir, getMinimaxSkillPath("e2e")))).toBe(
       false,
     );
+  });
+});
+
+describe("update: OpenSpec CLI version", () => {
+  it("does not warn about a healthy 2.x CLI", async () => {
+    const { openSpecCliStatus } = await import(
+      "../src/shared/openspec-version.js"
+    );
+    vi.mocked(openSpecCliStatus).mockReturnValue({ ok: true, major: 2 });
+    const projectDir = mkdtempSync(join(tmpdir(), "ospw-update-cli2-"));
+    mkdirSync(join(projectDir, "openspec"), { recursive: true });
+    const cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(projectDir);
+    const logs: string[] = [];
+    const logSpy = vi.spyOn(console, "log").mockImplementation((...args) => {
+      logs.push(args.join(" "));
+    });
+    try {
+      const { update } = await import("../../src/commands/update.js");
+      await update({ cli: false, skill: false, mcp: false });
+    } finally {
+      logSpy.mockRestore();
+      cwdSpy.mockRestore();
+      vi.mocked(openSpecCliStatus).mockReset();
+      rmSync(projectDir, { recursive: true, force: true });
+    }
+    expect(logs.join("\n")).not.toContain("⚠ OpenSpec");
   });
 });

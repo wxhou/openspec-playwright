@@ -23,10 +23,8 @@ import {
   isInventoryEmpty,
   removeAdapterCommandArtifacts,
   removeAdapterMcp,
-  removeLegacyArtifact,
   removeWrapper,
   retainedCommandArtifactPaths,
-  CLAUDE_LEGACY_SKILL_REL,
   OPENSPEC_PW_MCP_SERVERS,
 } from "../src/commands/editors/removal.js";
 
@@ -122,14 +120,15 @@ describe("enumerateAdapterArtifacts", () => {
     expect(enumerateAdapterArtifacts(claudeAdapter, projectRoot).hasWrapper).toBe(false);
   });
 
-  it("flags the claude legacy skill dir only for claude", () => {
+  it("does not treat a pre-0.3.74 skill directory as tool territory", () => {
     mkdirSync(join(projectRoot, ".claude", "skills", "openspec-e2e"), { recursive: true });
-    expect(
-      enumerateAdapterArtifacts(claudeAdapter, projectRoot).legacyArtifacts,
-    ).toEqual([join(".claude", "skills", "openspec-e2e")]);
-    expect(
-      enumerateAdapterArtifacts(cursorAdapter, projectRoot).legacyArtifacts,
-    ).toEqual([]);
+    writeFileSync(
+      join(projectRoot, ".claude", "skills", "openspec-e2e", "SKILL.md"),
+      "old\n",
+    );
+    const inv = enumerateAdapterArtifacts(claudeAdapter, projectRoot);
+    expect(inv.commandPaths).toEqual([]);
+    expect(inv.hasWrapper).toBe(false);
   });
 });
 
@@ -177,22 +176,6 @@ describe("removeAdapterMcp", () => {
   it("does nothing for adapters without an MCP client (pi)", () => {
     removeAdapterMcp(piAdapter, projectRoot, ["playwright-test"]);
     expect(existsSync(join(projectRoot, ".pi", "mcp.json"))).toBe(false);
-  });
-});
-
-describe("removeLegacyArtifact", () => {
-  it("removes the declared legacy dir and cascades empty parents; null when absent", () => {
-    expect(
-      removeLegacyArtifact(claudeAdapter, projectRoot, CLAUDE_LEGACY_SKILL_REL),
-    ).toBeNull();
-    const skillDir = join(projectRoot, CLAUDE_LEGACY_SKILL_REL);
-    mkdirSync(skillDir, { recursive: true });
-    writeFileSync(join(skillDir, "SKILL.md"), "x");
-    expect(
-      removeLegacyArtifact(claudeAdapter, projectRoot, CLAUDE_LEGACY_SKILL_REL),
-    ).toBe(CLAUDE_LEGACY_SKILL_REL);
-    expect(existsSync(skillDir)).toBe(false);
-    expect(existsSync(join(projectRoot, ".claude"))).toBe(false);
   });
 });
 

@@ -7,6 +7,7 @@ import {
 import { join } from "path";
 import chalk from "chalk";
 import { SHARED_FILE_NAMES } from "../shared/index.js";
+import { resolveArtifactStyle } from "./editors/registry.js";
 
 const SHARED_FILES = SHARED_FILE_NAMES;
 
@@ -124,9 +125,9 @@ export async function migrate(options: MigrateOptions) {
   console.log(
     chalk.blue("\n─── Next step ───"),
   );
-  console.log(
-    chalk.green(
-      "  Run /opsx:e2e <name> (Claude Code) or /opsx-e2e <name> (OpenCode/Cline) to verify each migrated change.\n",
-    ),
-  );
+  const e2eHint =
+    resolveArtifactStyle() === "openspec"
+      ? "  Run /openspec-e2e <name> (Claude Code or skill editors) to verify each migrated change.\n"
+      : "  Run /opsx:e2e <name> (Claude Code) or /opsx-e2e <name> (OpenCode/Cline) to verify each migrated change.\n";
+  console.log(chalk.green(e2eHint));
 }

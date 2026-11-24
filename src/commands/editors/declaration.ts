@@ -11,6 +11,7 @@ import type {
   AdapterDeclaration,
   ArtifactRoot,
   ArtifactSpec,
+  ArtifactStyle,
   CommandMeta,
   DetectionSpec,
   EditorAdapter,
@@ -33,6 +34,11 @@ export function artifactRootHit(
 ): boolean {
   for (const spec of roots ?? []) {
     const dir = pathResolve(root, spec.dir);
+    // Recognize both naming families regardless of the active style: a 2.x
+    // project opened on a 1.x CLI must still detect its installed skill.
+    const prefixes = [spec.prefix];
+    if (spec.prefix === "opsx-") prefixes.push("openspec-");
+    if (spec.prefix === "openspec-") prefixes.push("opsx-");
     let entries;
     try {
       entries = readdirSync(dir, { withFileTypes: true });
@@ -42,7 +48,7 @@ export function artifactRootHit(
     const hit = entries.some(
       (entry) =>
         entry.isDirectory() &&
-        entry.name.startsWith(spec.prefix) &&
+        prefixes.some((prefix) => entry.name.startsWith(prefix)) &&
         (!spec.entry || existsSync(join(dir, entry.name, spec.entry))),
     );
     if (hit) return true;
@@ -88,12 +94,13 @@ function compileRules(rules: RulesSpec | undefined) {
 
 function compileExtraArtifacts(
   secondary: ArtifactSpec[],
+  style: ArtifactStyle,
 ): ((meta: CommandMeta) => ExtraArtifact[]) | undefined {
   if (secondary.length === 0) return undefined;
   return (meta) =>
     secondary.map((spec) => ({
       relativePath: spec.path(meta.id),
-      contents: formatArtifact(spec, meta),
+      contents: formatArtifact(spec, meta, style),
     }));
 }
 
@@ -108,19 +115,28 @@ function compileExtraArtifacts(
  *   - detection tiers come from the detection spec (global paths never
  *     satisfy the project signal).
  */
-export function defineAdapter(decl: AdapterDeclaration): EditorAdapter {
-  const [primary, ...secondary] = decl.artifacts;
+export function defineAdapter(
+  decl: AdapterDeclaration,
+  style: ArtifactStyle = "opsx",
+): EditorAdapter {
+  const artifacts =
+    style === "openspec" && decl.artifacts2?.length
+      ? decl.artifacts2
+      : decl.artifacts;
+  const [primary, ...secondary] = artifacts;
   if (!primary) {
     throw new Error(`adapter "${decl.id}" declares no artifacts`);
   }
   const mcp = buildMcpRuntime(decl.mcp);
   const { rulesPath, registerInstructions } = compileRules(decl.rules);
+  const sharedSpecs = artifacts.filter((artifact) => artifact.shared);
 
   const projectSignal = (root: string) =>
     projectSignalFor(root, decl.detection);
 
   return {
     id: decl.id,
+    style,
     label: decl.label,
     displayName: decl.displayName,
     detect(root, homeDir) {
@@ -133,7 +149,7 @@ export function defineAdapter(decl: AdapterDeclaration): EditorAdapter {
     supportsMcp: mcp.supportsMcp,
     commandFilePath: primary.path,
     commandForm: primary.naming === "namespace-dir" ? "colon" : "hyphen",
-    formatCommand: (meta) => formatArtifact(primary, meta),
+    formatCommand: (meta) => formatArtifact(primary, meta, style),
     projectRulesPath: rulesPath,
     isMcpInstalled: mcp.isMcpInstalled,
     isMcpEntryPresent: mcp.isMcpEntryPresent,
@@ -141,8 +157,14 @@ export function defineAdapter(decl: AdapterDeclaration): EditorAdapter {
     removeMcp: mcp.removeMcp,
     mcpConfigPath: mcp.mcpConfigPath,
     registerInstructions,
-    extraArtifacts: compileExtraArtifacts(secondary),
+    extraArtifacts: compileExtraArtifacts(secondary, style),
+    sharedArtifactPaths: (meta) =>
+      sharedSpecs.map((spec) => spec.path(meta.id)),
     optionalArtifacts: decl.optionalArtifacts,
+    invocationHint:
+      style === "openspec"
+        ? (decl.invocationHint2 ?? decl.invocationHint)
+        : decl.invocationHint,
     declaration: decl,
   };
 }

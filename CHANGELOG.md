@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- **fix(cli): 兼容 OpenSpec 2.x**. 版本闸门接受 1.x/2.x 并给出对应安装提示；2.x 下 e2e 产物改名 `openspec-e2e`（共享 skill + Claude 副本），从 1.x 升级时按内容自动迁移未改动的旧 `opsx-e2e`；自主流水线改为运行时探测工作流面（`APPLY`/`VERIFY`/`E2E` 经 `$GITHUB_ENV` 传递），干净 runner 显式写入 workflow 列表、2.1+ 传 `--scope project`，自动 PR 不提交 `.agents/skills/openspec-*`；新模板安装 `@2`，已生成的旧流水线保持 `@1` 仍可运行；彻底移除 pre-0.3.74 的 legacy skill 兼容。
+  - `src/shared/{openspec-version,discover,gitignore-managed}.ts`、`src/commands/{init,update,doctor,remove,migrate}.ts`、`src/commands/editors/*`、`templates/*.yml`、`standards/*`、`docs/*`、`README.md`、`README.zh-CN.md`、`tests/*`、`CHANGELOG.md`
+- **refactor(cli): 拆分 init 的受管 gitignore 与规则副本逻辑**. `init.ts` 1547 → 1415 行，7a 段与规则副本判定/清理分别移入 `init-gitignore-block.ts`、`init-rules-copy.ts`；无行为变化。
+  - `src/commands/init.ts`、`src/commands/init-gitignore-block.ts`、`src/commands/init-rules-copy.ts`、`CHANGELOG.md`
 - **fix(cli): 修正共享产物的配置归属并支持退出规则副本**. Codex 从共享 `.agents/skills` 正确预选、共享 `.mcp.json` 不再把四家编辑器一并标为已配置、`opencode.jsonc` 纳入受管 gitignore；新增 `init --rule-files/--no-rule-files`，退出记录写在受管块 skip 行，`update` 不重建、`doctor` 不判红。
   - `src/commands/{init,update,doctor}.ts`、`src/commands/editors/{configured,project-rules}.ts`、`src/shared/{gitignore-managed,index}.ts`、`src/index.ts`、`README.md`、`README.zh-CN.md`、`tests/{update,smoke,gitignore-managed}.test.ts`、`tests/commands/{doctor,init-preselect,init-rule-files}.test.ts`、`CHANGELOG.md`
 - **docs(site): 补齐编辑器清单的中文入口**. Claude Code、Gemini CLI、Qwen Code、GitHub Copilot 的中文模式改指官方中文文档，Trae 指向中国站 `trae.cn`，Codex 指向官方中文页；英文模式保持原链接。
