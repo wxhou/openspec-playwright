@@ -583,8 +583,9 @@ function markersPaired(content: string, start: string, end: string): boolean {
 /**
  * Remove openspec-pw marker blocks (both namespaces) from a single file,
  * deleting the file entirely when it empties out. `pristineBody`, when given,
- * is the block body the tool writes on creation: a file matching that exact
- * generated form is deleted whole rather than left as a title-only shell.
+ * marks the file as tool-owned: a file matching that exact generated form, or
+ * one whose only remaining content is the generated title, is deleted whole
+ * instead of left as a shell.
  * Exported for the init deselect-removal flow (CLAUDE.md wrapper cleanup);
  * cleanProjectRules wraps it for the remove command's context.
  */

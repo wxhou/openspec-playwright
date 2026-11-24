@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-- **fix(cli): 规则副本刷新后仍按原样清理**. `installOpenSpecBlock` 更新分支改为与创建/追加一致的空行分隔；移除时若块外只剩生成标题则整文件删除（不区分块体版本），消除 `init`/`update` 后 `--no-rule-files` 与 `remove` 留下的 `# <目录名>` 空壳。
+- **fix(cli): 规则副本刷新后不再留下标题空壳**. `init`/`update` 刷新过的副本，在 `--no-rule-files`、取消勾选或 `remove` 后不再残留 `# <目录名>` 空壳；块外有用户内容时仍只移除标记块。
   - `src/commands/editors/project-rules.ts`、`tests/editors-rules-mode.test.ts`、`tests/commands/{init-rule-files,remove-command}.test.ts`、`CHANGELOG.md`
 - **fix(cli): 兼容 OpenSpec 2.x**. 版本闸门接受 1.x/2.x 并给出对应安装提示；2.x 下 e2e 产物改名 `openspec-e2e`（共享 skill + Claude 副本），从 1.x 升级时按内容自动迁移未改动的旧 `opsx-e2e`；自主流水线改为运行时探测工作流面（`APPLY`/`VERIFY`/`E2E` 经 `$GITHUB_ENV` 传递），干净 runner 显式写入 workflow 列表、2.1+ 传 `--scope project`，自动 PR 不提交 `.agents/skills/openspec-*`；新模板安装 `@2`，已生成的旧流水线保持 `@1` 仍可运行；彻底移除 pre-0.3.74 的 legacy skill 兼容。
   - `src/shared/{openspec-version,discover,gitignore-managed}.ts`、`src/commands/{init,update,doctor,remove,migrate}.ts`、`src/commands/editors/*`、`templates/*.yml`、`standards/*`、`docs/*`、`README.md`、`README.zh-CN.md`、`tests/*`、`CHANGELOG.md`
