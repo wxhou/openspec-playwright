@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.124] - 2026-11-24
 - **docs(cli): 生成物与元数据同步 2.x 命名**. 生成的 seed / credentials / playwright.config 去掉写死的 1.x 命令名；包描述、站点与 llms 摘要统一为 2.x 与 16 家编辑器，README 命令示例以 2.x 为主。
   - `templates/{seed.spec.ts,credentials.yaml,playwright.config.ts}`、`package.json`、`docs/{llms.txt,script.js}`、`README.md`、`tests/init.test.ts`、`CHANGELOG.md`
 - **docs(cli): 安装命令改用 `@latest`**. 文档、模板与 `init`/`doctor` 提示统一为 `npm install -g @fission-ai/openspec@latest`（最新版即 2.x），已装 1.x 时的提示仍为 `@1`。
