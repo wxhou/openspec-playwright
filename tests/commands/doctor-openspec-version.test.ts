@@ -132,7 +132,7 @@ describe("doctor OpenSpec CLI version", () => {
       ok: false,
       kind: "unsupported",
       message:
-        "OpenSpec 3.x detected — this tool supports 1.x and 2.x — install 2.x: npm install -g @fission-ai/openspec@2",
+        "OpenSpec 3.x detected — this tool supports 1.x and 2.x — install 2.x: npm install -g @fission-ai/openspec@latest",
     });
     const logs: string[] = [];
     let exitCode: number | undefined;
@@ -167,7 +167,7 @@ describe("doctor OpenSpec CLI version", () => {
       ok: false,
       kind: "unsupported",
       message:
-        "OpenSpec 3.x detected — this tool supports 1.x and 2.x — install 2.x: npm install -g @fission-ai/openspec@2",
+        "OpenSpec 3.x detected — this tool supports 1.x and 2.x — install 2.x: npm install -g @fission-ai/openspec@latest",
     });
     const logs: string[] = [];
     const spy = vi.spyOn(console, "log").mockImplementation((...args) => {
@@ -186,7 +186,7 @@ describe("doctor OpenSpec CLI version", () => {
     }
     const out = logs.join("\n");
     expect(out).toContain("cli-version");
-    expect(out).toContain("npm install -g @fission-ai/openspec@2");
+    expect(out).toContain("npm install -g @fission-ai/openspec@latest");
     expect(out).not.toContain("openspec@1");
     // init aborts on an unsupported CLI, so offering it would be a dead end.
     expect(out).not.toContain("openspec-pw init to fix");

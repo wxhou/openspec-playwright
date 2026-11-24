@@ -368,8 +368,8 @@ function setLanguage(lang) {
   document.documentElement.lang = isZh ? 'zh-CN' : 'en';
 
   const description = isZh
-    ? '自动化 E2E 测试框架，专为 OpenSpec 规范驱动开发设计。AI 生成测试、Healer 自愈、Claude Code、OpenCode、Cline、Cursor、Pi、Oh My Pi 和 CodeBuddy CLI 一键执行。'
-    : 'Automated E2E testing framework designed for OpenSpec spec-driven development. AI generates tests, Healer heals selectors, one-command execution across Claude Code, OpenCode, Cline, Cursor, Pi, Oh My Pi, and CodeBuddy CLI.';
+    ? '自动化 E2E 测试框架，专为 OpenSpec 规范驱动开发设计。AI 生成测试、Healer 自愈，支持 16 款 AI 编码编辑器，一键执行。'
+    : 'Automated E2E testing framework designed for OpenSpec spec-driven development. AI generates tests, Healer heals selectors, one-command execution across 16 AI coding editors.';
   document.querySelector('meta[name="description"]')?.setAttribute('content', description);
   document.querySelector('meta[property="og:locale"]')?.setAttribute('content', isZh ? 'zh_CN' : 'en_US');
   const copyTitle = isZh ? '复制 CLAUDE.md 配置到剪贴板' : 'Copy CLAUDE.md configuration to clipboard';

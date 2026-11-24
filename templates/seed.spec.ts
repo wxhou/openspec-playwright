@@ -78,7 +78,7 @@ test.describe('Environment validation', () => {
     const authPath = 'playwright/.auth/user.json';
     if (!existsSync(authPath)) {
       throw new Error(
-        `Auth not configured. Run:\n  npx playwright test --project=setup\nThen re-run the E2E workflow command (/opsx:e2e or /opsx-e2e depending on your editor).`
+        `Auth not configured. Run:\n  npx playwright test --project=setup\nThen re-run the E2E workflow command for your editor.`
       );
     }
   });

@@ -1,6 +1,6 @@
 # OpenSpec Playwright
 
-> OpenSpec + Playwright E2E verification setup tool for Claude Code, OpenCode, Cline, and Cursor.
+> OpenSpec + Playwright E2E verification setup tool for 16 AI coding editors including Claude Code, OpenCode, Cline, and Cursor.
 
 A setup tool that integrates OpenSpec's spec-driven development with Playwright's three-agent test pipeline for automated E2E verification.
 
@@ -21,7 +21,7 @@ npm install -g openspec-playwright
 
 ```
 # In your project directory
-npm install -g @fission-ai/openspec@2   # supports the 1.x and 2.x CLIs (2.x uses openspec-e2e)
+npm install -g @fission-ai/openspec@latest   # supports the 1.x and 2.x CLIs (2.x uses openspec-e2e)
 openspec init --scope project           # on a 1.x CLI run: openspec init
 openspec-pw init
 npx playwright install --with-deps

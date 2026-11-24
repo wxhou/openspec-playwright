@@ -355,10 +355,11 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     // Point at the major the project will actually run: the installed one when
     // the CLI is healthy, the newest supported one when it is absent.
     const targetMajor = openspec.ok ? openspec.major : OPENSPEC_LATEST_MAJOR;
+    const installTag = targetMajor >= 2 ? "latest" : String(targetMajor);
     console.log(
       chalk.yellow("\n⚠ OpenSpec not initialized. Run these commands first:"),
     );
-    console.log(chalk.gray(`  npm install -g @fission-ai/openspec@${targetMajor}`));
+    console.log(chalk.gray(`  npm install -g @fission-ai/openspec@${installTag}`));
     if (targetMajor >= 2) {
       console.log(chalk.gray("  openspec init --scope project"));
       console.log(chalk.gray("  openspec update\n"));

@@ -44,7 +44,7 @@ npm install -g openspec-playwright@latest
 
 1. **Node.js >= 22**
 2. **至少一个受支持编辑器** — 见 [支持的 AI 编码助手](#支持的-ai-编码助手) 表。Pi、Oh My Pi、MiniMax Code、DeepSeek Harness、Gemini CLI、Qwen Code、GitHub Copilot、Roo Code、Codex 与 Kimi Code 也会通过全局配置目录（`~/.pi/agent/`、`~/.omp/agent/`、`~/.minimax-code/`、`~/.dsh/`、`~/.gemini/`、`~/.qwen/`、`~/.copilot/`、`~/.roo/`、`~/.codex/`、`~/.kimi-code/`）检测。
-3. **OpenSpec** 已初始化：`npm install -g @fission-ai/openspec@2 && openspec init --scope project`（也支持 1.x：安装 `@1` 后运行 `openspec init`）
+3. **OpenSpec** 已初始化：`npm install -g @fission-ai/openspec@latest && openspec init --scope project`（也支持 1.x：安装 `@1` 后运行 `openspec init`）
 4. **Playwright MCP**（用于测试执行 + Healer）— `openspec-pw init` 会在检测到前端信号时按编辑器自动安装（纯 API 项目跳过——API 测试用 `request` fixture），**全部项目级**（写入项目内文件；Claude Code 用 `--scope project` 写项目根 `.mcp.json`，不碰全局 `~/.claude.json`）。安装**单个** server，与 Playwright 官方 `playwright init-agents` 布局一致：
    - `playwright-test` — 官方 test-runner server（`npx playwright run-test-mcp-server`，`playwright` 包自带）。是 `@playwright/mcp` 的**超集**：一个条目同时暴露 `browser_*` 浏览器工具（探索 + Healer 页面检查）和结构化的 `test_run` / `test_debug` / `test_list` 工作流工具（Healer 闭环）。
    - **Claude Code**：`claude mcp add --scope project playwright-test npx playwright run-test-mcp-server`（写入项目根 `.mcp.json`；受管 `.gitignore` 块默认忽略以保护凭据——自加 server 常含 API key，团队确需共享须显式 `git add -f .mcp.json`）
@@ -346,7 +346,7 @@ OpenSpec 1.x 下同一工作流用 `/opsx:e2e`（Claude Code / CodeBuddy CLI / G
 | 步骤 | 命令 | 失败时快速修复 |
 |------|------|----------------|
 | 1. 安装 CLI | `npm install -g openspec-playwright@latest` | 检查 Node.js 版本 `node -v`（需 >= 22） |
-| 2. 安装 OpenSpec | `npm install -g @fission-ai/openspec@2 && openspec init --scope project` | `npm cache clean -f && npm install -g @fission-ai/openspec@2` |
+| 2. 安装 OpenSpec | `npm install -g @fission-ai/openspec@latest && openspec init --scope project` | `npm cache clean -f && npm install -g @fission-ai/openspec@latest` |
 | 3. 初始化 E2E | `openspec-pw init` | 运行 `openspec-pw doctor` 查看具体缺失项 |
 | 4. 安装浏览器 | `npx playwright install chromium` | Linux CI 镜像可能需系统依赖：`npx playwright install --with-deps chromium`（macOS 可能需先运行 `xcode-select --install`） |
 | 5. 启动开发服务器 | `npm run dev`（在另一个终端） | 确认端口，配置 `BASE_URL` |

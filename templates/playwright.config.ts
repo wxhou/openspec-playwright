@@ -185,7 +185,7 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
   },
 
-  // Setup project (used by /opsx:e2e Healer and local auth setup)
+  // Setup project (used by the E2E Healer and local auth setup)
   // Teardown project (optional): uncomment the two lines below + create tests/playwright/global.teardown.ts
   projects: [
     { name: 'setup', testMatch: /.*\.setup\.ts/ },

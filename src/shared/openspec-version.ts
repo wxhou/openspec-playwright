@@ -135,7 +135,8 @@ export function openSpecCliStatus(
   if (probe.major !== null && isOpenSpecMajorSupported(probe.major)) {
     return { ok: true, major: probe.major };
   }
-  const install = `npm install -g @fission-ai/openspec@${OPENSPEC_LATEST_MAJOR}`;
+  // `latest` resolves to 2.x while it stays the newest published major.
+  const install = "npm install -g @fission-ai/openspec@latest";
   if (probe.missing) {
     return {
       ok: false,
