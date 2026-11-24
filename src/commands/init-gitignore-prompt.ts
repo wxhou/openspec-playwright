@@ -1,7 +1,7 @@
 /**
- * `.gitignore` opt-out prompt: grouping of managed paths and the interactive
- * multi-select. Kept out of init.ts so that file stays under the 1500-line
- * cap; init owns the decision, this module owns the presentation.
+ * `.gitignore` opt-out prompt: grouping of managed paths and the two-level
+ * interactive select. Kept out of init.ts so that file stays under the
+ * 1500-line cap; init owns the decision, this module owns the presentation.
  */
 
 /**
@@ -14,56 +14,9 @@ const GITIGNORE_GROUPS: readonly {
   paths: readonly string[];
 }[] = [
   {
-    label: "Editor directories",
-    paths: [
-      ".claude/",
-      ".cursor/",
-      ".opencode/",
-      ".cline/",
-      ".pi/",
-      ".omp/",
-      ".codebuddy/",
-      ".agents/skills/opsx-e2e/",
-      ".agents/skills/openspec-e2e/",
-      ".dsh/skills/opsx-e2e/",
-      ".dsh/skills/openspec-e2e/",
-      ".gemini/commands/opsx/e2e.toml",
-      ".gemini/commands/openspec-e2e.toml",
-      ".qwen/commands/opsx-e2e.md",
-      ".qwen/commands/openspec-e2e.md",
-      ".github/prompts/opsx-e2e.prompt.md",
-      ".github/prompts/openspec-e2e.prompt.md",
-      ".roo/commands/opsx-e2e.md",
-      ".roo/commands/openspec-e2e.md",
-      ".trae/commands/opsx-e2e.md",
-      ".trae/commands/openspec-e2e.md",
-      ".kimi-code/skills/opsx-e2e/",
-      ".kimi-code/skills/openspec-e2e/",
-    ],
-  },
-  {
-    label: "Project files",
-    paths: [
-      "openspec/",
-      "CODEBUDDY.md",
-      "GEMINI.md",
-      "QWEN.md",
-      ".github/copilot-instructions.md",
-      ".roo/rules/openspec-pw.md",
-      ".trae/rules/project_rules.md",
-      "app-exploration.md",
-      "opencode.json",
-      ".mcp.json",
-      ".gemini/settings.json",
-      ".qwen/settings.json",
-      ".roo/mcp.json",
-      ".trae/mcp.json",
-      ".kimi-code/mcp.json",
-    ],
-  },
-  {
     label: "Local data and credentials",
     paths: [
+      "app-exploration.md",
       ".codegraph/",
       ".playwright-mcp/",
       "tmp/",
@@ -73,6 +26,42 @@ const GITIGNORE_GROUPS: readonly {
       "tests/playwright/credentials.yaml",
       "tests/playwright/credentials.yaml.bak",
     ],
+  },
+  {
+    label: "Editor commands and directories",
+    paths: [
+      ".claude/",
+      ".cursor/",
+      ".opencode/",
+      ".cline/",
+      ".pi/",
+      ".omp/",
+      ".codebuddy/",
+      ".agents/",
+      ".dsh/",
+      ".gemini/",
+      ".qwen/",
+      ".kimi-code/",
+      ".github/prompts/",
+      ".roo/commands/opsx-e2e.md",
+      ".roo/commands/openspec-e2e.md",
+      ".trae/commands/opsx-e2e.md",
+      ".trae/commands/openspec-e2e.md",
+    ],
+  },
+  {
+    label: "MCP config and settings",
+    paths: [
+      "opencode.json",
+      "opencode.jsonc",
+      ".mcp.json",
+      ".roo/mcp.json",
+      ".trae/mcp.json",
+    ],
+  },
+  {
+    label: "OpenSpec artifacts",
+    paths: ["openspec/"],
   },
 ];
 
@@ -89,24 +78,80 @@ export function groupGitignoreCandidates(
   return groups;
 }
 
+/** Paths that stay ignored when `picked` groups stay checked. */
+export function expandGroupSelection(
+  groups: readonly { label: string; paths: readonly string[] }[],
+  picked: readonly string[],
+): string[] {
+  const kept = new Set(picked);
+  return groups.filter((g) => kept.has(g.label)).flatMap((g) => [...g.paths]);
+}
+
 /**
- * Multi-select of managed paths that stay ignored — all checked, so Enter
- * keeps the previous behavior; unchecking records the path as a skip in the
- * block header.
+ * Prefill for the per-path list reached from the customize row: a path stays
+ * checked when its group stayed checked, so the two levels cannot disagree.
+ */
+export function buildCustomizeChoices(
+  groups: readonly { label: string; paths: readonly string[] }[],
+  keptLabels: readonly string[],
+): { name: string; value: string; checked: boolean }[] {
+  const kept = new Set(keptLabels);
+  return groups.flatMap((g) =>
+    g.paths.map((p) => ({ name: p, value: p, checked: kept.has(g.label) })),
+  );
+}
+
+/** Sentinel for the customize row; cannot collide with a group label. */
+const CUSTOMIZE = "\u0000customize";
+
+/** Group row label: path count plus two examples so the row explains itself. */
+export function describeGroupChoice(group: {
+  label: string;
+  paths: readonly string[];
+}): string {
+  const count = group.paths.length;
+  const noun = count === 1 ? "path" : "paths";
+  const examples = group.paths.slice(0, 2).map((p) => p.replace(/\/$/, ""));
+  const more = count > examples.length ? "…" : "";
+  return `${group.label} (${count} ${noun} — ${examples.join(", ")}${more})`;
+}
+
+const MESSAGE = "Generated paths to keep out of git (uncheck to commit)";
+
+/**
+ * Group rows first (all checked, so Enter keeps the previous behavior), then
+ * a customize row that opens the per-path list. Unchecking a group commits
+ * every path in it.
  */
 export async function promptSelectGitignorePaths(
   groups: readonly { label: string; paths: readonly string[] }[],
 ): Promise<string[]> {
   const { checkbox, Separator } = await import("@inquirer/prompts");
-  const choices = groups.flatMap((g, index) => [
-    ...(index === 0 ? [] : [new Separator(" ")]),
-    new Separator(g.label),
-    ...g.paths.map((p) => ({ name: p, value: p, checked: true })),
-  ]);
-  const selected = await checkbox({
-    message: "Generated paths to keep out of git (uncheck to commit)",
-    choices,
-    pageSize: 20,
+  const picked = (await checkbox({
+    message: MESSAGE,
+    choices: [
+      ...groups.map((g) => ({
+        name: describeGroupChoice(g),
+        value: g.label,
+        checked: true,
+      })),
+      new Separator(" "),
+      { name: "Customize individual paths…", value: CUSTOMIZE, checked: false },
+    ],
+    pageSize: groups.length + 2,
+  })) as string[];
+
+  if (!picked.includes(CUSTOMIZE)) return expandGroupSelection(groups, picked);
+
+  const keptLabels = groups
+    .filter((g) => picked.includes(g.label))
+    .map((g) => g.label);
+  const items = buildCustomizeChoices(groups, keptLabels);
+  let cursor = 0;
+  const choices = groups.flatMap((g) => {
+    const block = items.slice(cursor, cursor + g.paths.length);
+    cursor += g.paths.length;
+    return [new Separator(g.label), ...block];
   });
-  return selected as string[];
+  return (await checkbox({ message: MESSAGE, choices, pageSize: 20 })) as string[];
 }

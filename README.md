@@ -139,11 +139,12 @@ case-insensitive, repeats are de-duplicated, and `all`/`none` cannot be
 mixed with specific ids. A `--tools` id is configured even when the editor
 is not detected (its config directory is created).
 
-Without `--tools`, an interactive multi-select is shown on TTY terminals.
-The pre-select reads the **openspec-pw configuration manifest, not
-directory presence**: editors that carry openspec-pw products (command
-files, MCP entries, claude's legacy skill dir) are pre-checked and labeled
-`(configured)`. A project with no openspec-pw state at all (first run)
+Without `--tools`, an interactive multi-select is shown on TTY terminals,
+grouped as `Configured (N)` / `Detected (N)` / `Other (N)` so the list fits
+one screen. The pre-select reads the **openspec-pw configuration manifest,
+not directory presence**: editors that carry openspec-pw products (command
+files, MCP entries, claude's legacy skill dir) are pre-checked in the
+Configured section. A project with no openspec-pw state at all (first run)
 pre-checks **project-level signals only** — marker dirs plus root
 intent files (root `CLAUDE.md` → claude, root `.cursorrules` → cursor,
 root `opencode.json(c)` → opencode, root `CODEBUDDY.md` → codebuddy).
@@ -174,12 +175,15 @@ before any editor is configured) is the actual install set. When in
 doubt, read `Selected editors`.
 
 **Choosing what to ignore.** After the editor selection, interactive init
-shows the managed `.gitignore` paths grouped (editor directories, project
-files, local data and credentials) with everything checked — pressing Enter
-keeps the previous behavior. Uncheck a path to keep it committable; the
-choice is recorded on the block's header line (`# openspec-pw: skip=…`) so
-`update` never re-adds it, and re-running init with the path checked takes it
-back. `AGENTS.md`, `CLAUDE.md`, `CODEBUDDY.md`, `GEMINI.md`, `QWEN.md`,
+shows the managed `.gitignore` paths as group toggles — local data and
+credentials, editor commands and directories, MCP config and settings, and
+OpenSpec artifacts — one row each with its path count, all checked, so
+pressing Enter keeps the previous behavior. Uncheck a group to commit every
+path in it; the "Customize individual paths…" row opens the per-path list
+prefilled from the group state. A committed path is recorded on the block's
+header line (`# openspec-pw: skip=…`) so `update` never re-adds it, and
+re-running init with it checked takes it back. `AGENTS.md`, `CLAUDE.md`,
+`CODEBUDDY.md`, `GEMINI.md`, `QWEN.md`,
 `.github/copilot-instructions.md`, `.roo/rules/openspec-pw.md` and
 `.trae/rules/project_rules.md` are not offered; by default every init injects
 the standards block into them (use `--no-rule-files` to install only AGENTS.md).
@@ -384,7 +388,7 @@ openspec-pw remove        # Remove integration (--all scans home + Windows drive
 
 **`remove`** cleans the current project: editor command carriers, the `playwright-test` / legacy `playwright` MCP entries, rules-file marker blocks, the managed `.gitignore` block, the Stop hook, `openspec/schemas/playwright-e2e/`, the lint checklist, vendored agents, the legacy skill directory, and — when still byte-identical to the bundled templates — `tests/README.md`, `tests/playwright/README.md` (mini-program target), `.github/workflows/openspec-pw.yml`, `.github/workflows/openspec-auto.yml`, the generated `eslint.config.mjs`, and the ruff managed block. User data is never touched (`tests/**`, `credentials.yaml`, `openspec/specs`), and edited tool files are kept with a notice — except a rules file that, once its marker block is removed, holds nothing but the generated `# <project-dir>` heading: that one is deleted whole even when the block body differs from the bundled revision. Paths that resolve outside the project through a symlink are never deleted or rewritten, and an official OpenSpec `OPENSPEC:` block is not treated as ours. The `AGENTS.md` entry that init adds to OpenCode's `instructions` list is left in place — it cannot be told apart from a user-added entry. Scaffold files you are expected to edit (`playwright.config.ts`, `tests/playwright/seed.spec.ts`, `auth.setup.ts`, `pages/`, `test-plan.template.md`) stay, and config files left as empty containers (`{"mcpServers":{}}`) are kept because their ownership cannot be proven.
 
-`remove --all` scans for projects that carry openspec-pw territory — editor command files, the schema directory, marker blocks, the managed `.gitignore` block, or a tool-owned leftover such as `tests/README.md`, the lint checklist, a generated CI workflow, tool-generated ESLint/ruff config, the legacy skill directory, a tool-owned vendored agent, or the Stop hook. A lone MCP entry is not a discovery signal (`playwright-test` is also the server name Playwright's own agent init writes), so only an explicit single-project `remove` cleans one; batch mode removes only `playwright-test` and leaves the legacy `playwright` name alone. Default scan roots are your home directory, plus every existing drive root on Windows. It is a **dry run by default**: it prints each project and the artifact groups it would remove. Add `--yes` to execute; `--root <dir>` (repeatable, `~` expanded) replaces the default roots — an explicit `--root` defines the whole scope, so the cwd project is not added; a missing or UNC path exits 2. Without `--root`, the cwd project is included and listed first. One project's failure never stops the rest; a project that cannot be written counts as skipped, while any other error counts as failed. The run ends with `removed N / skipped M / failed K` (project counts) and exits nonzero when anything failed.
+`remove --all` scans for projects that carry openspec-pw territory — editor command files, the schema directory, marker blocks, the managed `.gitignore` block, or a tool-owned leftover such as `tests/README.md`, the lint checklist, a generated CI workflow, tool-generated ESLint/ruff config, the legacy skill directory, a tool-owned vendored agent, or the Stop hook. A lone MCP entry is not a discovery signal (`playwright-test` is also the server name Playwright's own agent init writes), so only an explicit single-project `remove` cleans one; batch mode removes only `playwright-test` and leaves the legacy `playwright` name alone. Default scan roots are your home directory, plus every existing drive root on Windows. It is a **dry run by default**: it prints each project and the artifact groups it would remove, then — on a TTY — asks once before executing. Add `--yes` to skip the question; non-TTY runs only print the plan. `--root <dir>` (repeatable, `~` expanded) replaces the default roots — an explicit `--root` defines the whole scope, so the cwd project is not added; a missing or UNC path exits 2. Without `--root`, the cwd project is included and listed first. One project's failure never stops the rest; a project that cannot be written counts as skipped, while any other error counts as failed. The run ends with `removed N / skipped M / failed K` (project counts) and exits nonzero when anything failed.
 
 `openspec-pw gate` is the single verdict the rest of the tooling calls — the Claude Code Stop hook and the generated CI workflow both invoke it rather than keeping their own check lists. It runs `validate → lint → typecheck → test → flake → e2e` (cheap first, stop at the first failure unless `--keep-going`), and exit codes are three-valued: `0` every check passed, `1` a check failed, `2` the run could not decide (tool missing, timeout, ambiguous change name).
 
@@ -580,7 +584,7 @@ If your project already has `playwright.config.ts`, `openspec-pw init` will not 
 
 If your app requires login, set up credentials once, then all tests run authenticated automatically.
 
-> **Credentials are ignored automatically**: init and update maintain a marked block at the tail of your `.gitignore` that ignores `tests/playwright/credentials.yaml`, its `.bak`, `tests/playwright/test-results/`, and exploration screenshots (`tests/playwright/screenshots/` — they age as the app evolves; stay local like app-exploration.md) — plus auth storageState (`playwright/.auth/`, logged-in session cookies), MCP config (`.mcp.json`, `opencode.json(c)`, `.gemini/settings.json`, `.qwen/settings.json`, `.roo/mcp.json`, `.trae/mcp.json`, `.kimi-code/mcp.json` — user-added servers often carry API keys in env/headers), tool-local data (`.codegraph/`, `.playwright-mcp/`), and first-tier names like `.claude/`, `.cursor/`, `.codebuddy/`, `.agents/skills/openspec-e2e/`, `.dsh/skills/openspec-e2e/`, `.gemini/commands/openspec-e2e.toml`, `.qwen/commands/openspec-e2e.md`, `.github/prompts/openspec-e2e.prompt.md`, `.roo/commands/openspec-e2e.md`, `.trae/commands/openspec-e2e.md`, `.kimi-code/skills/openspec-e2e/` (the matching 1.x `opsx-` paths are managed too), `openspec/`, `AGENTS.md`, `CLAUDE.md`, `CODEBUDDY.md`, `GEMINI.md`, `QWEN.md`, `.github/copilot-instructions.md`, `.roo/rules/openspec-pw.md`, `.trae/rules/project_rules.md` (the generated products stay local, per design). The block is idempotent, never touches your own rules, and is cleaned up by `remove`. If the block cannot be written, a warning lists the uncovered paths instead. Note: ignore rules do not apply to already-tracked files — if credentials were committed before, run `git rm --cached tests/playwright/credentials.yaml`. Alternatively keep credentials in the `E2E_USERNAME` / `E2E_PASSWORD` env vars. Interactive init can uncheck individual paths; the opt-outs are stored on the block's `# openspec-pw: skip=…` header line and honored by every later `update`.
+> **Credentials are ignored automatically**: init and update maintain a marked block at the tail of your `.gitignore` that ignores `tests/playwright/credentials.yaml`, its `.bak`, `tests/playwright/test-results/`, and exploration screenshots (`tests/playwright/screenshots/` — they age as the app evolves; stay local like app-exploration.md) — plus auth storageState (`playwright/.auth/`, logged-in session cookies), MCP config (`.mcp.json`, `opencode.json(c)`, `.roo/mcp.json`, `.trae/mcp.json` — user-added servers often carry API keys in env/headers), tool-local data (`.codegraph/`, `.playwright-mcp/`), and first-tier names like `.claude/`, `.cursor/`, `.codebuddy/`, `.agents/`, `.dsh/`, `.gemini/`, `.qwen/`, `.kimi-code/`, `.github/prompts/` (whole editor territories), and `.roo/commands/openspec-e2e.md` / `.trae/commands/openspec-e2e.md` with their 1.x `opsx-` siblings, `openspec/`, `AGENTS.md`, `CLAUDE.md`, `CODEBUDDY.md`, `GEMINI.md`, `QWEN.md`, `.github/copilot-instructions.md`, `.roo/rules/openspec-pw.md`, `.trae/rules/project_rules.md` (the generated products stay local, per design). The block is idempotent, never touches your own rules, and is cleaned up by `remove`. If the block cannot be written, a warning lists the uncovered paths instead. Note: ignore rules do not apply to already-tracked files — if credentials were committed before, run `git rm --cached tests/playwright/credentials.yaml`. Alternatively keep credentials in the `E2E_USERNAME` / `E2E_PASSWORD` env vars. Interactive init can uncheck individual paths; the opt-outs are stored on the block's `# openspec-pw: skip=…` header line and honored by every later `update`.
 
 ```bash
 # 1. (Optional) Edit test users for role-based tests

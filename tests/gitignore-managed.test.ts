@@ -35,44 +35,41 @@ afterEach(() => {
   rmSync(projectRoot, { recursive: true, force: true });
 });
 
-describe("managed gitignore coverage for the MiniMax Code skill root", () => {
-  it("covers the tool-owned skill dir, not the whole .agents/ tree", () => {
-    expect(MANAGED_GITIGNORE_PATHS).toContain(".agents/skills/opsx-e2e/");
-    // The rest of .agents/ belongs to the user — it must stay committable.
-    expect(MANAGED_GITIGNORE_PATHS).not.toContain(".agents/");
-    expect(findUncoveredManagedPaths(projectRoot)).toContain(
-      ".agents/skills/opsx-e2e/",
+describe("managed gitignore coverage for the shared .agents skill root", () => {
+  it("covers the whole .agents/ tree", () => {
+    expect(MANAGED_GITIGNORE_PATHS).toContain(".agents/");
+    // Whole-dir ignore supersedes the two per-skill entries: the tool and
+    // OpenSpec both write under .agents/skills.
+    expect(MANAGED_GITIGNORE_PATHS).not.toContain(".agents/skills/opsx-e2e/");
+    expect(MANAGED_GITIGNORE_PATHS).not.toContain(
+      ".agents/skills/openspec-e2e/",
     );
+    expect(findUncoveredManagedPaths(projectRoot)).toContain(".agents/");
   });
 
-  it("writes the skill dir into the managed block and reports it covered afterwards", () => {
+  it("writes the tree into the managed block and reports it covered afterwards", () => {
     const result = ensureGitignoreEntries(projectRoot);
     expect(result.changed).toBe(true);
     const block = readFileSync(join(projectRoot, ".gitignore"), "utf-8");
-    expect(block).toContain(".agents/skills/opsx-e2e/");
-    expect(findUncoveredManagedPaths(projectRoot)).not.toContain(
-      ".agents/skills/opsx-e2e/",
-    );
+    expect(block).toContain("\n.agents/\n");
+    expect(findUncoveredManagedPaths(projectRoot)).not.toContain(".agents/");
   });
 });
 
-describe("managed gitignore coverage for the DeepSeek Harness skill root", () => {
-  it("covers the tool-owned skill dir, not the whole .dsh/ tree", () => {
-    expect(MANAGED_GITIGNORE_PATHS).toContain(".dsh/skills/opsx-e2e/");
-    // OpenSpec writes its own openspec-* skills there; those stay committable.
-    expect(MANAGED_GITIGNORE_PATHS).not.toContain(".dsh/");
-    expect(findUncoveredManagedPaths(projectRoot)).toContain(
-      ".dsh/skills/opsx-e2e/",
-    );
+describe("managed gitignore coverage for the DeepSeek Harness root", () => {
+  it("covers the whole .dsh/ tree", () => {
+    expect(MANAGED_GITIGNORE_PATHS).toContain(".dsh/");
+    // Whole-dir ignore supersedes the two per-skill entries, matching .agents/.
+    expect(MANAGED_GITIGNORE_PATHS).not.toContain(".dsh/skills/opsx-e2e/");
+    expect(MANAGED_GITIGNORE_PATHS).not.toContain(".dsh/skills/openspec-e2e/");
+    expect(findUncoveredManagedPaths(projectRoot)).toContain(".dsh/");
   });
 
-  it("writes the skill dir into the managed block and reports it covered afterwards", () => {
+  it("writes the tree into the managed block and reports it covered afterwards", () => {
     ensureGitignoreEntries(projectRoot);
     const block = readFileSync(join(projectRoot, ".gitignore"), "utf-8");
-    expect(block).toContain(".dsh/skills/opsx-e2e/");
-    expect(findUncoveredManagedPaths(projectRoot)).not.toContain(
-      ".dsh/skills/opsx-e2e/",
-    );
+    expect(block).toContain("\n.dsh/\n");
+    expect(findUncoveredManagedPaths(projectRoot)).not.toContain(".dsh/");
   });
 });
 
@@ -360,7 +357,7 @@ describe("init-time opt-outs recorded in the block header", () => {
       LOCKED_GITIGNORE_PATHS.filter((path) => path !== "AGENTS.md"),
     );
     expect(candidates).toContain(".claude/");
-    expect(candidates).toContain(".gemini/settings.json");
+    expect(candidates).toContain(".gemini/");
     expect(skippableManagedPaths(["tmp/"])).not.toContain("tmp/");
   });
 
@@ -451,18 +448,19 @@ describe("managed gitignore coverage for OpenCode JSONC config", () => {
   it("manages opencode.json and opencode.jsonc with the same standing", () => {
     expect(MANAGED_GITIGNORE_PATHS).toContain("opencode.json");
     expect(MANAGED_GITIGNORE_PATHS).toContain("opencode.jsonc");
-    expect(MANAGED_GITIGNORE_PATHS.length).toBe(49);
-    // 2.x e2e artifacts join their 1.x siblings.
+    expect(MANAGED_GITIGNORE_PATHS.length).toBe(40);
+    // Editor territories are ignored whole; Roo/Trae keep single-file entries
+    // because their rule copies must stay committable under --no-rule-files.
     expect(MANAGED_GITIGNORE_PATHS).toEqual(
       expect.arrayContaining([
-        ".agents/skills/openspec-e2e/",
-        ".dsh/skills/openspec-e2e/",
-        ".gemini/commands/openspec-e2e.toml",
-        ".qwen/commands/openspec-e2e.md",
-        ".github/prompts/openspec-e2e.prompt.md",
+        ".agents/",
+        ".dsh/",
+        ".gemini/",
+        ".qwen/",
+        ".kimi-code/",
+        ".github/prompts/",
         ".roo/commands/openspec-e2e.md",
         ".trae/commands/openspec-e2e.md",
-        ".kimi-code/skills/openspec-e2e/",
       ]),
     );
     const result = ensureGitignoreEntries(projectRoot);

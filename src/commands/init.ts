@@ -154,12 +154,14 @@ export interface InitOptions {
 
 export interface InitDeps {
   /** Interactive selection prompt; defaults to @inquirer/prompts checkbox.
-   * Receives the pre-selected id set (configured tier or first-run bypass)
-   * and the configured id set (`(configured)` suffix driver). */
+   * Receives the pre-selected id set (configured tier or first-run bypass),
+   * the configured id set, and the detected id set (Configured/Detected/Other
+   * grouping driver). */
   prompt?: (
     allEditors: EditorAdapter[],
     preselectedIds: ReadonlySet<EditorId>,
     configuredIds?: ReadonlySet<EditorId>,
+    detectedIds?: ReadonlySet<EditorId>,
   ) => Promise<EditorId[]>;
   /**
    * Confirmation prompt for the deselect-removal list; defaults to
@@ -183,28 +185,59 @@ export interface InitDeps {
 }
 
 /**
+ * Ordered buckets for the editor prompt: configured editors first, then
+ * detected-but-not-configured, then the rest. Empty buckets are dropped so a
+ * first-run project never shows an empty "Configured" section.
+ */
+export function groupEditorChoices(
+  allEditors: readonly EditorAdapter[],
+  configured: ReadonlySet<EditorId>,
+  detected: ReadonlySet<EditorId>,
+): { label: string; editors: EditorAdapter[] }[] {
+  const rest = allEditors.filter((a) => !configured.has(a.id));
+  return [
+    {
+      label: "Configured",
+      editors: allEditors.filter((a) => configured.has(a.id)),
+    },
+    { label: "Detected", editors: rest.filter((a) => detected.has(a.id)) },
+    { label: "Other", editors: rest.filter((a) => !detected.has(a.id)) },
+  ]
+    .filter((bucket) => bucket.editors.length > 0)
+    .map((bucket) => ({
+      label: `${bucket.label} (${bucket.editors.length})`,
+      editors: bucket.editors,
+    }));
+}
+
+/**
  * Interactive multi-select of all supported editors, pre-selecting the
- * editors passed in `preselected`. In the artifact-manifest tier those are
- * the configured editors — the `configured` set drives the "(configured)"
- * name suffix. In the first-run bypass tier `configured` is empty, so no
- * suffix renders. Dynamically imports @inquirer/prompts so non-interactive
+ * editors passed in `preselected` and grouping them by state so the list
+ * fits one screen. Dynamically imports @inquirer/prompts so non-interactive
  * runs never load it.
  */
 export async function promptSelectEditors(
   allEditors: EditorAdapter[],
   preselected: ReadonlySet<EditorId>,
   configured: ReadonlySet<EditorId> = new Set(),
+  detected: ReadonlySet<EditorId> = new Set(),
 ): Promise<EditorId[]> {
-  const { checkbox } = await import("@inquirer/prompts");
+  const { checkbox, Separator } = await import("@inquirer/prompts");
+  const choices = groupEditorChoices(allEditors, configured, detected).flatMap(
+    (group, index) => [
+      ...(index === 0 ? [] : [new Separator(" ")]),
+      new Separator(group.label),
+      ...group.editors.map((a) => ({
+        name: a.displayName,
+        value: a.id,
+        checked: preselected.has(a.id),
+      })),
+    ],
+  );
   const selected = await checkbox({
     message: "Select editors to configure",
-    choices: allEditors.map((a) => ({
-      name: configured.has(a.id)
-        ? `${a.displayName} (configured)`
-        : a.displayName,
-      value: a.id,
-      checked: preselected.has(a.id),
-    })),
+    choices,
+    pageSize: 20,
   });
   return selected as EditorId[];
 }
@@ -464,6 +497,7 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
       getAllAdapters(),
       preselectedIds,
       configuredIds,
+      new Set(detected.map((a) => a.id)),
     );
   }
 

@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 - **docs(e2e): 按阶段选择浏览器工具**. `/openspec-e2e` 的路由表改为每阶段一个默认工具：探索用浏览器 MCP、计划/生成用 `planner_*`/`generator_*`、首次执行与复跑用 CLI、只有失败后的修复循环用 `test_*` MCP；无 MCP 时先 chrome-devtools 再一次性脚本。补「角色是阶段，只有 Planner 有 agent 文件」与上下文预算规则，并禁止用 `.mjs` 重做 `npx playwright test` 的工作。
   - `templates/e2e-command.md`、`tests/e2e-template-auto.test.ts`、`CHANGELOG.md`
+- **feat(cli): .gitignore 选择改为分组开关**. 交互式 init 的四组（本地数据与凭据、编辑器命令与目录、MCP 配置与设置、OpenSpec 产物）各一行并标注条目数，取消整组即提交整组，「自定义单条路径」进入逐项列表并继承分组状态；回车行为不变。`.agents/`、`.dsh/`、`.gemini/`、`.qwen/`、`.kimi-code/`、`.github/prompts/` 改为整目录忽略，`.roo/` 与 `.trae/` 保持单文件（规则副本仍可提交），受管路径 49 → 40。
+  - `src/commands/init-gitignore-prompt.ts`、`src/shared/gitignore-managed.ts`、`tests/commands/init-gitignore-prompt.test.ts`、`tests/gitignore-managed.test.ts`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
+- **feat(cli): 精简 init 编辑器选择与 remove --all 确认**. 编辑器多选按 Configured / Detected / Other 分段并一屏显示；`remove --all` 在 TTY 下打印计划后就地确认（默认否），非 TTY 仍只列计划。
+  - `src/commands/init.ts`、`src/commands/remove.ts`、`tests/commands/editor-prompt-groups.test.ts`、`tests/commands/remove-all.test.ts`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
 
 ## [0.3.124] - 2026-11-24
 - **docs(cli): 生成物与元数据同步 2.x 命名**. 生成的 seed / credentials / playwright.config 去掉写死的 1.x 命令名；包描述、站点与 llms 摘要统一为 2.x 与 16 家编辑器，README 命令示例以 2.x 为主。
