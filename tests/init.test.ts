@@ -116,7 +116,7 @@ describe("generateSeedTest", () => {
     const { generateSeedTest, generatePlaywrightConfig } = await import(
       "../../src/commands/init.js"
     );
-    await generateSeedTest(tmpDir, false);
+    await generateSeedTest(tmpDir);
     await generatePlaywrightConfig(tmpDir);
     for (const rel of [
       "tests/playwright/seed.spec.ts",
