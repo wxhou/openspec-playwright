@@ -177,13 +177,13 @@ describe("pipeline template", () => {
 
   it("installs a supported OpenSpec major", () => {
     expect(template).not.toContain("@fission-ai/openspec@1");
-    expect(template).toContain("@fission-ai/openspec@2");
+    expect(template).toContain("@fission-ai/openspec@latest");
     const workflow = readFileSync(
       join(dirname(fileURLToPath(import.meta.url)), "..", "templates", "github-workflow.yml"),
       "utf-8",
     );
     expect(workflow).not.toContain("@fission-ai/openspec@1");
-    expect(workflow).toContain("@fission-ai/openspec@2");
+    expect(workflow).toContain("@fission-ai/openspec@latest");
   });
 
   it("gives the advisory verify step shell access without edit tools", () => {

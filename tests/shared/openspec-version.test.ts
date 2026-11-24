@@ -173,7 +173,7 @@ describe("openSpecCliStatus", () => {
     expect(status.ok).toBe(false);
     if (status.ok) throw new Error("expected a failure status");
     expect(status.kind).toBe("missing");
-    expect(status.message).toContain("npm install -g @fission-ai/openspec@2");
+    expect(status.message).toContain("npm install -g @fission-ai/openspec@latest");
     expect(status.message).not.toContain("openspec@1");
   });
 
@@ -188,7 +188,7 @@ describe("openSpecCliStatus", () => {
     expect(status.kind).toBe("unsupported");
     expect(status.message).toContain("3.x detected");
     expect(status.message).toContain("1.x and 2.x");
-    expect(status.message).toContain("npm install -g @fission-ai/openspec@2");
+    expect(status.message).toContain("npm install -g @fission-ai/openspec@latest");
   });
 
   it("reports an unreadable version as unreadable, not missing", () => {

@@ -112,6 +112,21 @@ describe("generateSeedTest", () => {
     expect(existsSync(join(testsDir, "credentials.yaml"))).toBe(true);
   });
 
+  it("generated templates carry no editor-specific command names", async () => {
+    const { generateSeedTest, generatePlaywrightConfig } = await import(
+      "../../src/commands/init.js"
+    );
+    await generateSeedTest(tmpDir, false);
+    await generatePlaywrightConfig(tmpDir);
+    for (const rel of [
+      "tests/playwright/seed.spec.ts",
+      "tests/playwright/credentials.yaml",
+      "playwright.config.ts",
+    ]) {
+      expect(readFileSync(join(tmpDir, rel), "utf-8")).not.toContain("/opsx");
+    }
+  });
+
   it("skips auth.setup.ts when it already exists", async () => {
     writeFileSync(join(testsDir, "auth.setup.ts"), "existing content");
     const { generateSeedTest } = await import("../../src/commands/init.js");
@@ -1059,7 +1074,7 @@ describe("init: OpenSpec CLI guard", () => {
       logSpy.mockRestore();
     }
     const out = logs.join("\n");
-    expect(out).toContain("npm install -g @fission-ai/openspec@2");
+    expect(out).toContain("npm install -g @fission-ai/openspec@latest");
     expect(out).toContain("openspec init --scope project");
     expect(out).not.toContain("openspec@1");
     // Uninitialized project: init stops after the hint, no scaffold written.

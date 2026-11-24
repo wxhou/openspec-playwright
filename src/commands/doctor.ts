@@ -34,7 +34,6 @@ import {
 } from "../shared/index.js";
 import { bundledStandardsPath, compareBlock, OPENSPEC_START, hasLegacyTerritoryStart, extractRuleBlockContent } from "../shared/drift.js";
 import {
-  OPENSPEC_LATEST_MAJOR,
   openSpecCliStatus,
 } from "../shared/openspec-version.js";
 import { hasRuleFileMarkers, wrapperRulesFile, fullRulesFile, wrapperHasMarkers } from "./editors/project-rules.js";
@@ -1346,7 +1345,7 @@ export async function doctor(options: DoctorOptions = {}) {
     if (cliVersionFailed) {
       console.log(
         chalk.gray(
-          `  Run: npm install -g @fission-ai/openspec@${OPENSPEC_LATEST_MAJOR}\n`,
+          `  Run: npm install -g @fission-ai/openspec@latest\n`,
         ),
       );
     }
