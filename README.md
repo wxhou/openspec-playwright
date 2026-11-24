@@ -44,7 +44,8 @@ npm install -g openspec-playwright@latest
 
 ```bash
 # In your project directory
-openspec init              # Initialize OpenSpec
+npm install -g @fission-ai/openspec@2
+openspec init --scope project  # 2.x keeps skills in the repo; on a 1.x CLI run: openspec init
 openspec-pw init          # Install Playwright E2E integration (--tools to pick editors, --agents for the official agents)
 ```
 

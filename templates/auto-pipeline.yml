@@ -128,8 +128,12 @@ jobs:
           # alone installs nothing (1.x and 2.x alike): set it explicitly.
           # 2.1 installs skills globally by default; `--scope project` keeps
           # them in the checkout. Only 2.1+ knows the flag, so probe its help.
+          # Capture the text first: `grep -q` exits on the first match and the
+          # SIGPIPE would fail the step under pipefail.
           openspec config set workflows '["apply","verify"]' >/dev/null
-          SCOPE=$(openspec init --help | grep -q -- '--scope' && echo '--scope project' || true)
+          HELP=$(openspec init --help 2>&1 || true)
+          SCOPE=
+          case "$HELP" in *--scope*) SCOPE="--scope project" ;; esac
           openspec init --tools claude --profile custom $SCOPE --no-animation >/dev/null
           openspec-pw init --tools claude --no-mcp --no-hook >/dev/null
 

@@ -26,12 +26,15 @@ vi.mock("../../src/shared/index.js", async (importOriginal) => {
 vi.mock("../../src/commands/editors.js", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("../../src/commands/editors.js")>();
-  return {
-    ...actual,
-    detectAdapters: vi.fn(),
-    // Deterministic style: the real resolver shells out to the OpenSpec CLI.
-    resolveArtifactStyle: vi.fn(() => "opsx" as const),
-  };
+  return { ...actual, detectAdapters: vi.fn() };
+});
+
+// Deterministic CLI major: resolveArtifactStyle() reads this mock inside the
+// registry too, unlike a barrel-level stub.
+vi.mock("../../src/shared/openspec-version.js", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../src/shared/openspec-version.js")>();
+  return { ...actual, openSpecCliStatus: vi.fn(() => ({ ok: true, major: 1 })) };
 });
 
 import {
@@ -46,8 +49,8 @@ import {
   cursorAdapter,
   getAdapter,
   installCommand,
-  resolveArtifactStyle,
 } from "../../src/commands/editors.js";
+import { openSpecCliStatus } from "../../src/shared/openspec-version.js";
 import { bundledTemplatePath } from "../../src/shared/drift.js";
 import {
   describePlan,
@@ -59,7 +62,7 @@ import {
 const mockedDetectCodeGraphStatus = vi.mocked(detectCodeGraphStatus);
 const mockedDetectAdapters = vi.mocked(detectAdapters);
 const mockedRemoveChecklist = vi.mocked(removeChecklist);
-const mockedResolveArtifactStyle = vi.mocked(resolveArtifactStyle);
+const mockedResolveStyleProbe = vi.mocked(openSpecCliStatus);
 
 let tmp: string;
 
@@ -68,8 +71,8 @@ beforeEach(() => {
   mockedDetectCodeGraphStatus.mockReset();
   mockedDetectAdapters.mockReset();
   mockedDetectAdapters.mockReturnValue([]);
-  mockedResolveArtifactStyle.mockReset();
-  mockedResolveArtifactStyle.mockReturnValue("opsx");
+  mockedResolveStyleProbe.mockReset();
+  mockedResolveStyleProbe.mockReturnValue({ ok: true, major: 1 });
   mockedDetectCodeGraphStatus.mockReturnValue({
     cliInstalled: false,
     indexed: false,
@@ -178,7 +181,7 @@ describe("removeInProject() 2.x cleanup of 1.x leftovers", () => {
     );
 
   it("deletes an untouched 1.x artifact and keeps a user-edited one", async () => {
-    mockedResolveArtifactStyle.mockReturnValue("openspec");
+    mockedResolveStyleProbe.mockReturnValue({ ok: true, major: 2 });
     const cursorOld = getAdapter("cursor", "opsx")!;
     const claudeOld = getAdapter("claude", "opsx")!;
     installCommand(cursorOld, meta(), tmp);
@@ -203,7 +206,7 @@ describe("removeInProject() 2.x cleanup of 1.x leftovers", () => {
   });
 
   it("keeps edited 1.x artifacts out of the removal plan", async () => {
-    mockedResolveArtifactStyle.mockReturnValue("openspec");
+    mockedResolveStyleProbe.mockReturnValue({ ok: true, major: 2 });
     const claudeOld = getAdapter("claude", "opsx")!;
     installCommand(claudeOld, meta(), tmp);
     writeFileSync(join(tmp, claudeOld.commandFilePath("e2e")), "my own workflow\n");

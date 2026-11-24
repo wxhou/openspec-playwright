@@ -115,6 +115,9 @@ describe("doctor OpenSpec CLI version", () => {
     } finally {
       spy.mockRestore();
       exitSpy.mockRestore();
+      // clearAllMocks does not undo mockReturnValue; later tests assert the
+      // 1.x default.
+      vi.mocked(openSpecCliStatus).mockReturnValue({ ok: true, major: 1 });
     }
     const parsed = JSON.parse(logs.join("\n"));
     const row = parsed.checks.find(

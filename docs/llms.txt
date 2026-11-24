@@ -22,15 +22,15 @@ npm install -g openspec-playwright
 ```
 # In your project directory
 npm install -g @fission-ai/openspec@2   # supports the 1.x and 2.x CLIs (2.x uses openspec-e2e)
-openspec init
+openspec init --scope project           # on a 1.x CLI run: openspec init
 openspec-pw init
 npx playwright install --with-deps
 
-# In Claude Code
-/opsx:e2e <change-name>
+# In Claude Code (2.x; on 1.x use /opsx:e2e)
+/openspec-e2e <change-name>
 
-# In OpenCode / Cline / Cursor
-/opsx-e2e <change-name>
+# In OpenCode / Cline / Cursor (2.x; on 1.x use /opsx-e2e)
+/openspec-e2e <change-name>
 ```
 
 ## CLI Commands
