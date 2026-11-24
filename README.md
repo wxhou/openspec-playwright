@@ -625,7 +625,7 @@ Auth environment variables:
 
 In CI, set the `E2E_AUTH_*` values as repository variables; the workflow passes them to the test step. For multi-user CI, add the per-role credential pairs as secrets and forward them in the workflow env — the shipped workflow forwards only `E2E_USERNAME` / `E2E_PASSWORD`.
 
-> **Upgrading an existing project?** `openspec-pw update` leaves an existing `auth.setup.ts` and `.github/workflows/openspec-pw.yml` untouched. Merge the `E2E_AUTH_*` handling from the current templates, or regenerate those files; otherwise the new variables are ignored.
+> **Upgrading an existing project?** `openspec-pw update` leaves an existing `auth.setup.ts` and `.github/workflows/openspec-pw.yml` untouched. Merge the `E2E_AUTH_*` handling from the current templates, or regenerate those files; otherwise the new variables are ignored. `update` (default run — `--no-skill` skips template syncing) also rewrites legacy 1.x `/opsx:e2e` mentions in `tests/playwright/seed.spec.ts` and `playwright.config.*` in place — your other edits there are kept.
 
 ## Architecture
 

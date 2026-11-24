@@ -921,6 +921,70 @@ export function syncEmployeeStandards(
 }
 
 // Sync project-level templates
+// 1.x command names that older templates wrote into generated files; the exact
+// sentences map to their current neutral wording.
+const LEGACY_E2E_HINTS: ReadonlyArray<readonly [string, string]> = [
+  [
+    "Then re-run /opsx:e2e.",
+    "Then re-run the E2E workflow command for your editor.",
+  ],
+  [
+    "Then re-run the E2E workflow command (/opsx:e2e or /opsx-e2e depending on your editor).",
+    "Then re-run the E2E workflow command for your editor.",
+  ],
+  [
+    "// Setup project (used by /opsx:e2e Healer and local auth setup)",
+    "// Setup project (used by the E2E Healer and local auth setup)",
+  ],
+  [
+    "// Setup project (configured by openspec-pw run)",
+    "// Setup project (used by the E2E Healer and local auth setup)",
+  ],
+  [
+    "// Setup project for authentication (configured by openspec-pw run)",
+    "// Setup project (used by the E2E Healer and local auth setup)",
+  ],
+];
+
+// Possible Playwright config filenames: doctor, gate and app-detect each accept
+// a different subset of these extensions, so scan all of them.
+const PLAYWRIGHT_CONFIG_NAMES = [
+  "playwright.config.ts",
+  "playwright.config.js",
+  "playwright.config.mjs",
+  "playwright.config.mts",
+  "playwright.config.cjs",
+] as const;
+
+/**
+ * Replace known legacy command-name sentences in a generated file the user
+ * owns. Exact-substring only: everything else in the file stays untouched.
+ * Symlinks are skipped (a shared config must not be rewritten through the
+ * link); an unwritable file is reported and skipped — it must not abort the
+ * update.
+ */
+function migrateLegacyE2eHints(filePath: string, label: string) {
+  try {
+    if (!existsSync(filePath) || lstatSync(filePath).isSymbolicLink()) return;
+    const existing = readFileSync(filePath, "utf-8");
+    let updated = existing;
+    for (const [from, to] of LEGACY_E2E_HINTS) {
+      updated = updated.split(from).join(to);
+    }
+    if (updated === existing) return;
+    writeFileSync(filePath, updated);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.log(
+      chalk.yellow(
+        `  ⚠ Could not migrate ${label}: ${msg} — fix the file permissions or ownership, then re-run 'openspec-pw update'`,
+      ),
+    );
+    return;
+  }
+  console.log(chalk.green(`  ✓ Migrated: ${label}`));
+}
+
 export function syncProjectTemplates(tmpDir: string, projectRoot: string) {
   const mini = resolveProjectTarget(projectRoot) === "miniprogram";
   // 0. tests/README.md — minimal-mode deliverable, independent of the
@@ -970,7 +1034,20 @@ export function syncProjectTemplates(tmpDir: string, projectRoot: string) {
   } catch {
     printCredentialsIgnoreHint(projectRoot, managedSkips);
   }
+  // 0b. Migrate 1.x command names in generated files the user owns. The config
+  // comes before the tests/playwright gate: a project that moved its test dir
+  // still carries the tool's config.
+  for (const name of PLAYWRIGHT_CONFIG_NAMES) {
+    migrateLegacyE2eHints(join(projectRoot, name), name);
+  }
   if (!existsSync(testsDir)) return;
+
+  // 0c. Seed migration runs before the comparison below so a migrated seed is
+  // compared in its new form.
+  migrateLegacyE2eHints(
+    join(testsDir, "seed.spec.ts"),
+    "tests/playwright/seed.spec.ts",
+  );
 
   // 1. Sync BasePage.ts — always update if content differs
   const basePageSrc = join(

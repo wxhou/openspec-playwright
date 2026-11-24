@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `templates/{seed.spec.ts,credentials.yaml,playwright.config.ts}`、`package.json`、`docs/{llms.txt,script.js}`、`README.md`、`tests/init.test.ts`、`CHANGELOG.md`
 - **docs(cli): 安装命令改用 `@latest`**. 文档、模板与 `init`/`doctor` 提示统一为 `npm install -g @fission-ai/openspec@latest`（最新版即 2.x），已装 1.x 时的提示仍为 `@1`。
   - `src/shared/openspec-version.ts`、`src/commands/{init,doctor}.ts`、`templates/{auto-pipeline,github-workflow}.yml`、`docs/{llms.txt,index.html}`、`README.md`、`README.zh-CN.md`、`tests/{init,auto-pipeline}.test.ts`、`tests/shared/openspec-version.test.ts`、`tests/commands/doctor-openspec-version.test.ts`、`CHANGELOG.md`
+- **fix(cli): update 迁移生成物里的旧命令名**. `update` 原位改写 `tests/playwright/seed.spec.ts` 与 `playwright.config.*` 中遗留的 `/opsx:e2e`、`openspec-pw run` 文案（含更早的 `Then re-run /opsx:e2e.` 措辞），其余内容与用户改动保持不变；软链跳过，只读文件降级为提示，幂等，无遗留文案时不写入。
+  - `src/commands/update.ts`、`tests/commands/update-legacy-hints.test.ts`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
 
 ## [0.3.123] - 2026-11-24
 - **fix(cli): 规则副本刷新后不再留下标题空壳**. `init`/`update` 刷新过的副本，在 `--no-rule-files`、取消勾选或 `remove` 后不再残留 `# <目录名>` 空壳；块外有用户内容时仍只移除标记块。
