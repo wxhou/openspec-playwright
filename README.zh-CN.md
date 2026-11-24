@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Node >= 22](https://img.shields.io/badge/node-%3E%3D22-brightgreen.svg)](https://nodejs.org)
 
-**OpenSpec 项目获得与代码同住的 AI 驱动 E2E 验证。** 一条 `/opsx:e2e <change>` 命令（支持十六款编辑器）按 spec 规划、生成、执行并自愈 Playwright 测试，附每 change 报告，无需手搭脚手架。
+**OpenSpec 项目获得与代码同住的 AI 驱动 E2E 验证。** 一条 `/openspec-e2e <change>` 命令（支持十六款编辑器）按 spec 规划、生成、执行并自愈 Playwright 测试，附每 change 报告，无需手搭脚手架。
 
 > **为什么有这个工具**：spec 驱动的开发没有测试自动化是半截闭环。本工具把它补完——写 change spec，跑一条命令，拿到可追溯到 spec 锚的测试，外加一份说明什么通过、什么自愈、什么留待人工的报告。
 
@@ -56,7 +56,7 @@ npm install -g openspec-playwright@latest
    - **MiniMax Code**：合并到项目根 `.mcp.json` 的 `mcpServers["playwright-test"] = { "command": "npx", "args": ["playwright", "run-test-mcp-server"] }`（直接文件读写——MiniMax Code 自动加载项目根 `.mcp.json`）
    - **Pi**：无 MCP 客户端，跳过安装 — 浏览器探索改用 `openspec-pw explore`
 
-> **同时支持 OpenSpec 1.x 与 2.x**：命名跟随已装主版本。1.x 使用 `/opsx:e2e` 与 `opsx-e2e` 产物；2.x 使用 `/openspec-e2e` 与 `openspec-e2e` 产物（装在 `.agents/skills/` 下的 skill）。`openspec-pw doctor` 对两者均通过，3.x 会被拒绝。
+> **同时支持 OpenSpec 1.x 与 2.x**：命名跟随已装主版本。2.x 使用 `/openspec-e2e` 与 `openspec-e2e` 产物（装在 `.agents/skills/` 下的 skill）；1.x 使用 `/opsx:e2e` / `/opsx-e2e` 与 `opsx-e2e` 产物。`openspec-pw doctor` 对两者均通过，3.x 会被拒绝。
 
 > 项目级 server 首次交互使用时 Claude Code 会弹出批准提示（`claude mcp reset-project-choices` 可重置选择）。
 
@@ -76,51 +76,51 @@ openspec-pw init          # 安装 Playwright E2E 集成（--tools 选编辑器�
 
 ## 支持的 AI 编码助手
 
-命名跟随已装 OpenSpec 主版本：下表为 1.x 名称；2.x 下同一批产物改名为 `openspec-e2e`（调用 `/openspec-e2e`，个别编辑器为 `$openspec-e2e` / `/skill:openspec-e2e`）。
+命名跟随已装 OpenSpec 主版本：下表为 2.x 名称；1.x 下同一批产物为 `opsx-e2e`（Claude Code、CodeBuddy CLI、Gemini CLI 用 `/opsx:e2e`，其余用 `/opsx-e2e`，Codex 为 `$opsx-e2e`，Kimi Code 为 `/skill:opsx-e2e`）。
 
 | 编辑器 | 命令 | Playwright MCP | AGENTS.md 加载方式 |
 |---|---|---|---|
-| **Claude Code**（Anthropic） | `/opsx:e2e` | 是（项目 `.mcp.json`） | 经 `CLAUDE.md` → `@AGENTS.md` |
-| **OpenCode**（SST） | `/opsx-e2e` | 是（`opencode.jsonc`） | `instructions` 字段 |
-| **Cline** | `/opsx-e2e` | 是（`.cline/mcp.json`） | 原生 |
-| **Cursor** | `/opsx-e2e` | 是（`.cursor/mcp.json`） | 原生 |
-| **Pi**（earendil-works） | `/opsx-e2e` | **否** — 改用 `openspec-pw explore` + `npx playwright test` | 原生 |
-| **Oh My Pi（omp）** | `/opsx-e2e` | 是（`.omp/mcp.json`） | 原生 |
-| **CodeBuddy CLI**（腾讯） | `/opsx:e2e` | 是（项目根 `.mcp.json`） | 经 `CODEBUDDY.md` → `@AGENTS.md` |
-| **MiniMax Code**（`mcode` CLI） | `/opsx-e2e` | 是（项目根 `.mcp.json`） | 原生（`AGENTS.md`） |
-| **DeepSeek Harness**（`dsh`） | `opsx-e2e` 技能 | **无项目级载体**——需在 `$DSH_HOME` 的 profile patch 中配置 Playwright MCP | 原生（`AGENTS.md`） |
-| **Gemini CLI** | `/opsx:e2e` | 是（`.gemini/settings.json`） | `GEMINI.md` |
-| **Qwen Code** | `/opsx-e2e` | 是（`.qwen/settings.json`） | `QWEN.md` |
-| **GitHub Copilot**（VS Code） | `/opsx-e2e` | 是（项目根 `.mcp.json`） | `.github/copilot-instructions.md` |
-| **Roo Code** | `/opsx-e2e` | 是（`.roo/mcp.json`） | `.roo/rules/openspec-pw.md` |
-| **Trae** | `/opsx-e2e` | 是（`.trae/mcp.json`，Project MCP beta） | `.trae/rules/project_rules.md` |
-| **Codex** | `$opsx-e2e` 技能 | **无 JSON 载体**——项目级 MCP 在 `.codex/config.toml`（TOML，暂不支持） | 原生（`AGENTS.md`） |
-| **Kimi Code** | `/skill:opsx-e2e` 技能 | 是（`.kimi-code/mcp.json`） | 原生（`AGENTS.md`） |
+| **Claude Code**（Anthropic） | `/openspec-e2e` | 是（项目 `.mcp.json`） | 经 `CLAUDE.md` → `@AGENTS.md` |
+| **OpenCode**（SST） | `/openspec-e2e` | 是（`opencode.jsonc`） | `instructions` 字段 |
+| **Cline** | `/openspec-e2e` | 是（`.cline/mcp.json`） | 原生 |
+| **Cursor** | `/openspec-e2e` | 是（`.cursor/mcp.json`） | 原生 |
+| **Pi**（earendil-works） | `/openspec-e2e` | **否** — 改用 `openspec-pw explore` + `npx playwright test` | 原生 |
+| **Oh My Pi（omp）** | `/openspec-e2e` | 是（`.omp/mcp.json`） | 原生 |
+| **CodeBuddy CLI**（腾讯） | `/openspec-e2e` | 是（项目根 `.mcp.json`） | 经 `CODEBUDDY.md` → `@AGENTS.md` |
+| **MiniMax Code**（`mcode` CLI） | `/openspec-e2e` | 是（项目根 `.mcp.json`） | 原生（`AGENTS.md`） |
+| **DeepSeek Harness**（`dsh`） | `openspec-e2e` 技能 | **无项目级载体**——需在 `$DSH_HOME` 的 profile patch 中配置 Playwright MCP | 原生（`AGENTS.md`） |
+| **Gemini CLI** | `/openspec-e2e` | 是（`.gemini/settings.json`） | `GEMINI.md` |
+| **Qwen Code** | `/openspec-e2e` | 是（`.qwen/settings.json`） | `QWEN.md` |
+| **GitHub Copilot**（VS Code） | `/openspec-e2e` | 是（项目根 `.mcp.json`） | `.github/copilot-instructions.md` |
+| **Roo Code** | `/openspec-e2e` | 是（`.roo/mcp.json`） | `.roo/rules/openspec-pw.md` |
+| **Trae** | `/openspec-e2e` | 是（`.trae/mcp.json`，Project MCP beta） | `.trae/rules/project_rules.md` |
+| **Codex** | `$openspec-e2e` 技能 | **无 JSON 载体**——项目级 MCP 在 `.codex/config.toml`（TOML，暂不支持） | 原生（`AGENTS.md`） |
+| **Kimi Code** | `/skill:openspec-e2e` 技能 | 是（`.kimi-code/mcp.json`） | 原生（`AGENTS.md`） |
 
-各编辑器命令体完全相同（安装时 `/opsx:` → `/opsx-` 改写）。具体安装路径、检测信号、auth/MCP 细节见下方 [使用](#使用) 与 [前置条件](#前置条件) 两节。
+各编辑器命令体完全相同：2.x 统一写 `/openspec-e2e`；1.x 在安装时把 `/opsx:` 改写为 `/opsx-`（Claude Code、CodeBuddy CLI、Gemini CLI 保留冒号形式）。具体安装路径、检测信号、auth/MCP 细节见下方 [使用](#使用) 与 [前置条件](#前置条件) 两节。
 
 ## 使用
 
-选匹配你项目的编辑器，发对应的命令。十六款编辑器共用同一工作流；命令形态的编辑器保留 `/opsx:`，技能形态的编辑器使用 `/opsx-e2e`。只有命令工件的落盘位置不同。
+选匹配你项目的编辑器，发对应的命令。十六款编辑器共用同一工作流；OpenSpec 2.x 下全部使用 `/openspec-e2e`（Codex 为 `$openspec-e2e`，Kimi Code 为 `/skill:openspec-e2e`）。1.x 下同一批产物沿用 `opsx` 名称——Claude Code、CodeBuddy CLI、Gemini CLI 用 `/opsx:e2e`，其余用 `/opsx-e2e`，Codex / Kimi 为 `$opsx-e2e` / `/skill:opsx-e2e`——落盘在 `opsx-` 路径（如 `.claude/commands/opsx/e2e.md`）。只有名称与工件位置不同。
 
 | 编辑器 | 命令 | 安装位置 |
 |---|---|---|
-| Claude Code | `/opsx:e2e <change-name>` | `.claude/commands/opsx/e2e.md` |
-| OpenCode | `/opsx-e2e <change-name>` | `.opencode/commands/opsx-e2e.md` |
-| Cline | `/opsx-e2e <change-name>` | `.cline/skills/opsx-e2e/SKILL.md` |
-| Cursor | `/opsx-e2e <change-name>` | `.cursor/commands/opsx-e2e.md` + `.cursor/skills/opsx-e2e/SKILL.md` |
-| Pi | `/opsx-e2e <change-name>` | `.pi/prompts/opsx-e2e.md`（文件名即命令名） |
-| Oh My Pi | `/opsx-e2e <change-name>` | `.omp/commands/opsx-e2e.md` |
-| CodeBuddy CLI | `/opsx:e2e <change-name>` | `.codebuddy/commands/opsx/e2e.md` |
-| MiniMax Code CLI | `/opsx-e2e <change-name>` | `.agents/skills/opsx-e2e/SKILL.md`（技能） |
-| DeepSeek Harness（`dsh`） | `opsx-e2e` 技能 | `.dsh/skills/opsx-e2e/SKILL.md`（技能） |
-| Gemini CLI | `/opsx:e2e <change-name>` | `.gemini/commands/opsx/e2e.toml`（TOML） |
-| Qwen Code | `/opsx-e2e <change-name>` | `.qwen/commands/opsx-e2e.md` |
-| GitHub Copilot（VS Code） | `/opsx-e2e <change-name>` | `.github/prompts/opsx-e2e.prompt.md` |
-| Roo Code | `/opsx-e2e <change-name>` | `.roo/commands/opsx-e2e.md` |
-| Trae | `/opsx-e2e <change-name>` | `.trae/commands/opsx-e2e.md` |
-| Codex | `$opsx-e2e <change-name>` | `.agents/skills/opsx-e2e/SKILL.md`（技能） |
-| Kimi Code | `/skill:opsx-e2e <change-name>` | `.kimi-code/skills/opsx-e2e/SKILL.md`（技能） |
+| Claude Code | `/openspec-e2e <change-name>` | `.claude/skills/openspec-e2e/SKILL.md` + 共享 `.agents/skills/openspec-e2e/SKILL.md` |
+| OpenCode | `/openspec-e2e <change-name>` | `.opencode/commands/openspec-e2e.md` |
+| Cline | `/openspec-e2e <change-name>` | `.cline/skills/openspec-e2e/SKILL.md` |
+| Cursor | `/openspec-e2e <change-name>` | `.cursor/commands/openspec-e2e.md` + `.cursor/skills/openspec-e2e/SKILL.md` |
+| Pi | `/openspec-e2e <change-name>` | `.pi/prompts/openspec-e2e.md`（文件名即命令名） |
+| Oh My Pi | `/openspec-e2e <change-name>` | `.omp/commands/openspec-e2e.md` |
+| CodeBuddy CLI | `/openspec-e2e <change-name>` | `.codebuddy/commands/openspec-e2e.md` |
+| MiniMax Code CLI | `/openspec-e2e <change-name>` | `.agents/skills/openspec-e2e/SKILL.md`（技能） |
+| DeepSeek Harness（`dsh`） | `openspec-e2e` 技能 | `.dsh/skills/openspec-e2e/SKILL.md`（技能） |
+| Gemini CLI | `/openspec-e2e <change-name>` | `.gemini/commands/openspec-e2e.toml`（TOML） |
+| Qwen Code | `/openspec-e2e <change-name>` | `.qwen/commands/openspec-e2e.md` |
+| GitHub Copilot（VS Code） | `/openspec-e2e <change-name>` | `.github/prompts/openspec-e2e.prompt.md` |
+| Roo Code | `/openspec-e2e <change-name>` | `.roo/commands/openspec-e2e.md` |
+| Trae | `/openspec-e2e <change-name>` | `.trae/commands/openspec-e2e.md` |
+| Codex | `$openspec-e2e <change-name>` | `.agents/skills/openspec-e2e/SKILL.md`（技能） |
+| Kimi Code | `/skill:openspec-e2e <change-name>` | `.kimi-code/skills/openspec-e2e/SKILL.md`（技能） |
 
 <details>
 <summary><strong>各编辑器的差异</strong>（默认折叠；只有 init 报错时才需要展开）</summary>
@@ -128,16 +128,16 @@ openspec-pw init          # 安装 Playwright E2E 集成（--tools 选编辑器�
 - **Cursor**：skill 设置 `disable-model-invocation: true`（仅在显式调用时加载）。若要用 Cursor 但还没有 `.cursor/`：`mkdir -p .cursor`。
 - **Pi**：没有 MCP 客户端——浏览器探索改用 `openspec-pw explore`，测试执行用 shell 跑 `npx playwright test`（无 Healer 步骤）。
 - **Oh My Pi**：若 `.claude/` / `.cursor/` / `opencode.jsonc` 已存在并配置了 MCP，omp 会一并继承。
-- **CodeBuddy CLI**：冒号命名（同 Claude Code，`/opsx:e2e`）——命令正文保留 `/opsx:` 引用不做改写。
+- **CodeBuddy CLI**：1.x 用冒号命名（同 Claude Code，`/opsx:e2e`）；2.x 与所有编辑器一样用 `/openspec-e2e`。
 - **MiniMax Code**：工作流以 **Skill**（`SKILL.md`）形式交付——`mcode` CLI 不加载任何用户自定义命令文件，技能是它唯一可扩展的命令机制。原生读取 `AGENTS.md`，无包装文件。**集成目标是 `mcode` CLI；桌面端不在覆盖范围。**
-- **DeepSeek Harness**：工作流以 **Skill** 形式装在 `.dsh/skills/opsx-e2e/SKILL.md`——dsh 的 rank 100 项目级根，优先级高于 MiniMax 方案留下的 `.agents/skills` 副本。dsh 没有项目级 MCP 载体（MCP 服务器在 `$DSH_HOME` 的 profile patch 层、默认关闭），浏览器探索回退到 `openspec-pw explore`，测试执行走 `npx playwright test`。dsh 仍是 developer preview，适配器只依赖其已文档化的技能发现契约。
-- **Gemini CLI**：命令为 TOML（`description` + `prompt`），命令正文保留 `/opsx:` 冒号形式。MCP 写入 `.gemini/settings.json` 的 `mcpServers`，规范块写入 `GEMINI.md`。
+- **DeepSeek Harness**：工作流以 **Skill** 形式装在 `.dsh/skills/openspec-e2e/SKILL.md`——dsh 的 rank 100 项目级根，优先级高于 MiniMax 方案留下的 `.agents/skills` 副本。dsh 没有项目级 MCP 载体（MCP 服务器在 `$DSH_HOME` 的 profile patch 层、默认关闭），浏览器探索回退到 `openspec-pw explore`，测试执行走 `npx playwright test`。dsh 仍是 developer preview，适配器只依赖其已文档化的技能发现契约。
+- **Gemini CLI**：命令为 TOML（`description` + `prompt`）；1.x 命令正文保留 `/opsx:` 冒号形式，2.x 使用 `/openspec-e2e`。MCP 写入 `.gemini/settings.json` 的 `mcpServers`，规范块写入 `GEMINI.md`。
 - **Qwen Code**：带 `description` frontmatter 的 Markdown 命令；MCP 写入 `.qwen/settings.json`，规范写入 `QWEN.md`。
 - **GitHub Copilot**：面向 VS Code——prompt 文件在 `.github/prompts/`，MCP 在工作区根 `.mcp.json`（`mcpServers` 映射，stdio 条目带 `type: "stdio"`，与 Claude/CodeBuddy/MiniMax 共享），规范在 `.github/copilot-instructions.md`。检测只用 Copilot 专属标记，任意仓库的 `.github/` 目录不算。
 - **Roo Code**：标题 + 说明的 Markdown 命令；MCP 在 `.roo/mcp.json`；规范写入本工具专属的 `.roo/rules/openspec-pw.md`（Roo 会加载该目录下全部文件）。
 - **Trae**：name/description frontmatter 的 Markdown 命令；项目级 MCP 在 `.trae/mcp.json`（Project MCP，beta——旧版 IDE 可能忽略）；规范写入 `.trae/rules/project_rules.md`。
-- **Codex**：工作流以 **Skill** 形式装在 `.agents/skills/opsx-e2e/SKILL.md`，用 `$opsx-e2e` 调用。该目录与 MiniMax Code 共用：取消勾选 Codex 但保留 MiniMax 时技能文件保留。Codex 的项目级 MCP 在 `.codex/config.toml`（TOML），本工具不做合并——浏览器探索回退 `openspec-pw explore`，测试执行走 `npx playwright test`。
-- **Kimi Code**：工作流以 **Skill** 形式装在 `.kimi-code/skills/opsx-e2e/SKILL.md`，用 `/skill:opsx-e2e` 调用。MCP 在 `.kimi-code/mcp.json`；项目规则走 `AGENTS.md`（Kimi 是否自动加载 `AGENTS.md` 官方未明确）。
+- **Codex**：工作流以 **Skill** 形式装在 `.agents/skills/openspec-e2e/SKILL.md`，用 `$openspec-e2e` 调用（1.x：`.agents/skills/opsx-e2e/SKILL.md`，`$opsx-e2e`）。该目录与 MiniMax Code 共用：取消勾选 Codex 但保留 MiniMax 时技能文件保留。Codex 的项目级 MCP 在 `.codex/config.toml`（TOML），本工具不做合并——浏览器探索回退 `openspec-pw explore`，测试执行走 `npx playwright test`。
+- **Kimi Code**：工作流以 **Skill** 形式装在 `.kimi-code/skills/openspec-e2e/SKILL.md`，用 `/skill:openspec-e2e` 调用（1.x：`.kimi-code/skills/opsx-e2e/SKILL.md`，`/skill:opsx-e2e`）。MCP 在 `.kimi-code/mcp.json`；项目规则走 `AGENTS.md`（Kimi 是否自动加载 `AGENTS.md` 官方未明确）。
 
 </details>
 
@@ -199,7 +199,7 @@ openspec-pw init --no-miniprogram   # 强制 Web 目标
 
 脚手架使用官方 [`@open-wxa/wxa-runner-playwright`](https://open-wxa.github.io/wxa-runner/) fixture，在 Chrome 中按官方基础库运行构建产物。生成文件：`playwright.config.ts`（`channel: 'chrome'`、`wxaProject`、`wxaServerOptions.setup`）、`wxa-test.ts` 重导出 wrapper、`wxa.setup.ts`、`pages/BasePage.ts`，以及打开 `entryPagePath`（或 `pages[0]`）并断言 `toHavePath` 的 seed 测试。不生成 `auth.setup.ts` 与 `credentials.yaml`——登录态放 `wxa.setup.ts`。
 
-依赖：`@playwright/test@^1.65`、`@open-wxa/wxa-runner-playwright@^0.13`、`@open-wxa/wxa-runner-core@^0.13`、`wxa-runner@^0.13`（`/opsx:e2e` 探索步骤调用的 CLI），以及 Google Chrome（`npx playwright install chrome`）。Taro 用 `build:weapp`，uni-app 用 `build:mp-weixin`；monorepo 中在拥有该脚本的包里执行（`npm --prefix <member> run <script>`）。生成的 CI 会安装 Chrome，并在 `npx playwright test` 前执行该构建；`doctor` 检查 Chrome、fixture、Playwright 版本（>=1.64）与 `wxaProject` 产物目录。升级 fixture 导入请改 `tests/playwright/wxa-test.ts`——`update` 会保留你改过的副本。
+依赖：`@playwright/test@^1.65`、`@open-wxa/wxa-runner-playwright@^0.13`、`@open-wxa/wxa-runner-core@^0.13`、`wxa-runner@^0.13`（`/openspec-e2e` 探索步骤调用的 CLI），以及 Google Chrome（`npx playwright install chrome`）。Taro 用 `build:weapp`，uni-app 用 `build:mp-weixin`；monorepo 中在拥有该脚本的包里执行（`npm --prefix <member> run <script>`）。生成的 CI 会安装 Chrome，并在 `npx playwright test` 前执行该构建；`doctor` 检查 Chrome、fixture、Playwright 版本（>=1.64）与 `wxaProject` 产物目录。升级 fixture 导入请改 `tests/playwright/wxa-test.ts`——`update` 会保留你改过的副本。
 
 限制：测试运行在无头 Chrome 中，不是微信开发者工具。仅在开发者工具中可用的 API（真实登录、支付、原生组件）不在覆盖范围。CI 支持面向 x86-64 Linux；没有 WebKit 或 Firefox project。Taro 项目可以解析与构建，但 Taro 运行时可能在浏览器运行器里初始化失败（`没有找到页面实例`）；先跑 seed，seed 失败即视为该应用不受支持，不要转而写 spec。
 
@@ -214,15 +214,15 @@ openspec-pw init --tools claude --agents   # 额外安装官方 planner agent �
 
 `--agents`（默认关）把 Playwright 官方 `playwright init-agents`（claude loop）生成的、适合本工具管道的一个 agent 定义**逐字快照**装进 `.claude/agents/`：
 
-- `playwright-test-planner.md` — 探索应用、产出测试计划（`/opsx:e2e` Step 5 的委托目标，用于上下文隔离）
+- `playwright-test-planner.md` — 探索应用、产出测试计划（`/openspec-e2e` Step 5 的委托目标，用于上下文隔离）
 
-官方 `generator` 与 `healer` agent 不 vendoring：生成在 `/opsx:e2e` 管道内完成（录制流），带上了委托子 agent 不会继承的工作流规则；官方 healer 会修改断言/期望值来强行让测试变绿——与本管道的诚实失败出口相反。旧版安装保留这些文件：未修改的副本仍视为工具所有（`doctor` 列出，`remove` 删除），修改过的归用户所有，永不触碰。
+官方 `generator` 与 `healer` agent 不 vendoring：生成在 `/openspec-e2e` 管道内完成（录制流），带上了委托子 agent 不会继承的工作流规则；官方 healer 会修改断言/期望值来强行让测试变绿——与本管道的诚实失败出口相反。旧版安装保留这些文件：未修改的副本仍视为工具所有（`doctor` 列出，`remove` 删除），修改过的归用户所有，永不触碰。
 
 它的 `tools:` frontmatter 引用的正是 `playwright-test` MCP server——本工具装好的那一条目，MCP 前提天然满足。交互式 init 会在编辑器确认后追加一个默认 **No** 的确认项；minimal 模式项目与 MCP 一起跳过（该相位跟随同一前端信号门控——agent 的工具全是 MCP 工具）。归属按内容判定：与内置快照一致的文件（上游基线见 `templates/agents/SOURCE.md`）归本工具所有——`update` 在快照升级时刷新、移除路径一并删除；你手改过的（或用新版官方 init-agents 刷过的）文件**永不覆盖、永不删除**，仅提示。`doctor` 报告其存在、归属状态，并在 `playwright-test` MCP 条目缺失时给出非阻断 ⚠。
 
-**与 `/opsx:e2e` 的分工**：命令模板是 OpenSpec 锚定的完整管道（计划 → 生成 → 带 App Bug Registry 的治疗闭环 → Phase 3 人工升级）；vendored agents 是无 change 在飞时可单独召唤的子 agent。工作流内部，Planner 与 Generator 两个阶段在子 agent 已安装时可委托执行（规则随委托提示词传递，产物由主 agent 核验）；Healer 阶段**永不委托**——管道护栏取代官方 healer 的自主改断言行为。项目 AGENTS.md §6 约束一切来源的 agent。
+**与 `/openspec-e2e` 的分工**：命令模板是 OpenSpec 锚定的完整管道（计划 → 生成 → 带 App Bug Registry 的治疗闭环 → Phase 3 人工升级）；vendored agents 是无 change 在飞时可单独召唤的子 agent。工作流内部，Planner 与 Generator 两个阶段在子 agent 已安装时可委托执行（规则随委托提示词传递，产物由主 agent 核验）；Healer 阶段**永不委托**——管道护栏取代官方 healer 的自主改断言行为。项目 AGENTS.md §6 约束一切来源的 agent。
 
-> **官方 healer 与本工具护栏的差异**：官方 healer 被指示「不要问用户、可通过修改断言和期望值修复失败测试」；本工具的 Healer 管道**禁止未授权放宽断言**——更新断言或 spec 是 Phase 3 的人工决策。单独召唤官方 healer 快速修测试是你的选择，但不要把它的输出混入 `/opsx:e2e` 交付流。
+> **官方 healer 与本工具护栏的差异**：官方 healer 被指示「不要问用户、可通过修改断言和期望值修复失败测试」；本工具的 Healer 管道**禁止未授权放宽断言**——更新断言或 spec 是 Phase 3 的人工决策。单独召唤官方 healer 快速修测试是你的选择，但不要把它的输出混入 `/openspec-e2e` 交付流。
 
 > **如果你坚持自己跑 `npx playwright init-agents`**：它是清场重写型——整文件重写 `.mcp.json`（你自装的 MCP 条目会被销毁，fixture 已实证）、已有 `opencode.jsonc` 时另立 `opencode.json`、且要求随 Playwright 升级重跑。必须跑的话请在 `openspec-pw init` **之前**，跑完 `git diff .mcp.json` 检查其他条目幸存。用 `--agents` 则不需要跑它——官方新版快照由 `update` 同步。
 
@@ -295,9 +295,8 @@ audit **只报告、绝不删除**——测试退役永远是人工决策。存�
 <summary><strong>工作流树</strong> —— 从 change 选择到报告共 10 步</summary>
 
 ```
-# 由 /opsx:e2e <change-name>（Claude Code / CodeBuddy CLI / Gemini CLI）或 /opsx-e2e <change-name>（多数其它编辑器；Codex `$opsx-e2e`、Kimi `/skill:opsx-e2e`）触发
-/opsx:e2e <change-name>
-/opsx:e2e <change-name> --auto   # 无头——无人工确认点（见「全自动流水线」）
+/openspec-e2e <change-name>          # 所有编辑器；Codex 用 $openspec-e2e，Kimi 用 /skill:openspec-e2e
+/openspec-e2e <change-name> --auto   # 无头——无人工确认点（见「全自动流水线」）
   │
   ├── 1. 选择 change → 读取 openspec/changes/<name>/specs/
   │
@@ -327,6 +326,8 @@ audit **只报告、绝不删除**——测试退役永远是人工决策。存�
   └── 10. 报告 → openspec/reports/playwright-e2e-<name>-<timestamp>.md
 ```
 
+OpenSpec 1.x 下同一工作流用 `/opsx:e2e`（Claude Code / CodeBuddy CLI / Gemini CLI）或 `/opsx-e2e`（多数其它编辑器）触发；步骤不变。
+
 </details>
 
 ## `openspec-pw init` 做了什么
@@ -351,7 +352,7 @@ audit **只报告、绝不删除**——测试退役永远是人工决策。存�
 | 5. 启动开发服务器 | `npm run dev`（在另一个终端） | 确认端口，配置 `BASE_URL` |
 | 6. 验证环境 | `npx playwright test tests/playwright/seed.spec.ts` | 检查 `playwright.config.ts` 中的 `webServer` 配置 |
 | 7. 配置认证（如需要） | 见下方"认证配置" | `npx playwright test --project=setup` 调试 |
-| 8. 运行第一个 E2E | `/opsx:e2e <change-name>`（Claude / CodeBuddy CLI / Gemini）或 `/opsx-e2e <change-name>`（多数其它编辑器；Codex `$opsx-e2e`、Kimi `/skill:opsx-e2e`） | 查看 `openspec/reports/` 中的报告 |
+| 8. 运行第一个 E2E | `/openspec-e2e <change-name>`（所有编辑器；Codex `$openspec-e2e`、Kimi `/skill:openspec-e2e`；1.x 用 `/opsx:e2e` / `/opsx-e2e`） | 查看 `openspec/reports/` 中的报告 |
 
 `openspec-pw init` 会为选中的编辑器安装 Playwright MCP server；`openspec-pw doctor` 负责校验。
 
@@ -384,7 +385,7 @@ audit **只报告、绝不删除**——测试退役永远是人工决策。存�
 
 如果你的应用需要登录，配置一次凭证后，所有测试自动以已登录状态运行。
 
-> **凭据自动忽略**：init 和 update 会在 `.gitignore` 尾部维护一个标记块，忽略 `tests/playwright/credentials.yaml`、其 `.bak`、`tests/playwright/test-results/` 和探索截图（`tests/playwright/screenshots/`——随开发过时，本地留档）——以及 auth storageState（`playwright/.auth/`，已登录会话 cookie）、MCP 配置（`.mcp.json`、`opencode.json(c)`、`.gemini/settings.json`、`.qwen/settings.json`、`.roo/mcp.json`、`.trae/mcp.json`、`.kimi-code/mcp.json`——用户自加的 server 常在 env/headers 里放 API key）、工具本地数据（`.codegraph/`、`.playwright-mcp/`）、第一层名如 `.claude/`、`.cursor/`、`.codebuddy/`、`.agents/skills/opsx-e2e/`、`.dsh/skills/opsx-e2e/`、`.gemini/commands/opsx/e2e.toml`、`.qwen/commands/opsx-e2e.md`、`.github/prompts/opsx-e2e.prompt.md`、`.roo/commands/opsx-e2e.md`、`.trae/commands/opsx-e2e.md`、`.kimi-code/skills/opsx-e2e/`、`openspec/`、`AGENTS.md`、`CLAUDE.md`、`CODEBUDDY.md`、`GEMINI.md`、`QWEN.md`、`.github/copilot-instructions.md`、`.roo/rules/openspec-pw.md`、`.trae/rules/project_rules.md`（生成的产物按设计留在本地）。标记块幂等、不碰你自己的规则，`remove` 时自动清理。无法写入时会降级为警告并列出未覆盖路径。注意：ignore 规则对已被 git 追踪的文件无效——若凭据曾提交过，请执行 `git rm --cached tests/playwright/credentials.yaml`。也可以改用 `E2E_USERNAME` / `E2E_PASSWORD` 环境变量。
+> **凭据自动忽略**：init 和 update 会在 `.gitignore` 尾部维护一个标记块，忽略 `tests/playwright/credentials.yaml`、其 `.bak`、`tests/playwright/test-results/` 和探索截图（`tests/playwright/screenshots/`——随开发过时，本地留档）——以及 auth storageState（`playwright/.auth/`，已登录会话 cookie）、MCP 配置（`.mcp.json`、`opencode.json(c)`、`.gemini/settings.json`、`.qwen/settings.json`、`.roo/mcp.json`、`.trae/mcp.json`、`.kimi-code/mcp.json`——用户自加的 server 常在 env/headers 里放 API key）、工具本地数据（`.codegraph/`、`.playwright-mcp/`）、第一层名如 `.claude/`、`.cursor/`、`.codebuddy/`、`.agents/skills/openspec-e2e/`、`.dsh/skills/openspec-e2e/`、`.gemini/commands/openspec-e2e.toml`、`.qwen/commands/openspec-e2e.md`、`.github/prompts/openspec-e2e.prompt.md`、`.roo/commands/openspec-e2e.md`、`.trae/commands/openspec-e2e.md`、`.kimi-code/skills/openspec-e2e/`（对应的 1.x `opsx-` 路径同样受管）、`openspec/`、`AGENTS.md`、`CLAUDE.md`、`CODEBUDDY.md`、`GEMINI.md`、`QWEN.md`、`.github/copilot-instructions.md`、`.roo/rules/openspec-pw.md`、`.trae/rules/project_rules.md`（生成的产物按设计留在本地）。标记块幂等、不碰你自己的规则，`remove` 时自动清理。无法写入时会降级为警告并列出未覆盖路径。注意：ignore 规则对已被 git 追踪的文件无效——若凭据曾提交过，请执行 `git rm --cached tests/playwright/credentials.yaml`。也可以改用 `E2E_USERNAME` / `E2E_PASSWORD` 环境变量。
 
 ```bash
 # 1.（可选）编辑测试用户（角色测试）
@@ -401,10 +402,10 @@ export E2E_PASSWORD=your-password
 npx playwright test --project=setup
 
 # 4. 后续所有测试自动复用登录状态
-/opsx:e2e my-feature
+/openspec-e2e my-feature
 ```
 
-支持 **API 登录**（推荐，基于 cookie）和 **UI 登录**（备选，用于 token/localStorage 认证）。多用户测试（管理员 vs 普通用户）在 `credentials.yaml` 中添加多个用户，运行 `/opsx:e2e`（多数其它编辑器用 `/opsx-e2e`；Codex `$opsx-e2e`、Kimi `/skill:opsx-e2e`；Gemini 与 CodeBuddy CLI 用 `/opsx:e2e`）— 它从 specs 读取角色标签、从 `credentials.yaml` 读取用户，然后为每个角色生成一份 setup。每份 setup 读取 `E2E_<ROLE>_USERNAME` 与 `E2E_<ROLE>_PASSWORD`（角色名大写；非字母数字字符变为 `_`）。
+支持 **API 登录**（推荐，基于 cookie）和 **UI 登录**（备选，用于 token/localStorage 认证）。多用户测试（管理员 vs 普通用户）在 `credentials.yaml` 中添加多个用户，运行 `/openspec-e2e`（Codex `$openspec-e2e`、Kimi `/skill:openspec-e2e`；1.x 下 Claude/CodeBuddy/Gemini 用 `/opsx:e2e`，其余用 `/opsx-e2e`）— 它从 specs 读取角色标签、从 `credentials.yaml` 读取用户，然后为每个角色生成一份 setup。每份 setup 读取 `E2E_<ROLE>_USERNAME` 与 `E2E_<ROLE>_PASSWORD`（角色名大写；非字母数字字符变为 `_`）。
 
 ## 自定义
 

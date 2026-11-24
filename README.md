@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Node >= 22](https://img.shields.io/badge/node-%3E%3D22-brightgreen.svg)](https://nodejs.org)
 
-**OpenSpec projects get AI-driven E2E verification that lives where your code does.** One `/opsx:e2e <change>` command — sixteen editors supported — plans, generates, executes, and self-heals Playwright tests against the spec, with a per-change report and no manual harness wiring.
+**OpenSpec projects get AI-driven E2E verification that lives where your code does.** One `/openspec-e2e <change>` command — sixteen editors supported — plans, generates, executes, and self-heals Playwright tests against the spec, with a per-change report and no manual harness wiring.
 
 > **Why this exists**: spec-driven development without test automation is a half-finished loop. This tool completes it — write a change spec, run one command, get tests traceable to spec anchors and a report on what passed, what healed, and what is left for human review.
 
@@ -51,51 +51,51 @@ openspec-pw init          # Install Playwright E2E integration (--tools to pick 
 
 ## Supported AI Coding Assistants
 
-Naming follows the installed OpenSpec major: the commands below are the 1.x names; on 2.x the same products are installed as `openspec-e2e` (invoked `/openspec-e2e`, or `$openspec-e2e` / `/skill:openspec-e2e` where noted).
+Naming follows the installed OpenSpec major: the commands below are the 2.x names; on 1.x the same products use `opsx-e2e` (`/opsx:e2e` in Claude Code, CodeBuddy CLI, and Gemini CLI; `/opsx-e2e` elsewhere; `$opsx-e2e` in Codex; `/skill:opsx-e2e` in Kimi Code).
 
 | Editor | Command | Playwright MCP | AGENTS.md hook |
 |---|---|---|---|
-| **Claude Code** (Anthropic) | `/opsx:e2e` | yes (project `.mcp.json`) | via `CLAUDE.md` → `@AGENTS.md` |
-| **OpenCode** (SST) | `/opsx-e2e` | yes (`opencode.jsonc`) | `instructions` field |
-| **Cline** | `/opsx-e2e` | yes (`.cline/mcp.json`) | native |
-| **Cursor** | `/opsx-e2e` | yes (`.cursor/mcp.json`) | native |
-| **Pi** (earendil-works) | `/opsx-e2e` | **no** — uses `openspec-pw explore` + `npx playwright test` | native |
-| **Oh My Pi (omp)** | `/opsx-e2e` | yes (`.omp/mcp.json`) | native |
-| **CodeBuddy CLI** (Tencent) | `/opsx:e2e` | yes (project `.mcp.json`) | via `CODEBUDDY.md` → `@AGENTS.md` |
-| **MiniMax Code** (`mcode` CLI) | `/opsx-e2e` | yes (project `.mcp.json`) | native (`AGENTS.md`) |
-| **DeepSeek Harness** (`dsh`) | `opsx-e2e` skill | **no project-level carrier** — configure Playwright MCP in your `$DSH_HOME` profile patch | native (`AGENTS.md`) |
-| **Gemini CLI** | `/opsx:e2e` | yes (`.gemini/settings.json`) | `GEMINI.md` |
-| **Qwen Code** | `/opsx-e2e` | yes (`.qwen/settings.json`) | `QWEN.md` |
-| **GitHub Copilot** (VS Code) | `/opsx-e2e` | yes (project `.mcp.json`) | `.github/copilot-instructions.md` |
-| **Roo Code** | `/opsx-e2e` | yes (`.roo/mcp.json`) | `.roo/rules/openspec-pw.md` |
-| **Trae** | `/opsx-e2e` | yes (`.trae/mcp.json`, Project MCP beta) | `.trae/rules/project_rules.md` |
-| **Codex** | `$opsx-e2e` skill | **no JSON carrier** — project MCP lives in `.codex/config.toml` (TOML, not supported) | native (`AGENTS.md`) |
-| **Kimi Code** | `/skill:opsx-e2e` skill | yes (`.kimi-code/mcp.json`) | native (`AGENTS.md`) |
+| **Claude Code** (Anthropic) | `/openspec-e2e` | yes (project `.mcp.json`) | via `CLAUDE.md` → `@AGENTS.md` |
+| **OpenCode** (SST) | `/openspec-e2e` | yes (`opencode.jsonc`) | `instructions` field |
+| **Cline** | `/openspec-e2e` | yes (`.cline/mcp.json`) | native |
+| **Cursor** | `/openspec-e2e` | yes (`.cursor/mcp.json`) | native |
+| **Pi** (earendil-works) | `/openspec-e2e` | **no** — uses `openspec-pw explore` + `npx playwright test` | native |
+| **Oh My Pi (omp)** | `/openspec-e2e` | yes (`.omp/mcp.json`) | native |
+| **CodeBuddy CLI** (Tencent) | `/openspec-e2e` | yes (project `.mcp.json`) | via `CODEBUDDY.md` → `@AGENTS.md` |
+| **MiniMax Code** (`mcode` CLI) | `/openspec-e2e` | yes (project `.mcp.json`) | native (`AGENTS.md`) |
+| **DeepSeek Harness** (`dsh`) | `openspec-e2e` skill | **no project-level carrier** — configure Playwright MCP in your `$DSH_HOME` profile patch | native (`AGENTS.md`) |
+| **Gemini CLI** | `/openspec-e2e` | yes (`.gemini/settings.json`) | `GEMINI.md` |
+| **Qwen Code** | `/openspec-e2e` | yes (`.qwen/settings.json`) | `QWEN.md` |
+| **GitHub Copilot** (VS Code) | `/openspec-e2e` | yes (project `.mcp.json`) | `.github/copilot-instructions.md` |
+| **Roo Code** | `/openspec-e2e` | yes (`.roo/mcp.json`) | `.roo/rules/openspec-pw.md` |
+| **Trae** | `/openspec-e2e` | yes (`.trae/mcp.json`, Project MCP beta) | `.trae/rules/project_rules.md` |
+| **Codex** | `$openspec-e2e` skill | **no JSON carrier** — project MCP lives in `.codex/config.toml` (TOML, not supported) | native (`AGENTS.md`) |
+| **Kimi Code** | `/skill:openspec-e2e` skill | yes (`.kimi-code/mcp.json`) | native (`AGENTS.md`) |
 
-The command body is identical across editors (`/opsx:` → `/opsx-` rewrite at install time on 1.x; `/opsx:e2e` → `/openspec-e2e` on 2.x). Per-editor install paths, detection signals, and auth/MCP nuances are detailed in the [Usage](#usage) and [Prerequisites](#prerequisites) sections below.
+The command body is identical across editors: 2.x writes `/openspec-e2e` everywhere; 1.x rewrites `/opsx:` → `/opsx-` at install time for hyphen-style editors and keeps the colon form in Claude Code, CodeBuddy CLI, and Gemini CLI. Per-editor install paths, detection signals, and auth/MCP nuances are detailed in the [Usage](#usage) and [Prerequisites](#prerequisites) sections below.
 
 ## Usage
 
-Pick the editor that matches your project and invoke its command. All sixteen editors run the same workflow; command-style editors keep the `/opsx:` form, while skill-style editors use `/opsx-e2e`. Under OpenSpec 2.x the same products are named `openspec-e2e` (`/openspec-e2e`). Only the artifact location differs.
+Pick the editor that matches your project and invoke its command. All sixteen editors run the same workflow; on OpenSpec 2.x every editor uses `/openspec-e2e` (`$openspec-e2e` in Codex, `/skill:openspec-e2e` in Kimi Code). On 1.x the same products keep the `opsx` names — `/opsx:e2e` in Claude Code, CodeBuddy CLI, and Gemini CLI, `/opsx-e2e` elsewhere, `$opsx-e2e` / `/skill:opsx-e2e` in Codex / Kimi Code — and live at the `opsx-` paths (for example `.claude/commands/opsx/e2e.md`). Only the name and artifact location differ.
 
 | Editor | Command | Install location |
 |---|---|---|
-| Claude Code | `/opsx:e2e <change-name>` | `.claude/commands/opsx/e2e.md` |
-| OpenCode | `/opsx-e2e <change-name>` | `.opencode/commands/opsx-e2e.md` |
-| Cline | `/opsx-e2e <change-name>` | `.cline/skills/opsx-e2e/SKILL.md` |
-| Cursor | `/opsx-e2e <change-name>` | `.cursor/commands/opsx-e2e.md` + `.cursor/skills/opsx-e2e/SKILL.md` |
-| Pi | `/opsx-e2e <change-name>` | `.pi/prompts/opsx-e2e.md` (filename = command) |
-| Oh My Pi | `/opsx-e2e <change-name>` | `.omp/commands/opsx-e2e.md` |
-| CodeBuddy CLI | `/opsx:e2e <change-name>` | `.codebuddy/commands/opsx/e2e.md` |
-| MiniMax Code CLI | `/opsx-e2e <change-name>` | `.agents/skills/opsx-e2e/SKILL.md` (skill) |
-| DeepSeek Harness (`dsh`) | `opsx-e2e` skill | `.dsh/skills/opsx-e2e/SKILL.md` (skill) |
-| Gemini CLI | `/opsx:e2e <change-name>` | `.gemini/commands/opsx/e2e.toml` (TOML) |
-| Qwen Code | `/opsx-e2e <change-name>` | `.qwen/commands/opsx-e2e.md` |
-| GitHub Copilot (VS Code) | `/opsx-e2e <change-name>` | `.github/prompts/opsx-e2e.prompt.md` |
-| Roo Code | `/opsx-e2e <change-name>` | `.roo/commands/opsx-e2e.md` |
-| Trae | `/opsx-e2e <change-name>` | `.trae/commands/opsx-e2e.md` |
-| Codex | `$opsx-e2e <change-name>` | `.agents/skills/opsx-e2e/SKILL.md` (skill) |
-| Kimi Code | `/skill:opsx-e2e <change-name>` | `.kimi-code/skills/opsx-e2e/SKILL.md` (skill) |
+| Claude Code | `/openspec-e2e <change-name>` | `.claude/skills/openspec-e2e/SKILL.md` + shared `.agents/skills/openspec-e2e/SKILL.md` |
+| OpenCode | `/openspec-e2e <change-name>` | `.opencode/commands/openspec-e2e.md` |
+| Cline | `/openspec-e2e <change-name>` | `.cline/skills/openspec-e2e/SKILL.md` |
+| Cursor | `/openspec-e2e <change-name>` | `.cursor/commands/openspec-e2e.md` + `.cursor/skills/openspec-e2e/SKILL.md` |
+| Pi | `/openspec-e2e <change-name>` | `.pi/prompts/openspec-e2e.md` (filename = command) |
+| Oh My Pi | `/openspec-e2e <change-name>` | `.omp/commands/openspec-e2e.md` |
+| CodeBuddy CLI | `/openspec-e2e <change-name>` | `.codebuddy/commands/openspec-e2e.md` |
+| MiniMax Code CLI | `/openspec-e2e <change-name>` | `.agents/skills/openspec-e2e/SKILL.md` (skill) |
+| DeepSeek Harness (`dsh`) | `openspec-e2e` skill | `.dsh/skills/openspec-e2e/SKILL.md` (skill) |
+| Gemini CLI | `/openspec-e2e <change-name>` | `.gemini/commands/openspec-e2e.toml` (TOML) |
+| Qwen Code | `/openspec-e2e <change-name>` | `.qwen/commands/openspec-e2e.md` |
+| GitHub Copilot (VS Code) | `/openspec-e2e <change-name>` | `.github/prompts/openspec-e2e.prompt.md` |
+| Roo Code | `/openspec-e2e <change-name>` | `.roo/commands/openspec-e2e.md` |
+| Trae | `/openspec-e2e <change-name>` | `.trae/commands/openspec-e2e.md` |
+| Codex | `$openspec-e2e <change-name>` | `.agents/skills/openspec-e2e/SKILL.md` (skill) |
+| Kimi Code | `/skill:openspec-e2e <change-name>` | `.kimi-code/skills/openspec-e2e/SKILL.md` (skill) |
 
 <details>
 <summary><strong>Per-editor nuances</strong> (expand only if init reports a divergence)</summary>
@@ -103,16 +103,16 @@ Pick the editor that matches your project and invoke its command. All sixteen ed
 - **Cursor**: skill uses `disable-model-invocation: true` (only runs when explicitly invoked). If you want Cursor support but have no `.cursor/` yet: `mkdir -p .cursor`.
 - **Pi**: no MCP client — browser exploration runs via `openspec-pw explore`, test execution via `npx playwright test` in the shell (no Healer step).
 - **Oh My Pi**: also inherits MCP servers already configured in `.claude/` / `.cursor/` / `opencode.jsonc` when those are present.
-- **CodeBuddy CLI**: colon naming (`/opsx:e2e`, same as Claude Code) — the command body keeps its `/opsx:` references.
+- **CodeBuddy CLI**: on 1.x it uses colon naming (`/opsx:e2e`, same as Claude Code); 2.x uses `/openspec-e2e` like every editor.
 - **MiniMax Code**: the workflow is delivered as a **Skill** (`SKILL.md`), because the `mcode` CLI loads no user-defined command files — skills are its only user-extensible command mechanism. It reads `AGENTS.md` natively, no wrapper. **Integration target is the `mcode` CLI; the desktop app is not covered.**
-- **DeepSeek Harness**: the workflow is delivered as a **Skill** at `.dsh/skills/opsx-e2e/SKILL.md` — dsh's rank-100 project root, which also beats the `.agents/skills` copy a MiniMax setup leaves behind. No project-level MCP carrier exists (dsh keeps MCP servers in per-user profile patch layers under `$DSH_HOME`, disabled by default), so browser exploration falls back to `openspec-pw explore` and test execution to `npx playwright test`. dsh is a developer preview; the adapter only relies on its documented skill-discovery contract.
-- **Gemini CLI**: commands are TOML (`description` + `prompt`); the command body keeps the `/opsx:` colon form. MCP entries go under `mcpServers` in `.gemini/settings.json`, and the standards block lives in `GEMINI.md`.
+- **DeepSeek Harness**: the workflow is delivered as a **Skill** at `.dsh/skills/openspec-e2e/SKILL.md` — dsh's rank-100 project root, which also beats the `.agents/skills` copy a MiniMax setup leaves behind. No project-level MCP carrier exists (dsh keeps MCP servers in per-user profile patch layers under `$DSH_HOME`, disabled by default), so browser exploration falls back to `openspec-pw explore` and test execution to `npx playwright test`. dsh is a developer preview; the adapter only relies on its documented skill-discovery contract.
+- **Gemini CLI**: commands are TOML (`description` + `prompt`); on 1.x the command body keeps the `/opsx:` colon form, while 2.x uses `/openspec-e2e`. MCP entries go under `mcpServers` in `.gemini/settings.json`, and the standards block lives in `GEMINI.md`.
 - **Qwen Code**: markdown commands with a `description` frontmatter; MCP in `.qwen/settings.json`, standards in `QWEN.md`.
 - **GitHub Copilot**: targets the VS Code surface — prompt files under `.github/prompts/`, MCP in the workspace-root `.mcp.json` (`mcpServers` map; stdio entries carry `type: "stdio"`, shared with Claude/CodeBuddy/MiniMax), standards in `.github/copilot-instructions.md`. Detection uses Copilot-specific markers only — a plain `.github/` directory in any repository does not count.
 - **Roo Code**: markdown commands with a heading + description; MCP in `.roo/mcp.json`; standards live in the tool-owned `.roo/rules/openspec-pw.md` (Roo loads every file in that directory).
 - **Trae**: markdown commands with name/description frontmatter; project MCP in `.trae/mcp.json` (Project MCP, beta — older IDE builds may ignore it); standards in `.trae/rules/project_rules.md`.
-- **Codex**: the workflow is a **Skill** at `.agents/skills/opsx-e2e/SKILL.md`, invoked as `$opsx-e2e`. That directory is shared with MiniMax Code, so deselecting Codex keeps the skill while MiniMax stays selected. Codex's project MCP lives in `.codex/config.toml` (TOML), which this tool does not merge — browser exploration falls back to `openspec-pw explore` and `npx playwright test`.
-- **Kimi Code**: the workflow is a **Skill** at `.kimi-code/skills/opsx-e2e/SKILL.md`, invoked as `/skill:opsx-e2e`. MCP in `.kimi-code/mcp.json`; project rules via `AGENTS.md` (Kimi's automatic `AGENTS.md` loading is not documented).
+- **Codex**: the workflow is a **Skill** at `.agents/skills/openspec-e2e/SKILL.md`, invoked as `$openspec-e2e` (1.x: `.agents/skills/opsx-e2e/SKILL.md`, `$opsx-e2e`). That directory is shared with MiniMax Code, so deselecting Codex keeps the skill while MiniMax stays selected. Codex's project MCP lives in `.codex/config.toml` (TOML), which this tool does not merge — browser exploration falls back to `openspec-pw explore` and `npx playwright test`.
+- **Kimi Code**: the workflow is a **Skill** at `.kimi-code/skills/openspec-e2e/SKILL.md`, invoked as `/skill:openspec-e2e` (1.x: `.kimi-code/skills/opsx-e2e/SKILL.md`, `/skill:opsx-e2e`). MCP in `.kimi-code/mcp.json`; project rules via `AGENTS.md` (Kimi's automatic `AGENTS.md` loading is not documented).
 
 </details>
 
@@ -288,7 +288,7 @@ and no `credentials.yaml` — login state belongs in `wxa.setup.ts`.
 Dependencies: `@playwright/test@^1.65`,
 `@open-wxa/wxa-runner-playwright@^0.13`,
 `@open-wxa/wxa-runner-core@^0.13`, `wxa-runner@^0.13` (the CLI the
-`/opsx:e2e` exploration step drives), and Google Chrome
+`/openspec-e2e` exploration step drives), and Google Chrome
 (`npx playwright install chrome`). For Taro the build script is `build:weapp`;
 for uni-app it is `build:mp-weixin`. In a monorepo the step runs from the
 package that owns the script (`npm --prefix <member> run <script>`). Generated
@@ -318,10 +318,10 @@ agent definition Playwright's official `playwright init-agents` (claude loop)
 generates into `.claude/agents/` that fits this tool's pipeline:
 
 - `playwright-test-planner.md` — explore the app, produce a test plan
-  (delegation target for `/opsx:e2e` Step 5, for context isolation)
+  (delegation target for `/openspec-e2e` Step 5, for context isolation)
 
 The official `generator` and `healer` agents are not vendored: generation
-runs inside the `/opsx:e2e` pipeline (recording flow), which carries the
+runs inside the `/openspec-e2e` pipeline (recording flow), which carries the
 workflow rules a delegated subagent would not inherit, and the official
 healer edits assertions/expected values to force tests green — the opposite
 of the pipeline's honest-failure exit. Projects with older installs keep
@@ -342,7 +342,7 @@ official `init-agents`) are **never overwritten or deleted**, only
 reported. `doctor` shows their presence, ownership, and — when the
 `playwright-test` MCP entry is missing — a non-blocking warning.
 
-**Division of labor vs `/opsx:e2e`**: the command template is the
+**Division of labor vs `/openspec-e2e`**: the command template is the
 OpenSpec-anchored pipeline (plan → generate → heal with the App Bug
 Registry → Phase 3 human escalation); the vendored agents are standalone
 subagents for ad-hoc calls when no OpenSpec change is in flight. Inside the
@@ -351,7 +351,7 @@ when installed (the rules travel with the delegation prompt, and you verify
 the output); the Healer step **never delegates** — the pipeline's guardrails
 replace the official healer's autonomous assertion editing. The project's
 AGENTS.md §6 binds agents from any source. Never mix official-healer output
-into a `/opsx:e2e` delivery.
+into a `/openspec-e2e` delivery.
 
 > **If you insist on running `npx playwright init-agents` yourself**: it is
 > clobber-type — it rewrites `.mcp.json` wholesale (your own MCP entries are
@@ -430,11 +430,10 @@ Audit is **report-only** — it never deletes or edits tests; retiring a test is
 <summary><strong>Workflow tree</strong> — 10 steps from change selection to per-change report</summary>
 
 ```
-/opsx:e2e <change-name>          # Claude Code / CodeBuddy CLI / Gemini CLI
-/opsx-e2e <change-name>          # OpenCode / Cline / Cursor / Pi / Oh My Pi / MiniMax Code / DeepSeek Harness / Qwen Code / Copilot / Roo Code / Trae
-$opsx-e2e <change-name>          # Codex
-/skill:opsx-e2e <change-name>    # Kimi Code
-/opsx:e2e <change-name> --auto   # headless — no human checkpoint (see Autonomous pipeline)
+/openspec-e2e <change-name>          # every editor
+$openspec-e2e <change-name>          # Codex
+/skill:openspec-e2e <change-name>    # Kimi Code
+/openspec-e2e <change-name> --auto   # headless — no human checkpoint (see Autonomous pipeline)
   │
   ├── 1. Select change → read openspec/changes/<name>/specs/
   │
@@ -464,6 +463,8 @@ $opsx-e2e <change-name>          # Codex
   └── 10. Report → openspec/reports/playwright-e2e-<name>-<timestamp>.md
 ```
 
+On OpenSpec 1.x the same workflow is invoked with `/opsx:e2e` (Claude Code / CodeBuddy CLI / Gemini CLI) or `/opsx-e2e` (most other editors); the numbered steps are unchanged.
+
 </details>
 
 ## Prerequisites
@@ -484,7 +485,7 @@ $opsx-e2e <change-name>          # Codex
    - **MiniMax Code**: merged into project-root `.mcp.json` under `mcpServers["playwright-test"] = { "command": "npx", "args": ["playwright", "run-test-mcp-server"] }` (direct file read/write — MiniMax Code auto-loads the project-root `.mcp.json`)
    - **Pi**: no MCP client, skipped — browser exploration uses `openspec-pw explore` instead
 
-> **OpenSpec 1.x and 2.x supported**: naming follows the installed major. 1.x uses `/opsx:e2e` and `opsx-e2e` artifacts; 2.x uses `/openspec-e2e` and `openspec-e2e` artifacts (skills under `.agents/skills/`). `openspec-pw doctor` accepts both; 3.x is rejected.
+> **OpenSpec 1.x and 2.x supported**: naming follows the installed major. 2.x uses `/openspec-e2e` and `openspec-e2e` artifacts (skills under `.agents/skills/`); 1.x uses `/opsx:e2e` / `/opsx-e2e` and `opsx-e2e` artifacts. `openspec-pw doctor` accepts both; 3.x is rejected.
 
 > Project-scoped servers prompt for approval the first time they are used interactively (`claude mcp reset-project-choices` resets those choices).
 
@@ -517,7 +518,7 @@ Run through these steps in order when using the E2E workflow for the first time:
 | 5. Start dev server | `npm run dev` (in a separate terminal) | Confirm port, set `BASE_URL` if non-standard |
 | 6. Validate env | `npx playwright test tests/playwright/seed.spec.ts` | Check `webServer` in `playwright.config.ts` |
 | 7. Configure auth (if needed) | See "Authentication" below | Debug with `npx playwright test --project=setup` |
-| 8. Run first E2E | `/opsx:e2e <change-name>` (Claude / CodeBuddy CLI / Gemini) or `/opsx-e2e <change-name>` (most other editors; Codex `$opsx-e2e`, Kimi `/skill:opsx-e2e`) | Check `openspec/reports/` for the report |
+| 8. Run first E2E | `/openspec-e2e <change-name>` (every editor; Codex `$openspec-e2e`, Kimi `/skill:openspec-e2e`; on 1.x `/opsx:e2e` / `/opsx-e2e`) | Check `openspec/reports/` for the report |
 
 `openspec-pw init` installs the Playwright MCP server for the selected editors; `openspec-pw doctor` verifies it.
 
@@ -579,7 +580,7 @@ If your project already has `playwright.config.ts`, `openspec-pw init` will not 
 
 If your app requires login, set up credentials once, then all tests run authenticated automatically.
 
-> **Credentials are ignored automatically**: init and update maintain a marked block at the tail of your `.gitignore` that ignores `tests/playwright/credentials.yaml`, its `.bak`, `tests/playwright/test-results/`, and exploration screenshots (`tests/playwright/screenshots/` — they age as the app evolves; stay local like app-exploration.md) — plus auth storageState (`playwright/.auth/`, logged-in session cookies), MCP config (`.mcp.json`, `opencode.json(c)`, `.gemini/settings.json`, `.qwen/settings.json`, `.roo/mcp.json`, `.trae/mcp.json`, `.kimi-code/mcp.json` — user-added servers often carry API keys in env/headers), tool-local data (`.codegraph/`, `.playwright-mcp/`), and first-tier names like `.claude/`, `.cursor/`, `.codebuddy/`, `.agents/skills/opsx-e2e/`, `.dsh/skills/opsx-e2e/`, `.gemini/commands/opsx/e2e.toml`, `.qwen/commands/opsx-e2e.md`, `.github/prompts/opsx-e2e.prompt.md`, `.roo/commands/opsx-e2e.md`, `.trae/commands/opsx-e2e.md`, `.kimi-code/skills/opsx-e2e/`, `openspec/`, `AGENTS.md`, `CLAUDE.md`, `CODEBUDDY.md`, `GEMINI.md`, `QWEN.md`, `.github/copilot-instructions.md`, `.roo/rules/openspec-pw.md`, `.trae/rules/project_rules.md` (the generated products stay local, per design). The block is idempotent, never touches your own rules, and is cleaned up by `remove`. If the block cannot be written, a warning lists the uncovered paths instead. Note: ignore rules do not apply to already-tracked files — if credentials were committed before, run `git rm --cached tests/playwright/credentials.yaml`. Alternatively keep credentials in the `E2E_USERNAME` / `E2E_PASSWORD` env vars. Interactive init can uncheck individual paths; the opt-outs are stored on the block's `# openspec-pw: skip=…` header line and honored by every later `update`.
+> **Credentials are ignored automatically**: init and update maintain a marked block at the tail of your `.gitignore` that ignores `tests/playwright/credentials.yaml`, its `.bak`, `tests/playwright/test-results/`, and exploration screenshots (`tests/playwright/screenshots/` — they age as the app evolves; stay local like app-exploration.md) — plus auth storageState (`playwright/.auth/`, logged-in session cookies), MCP config (`.mcp.json`, `opencode.json(c)`, `.gemini/settings.json`, `.qwen/settings.json`, `.roo/mcp.json`, `.trae/mcp.json`, `.kimi-code/mcp.json` — user-added servers often carry API keys in env/headers), tool-local data (`.codegraph/`, `.playwright-mcp/`), and first-tier names like `.claude/`, `.cursor/`, `.codebuddy/`, `.agents/skills/openspec-e2e/`, `.dsh/skills/openspec-e2e/`, `.gemini/commands/openspec-e2e.toml`, `.qwen/commands/openspec-e2e.md`, `.github/prompts/openspec-e2e.prompt.md`, `.roo/commands/openspec-e2e.md`, `.trae/commands/openspec-e2e.md`, `.kimi-code/skills/openspec-e2e/` (the matching 1.x `opsx-` paths are managed too), `openspec/`, `AGENTS.md`, `CLAUDE.md`, `CODEBUDDY.md`, `GEMINI.md`, `QWEN.md`, `.github/copilot-instructions.md`, `.roo/rules/openspec-pw.md`, `.trae/rules/project_rules.md` (the generated products stay local, per design). The block is idempotent, never touches your own rules, and is cleaned up by `remove`. If the block cannot be written, a warning lists the uncovered paths instead. Note: ignore rules do not apply to already-tracked files — if credentials were committed before, run `git rm --cached tests/playwright/credentials.yaml`. Alternatively keep credentials in the `E2E_USERNAME` / `E2E_PASSWORD` env vars. Interactive init can uncheck individual paths; the opt-outs are stored on the block's `# openspec-pw: skip=…` header line and honored by every later `update`.
 
 ```bash
 # 1. (Optional) Edit test users for role-based tests
@@ -596,10 +597,10 @@ export E2E_PASSWORD=your-password
 npx playwright test --project=setup
 
 # 4. All subsequent tests use the saved session
-/opsx:e2e my-feature
+/openspec-e2e my-feature
 ```
 
-Supports **API login** (preferred, cookie-based) and **UI login** (fallback, for token/localStorage auth). For multi-user tests (admin vs user), add multiple users in `credentials.yaml` and run `/opsx:e2e` (or `/opsx-e2e` in most other editors; Codex `$opsx-e2e`, Kimi `/skill:opsx-e2e`; Gemini and CodeBuddy CLI use `/opsx:e2e`) — it reads role labels from specs and users from `credentials.yaml`, then generates one setup per role. Each setup reads `E2E_<ROLE>_USERNAME` and `E2E_<ROLE>_PASSWORD` (role name uppercased; non-alphanumeric characters become `_`).
+Supports **API login** (preferred, cookie-based) and **UI login** (fallback, for token/localStorage auth). For multi-user tests (admin vs user), add multiple users in `credentials.yaml` and run `/openspec-e2e` (Codex `$openspec-e2e`, Kimi `/skill:openspec-e2e`; on 1.x `/opsx:e2e` in Claude/CodeBuddy/Gemini, `/opsx-e2e` elsewhere) — it reads role labels from specs and users from `credentials.yaml`, then generates one setup per role. Each setup reads `E2E_<ROLE>_USERNAME` and `E2E_<ROLE>_PASSWORD` (role name uppercased; non-alphanumeric characters become `_`).
 
 ## Customization
 
