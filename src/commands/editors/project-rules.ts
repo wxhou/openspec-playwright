@@ -127,7 +127,7 @@ export function installOpenSpecBlock(
     const after = existing.slice(endIdx);
     const updated =
       before +
-      "\n" +
+      (before === "" ? "" : "\n\n") +
       markerStart +
       "\n\n" +
       standardsContent.trim() +
@@ -694,10 +694,20 @@ export function removeMarkersFromFile(
   }
   updated = updated.replace(/\n{3,}/g, "\n\n").trim();
 
-  // Delete empty file rather than leaving a ghost.
-  if (updated === "") {
+  // Files refreshed by versions that wrote a single newline after the title —
+  // or whose block body came from another standards revision — miss the
+  // pristine check above; delete the title-only shell instead of leaving it.
+  const titleOnly =
+    pristineBodies !== undefined &&
+    updated === `# ${rulesFileTitle(projectRoot)}`;
+  if (updated === "" || titleOnly) {
     rmSync(dest);
-    console.log(chalk.green(`  ✓ Removed empty ${fileLabel}`));
+    if (titleOnly) pruneEmptyDirs(dirname(dest), projectRoot);
+    console.log(
+      chalk.green(
+        titleOnly ? `  ✓ Removed ${fileLabel}` : `  ✓ Removed empty ${fileLabel}`,
+      ),
+    );
     return true;
   }
 

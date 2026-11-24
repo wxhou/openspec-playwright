@@ -9,7 +9,7 @@ import {
   writeFileSync,
 } from "fs";
 import { tmpdir } from "os";
-import { join } from "path";
+import { basename, join } from "path";
 import { fileURLToPath } from "url";
 
 // Keep real shared exports, stub only detectCodeGraphStatus so the
@@ -169,6 +169,17 @@ describe("removeInProject() characterization (section output + file removal)", (
     const agentsAfter = readFileSync(join(tmp, "AGENTS.md"), "utf-8");
     expect(agentsAfter).toContain("user");
     expect(agentsAfter).not.toContain("OPENSPEC-PW:START");
+  });
+
+  it("deletes a rules copy written by an older update (single newline after the title)", async () => {
+    writeFileSync(
+      join(tmp, "AGENTS.md"),
+      `# ${basename(tmp)}\n<!-- OPENSPEC-PW:START -->\n\nold standards\n\n<!-- OPENSPEC-PW:END -->\n`,
+    );
+
+    await removeInProject(tmp);
+
+    expect(existsSync(join(tmp, "AGENTS.md"))).toBe(false);
   });
 });
 

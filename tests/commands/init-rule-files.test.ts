@@ -11,7 +11,7 @@ import {
   writeFileSync,
 } from "fs";
 import { tmpdir } from "os";
-import { join } from "path";
+import { basename, join } from "path";
 
 // The OpenSpec CLI version comes from the machine — pin it so the suite does
 // not depend on which CLI is installed.
@@ -39,6 +39,11 @@ import {
   ensureGitignoreEntries,
   readManagedSkips,
 } from "../../src/shared/gitignore-managed.js";
+
+// A chmod-based read-only fixture only blocks writes for a non-root POSIX
+// user; root containers and Windows let the write through.
+const canMakeReadOnly =
+  process.platform !== "win32" && process.getuid?.() !== 0;
 
 describe("init rule-copy opt-out (--no-rule-files)", () => {
   let tmpRoot: string;
@@ -117,7 +122,7 @@ describe("init rule-copy opt-out (--no-rule-files)", () => {
     }
   });
 
-  it.skipIf(process.platform === "win32")(
+  it.skipIf(!canMakeReadOnly)(
     "explains that an unwritable .gitignore cannot persist the opt-out",
     async () => {
       writeFileSync(join(tmpRoot, ".gitignore"), "node_modules/\n");
@@ -140,7 +145,7 @@ describe("init rule-copy opt-out (--no-rule-files)", () => {
     },
   );
 
-  it.skipIf(process.platform === "win32")(
+  it.skipIf(!canMakeReadOnly)(
     "explains that an unwritable .gitignore cannot record the restoration",
     async () => {
       await runInit(false);
@@ -163,7 +168,7 @@ describe("init rule-copy opt-out (--no-rule-files)", () => {
     },
   );
 
-  it.skipIf(process.platform === "win32")(
+  it.skipIf(!canMakeReadOnly)(
     "keeps pipeline-committed paths out of the failure advisory",
     async () => {
       writeFileSync(join(tmpRoot, ".gitignore"), "node_modules/\n");
@@ -203,6 +208,35 @@ describe("init rule-copy opt-out (--no-rule-files)", () => {
     expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(true);
 
     await runInit(false);
+    expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(false);
+  });
+
+  it("removes a copy refreshed by a second init (update branch)", async () => {
+    const runBoth = () =>
+      init(
+        { mcp: false },
+        {
+          isTTY: true,
+          prompt: async () => ["claude", "gemini"],
+          confirm: async () => true,
+        },
+      );
+    await runBoth();
+    await runBoth();
+    expect(readFileSync(join(tmpRoot, "GEMINI.md"), "utf-8")).toContain(
+      `# ${basename(tmpRoot)}\n\n<!-- OPENSPEC-PW:START -->`,
+    );
+
+    await init(
+      { mcp: false, ruleFiles: false },
+      {
+        isTTY: true,
+        prompt: async () => ["claude", "gemini"],
+        confirm: async () => true,
+      },
+    );
+
+    expect(existsSync(join(tmpRoot, "GEMINI.md"))).toBe(false);
     expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(false);
   });
 
