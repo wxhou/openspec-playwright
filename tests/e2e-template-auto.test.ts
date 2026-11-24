@@ -55,7 +55,16 @@ describe("e2e-command template: autonomous mode", () => {
     expect(template).toContain("No browser MCP");
     expect(template).toContain("npx playwright test <file>");
     expect(template).toContain("Step down only when the tool above");
-    expect(template).toContain("delete after Step 4");
+    expect(template).toContain("deleted after Step 4");
+  });
+
+  it("routes each phase to one default tool", () => {
+    expect(template).not.toContain("Steps 5–9");
+    expect(template).toContain("First execution (Step 9)");
+    expect(template).toContain("Repair loop (Step 9, Phase 2");
+    expect(template).toContain("installs without MCP (`--no-mcp`)");
+    expect(template).toContain("Do not write a `.mjs` script");
+    expect(template).toContain("only Planner also ships as an agent file");
   });
 
   it("closes every ask-user path in --auto", () => {

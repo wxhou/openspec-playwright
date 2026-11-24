@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+- **docs(e2e): 按阶段选择浏览器工具**. `/openspec-e2e` 的路由表改为每阶段一个默认工具：探索用浏览器 MCP、计划/生成用 `planner_*`/`generator_*`、首次执行与复跑用 CLI、只有失败后的修复循环用 `test_*` MCP；无 MCP 时先 chrome-devtools 再一次性脚本。补「角色是阶段，只有 Planner 有 agent 文件」与上下文预算规则，并禁止用 `.mjs` 重做 `npx playwright test` 的工作。
+  - `templates/e2e-command.md`、`tests/e2e-template-auto.test.ts`、`CHANGELOG.md`
+
 ## [0.3.124] - 2026-11-24
 - **docs(cli): 生成物与元数据同步 2.x 命名**. 生成的 seed / credentials / playwright.config 去掉写死的 1.x 命令名；包描述、站点与 llms 摘要统一为 2.x 与 16 家编辑器，README 命令示例以 2.x 为主。
   - `templates/{seed.spec.ts,credentials.yaml,playwright.config.ts}`、`package.json`、`docs/{llms.txt,script.js}`、`README.md`、`tests/init.test.ts`、`CHANGELOG.md`
