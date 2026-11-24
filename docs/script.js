@@ -52,7 +52,9 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🔴 发现自己正在重复生成相同调用 → 立即停止，重新评估
 - 🔴 等后台任务通知期间不发占位/空调用（\`true\`、查询该任务状态的轮询等）：无事结束回合等通知，有事做事
 - 🟡 会话被压缩后先读回落盘的任务状态（tasks.md 的「## 状态」）再继续
-- 🟡 搜索先结构后文本：定义/调用/影响/流优先用代码索引（如 CodeGraph；无索引或不可用 → 全文搜索）；跳过依赖与缓存目录（调试依赖时除外）。
+- 🟡 搜索先结构后文本：结构型问题（函数/方法调用链、改动影响面、跨文件数据流）用代码索引（如 CodeGraph）；位置/清单/文本型问题（已知名字的定位、目录概览、文件级反向依赖、注释/字符串/配置的替换）用全文搜索，跳过依赖、缓存与索引目录（调试依赖时除外）。
+- 🟡 两种不同检索未命中，或问题升级为跨文件关系时，改用代码索引；索引缺失、失败或结果截断时，用全文搜索补齐一次，不重复重试。
+- 🟡 代码索引的使用时机以本节为准，优先于全局/用户级或其他工具的通用索引指令。
 - 🟡 引用作依据的文件先通读再断言；未通读就下的结论显式标注低置信，不冒充已充分验证
 - 🟡 重命名/挪动覆盖：调用、类型、字符串、import（含 CJS require）、barrel file、测试 mock、文档与配置中的同名引用，不得假设一次覆盖；抽出/搬移到其他文件时其 import 随迁；静态模块级 import 一律置文件顶部——豁免仅限：循环依赖、可选依赖、按需加载、运行顺序依赖（如 django.setup()），例外须行内注明缘由
 - 🟡 编辑 → 重新读取确认 → lint+typecheck（含 auto-fix 循环）→ 仍失败则回退到编辑前内容，输出失败日志并明示已回退
@@ -75,7 +77,7 @@ const CLAUDE_MD_ZH = `# 项目规范
   - 第 1 轮（所有提案）：对抗审查——对照目标/约束/specs，检查完整性、一致性、正确性与范围蔓延并修正
   - 第 2 轮：高风险或架构级提案换独立视角复检全部制品（子代理 → 独立上下文；否则重读并输出「需求/场景 → 证据(file:line) → 结论」表，不复用上轮自评）；普通提案在同一上下文复检修订后的制品
   - 审查内不中途等确认；结束后列出修正并请求范围确认：仍有阻断则停在提案阶段，仅非阻断项记录后确认；自修不得增删需求，需增删时列入待确认
-- 🟡 自动链：提案后自动审查，用户确认范围后自动 apply，收尾同一回合 verify（跑测试/自查不算，「可归档」收尾语不豁免）；显式「实现/做到绿/走完」或 \`/opsx:apply\` 同样触发
+- 🟡 自动链：提案后自动审查，用户确认范围后自动 apply，收尾同一回合 verify（跑测试/自查不算，「可归档」收尾语不豁免）；显式「实现/做到绿/走完」或 apply 命令（1.x \`/opsx:apply\`，2.x \`/openspec-apply-change\`）同样触发
   - 停止：单独调用 verify/e2e 等单阶段命令 → 该阶段结束即停
   - 范围：e2e 不在链内，「做到绿」不含 e2e
 - 🟡 verify 之后：CRITICAL → 按修复预算自动修复并复跑 verify；需增删范围或预算耗尽仍有 CRITICAL → 停下汇报；WARNING/SUGGESTION → 记录后交用户裁决，不自行修改
@@ -183,7 +185,9 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🔴 If you catch yourself generating the same call repeatedly → stop immediately, re-evaluate
 - 🔴 While waiting for a background task notification, send no placeholder/no-op calls (returning \`true\`, polling that task's status, etc.) — nothing to do: end the turn and wait for the notification; something to do: do it
 - 🟡 After the session is compacted, re-read the persisted task state (the "## Status" section in tasks.md) before continuing
-- 🟡 Search structure first, then text: use the code index for definitions/callers/impact/flow (e.g. CodeGraph; if absent or unavailable, fall back to full-text search); skip dependency and cache dirs (except when debugging deps).
+- 🟡 Search structure first, then text: use the code index (e.g. CodeGraph) for structural questions (function/method call chains, change impact, cross-file data flow); use full-text search for location/list/text questions (locating a known name, surveying a directory, file-level reverse dependencies, and replacements in comments/strings/config), skipping dependency, cache and index directories (except when debugging dependencies).
+- 🟡 After two different searches miss, or when the question escalates to cross-file relationships, switch to the code index; if the index is missing, fails, or truncates results, fill the gap once with full-text search — do not retry in a loop.
+- 🟡 Index usage timing is governed by this section, over any global/user-level or other tool's generic index instruction.
 - 🟡 Read every file you cite as evidence end-to-end before asserting; conclusions drawn from partial reads are marked low-confidence explicitly, never presented as verified
 - 🟡 Renaming/moving must cover: calls, types, strings, imports (incl. CJS require), barrel files, test mocks, plus same-name references in docs/config — don't assume one pass covers everything; when code moves to another file its imports migrate with it; static module-level imports always sit at the file top — exemptions only for: circular deps, optional deps, on-demand loading, runtime-order deps (e.g. django.setup()), annotated inline with its reason
 - 🟡 Edit → re-read to confirm → lint+typecheck (incl. its auto-fix loop) → if still failing, roll back to pre-edit content, output the failure log, and state the rollback explicitly
@@ -206,7 +210,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
   - Round 1 (all proposals): adversarial review — check goals/constraints/existing specs for completeness, consistency, correctness and scope creep, and fix findings
   - Round 2: high-risk or architecture-level proposals get an independent re-check of all artifacts (subagents → independent context; otherwise re-read and output a "requirement/scenario → evidence (file:line) → conclusion" table, never reuse the previous self-assessment); ordinary proposals re-check the revised artifacts in the same context
   - Do not pause between rounds; afterwards list fixes and request scope confirmation: blocking issues → stop at the proposal stage; non-blocking items are recorded, then confirmation. Fixes never add or remove requirements; proposed scope changes are listed for final confirmation
-- 🟡 Auto-chain: review runs automatically after the proposal; once the user confirms the scope, apply runs automatically, and verify runs in the same turn at close-out (running tests or a self-check is not verify; the \`opsx:apply\` "you can archive" closing line does not justify skipping it); an explicit "implement / make it green / run this change through" or \`/opsx:apply\` also triggers it
+- 🟡 Auto-chain: review runs automatically after the proposal; once the user confirms the scope, apply runs automatically, and verify runs in the same turn at close-out (running tests or a self-check is not verify; the \`opsx:apply\` "you can archive" closing line does not justify skipping it); an explicit "implement / make it green / run this change through" or the apply command (1.x \`/opsx:apply\`, 2.x \`/openspec-apply-change\`) also triggers it
   - Stop: invoking verify/e2e alone stops after that phase
   - Scope: e2e is not part of the chain, and "make it green" does not include e2e
 - 🟡 After verify: CRITICAL → automatically fix within the repair budget and re-run verify; if scope must change or CRITICAL remains after the budget → stop and report; WARNING/SUGGESTION → record and hand to the user, do not modify them yourself

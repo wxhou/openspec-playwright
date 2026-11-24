@@ -86,8 +86,11 @@ export {
 export {
   MANAGED_GITIGNORE_PATHS,
   LOCKED_GITIGNORE_PATHS,
+  RULE_COPY_GITIGNORE_PATHS,
+  managedPathFor,
   skippableManagedPaths,
   readManagedSkips,
+  readManagedSkipsSafe,
   GITIGNORE_BLOCK_BEGIN,
   GITIGNORE_BLOCK_END,
   findUncoveredManagedPaths,

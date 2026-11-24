@@ -4,19 +4,12 @@
  * (Cline / Cursor / Oh My Pi).
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
-import { dirname, join } from "path";
-import type { ArtifactSpec, CommandMeta } from "./types.js";
-
-/**
- * The claude-only skill directory retired installs (pre-0.3.74) left
- * behind. Declared by the claude adapter and reused by remove's fixed
- * historical cleanup.
- */
-export const CLAUDE_LEGACY_SKILL_REL = join(
-  ".claude",
-  "skills",
-  "openspec-e2e",
-);
+import { dirname } from "path";
+import type {
+  ArtifactSpec,
+  ArtifactStyle,
+  CommandMeta,
+} from "./types.js";
 
 // ─── YAML helpers (shared by Claude frontmatter and elsewhere) ───────────
 
@@ -95,6 +88,20 @@ export function transformToHyphenCommands(text: string): string {
   return text.replace(/\/opsx:/g, "/opsx-");
 }
 
+/**
+ * The 2.x artifact family already uses hyphens, so its slash command is
+ * `/openspec-e2e` — rewriting `/opsx:` the 1.x way would produce the wrong
+ * `/opsx-e2e` name.
+ */
+export function transformToOpenSpecCommands(text: string): string {
+  return text.replace(/\/opsx:e2e/g, "/openspec-e2e");
+}
+
+/** Frontmatter `name:` for an artifact in the given style. */
+export function artifactName(id: string, style: ArtifactStyle): string {
+  return style === "openspec" ? `openspec-${id}` : `opsx-${id}`;
+}
+
 // ─── Command artifact formatting ─────────────────────────────────────────
 
 /**
@@ -107,11 +114,17 @@ export function transformToHyphenCommands(text: string): string {
  * Frontmatter fields always emit in the order name → description →
  * argument-hint → disable-model-invocation so artifacts stay byte-stable.
  */
-export function formatArtifact(spec: ArtifactSpec, meta: CommandMeta): string {
+export function formatArtifact(
+  spec: ArtifactSpec,
+  meta: CommandMeta,
+  style: ArtifactStyle = "opsx",
+): string {
   const body =
-    spec.naming === "hyphen-prefix"
-      ? transformToHyphenCommands(meta.body)
-      : meta.body;
+    style === "openspec"
+      ? transformToOpenSpecCommands(meta.body)
+      : spec.naming === "hyphen-prefix"
+        ? transformToHyphenCommands(meta.body)
+        : meta.body;
 
   // TOML artifacts (Gemini CLI) carry no frontmatter/header — the whole file
   // is the description/prompt pair.
@@ -126,7 +139,7 @@ export function formatArtifact(spec: ArtifactSpec, meta: CommandMeta): string {
   if (spec.frontmatter) {
     const lines: string[] = [];
     if (spec.frontmatter.name) {
-      lines.push(`name: ${escapeYamlValue(`opsx-${meta.id}`)}`);
+      lines.push(`name: ${escapeYamlValue(artifactName(meta.id, style))}`);
     }
     if (spec.frontmatter.description) {
       lines.push(`description: ${escapeYamlValue(meta.description)}`);

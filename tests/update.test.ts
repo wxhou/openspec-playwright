@@ -11,6 +11,13 @@ import { join } from "path";
 import { tmpdir } from "os";
 import { fileURLToPath } from "url";
 
+// The CLI probe is overridden per test; the real classification is the default.
+vi.mock("../src/shared/openspec-version.js", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../src/shared/openspec-version.js")>();
+  return { ...actual, openSpecCliStatus: vi.fn(actual.openSpecCliStatus) };
+});
+
 // Complete §0–§7 body: syncEmployeeStandards rejects an English SSOT that is
 // missing any of those sections, so fixtures must look like the real file.
 const EN_STANDARDS_STUB = ["0", "1", "2", "3", "4", "5", "6", "7"]
@@ -490,10 +497,11 @@ describe("update.ts: drift coverage regression guards", () => {
     // 标记即领土: no-marker AGENTS.md skips the write-back (no detected gate)
     expect(src).toMatch(/agentsInTerritory/);
     expect(src).toMatch(/already in sync/);
-    // CLAUDE.md wrapper is gated on claude command-artifact authorization
-    expect(src).toMatch(
-      /hasCommandArtifacts\(projectRoot, claudeAdapter\)/,
-    );
+    // CLAUDE.md wrapper is gated on claude command-artifact authorization,
+    // resolved in the current artifact style (1.x paths after a 2.x upgrade
+    // are gone by the time the gate runs).
+    expect(src).toMatch(/const claude = getAdapter\("claude"\) \?\? claudeAdapter/);
+    expect(src).toMatch(/hasCommandArtifacts\(projectRoot, claude\)/);
   });
 
   it("no-marker AGENTS.md is skipped, not appended (标记即领土)", () => {
@@ -655,6 +663,24 @@ describe("update.ts: minimal-mode first-class sync", () => {
     expect(refreshed).toContain("<!-- OPENSPEC-PW:START -->");
     expect(refreshed).toContain(claudeWrapperStandardsContent().trim());
     expect(refreshed).not.toContain("outdated");
+  });
+
+  it("syncEmployeeStandards: an unrecorded missing wrapper is still created", async () => {
+    const { syncEmployeeStandards } = await import("../../src/commands/update.js");
+    syncEmployeeStandards(bundleDir, tmpRoot, true, true, false, "zh");
+    expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(true);
+  });
+
+  it("syncEmployeeStandards: a recorded rule-copy opt-out is not recreated", async () => {
+    const { syncEmployeeStandards } = await import("../../src/commands/update.js");
+    const { ensureGitignoreEntries } = await import("../../src/shared/gitignore-managed.js");
+    writeFileSync(
+      join(tmpRoot, "AGENTS.md"),
+      "<!-- OPENSPEC-PW:START -->\nold\n<!-- OPENSPEC-PW:END -->\n",
+    );
+    ensureGitignoreEntries(tmpRoot, { skip: ["CLAUDE.md"] });
+    syncEmployeeStandards(bundleDir, tmpRoot, true, true, false, "zh");
+    expect(existsSync(join(tmpRoot, "CLAUDE.md"))).toBe(false);
   });
 
   it("syncProjectTemplates: hints on tests/README drift without overwriting (user README safe)", async () => {
@@ -838,5 +864,118 @@ describe("syncCommandArtifacts", () => {
     expect(existsSync(join(projectDir, getMinimaxSkillPath("e2e")))).toBe(
       false,
     );
+  });
+});
+
+describe("update: OpenSpec CLI version", () => {
+  it("does not warn about a healthy 2.x CLI", async () => {
+    const { openSpecCliStatus } = await import(
+      "../src/shared/openspec-version.js"
+    );
+    vi.mocked(openSpecCliStatus).mockReturnValue({ ok: true, major: 2 });
+    const projectDir = mkdtempSync(join(tmpdir(), "ospw-update-cli2-"));
+    mkdirSync(join(projectDir, "openspec"), { recursive: true });
+    const cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(projectDir);
+    const logs: string[] = [];
+    const logSpy = vi.spyOn(console, "log").mockImplementation((...args) => {
+      logs.push(args.join(" "));
+    });
+    try {
+      const { update } = await import("../../src/commands/update.js");
+      await update({ cli: false, skill: false, mcp: false });
+    } finally {
+      logSpy.mockRestore();
+      cwdSpy.mockRestore();
+      vi.mocked(openSpecCliStatus).mockReset();
+      rmSync(projectDir, { recursive: true, force: true });
+    }
+    expect(logs.join("\n")).not.toContain("⚠ OpenSpec");
+  });
+});
+
+// ─── 1.x → 2.x migration during update ────────────────────────────────────
+
+describe("update: 1.x → 2.x e2e migration", () => {
+  it("replaces a pristine 1.x command with the 2.x artifact", async () => {
+    const { openSpecCliStatus } = await import(
+      "../src/shared/openspec-version.js"
+    );
+    vi.mocked(openSpecCliStatus).mockReturnValue({ ok: true, major: 2 });
+    const { syncE2eCommands } = await import("../../src/commands/update.js");
+    const { buildCommandMeta, getAdapter, installCommand } = await import(
+      "../../src/commands/editors.js"
+    );
+    const projectDir = mkdtempSync(join(tmpdir(), "ospw-update-migrate-"));
+    const body = readFileSync(
+      join(
+        fileURLToPath(import.meta.url),
+        "..",
+        "..",
+        "templates",
+        "e2e-command.md",
+      ),
+      "utf-8",
+    );
+    const meta = buildCommandMeta(body);
+    const old = getAdapter("claude", "opsx")!;
+    const next = getAdapter("claude", "openspec")!;
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      installCommand(old, meta, projectDir);
+      const installed = syncE2eCommands(projectDir, body);
+      expect(installed).toBe(true);
+      expect(existsSync(join(projectDir, old.commandFilePath("e2e")))).toBe(
+        false,
+      );
+      expect(
+        readFileSync(join(projectDir, next.commandFilePath("e2e")), "utf-8"),
+      ).toContain("/openspec-e2e");
+    } finally {
+      logSpy.mockRestore();
+      vi.mocked(openSpecCliStatus).mockReset();
+      rmSync(projectDir, { recursive: true, force: true });
+    }
+  });
+
+  it("migrates the shared .agents skill, which never authorizes a write", async () => {
+    const { openSpecCliStatus } = await import(
+      "../src/shared/openspec-version.js"
+    );
+    vi.mocked(openSpecCliStatus).mockReturnValue({ ok: true, major: 2 });
+    const { syncE2eCommands } = await import("../../src/commands/update.js");
+    const { buildCommandMeta, getAdapter, installCommand } = await import(
+      "../../src/commands/editors.js"
+    );
+    const projectDir = mkdtempSync(join(tmpdir(), "ospw-update-shared-"));
+    const body = readFileSync(
+      join(
+        fileURLToPath(import.meta.url),
+        "..",
+        "..",
+        "templates",
+        "e2e-command.md",
+      ),
+      "utf-8",
+    );
+    const meta = buildCommandMeta(body);
+    const oldShared = join(projectDir, ".agents", "skills", "opsx-e2e", "SKILL.md");
+    const newShared = join(
+      projectDir,
+      ".agents",
+      "skills",
+      "openspec-e2e",
+      "SKILL.md",
+    );
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      installCommand(getAdapter("codex", "opsx")!, meta, projectDir);
+      expect(syncE2eCommands(projectDir, body)).toBe(true);
+      expect(existsSync(oldShared)).toBe(false);
+      expect(readFileSync(newShared, "utf-8")).toContain("/openspec-e2e");
+    } finally {
+      logSpy.mockRestore();
+      vi.mocked(openSpecCliStatus).mockReset();
+      rmSync(projectDir, { recursive: true, force: true });
+    }
   });
 });

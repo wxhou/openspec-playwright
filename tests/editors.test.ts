@@ -1158,14 +1158,14 @@ describe("installProjectRules", () => {
     mkdirSync(join(tmpRoot, ".claude"));
     const detected = detectAdapters(tmpRoot, join(tmpRoot, "fake-home"));
     installProjectRules(tmpRoot, STANDARDS, detected);
-    const claudeAdapter = getAdapter("claude")!;
+    const claudeAdapter = getAdapter("claude", "opsx")!;
     const block = readOpenSpecBlock(tmpRoot, claudeAdapter);
     expect(block).not.toBeNull();
     expect(block).toContain("@AGENTS.md");
   });
 
   it("readOpenSpecBlock returns null when the file has no markers", () => {
-    const opencodeAdapter = getAdapter("opencode")!;
+    const opencodeAdapter = getAdapter("opencode", "opsx")!;
     writeFileSync(join(tmpRoot, "AGENTS.md"), "# user file, no markers\n");
     expect(readOpenSpecBlock(tmpRoot, opencodeAdapter)).toBeNull();
   });
@@ -1174,13 +1174,13 @@ describe("installProjectRules", () => {
     mkdirSync(join(tmpRoot, ".claude"));
     const detected = detectAdapters(tmpRoot, join(tmpRoot, "fake-home"));
     installProjectRules(tmpRoot, STANDARDS, detected);
-    const claudeAdapter = getAdapter("claude")!;
+    const claudeAdapter = getAdapter("claude", "opsx")!;
     expect(blockMatchesExpected(tmpRoot, claudeAdapter, claudeWrapperStandardsContent())).toBe(true);
     expect(blockMatchesExpected(tmpRoot, claudeAdapter, "totally different")).toBe(false);
   });
 
   it("blockMatchesExpected returns false when the rules file is missing", () => {
-    const opencodeAdapter = getAdapter("opencode")!;
+    const opencodeAdapter = getAdapter("opencode", "opsx")!;
     expect(blockMatchesExpected(tmpRoot, opencodeAdapter, "any")).toBe(false);
   });
 });

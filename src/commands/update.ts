@@ -15,7 +15,9 @@ import chalk from "chalk";
 import * as tar from "tar";
 import {
   buildCommandMeta,
+  migrateOldStyleArtifacts,
   getAllAdapters,
+  getAdapter,
   hasCommandArtifacts,
   installCommand,
   installOpenSpecBlock,
@@ -43,6 +45,8 @@ import {
   managedBlockAdvisoryHint,
   ensureGitignoreEntries,
   readManagedSkips,
+  readManagedSkipsSafe,
+  managedPathFor,
   installOrRefreshChecklist,
   LINT_GUIDELINES_RELPATH,
 } from "../shared/index.js";
@@ -53,6 +57,20 @@ import { readTextFileCapped } from "../shared/file-read.js";
 import { pipelineGitignoreOmit } from "./pipeline.js";
 import { fullRulesFile, wrapperHasMarkers, hasRuleFileMarkers } from "./editors/project-rules.js";
 import type { EditorAdapter } from "./editors.js";
+
+/** Any openspec-pw command artifact in either naming family exists. */
+function hasAnyCommandArtifacts(projectRoot: string): boolean {
+  for (const style of ["opsx", "openspec"] as const) {
+    if (
+      getAllAdapters(style).some((adapter) =>
+        hasCommandArtifacts(projectRoot, adapter),
+      )
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
 
 /** Editors whose project rules file is a thin wrapper (not AGENTS.md), with their installers. */
 const WRAPPER_EDITORS: Array<[EditorAdapter, (root: string) => void]> = [
@@ -95,11 +113,13 @@ export async function update(options: UpdateOptions) {
   console.log(chalk.blue("\n🔄 Updating OpenSpec + Playwright E2E\n"));
 
   const projectRoot = process.cwd();
+  // Artifact paths follow the installed CLI major; wrapper files do not, so
+  // the same adapter id serves both gates.
+  const claude = getAdapter("claude") ?? claudeAdapter;
+  const codebuddy = getAdapter("codebuddy") ?? codebuddyAdapter;
 
   // Check if init has been run
-  const hasCommand = getAllAdapters().some((adapter) =>
-    hasCommandArtifacts(projectRoot, adapter),
-  );
+  const hasCommand = hasAnyCommandArtifacts(projectRoot);
   const hasOpenSpec = existsSync(join(projectRoot, "openspec"));
   if (!hasCommand && !hasOpenSpec) {
     console.log(chalk.yellow("  ⚠ OpenSpec + Playwright E2E not initialized."));
@@ -109,8 +129,8 @@ export async function update(options: UpdateOptions) {
     return;
   }
 
-  // A 2.x OpenSpec CLI drops the `/opsx:*` command files this tool's workflow
-  // relies on. Updating still works, so warn instead of blocking.
+  // 1.x and 2.x are both supported; an unsupported or unreadable CLI is
+  // reported but does not block the update itself.
   const openspec = openSpecCliStatus();
   if (!openspec.ok && openspec.kind !== "missing") {
     console.log(chalk.yellow(`  ⚠ ${openspec.message}`));
@@ -244,19 +264,10 @@ export async function update(options: UpdateOptions) {
       // Write authorization = tool-owned artifacts exist ("existing artifacts
       // are the manifest") — never detect(): a global config dir or a
       // hand-created marker directory does not authorize writes. update
-      // maintains territory; it never expands it.
-      const authorized = getAllAdapters().filter((a) =>
-        hasCommandArtifacts(projectRoot, a),
-      );
-      if (authorized.length === 0) {
-        console.log(
-          chalk.gray(
-            '  - No openspec-pw artifacts in this project — run "openspec-pw init" to set up editor integrations',
-          ),
-        );
-      } else if (body) {
-        syncCommandArtifacts(projectRoot, body);
-      }
+      // maintains territory; it never expands it. Both naming families
+      // authorize: a project still on 1.x artifacts must be migratable after
+      // the CLI upgrade.
+      const installed = syncE2eCommands(projectRoot, body);
 
       // Sync project templates (BasePage.ts, seed.spec.ts)
       syncProjectTemplates(tmpDir, projectRoot);
@@ -267,7 +278,7 @@ export async function update(options: UpdateOptions) {
       syncVendoredAgents(
         join(tmpDir, "templates", "agents"),
         projectRoot,
-        hasCommandArtifacts(projectRoot, claudeAdapter),
+        hasCommandArtifacts(projectRoot, claude),
       );
 
       // Standards sync (drift-aware). Under --no-skill this phase still runs
@@ -278,9 +289,9 @@ export async function update(options: UpdateOptions) {
       syncEmployeeStandards(
         tmpDir,
         projectRoot,
-        hasCommandArtifacts(projectRoot, claudeAdapter) || wrapperHasMarkers(claudeAdapter, projectRoot),
-        authorized.length > 0 || hasRuleFileMarkers(projectRoot),
-        hasCommandArtifacts(projectRoot, codebuddyAdapter) || wrapperHasMarkers(codebuddyAdapter, projectRoot),
+        hasCommandArtifacts(projectRoot, claude) || wrapperHasMarkers(claude, projectRoot),
+        installed || hasRuleFileMarkers(projectRoot),
+        hasCommandArtifacts(projectRoot, codebuddy) || wrapperHasMarkers(codebuddy, projectRoot),
         options.lang,
       );
 
@@ -327,9 +338,9 @@ export async function update(options: UpdateOptions) {
       syncEmployeeStandards(
         tmpDir,
         projectRoot,
-        hasCommandArtifacts(projectRoot, claudeAdapter) || wrapperHasMarkers(claudeAdapter, projectRoot),
-        getAllAdapters().some((a) => hasCommandArtifacts(projectRoot, a)) || hasRuleFileMarkers(projectRoot),
-        hasCommandArtifacts(projectRoot, codebuddyAdapter) || wrapperHasMarkers(codebuddyAdapter, projectRoot),
+        hasCommandArtifacts(projectRoot, claude) || wrapperHasMarkers(claude, projectRoot),
+        hasAnyCommandArtifacts(projectRoot) || hasRuleFileMarkers(projectRoot),
+        hasCommandArtifacts(projectRoot, codebuddy) || wrapperHasMarkers(codebuddy, projectRoot),
         options.lang,
       );
       rmSync(tmpDir, { recursive: true, force: true });
@@ -590,14 +601,60 @@ async function fetchLatestBundle(): Promise<string> {
  * Extracted from `update()` so the per-adapter refresh is testable without a
  * network round-trip to the npm registry.
  */
-export function syncCommandArtifacts(projectRoot: string, body: string): void {
+/**
+ * Refresh the e2e command for every editor that already carries one. Migration
+ * deletes the 1.x file before the 2.x write, so migrated editors stay
+ * authorized while no artifact exists at that path. Returns whether the
+ * project carried any e2e artifact.
+ */
+export function syncE2eCommands(projectRoot: string, body: string): boolean {
+  const ids = new Set<string>();
+  for (const style of ["opsx", "openspec"] as const) {
+    for (const adapter of getAllAdapters(style)) {
+      if (hasCommandArtifacts(projectRoot, adapter)) ids.add(adapter.id);
+    }
+  }
+  if (!body) return ids.size > 0;
+  const meta = buildCommandMeta(body);
+  // Migration is not gated on authorization: it only removes files whose
+  // content is this tool's 1.x render. The shared `.agents/skills` path never
+  // authorizes a write, so gating here would strand its 1.x copy.
+  const migrated = new Set<string>();
+  for (const adapter of getAllAdapters()) {
+    if (migrateOldStyleArtifacts(adapter, projectRoot, meta).length > 0) {
+      migrated.add(adapter.id);
+    }
+  }
+  if (ids.size === 0 && migrated.size === 0) {
+    console.log(
+      chalk.gray(
+        '  - No openspec-pw artifacts in this project — run "openspec-pw init" to set up editor integrations',
+      ),
+    );
+    return false;
+  }
+  syncCommandArtifacts(projectRoot, body, migrated);
+  return true;
+}
+
+export function syncCommandArtifacts(
+  projectRoot: string,
+  body: string,
+  migratedIds?: ReadonlySet<string>,
+): void {
   const meta = buildCommandMeta(body);
   for (const adapter of getAllAdapters()) {
     const relPath = adapter.commandFilePath(meta.id);
     const absPath = join(projectRoot, relPath);
     // Shared artifacts (Codex + MiniMax) never authorize writes, but an
     // existing file is still this tool's artifact — update maintains it.
-    if (!hasCommandArtifacts(projectRoot, adapter) && !existsSync(absPath)) {
+    // A just-migrated editor has neither yet: its 1.x file was removed in
+    // this run and the 2.x one is what we are about to write.
+    if (
+      !hasCommandArtifacts(projectRoot, adapter) &&
+      !existsSync(absPath) &&
+      !migratedIds?.has(adapter.id)
+    ) {
       console.log(
         chalk.gray(
           `  - ${adapter.label}: not configured in this project (run "openspec-pw init --tools ${adapter.id}" to add)`,
@@ -782,6 +839,10 @@ export function syncEmployeeStandards(
     }
   }
 
+  // Rule-copy opt-out (--no-rule-files) lives on the managed block's skip
+  // line; those files are neither recreated nor refreshed below.
+  const ruleSkips = new Set(readManagedSkipsSafe(projectRoot));
+
   // Wrapper files (CLAUDE.md / CODEBUDDY.md) are only maintained when their
   // editor is authorized. A bare `@AGENTS.md` import without markers is left
   // untouched (added by the openspec CLI or the user) — not stale.
@@ -791,6 +852,12 @@ export function syncEmployeeStandards(
     if (!authorized) continue;
     const wrapperPath = adapter.projectRulesPath(projectRoot);
     const wrapperLabel = basename(wrapperPath);
+    if (ruleSkips.has(managedPathFor(projectRoot, wrapperPath))) {
+      console.log(
+        chalk.gray(`  - ${wrapperLabel}: rules copy disabled (--no-rule-files)`),
+      );
+      continue;
+    }
     // A symlinked wrapper (→ AGENTS.md, the official reuse pattern)
     // is what the editor reads; the AGENTS.md check above already
     // tracks its content drift, and rewriting a wrapper would overwrite
@@ -822,7 +889,12 @@ export function syncEmployeeStandards(
   // Roo/Trae rule files) carry our block directly. Refresh them when the
   // block is present and differs from the bundled standards; a file without
   // our markers belongs to the user and is left alone.
-  const staleFullRules = staleFullRulesAdapters(projectRoot, standards);
+  const staleFullRules = staleFullRulesAdapters(projectRoot, standards).filter(
+    (adapter) => {
+      const full = fullRulesFile(adapter, projectRoot);
+      return !(full && ruleSkips.has(managedPathFor(projectRoot, full)));
+    },
+  );
 
   if (
     agentsStale ||

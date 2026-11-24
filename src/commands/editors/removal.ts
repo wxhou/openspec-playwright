@@ -29,7 +29,6 @@ import {
   wrapperRulesFile,
 } from "./project-rules.js";
 import { enumerateVendoredAgents, installedAgentsSnapshotDir } from "./agents.js";
-import { CLAUDE_LEGACY_SKILL_REL } from "./shared.js";
 
 // ─── MCP server names owned by openspec-pw ───────────────────────────────
 
@@ -42,16 +41,11 @@ import { CLAUDE_LEGACY_SKILL_REL } from "./shared.js";
  */
 export const OPENSPEC_PW_MCP_SERVERS = ["playwright-test", "playwright"] as const;
 
-/** Re-exported for the remove command's fixed historical cleanup and the facade. */
-export { CLAUDE_LEGACY_SKILL_REL };
-
 // ─── Dry enumeration (read-only, never prints) ───────────────────────────
 
 export interface AdapterArtifactInventory {
   /** Existing openspec-pw command/skill artifact paths (project-relative). */
   commandPaths: string[];
-  /** Declared legacy artifact directories that exist (project-relative). */
-  legacyArtifacts: string[];
   /** openspec-pw MCP server entries present in this editor's config. */
   mcpServers: string[];
   /**
@@ -164,12 +158,6 @@ export function enumerateAdapterArtifacts(
   const commandPaths = existingCommandPaths.filter(
     (rel) => !retainedCommands.includes(rel),
   );
-  const legacyArtifacts = (adapter.declaration?.legacyArtifacts ?? []).filter(
-    (rel) => {
-      const abs = join(projectRoot, rel);
-      return existsSync(abs) && isPathInsideProjectRoot(projectRoot, abs);
-    },
-  );
   const mcpConfigPath = adapter.mcpConfigPath?.(projectRoot);
   const mcpConfigSafe =
     !mcpConfigPath || isPathInsideProjectRoot(projectRoot, mcpConfigPath);
@@ -202,7 +190,6 @@ export function enumerateAdapterArtifacts(
   return {
     commandPaths,
     retainedCommandPaths: retainedCommands,
-    legacyArtifacts,
     mcpServers,
     retainedMcpServers,
     hasWrapper,
@@ -219,7 +206,6 @@ export function enumerateAdapterArtifacts(
 export function isInventoryEmpty(inv: AdapterArtifactInventory): boolean {
   return (
     inv.commandPaths.length === 0 &&
-    inv.legacyArtifacts.length === 0 &&
     inv.mcpServers.length === 0 &&
     !inv.hasWrapper &&
     !inv.hasFullRules
@@ -270,15 +256,14 @@ export function removeAdapterCommandArtifacts(
   projectRoot: string,
   onRemoved?: (relPath: string) => void,
   retainedPaths?: ReadonlySet<string>,
+  retainedReason = "a selected editor shares this artifact",
 ): string[] {
   const meta = buildCommandMeta("");
   const removed: string[] = [];
   for (const relPath of listCommandArtifactPaths(adapter, meta)) {
     if (retainedPaths?.has(relPath)) {
       console.log(
-        chalk.gray(
-          `  - ${adapter.label}: ${relPath} kept (a selected editor shares this artifact)`,
-        ),
+        chalk.gray(`  - ${adapter.label}: ${relPath} kept (${retainedReason})`),
       );
       continue;
     }
@@ -342,29 +327,6 @@ export function removeOwnedVendoredAgents(
     );
   }
   return removed;
-}
-
-/**
- * Delete one legacy artifact directory declared by the adapter. Returns the
- * removed project-relative path, or null when it does not exist.
- */
-export function removeLegacyArtifact(
-  adapter: EditorAdapter,
-  projectRoot: string,
-  relPath: string,
-): string | null {
-  const absPath = join(projectRoot, relPath);
-  if (!existsSync(absPath)) return null;
-  if (!isPathInsideProjectRoot(projectRoot, absPath)) {
-    console.log(
-      chalk.gray(`  - ${adapter.label}: ${relPath}/ resolves outside the project — skipping`),
-    );
-    return null;
-  }
-  rmSync(absPath, { recursive: true, force: true });
-  cleanupEmptyDirs(dirname(absPath), projectRoot);
-  console.log(chalk.green(`  ✓ ${adapter.label}: ${relPath}/`));
-  return relPath;
 }
 
 /**

@@ -19,6 +19,10 @@ export function getOmpCommandPath(id: string): string {
   return join(".omp", "commands", `opsx-${id}.md`);
 }
 
+export function getOmpCommandPath2(id: string): string {
+  return join(".omp", "commands", `openspec-${id}.md`);
+}
+
 /**
  * Oh My Pi (omp) stores project slash commands in `.omp/commands/*.md`
  * (non-recursive scan, project before user). Native commands are parsed
@@ -40,11 +44,18 @@ const OMP_ARTIFACT: ArtifactSpec = {
   frontmatter: { name: true, description: true },
 };
 
+const OMP_ARTIFACT2: ArtifactSpec = {
+  path: getOmpCommandPath2,
+  naming: "hyphen-prefix",
+  frontmatter: { name: true, description: true },
+};
+
 const ompDeclaration: AdapterDeclaration = {
   id: "omp",
   label: "omp",
   displayName: "Oh My Pi",
   artifacts: [OMP_ARTIFACT],
+  artifacts2: [OMP_ARTIFACT2],
   detection: {
     projectPaths: [".omp"],
     // Global install root is a pre-select suggestion, never a write
@@ -58,6 +69,7 @@ const ompDeclaration: AdapterDeclaration = {
 };
 
 export const ompAdapter = defineAdapter(ompDeclaration);
+export const ompAdapter2 = defineAdapter(ompDeclaration, "openspec");
 
 // ─── Named exports (derived from the declaration) ────────────────────────
 
@@ -70,3 +82,4 @@ export function hasOmp(projectRoot: string, homeDir?: string): boolean {
 }
 
 registerAdapter(ompAdapter);
+registerAdapter(ompAdapter2);

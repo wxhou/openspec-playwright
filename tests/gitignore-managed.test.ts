@@ -13,8 +13,10 @@ import { join } from "path";
 import {
   MANAGED_GITIGNORE_PATHS,
   LOCKED_GITIGNORE_PATHS,
+  RULE_COPY_GITIGNORE_PATHS,
   skippableManagedPaths,
   readManagedSkips,
+  readManagedSkipsSafe,
   GITIGNORE_BLOCK_BEGIN,
   GITIGNORE_BLOCK_END,
   findUncoveredManagedPaths,
@@ -322,6 +324,17 @@ describe("detectTrackedFiles (task 3.9)", () => {
   });
 });
 
+describe("readManagedSkipsSafe", () => {
+  it("degrades to [] when .gitignore cannot be read", () => {
+    // A directory at the path makes readFileSync throw deterministically on
+    // every platform (EISDIR), unlike chmod-based read-only tricks.
+    mkdirSync(join(projectRoot, ".gitignore"));
+    expect(readManagedSkipsSafe(projectRoot)).toEqual([]);
+    // The strict variant still surfaces the error to init's advisory branch.
+    expect(() => readManagedSkips(projectRoot)).toThrow();
+  });
+});
+
 describe("init-time opt-outs recorded in the block header", () => {
   const readBlock = () =>
     readFileSync(join(projectRoot, ".gitignore"), "utf-8");
@@ -341,6 +354,11 @@ describe("init-time opt-outs recorded in the block header", () => {
     for (const locked of LOCKED_GITIGNORE_PATHS) {
       expect(candidates).not.toContain(locked);
     }
+    // The exit set is exactly the locked carriers minus the SSOT; a future
+    // locked non-rules path must not silently join it.
+    expect([...RULE_COPY_GITIGNORE_PATHS]).toEqual(
+      LOCKED_GITIGNORE_PATHS.filter((path) => path !== "AGENTS.md"),
+    );
     expect(candidates).toContain(".claude/");
     expect(candidates).toContain(".gemini/settings.json");
     expect(skippableManagedPaths(["tmp/"])).not.toContain("tmp/");
@@ -426,5 +444,34 @@ describe("init-time opt-outs recorded in the block header", () => {
     });
     expect(readBlock()).not.toContain("\ntmp/\n");
     expect(readManagedSkips(projectRoot)).toEqual(["tmp/"]);
+  });
+});
+
+describe("managed gitignore coverage for OpenCode JSONC config", () => {
+  it("manages opencode.json and opencode.jsonc with the same standing", () => {
+    expect(MANAGED_GITIGNORE_PATHS).toContain("opencode.json");
+    expect(MANAGED_GITIGNORE_PATHS).toContain("opencode.jsonc");
+    expect(MANAGED_GITIGNORE_PATHS.length).toBe(49);
+    // 2.x e2e artifacts join their 1.x siblings.
+    expect(MANAGED_GITIGNORE_PATHS).toEqual(
+      expect.arrayContaining([
+        ".agents/skills/openspec-e2e/",
+        ".dsh/skills/openspec-e2e/",
+        ".gemini/commands/openspec-e2e.toml",
+        ".qwen/commands/openspec-e2e.md",
+        ".github/prompts/openspec-e2e.prompt.md",
+        ".roo/commands/openspec-e2e.md",
+        ".trae/commands/openspec-e2e.md",
+        ".kimi-code/skills/openspec-e2e/",
+      ]),
+    );
+    const result = ensureGitignoreEntries(projectRoot);
+    expect(result.added).toEqual(
+      expect.arrayContaining(["opencode.json", "opencode.jsonc"]),
+    );
+  });
+
+  it("keeps opencode.jsonc skippable (not locked)", () => {
+    expect(skippableManagedPaths()).toContain("opencode.jsonc");
   });
 });

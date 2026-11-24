@@ -156,6 +156,22 @@ describe("formatArtifact", () => {
     expect(colon).not.toContain("/opsx-e2e");
   });
 
+  it("rewrites bodies to the 2.x family when the style is openspec", () => {
+    const out = formatArtifact(
+      {
+        path,
+        naming: "hyphen-prefix",
+        frontmatter: { name: true, description: true },
+      },
+      META,
+      "openspec",
+    );
+    expect(out).toContain("name: openspec-e2e");
+    expect(out).toContain("/openspec-e2e");
+    expect(out).not.toContain("/opsx:e2e");
+    expect(out).not.toContain("/opsx-e2e");
+  });
+
   it("emits frontmatter before the header when both are declared", () => {
     const out = formatArtifact(
       {

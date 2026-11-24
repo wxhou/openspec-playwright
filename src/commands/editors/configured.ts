@@ -10,9 +10,10 @@
  * openspec-pw products on disk.
  */
 import { existsSync, readFileSync } from "fs";
-import { join } from "path";
+import { join, resolve as pathResolve } from "path";
 import type { EditorAdapter } from "./types.js";
-import { hasCommandArtifacts } from "./registry.js";
+import { buildCommandMeta } from "./types.js";
+import { getAllAdapters, hasCommandArtifacts } from "./registry.js";
 import { enumerateAdapterArtifacts } from "./removal.js";
 import {
   hasLegacyTerritoryStart,
@@ -23,9 +24,72 @@ import {
 import { LEGACY_MAIN_SIGNATURE } from "./project-rules.js";
 
 /**
+ * True when the adapter's own project marker directory exists (e.g. `.codex/`,
+ * `.minimax/`). Deliberately excludes `artifactRoots` and `globalPaths`: a
+ * shared artifact or a home-dir install cannot prove project ownership.
+ */
+function hasExclusiveProjectSignal(
+  adapter: EditorAdapter,
+  projectRoot: string,
+): boolean {
+  const paths = adapter.declaration?.detection.projectPaths ?? [];
+  return paths.some((rel) => existsSync(pathResolve(projectRoot, rel)));
+}
+
+/** True when another adapter resolves its MCP config to the same file. */
+export function isSharedMcpConfigPath(
+  adapter: EditorAdapter,
+  projectRoot: string,
+): boolean {
+  const own = adapter.mcpConfigPath?.(projectRoot);
+  if (!own) return false;
+  const ownResolved = pathResolve(own);
+  return getAllAdapters().some((other) => {
+    if (other.id === adapter.id) return false;
+    const otherPath = other.mcpConfigPath?.(projectRoot);
+    return otherPath !== undefined && pathResolve(otherPath) === ownResolved;
+  });
+}
+
+/**
+ * Shared artifact ownership: attribute a shared path to the adapter only when
+ * no other declarer has an exclusive project signal; when none does, the file
+ * cannot prove ownership and every declarer may claim it (all pre-selected —
+ * one unchecked box is reversible, a missing editor is not).
+ */
+function hasAttributedSharedArtifact(
+  adapter: EditorAdapter,
+  projectRoot: string,
+): boolean {
+  const meta = buildCommandMeta("");
+  for (const rel of adapter.sharedArtifactPaths?.(meta) ?? []) {
+    if (!existsSync(pathResolve(projectRoot, rel))) continue;
+    const declarers = getAllAdapters().filter((other) =>
+      (other.sharedArtifactPaths?.(meta) ?? []).includes(rel),
+    );
+    const signalHolders = declarers.filter((other) =>
+      hasExclusiveProjectSignal(other, projectRoot),
+    );
+    if (
+      signalHolders.length === 0 ||
+      signalHolders.some((other) => other.id === adapter.id)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * True when openspec-pw has configured this editor in the project: any
- * command/extraArtifacts product, any openspec-pw MCP entry, or (claude
- * only) the legacy skill directory from pre-0.3.74 installs.
+ * command/extraArtifacts product, any openspec-pw MCP entry, a rules/wrapper
+ * block, or a shared artifact attributable to this adapter.
+ *
+ * Shared paths are attributed by ownership: a shared command artifact counts
+ * only when no other declarer owns it via an exclusive project signal; a
+ * shared MCP config file's entry counts only when the adapter also has an
+ * exclusive project signal. A single `.mcp.json` entry therefore no longer
+ * pre-selects every editor that reads that file.
  *
  * Intentionally a *wider* signal than update/doctor's authorization gate
  * (hasCommandArtifacts, command artifacts only): an editor carrying only an
@@ -41,11 +105,15 @@ export function isEditorConfigured(
   // hasCommandArtifacts; the inventory's commandPaths must not re-introduce
   // them here either. Only non-command signals count.
   const inv = enumerateAdapterArtifacts(adapter, projectRoot);
+  const mcpSignal =
+    inv.mcpServers.length > 0 &&
+    (!isSharedMcpConfigPath(adapter, projectRoot) ||
+      hasExclusiveProjectSignal(adapter, projectRoot));
   return (
-    inv.legacyArtifacts.length > 0 ||
-    inv.mcpServers.length > 0 ||
+    mcpSignal ||
     inv.hasWrapper ||
-    inv.hasFullRules
+    inv.hasFullRules ||
+    hasAttributedSharedArtifact(adapter, projectRoot)
   );
 }
 

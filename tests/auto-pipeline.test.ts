@@ -12,7 +12,7 @@ import {
 // The OpenSpec CLI version comes from the machine — pin it so the suite does
 // not depend on which CLI is installed.
 vi.mock("../src/shared/openspec-version.js", () => ({
-  OPENSPEC_SUPPORTED_MAJOR: 1,
+  OPENSPEC_LATEST_MAJOR: 2,
   openSpecCliStatus: vi.fn(() => ({ ok: true, major: 1 })),
 }));
 
@@ -47,7 +47,9 @@ describe("pipeline template", () => {
   it("pins the Claude Code version and checks it before running the agent", () => {
     expect(template).toContain("CLAUDE_CODE_VERSION:");
     expect(template).toContain('claude --version | grep -q "$CLAUDE_CODE_VERSION"');
+    // Both workflow surfaces are probed; neither is assumed.
     expect(template).toContain(".claude/commands/opsx/apply.md");
+    expect(template).toContain(".agents/skills/openspec-apply-change/SKILL.md");
   });
 
   it("never passes bare mode to the CLI", () => {
@@ -118,7 +120,8 @@ describe("pipeline template", () => {
     );
     // `.claude/` is gitignored; a fresh runner must regenerate the command.
     expect(template).toContain("openspec-pw init --tools claude --no-mcp --no-hook");
-    expect(template).toContain(".claude/commands/opsx/e2e.md");
+    expect(template).toContain(".agents/skills/openspec-e2e/SKILL.md");
+    expect(template).toContain(".claude/skills/openspec-e2e");
   });
 
   it("runs verify after the gate, advisory only, and records it in the PR", () => {
@@ -129,7 +132,7 @@ describe("pipeline template", () => {
     expect(verify).toBeGreaterThan(gate);
     expect(pr).toBeGreaterThan(verify);
     expect(template).toContain("continue-on-error: true");
-    expect(template).toContain("/opsx:verify $CHANGE");
+    expect(template).toContain('"$VERIFY $CHANGE"');
     expect(template).toContain("--body-file pr-body.md");
     // The PR body carries per-check gate results, flags, per-stage costs and the report.
     expect(template).toMatch(/\.checks\[\]/);
@@ -138,16 +141,49 @@ describe("pipeline template", () => {
     expect(template).toContain("### Verify (advisory)");
   });
 
-  it("regenerates the command artifacts before asserting /opsx:apply exists", () => {
+  it("regenerates the workflow surface and resolves it before the agent runs", () => {
     // `.claude/` sits in init's managed gitignore block, so a check that expects
-    // a committed command file could never pass — and `openspec update` alone
-    // only refreshes tools already configured in the runner's global config.
-    expect(template).toMatch(
-      /openspec init --tools claude[\s\S]{0,200}\.claude\/commands\/opsx\/apply\.md/,
+    // a committed command file could never pass.
+    expect(template).toContain("openspec init --tools claude");
+    // A clean runner has no global workflow list; without this, custom installs 0.
+    expect(template).toContain(
+      `openspec config set workflows '["apply","verify"]'`,
     );
-    // `core` installs 6 commands and omits /opsx:verify, which stage 5 runs.
+    expect(template).toContain("--scope project");
     expect(template).toContain("--profile custom");
     expect(template).not.toContain("--profile core");
+    // Detection runs after both init steps.
+    const init = template.indexOf("openspec-pw init --tools claude");
+    const detect = template.indexOf("MAJOR=$(openspec --version");
+    expect(init).toBeGreaterThan(-1);
+    expect(detect).toBeGreaterThan(init);
+    // The resolved names cross step boundaries through $GITHUB_ENV.
+    expect(template).toContain('echo "APPLY=$APPLY" >> "$GITHUB_ENV"');
+    expect(template).toContain('echo "VERIFY=$VERIFY" >> "$GITHUB_ENV"');
+    expect(template).toContain('echo "E2E=$E2E" >> "$GITHUB_ENV"');
+    // Every stage consumes the resolved names, not a hardcoded one.
+    expect(template).toContain('claude -p "$APPLY $CHANGE');
+    expect(template).toContain('claude -p "$E2E $CHANGE');
+    expect(template).toContain('claude -p "$VERIFY $CHANGE"');
+  });
+
+  it("does not commit OpenSpec's generated skills in the auto PR", () => {
+    const prBlock = template.slice(
+      template.indexOf("- name: Open or update the PR"),
+    );
+    expect(prBlock).toContain("git add -A");
+    expect(prBlock).toContain("git reset -q -- .agents/skills/openspec-*");
+  });
+
+  it("installs a supported OpenSpec major", () => {
+    expect(template).not.toContain("@fission-ai/openspec@1");
+    expect(template).toContain("@fission-ai/openspec@2");
+    const workflow = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "..", "templates", "github-workflow.yml"),
+      "utf-8",
+    );
+    expect(workflow).not.toContain("@fission-ai/openspec@1");
+    expect(workflow).toContain("@fission-ai/openspec@2");
   });
 
   it("gives the advisory verify step shell access without edit tools", () => {

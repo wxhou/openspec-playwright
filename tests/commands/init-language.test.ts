@@ -6,7 +6,7 @@ import { join } from "path";
 // The OpenSpec CLI version comes from the machine — pin it so the suite does
 // not depend on which CLI is installed.
 vi.mock("../../src/shared/openspec-version.js", () => ({
-  OPENSPEC_SUPPORTED_MAJOR: 1,
+  OPENSPEC_LATEST_MAJOR: 2,
   openSpecCliStatus: vi.fn(() => ({ ok: true, major: 1 })),
 }));
 

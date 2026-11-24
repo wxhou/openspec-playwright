@@ -20,8 +20,18 @@ export function getKimiSkillPath(id: string): string {
   return join(".kimi-code", "skills", `opsx-${id}`, "SKILL.md");
 }
 
+export function getKimiSkillPath2(id: string): string {
+  return join(".kimi-code", "skills", `openspec-${id}`, "SKILL.md");
+}
+
 const KIMI_SKILL: ArtifactSpec = {
   path: getKimiSkillPath,
+  naming: "hyphen-prefix",
+  frontmatter: { name: true, description: true },
+};
+
+const KIMI_SKILL2: ArtifactSpec = {
+  path: getKimiSkillPath2,
   naming: "hyphen-prefix",
   frontmatter: { name: true, description: true },
 };
@@ -31,6 +41,7 @@ const kimiDeclaration: AdapterDeclaration = {
   label: "kimi",
   displayName: "Kimi Code",
   artifacts: [KIMI_SKILL],
+  artifacts2: [KIMI_SKILL2],
   detection: {
     projectPaths: [".kimi-code", ".kimi"],
     globalPaths: [".kimi-code"],
@@ -40,9 +51,11 @@ const kimiDeclaration: AdapterDeclaration = {
     path: (root) => join(root, ".kimi-code", "mcp.json"),
   },
   invocationHint: "/skill:opsx-e2e",
+  invocationHint2: "/skill:openspec-e2e",
 };
 
 export const kimiAdapter = defineAdapter(kimiDeclaration);
+export const kimiAdapter2 = defineAdapter(kimiDeclaration, "openspec");
 
 // ─── Named exports (derived from the declaration) ────────────────────────
 
@@ -55,3 +68,4 @@ export function hasKimi(projectRoot: string, homeDir?: string): boolean {
 }
 
 registerAdapter(kimiAdapter);
+registerAdapter(kimiAdapter2);

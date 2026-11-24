@@ -14,7 +14,7 @@ import { fileURLToPath } from "url";
 // The OpenSpec CLI version comes from the machine — pin it so the suite does
 // not depend on which CLI is installed.
 vi.mock("../src/shared/openspec-version.js", () => ({
-  OPENSPEC_SUPPORTED_MAJOR: 1,
+  OPENSPEC_LATEST_MAJOR: 2,
   openSpecCliStatus: vi.fn(() => ({ ok: true, major: 1 })),
 }));
 
@@ -511,7 +511,7 @@ describe("init interactive prompt selection", () => {
     ) => {
       // All editors are offered — never fewer than the full registry.
       const { getAllAdapters } = await import("../../src/commands/editors.js");
-      expect(allEditors.length).toBe(getAllAdapters().length);
+      expect(allEditors.length).toBe(getAllAdapters("opsx").length);
       // Detected Cursor is pre-selected.
       // Detected Cursor is pre-selected.
       expect(detected.has("cursor")).toBe(true);
@@ -577,7 +577,7 @@ describe("init interactive prompt with no detected editors", () => {
     ) => {
       // All editors offered despite zero detections…
       const { getAllAdapters } = await import("../../src/commands/editors.js");
-      expect(allEditors.length).toBe(getAllAdapters().length);
+      expect(allEditors.length).toBe(getAllAdapters("opsx").length);
       // …with nothing pre-selected.
       expect(detected.size).toBe(0);
       detected.forEach((id) => seenDetected.add(id));
@@ -1010,23 +1010,77 @@ describe("init credentials ignore hint", () => {
 });
 
 describe("init: OpenSpec CLI guard", () => {
-  it("aborts instead of scaffolding when the CLI is not 1.x", async () => {
+  let tmpRoot: string;
+  let cwdSpy: ReturnType<typeof import("vitest")["vi"]["spyOn"]> | undefined;
+
+  beforeEach(() => {
+    tmpRoot = mkdtempSync(join(tmpdir(), "ospw-pw-init-version-"));
+  });
+
+  afterEach(() => {
+    cwdSpy?.mockRestore();
+    rmSync(tmpRoot, { recursive: true, force: true });
+  });
+
+  it("aborts instead of scaffolding when the CLI major is unsupported", async () => {
     const { openSpecCliStatus } = await import(
       "../src/shared/openspec-version.js"
     );
     vi.mocked(openSpecCliStatus).mockReturnValueOnce({
       ok: false,
       kind: "unsupported",
-      message: "OpenSpec 2.x detected — this tool needs 1.x",
+      message: "OpenSpec 3.x detected — this tool supports 1.x and 2.x",
     });
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     try {
       const { init } = await import("../../src/commands/init.js");
       await expect(init({ tools: "none" })).rejects.toThrow(
-        "OpenSpec 2.x detected",
+        "OpenSpec 3.x detected",
       );
     } finally {
       logSpy.mockRestore();
     }
+  });
+
+  it("accepts a 2.x CLI and points an uninitialized project at the 2.x flow", async () => {
+    const { openSpecCliStatus } = await import(
+      "../src/shared/openspec-version.js"
+    );
+    vi.mocked(openSpecCliStatus).mockReturnValueOnce({ ok: true, major: 2 });
+    cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(tmpRoot);
+    const logs: string[] = [];
+    const logSpy = vi.spyOn(console, "log").mockImplementation((...args) => {
+      logs.push(args.join(" "));
+    });
+    try {
+      const { init } = await import("../../src/commands/init.js");
+      await init({ tools: "none" });
+    } finally {
+      logSpy.mockRestore();
+    }
+    const out = logs.join("\n");
+    expect(out).toContain("npm install -g @fission-ai/openspec@2");
+    expect(out).toContain("openspec init --scope project");
+    expect(out).not.toContain("openspec@1");
+    // Uninitialized project: init stops after the hint, no scaffold written.
+    expect(existsSync(join(tmpRoot, "tests"))).toBe(false);
+  });
+
+  it("keeps the 1.x guidance for an uninitialized 1.x project", async () => {
+    cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(tmpRoot);
+    const logs: string[] = [];
+    const logSpy = vi.spyOn(console, "log").mockImplementation((...args) => {
+      logs.push(args.join(" "));
+    });
+    try {
+      const { init } = await import("../../src/commands/init.js");
+      await init({ tools: "none" });
+    } finally {
+      logSpy.mockRestore();
+    }
+    const out = logs.join("\n");
+    expect(out).toContain("npm install -g @fission-ai/openspec@1");
+    expect(out).toContain("openspec config profile core");
+    expect(out).not.toContain("--scope project");
   });
 });

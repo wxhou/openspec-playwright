@@ -28,6 +28,10 @@ export function getMinimaxSkillPath(id: string): string {
   return join(".agents", "skills", `opsx-${id}`, "SKILL.md");
 }
 
+export function getMinimaxSkillPath2(id: string): string {
+  return join(".agents", "skills", `openspec-${id}`, "SKILL.md");
+}
+
 /**
  * Path to the MCP config file MiniMax Code loads from the project workspace.
  * Shared with the Claude Code and CodeBuddy CLI adapters — all three read
@@ -53,11 +57,19 @@ const MINIMAX_ARTIFACT: ArtifactSpec = {
   frontmatter: { name: true, description: true },
 };
 
+const MINIMAX_ARTIFACT2: ArtifactSpec = {
+  path: getMinimaxSkillPath2,
+  naming: "hyphen-prefix",
+  shared: true,
+  frontmatter: { name: true, description: true },
+};
+
 const minimaxDeclaration: AdapterDeclaration = {
   id: "minimax",
   label: "minimax",
   displayName: "MiniMax Code",
   artifacts: [MINIMAX_ARTIFACT],
+  artifacts2: [MINIMAX_ARTIFACT2],
   detection: {
     projectPaths: [".minimax"],
     globalPaths: [".minimax-code"],
@@ -80,6 +92,7 @@ const minimaxDeclaration: AdapterDeclaration = {
 };
 
 export const minimaxAdapter = defineAdapter(minimaxDeclaration);
+export const minimaxAdapter2 = defineAdapter(minimaxDeclaration, "openspec");
 
 // ─── Named exports (derived from the declaration) ────────────────────────
 
@@ -104,3 +117,4 @@ export function hasMinimaxProjectSignal(projectRoot: string): boolean {
 }
 
 registerAdapter(minimaxAdapter);
+registerAdapter(minimaxAdapter2);

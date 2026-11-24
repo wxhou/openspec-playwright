@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, readFileSync, rmSync, existsSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
-import { join } from "path";
+import { basename, join } from "path";
 import {
   claudeAdapter,
   cleanProjectRules,
@@ -61,7 +61,7 @@ describe("rules mode: full vs wrapper", () => {
     expect(existsSync(traeRules)).toBe(false);
   });
 
-  it("cleanProjectRules leaves a user-edited full-mode file in place", () => {
+  it("cleanProjectRules deletes a file whose only block-external content is the generated title", () => {
     installProjectRules(root, STANDARDS, [geminiAdapter]);
     const geminiPath = join(root, "GEMINI.md");
     const edited = readFileSync(geminiPath, "utf-8").replace(
@@ -70,8 +70,41 @@ describe("rules mode: full vs wrapper", () => {
     );
     writeFileSync(geminiPath, edited);
     cleanProjectRules(geminiAdapter, root, { agents: false });
+    expect(existsSync(geminiPath)).toBe(false);
+  });
+
+  it("cleanProjectRules keeps user content outside the block", () => {
+    installProjectRules(root, STANDARDS, [geminiAdapter]);
+    const geminiPath = join(root, "GEMINI.md");
+    writeFileSync(
+      geminiPath,
+      readFileSync(geminiPath, "utf-8") + "\nUser notes\n",
+    );
+    cleanProjectRules(geminiAdapter, root, { agents: false });
     expect(existsSync(geminiPath)).toBe(true);
-    expect(readFileSync(geminiPath, "utf-8")).not.toContain("OPENSPEC-PW");
+    const after = readFileSync(geminiPath, "utf-8");
+    expect(after).toContain("User notes");
+    expect(after).not.toContain("OPENSPEC-PW");
+  });
+
+  it("a second install rewrites the block in creation format, so cleanup still deletes it", () => {
+    installProjectRules(root, STANDARDS, [geminiAdapter]);
+    const geminiPath = join(root, "GEMINI.md");
+    const first = readFileSync(geminiPath, "utf-8");
+    installProjectRules(root, STANDARDS, [geminiAdapter]);
+    expect(readFileSync(geminiPath, "utf-8")).toBe(first);
+    cleanProjectRules(geminiAdapter, root, { agents: false });
+    expect(existsSync(geminiPath)).toBe(false);
+  });
+
+  it("cleanProjectRules deletes a legacy single-newline copy", () => {
+    const geminiPath = join(root, "GEMINI.md");
+    writeFileSync(
+      geminiPath,
+      `# ${basename(root)}\n<!-- OPENSPEC-PW:START -->\n\n${STANDARDS.trim()}\n\n<!-- OPENSPEC-PW:END -->\n`,
+    );
+    cleanProjectRules(geminiAdapter, root, { agents: false });
+    expect(existsSync(geminiPath)).toBe(false);
   });
 });
 

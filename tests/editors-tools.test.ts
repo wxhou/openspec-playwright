@@ -160,13 +160,13 @@ describe("hasCommandArtifacts (write authorization)", () => {
 
   it("is false for a hand-created marker directory alone (detect is not authorization)", () => {
     mkdirSync(join(tmp, ".cursor"), { recursive: true });
-    const cursor = getAdapter("cursor")!;
+    const cursor = getAdapter("cursor", "opsx")!;
     expect(existsSync(join(tmp, ".cursor"))).toBe(true);
     expect(hasCommandArtifacts(tmp, cursor)).toBe(false);
   });
 
   it("is true once the command artifact exists", () => {
-    const omp = getAdapter("omp")!;
+    const omp = getAdapter("omp", "opsx")!;
     mkdirSync(join(tmp, ".omp", "commands"), { recursive: true });
     writeFileSync(join(tmp, ".omp", "commands", "opsx-e2e.md"), "x");
     expect(hasCommandArtifacts(tmp, omp)).toBe(true);
@@ -177,14 +177,14 @@ describe("hasCommandArtifacts (write authorization)", () => {
     // which editor owns it.
     mkdirSync(join(tmp, ".agents", "skills", "opsx-e2e"), { recursive: true });
     writeFileSync(join(tmp, ".agents", "skills", "opsx-e2e", "SKILL.md"), "x");
-    expect(hasCommandArtifacts(tmp, getAdapter("codex")!)).toBe(false);
-    expect(hasCommandArtifacts(tmp, getAdapter("minimax")!)).toBe(false);
+    expect(hasCommandArtifacts(tmp, getAdapter("codex", "opsx")!)).toBe(false);
+    expect(hasCommandArtifacts(tmp, getAdapter("minimax", "opsx")!)).toBe(false);
   });
 
   it("filters the full adapter list down to authorized editors only", () => {
     mkdirSync(join(tmp, ".claude", "commands", "opsx"), { recursive: true });
     writeFileSync(join(tmp, ".claude", "commands", "opsx", "e2e.md"), "x");
-    const authorized = getAllAdapters().filter((a) =>
+    const authorized = getAllAdapters("opsx").filter((a) =>
       hasCommandArtifacts(tmp, a),
     );
     expect(authorized.map((a) => a.id)).toEqual(["claude"]);

@@ -217,7 +217,7 @@ describe("doctor.ts: fallback command hint", () => {
 
     // Every registered adapter is listed exactly once, under its own hint.
     const expected = new Map<string, string[]>();
-    for (const adapter of getAllAdapters()) {
+    for (const adapter of getAllAdapters("opsx")) {
       const command = slashCommandForAdapter(adapter);
       expected.set(command, [
         ...(expected.get(command) ?? []),
@@ -227,7 +227,7 @@ describe("doctor.ts: fallback command hint", () => {
     expect([...groups.keys()].sort()).toEqual([...expected.keys()].sort());
     expect(
       [...groups.values()].reduce((sum, names) => sum + names.length, 0),
-    ).toBe(getAllAdapters().length);
+    ).toBe(getAllAdapters("opsx").length);
     for (const [command, names] of expected) {
       expect((groups.get(command) ?? []).sort()).toEqual(names.sort());
     }

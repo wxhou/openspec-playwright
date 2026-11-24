@@ -16,7 +16,7 @@ vi.mock("../../src/shared/exec.js", () => ({
 
 // Mock the OpenSpec version probe — a healthy 1.x install.
 vi.mock("../../src/shared/openspec-version.js", () => ({
-  OPENSPEC_SUPPORTED_MAJOR: 1,
+  OPENSPEC_LATEST_MAJOR: 2,
   openSpecCliStatus: vi.fn(() => ({ ok: true, major: 1 })),
 }));
 
@@ -989,6 +989,29 @@ describe("doctor authorization tiers", () => {
     const wrapper = checks.find((c) => c.name === "standards-claude");
     expect(wrapper?.ok).toBe(false);
     expect(wrapper?.message).toContain("run openspec-pw update");
+  });
+
+  it("recorded rule-copy opt-out keeps a missing wrapper from failing", async () => {
+    existingPaths.add(
+      join(fixtureRoot, ".claude", "commands", "opsx", "e2e.md").replace(/\\/g, "/"),
+    );
+    existingPaths.add(join(fixtureRoot, ".gitignore").replace(/\\/g, "/"));
+    readFileMock.mockImplementation((p: Parameters<typeof readFileSync>[0]) => {
+      const s = String(p);
+      if (s.endsWith(".mcp.json")) return "{}";
+      if (s.endsWith(".gitignore")) {
+        return (
+          "# openspec-pw: begin managed block\n" +
+          "# openspec-pw: skip=CLAUDE.md\n" +
+          "# openspec-pw: end managed block\n"
+        );
+      }
+      return "";
+    });
+    const checks = await doctorJsonChecks();
+    const wrapper = checks.find((c) => c.name === "standards-claude");
+    expect(wrapper?.ok).toBe(true);
+    expect(wrapper?.message).toContain("--no-rule-files");
   });
 
   it("minimal-mode codebuddy project: wrapper drift is checked (standards-codebuddy)", async () => {

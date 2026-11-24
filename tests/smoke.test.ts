@@ -211,6 +211,8 @@ const distExists = existsSync(distDir);
     expect(stdout).toContain("--ci");
     expect(stdout).toContain("--miniprogram");
     expect(stdout).toContain("--no-miniprogram");
+    expect(stdout).toContain("--rule-files");
+    expect(stdout).toContain("--no-rule-files");
   });
 
   it("init rejects conflicting mini-program flags with exit code 2", () => {
@@ -222,6 +224,12 @@ const distExists = existsSync(distDir);
       expect(status).toBe(2);
       expect(stderr).toContain("Conflicting flags");
     }
+  });
+
+  it("init rejects conflicting rule-file flags with exit code 2", () => {
+    const { stderr, status } = runCli("init --rule-files --no-rule-files");
+    expect(status).toBe(2);
+    expect(stderr).toContain("Conflicting flags");
   });
 
   it("init and update --help document --lang", () => {

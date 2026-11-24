@@ -8,9 +8,8 @@
 # E2E secrets; fork PRs do not by default.
 #
 # Prerequisites (run these once locally):
-#   npm install -g @fission-ai/openspec@1
-#   openspec init
-#   openspec config profile core
+#   npm install -g @fission-ai/openspec@2
+#   openspec init --scope project
 #   openspec update
 #   npm install -g openspec-playwright@latest
 #   openspec-pw init
@@ -46,7 +45,7 @@ jobs:
         run: npx playwright install --with-deps
 
       - name: Install OpenSpec CLI
-        run: npm install -g @fission-ai/openspec@1
+        run: npm install -g @fission-ai/openspec@2
 
       - name: Install openspec-pw CLI
         run: npm install -g openspec-playwright@latest

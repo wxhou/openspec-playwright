@@ -14,7 +14,7 @@ const COLON_FORM = ["claude", "codebuddy", "gemini"];
 
 describe("slash-command form comes from the adapter", () => {
   it("derives the hint from commandForm, not from the adapter id", () => {
-    for (const adapter of getAllAdapters()) {
+    for (const adapter of getAllAdapters("opsx")) {
       const expected =
         adapter.declaration?.invocationHint ??
         (adapter.commandForm === "colon" ? "/opsx:e2e" : "/opsx-e2e");
@@ -23,11 +23,11 @@ describe("slash-command form comes from the adapter", () => {
   });
 
   it("marks the command-file editors colon and the skill editors hyphen", () => {
-    const byId = new Map(getAllAdapters().map((a) => [a.id, a]));
+    const byId = new Map(getAllAdapters("opsx").map((a) => [a.id, a]));
     for (const id of COLON_FORM) {
       expect(byId.get(id as EditorAdapter["id"])?.commandForm).toBe("colon");
     }
-    for (const adapter of getAllAdapters()) {
+    for (const adapter of getAllAdapters("opsx")) {
       if (COLON_FORM.includes(adapter.id)) continue;
       expect(adapter.commandForm).toBe("hyphen");
     }

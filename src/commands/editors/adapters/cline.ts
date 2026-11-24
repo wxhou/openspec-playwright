@@ -19,6 +19,10 @@ export function getClineCommandPath(id: string): string {
   return join(".cline", "skills", `opsx-${id}`, "SKILL.md");
 }
 
+export function getClineCommandPath2(id: string): string {
+  return join(".cline", "skills", `openspec-${id}`, "SKILL.md");
+}
+
 /**
  * Cline's skill artifact. The shared `formatArtifact` keeps Cline and
  * MiniMax Code byte-identical for the same shape.
@@ -32,11 +36,18 @@ const CLINE_ARTIFACT: ArtifactSpec = {
   frontmatter: { name: true, description: true },
 };
 
+const CLINE_ARTIFACT2: ArtifactSpec = {
+  path: getClineCommandPath2,
+  naming: "hyphen-prefix",
+  frontmatter: { name: true, description: true },
+};
+
 const clineDeclaration: AdapterDeclaration = {
   id: "cline",
   label: "cline",
   displayName: "Cline",
   artifacts: [CLINE_ARTIFACT],
+  artifacts2: [CLINE_ARTIFACT2],
   detection: { projectPaths: [".cline", ".clinerules"] },
   mcp: {
     kind: "mcp-servers-file",
@@ -45,6 +56,7 @@ const clineDeclaration: AdapterDeclaration = {
 };
 
 export const clineAdapter = defineAdapter(clineDeclaration);
+export const clineAdapter2 = defineAdapter(clineDeclaration, "openspec");
 
 // ─── Named exports (derived from the declaration) ────────────────────────
 
@@ -57,3 +69,4 @@ export function hasCline(projectRoot: string, homeDir?: string): boolean {
 }
 
 registerAdapter(clineAdapter);
+registerAdapter(clineAdapter2);

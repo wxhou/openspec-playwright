@@ -14,7 +14,7 @@
  * whose existsSync gate is correct for the advisory semantics.
  */
 import { existsSync, readFileSync, rmSync, writeFileSync } from "fs";
-import { join } from "path";
+import { join, relative, sep } from "path";
 import ignore from "ignore";
 import { normalizeEol } from "../commands/editors/agents.js";
 import { execFileSync } from "./exec.js";
@@ -31,13 +31,21 @@ export const MANAGED_GITIGNORE_PATHS = [
   ".omp/",
   ".codebuddy/",
   ".agents/skills/opsx-e2e/",
+  ".agents/skills/openspec-e2e/",
   ".dsh/skills/opsx-e2e/",
+  ".dsh/skills/openspec-e2e/",
   ".gemini/commands/opsx/e2e.toml",
+  ".gemini/commands/openspec-e2e.toml",
   ".qwen/commands/opsx-e2e.md",
+  ".qwen/commands/openspec-e2e.md",
   ".github/prompts/opsx-e2e.prompt.md",
+  ".github/prompts/openspec-e2e.prompt.md",
   ".roo/commands/opsx-e2e.md",
+  ".roo/commands/openspec-e2e.md",
   ".trae/commands/opsx-e2e.md",
+  ".trae/commands/openspec-e2e.md",
   ".kimi-code/skills/opsx-e2e/",
+  ".kimi-code/skills/openspec-e2e/",
   ".codegraph/",
   ".playwright-mcp/",
   "openspec/",
@@ -51,6 +59,7 @@ export const MANAGED_GITIGNORE_PATHS = [
   ".trae/rules/project_rules.md",
   "app-exploration.md",
   "opencode.json",
+  "opencode.jsonc",
   ".mcp.json",
   ".gemini/settings.json",
   ".qwen/settings.json",
@@ -86,6 +95,33 @@ export const LOCKED_GITIGNORE_PATHS = [
 
 /** Block-header line recording the init-time opt-outs, honored by later runs. */
 const SKIP_LINE_PREFIX = "# openspec-pw: skip=";
+
+/**
+ * Per-editor rules copies the `--no-rule-files` opt-out can exit: every locked
+ * carrier except AGENTS.md (the SSOT, always installed and always ignored).
+ * Kept explicit — deriving it from LOCKED_GITIGNORE_PATHS would silently add
+ * any future locked non-rules path to the exit set.
+ */
+export const RULE_COPY_GITIGNORE_PATHS = [
+  "CLAUDE.md",
+  "CODEBUDDY.md",
+  "GEMINI.md",
+  "QWEN.md",
+  ".github/copilot-instructions.md",
+  ".roo/rules/openspec-pw.md",
+  ".trae/rules/project_rules.md",
+] as const;
+
+/**
+ * Project-relative POSIX path used by the managed block — the form recorded
+ * on the skip line, so rule-copy decisions compare on the same string.
+ */
+export function managedPathFor(
+  projectRoot: string,
+  absPath: string,
+): string {
+  return relative(projectRoot, absPath).split(sep).join("/");
+}
 
 /** Candidates for the init selection prompt: managed paths minus locked/omitted. */
 export function skippableManagedPaths(omit: readonly string[] = []): string[] {
@@ -199,6 +235,20 @@ export function readManagedSkips(projectRoot: string): string[] {
       .slice(beginIdx + 1, endIdx)
       .find((l) => l.trim().startsWith(SKIP_LINE_PREFIX)),
   );
+}
+
+/**
+ * Tolerant `readManagedSkips` for callers that must keep running when the
+ * file is unreadable (doctor/update diagnosis, init's install decision).
+ * Losing the record degrades to the pre-opt-out behavior; init's write-side
+ * advisory reports the cause.
+ */
+export function readManagedSkipsSafe(projectRoot: string): string[] {
+  try {
+    return readManagedSkips(projectRoot);
+  } catch {
+    return [];
+  }
 }
 
 /**

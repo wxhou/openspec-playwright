@@ -19,8 +19,18 @@ export function getOpenCodeCommandPath(id: string): string {
   return join(".opencode", "commands", `opsx-${id}.md`);
 }
 
+export function getOpenCodeCommandPath2(id: string): string {
+  return join(".opencode", "commands", `openspec-${id}.md`);
+}
+
 const OPENCODE_ARTIFACT: ArtifactSpec = {
   path: getOpenCodeCommandPath,
+  naming: "hyphen-prefix",
+  frontmatter: { description: true },
+};
+
+const OPENCODE_ARTIFACT2: ArtifactSpec = {
+  path: getOpenCodeCommandPath2,
   naming: "hyphen-prefix",
   frontmatter: { description: true },
 };
@@ -30,6 +40,7 @@ const opencodeDeclaration: AdapterDeclaration = {
   label: "opencode",
   displayName: "OpenCode",
   artifacts: [OPENCODE_ARTIFACT],
+  artifacts2: [OPENCODE_ARTIFACT2],
   detection: {
     projectPaths: [".opencode"],
     intentPaths: ["opencode.json", "opencode.jsonc"],
@@ -45,6 +56,7 @@ const opencodeDeclaration: AdapterDeclaration = {
 };
 
 export const opencodeAdapter = defineAdapter(opencodeDeclaration);
+export const opencodeAdapter2 = defineAdapter(opencodeDeclaration, "openspec");
 
 // ─── Named exports (derived from the declaration) ────────────────────────
 
@@ -61,3 +73,4 @@ export function hasOpenCode(projectRoot: string, homeDir?: string): boolean {
 export { readOpenCodeInstructions } from "../mcp-carriers.js";
 
 registerAdapter(opencodeAdapter);
+registerAdapter(opencodeAdapter2);

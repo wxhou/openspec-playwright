@@ -59,6 +59,12 @@ export interface ExtraArtifact {
  */
 export type CommandForm = "colon" | "hyphen";
 
+/**
+ * Which naming family the installed artifacts use: `opsx` for OpenSpec 1.x
+ * (`/opsx:e2e`, `/opsx-e2e`) and `openspec` for 2.x (`/openspec-e2e`).
+ */
+export type ArtifactStyle = "opsx" | "openspec";
+
 // ─── Declarative adapter contract ────────────────────────────────────────
 
 /**
@@ -185,6 +191,11 @@ export interface AdapterDeclaration {
   displayName: string;
   /** Ordered; the first artifact is the primary command artifact. */
   artifacts: ArtifactSpec[];
+  /**
+   * 2.x artifacts (`openspec-e2e`). Optional: an adapter that has not declared
+   * them falls back to the 1.x set for both styles.
+   */
+  artifacts2?: ArtifactSpec[];
   detection: DetectionSpec;
   mcp: McpSpec;
   /** Defaults to `<root>/AGENTS.md` with no config registration. */
@@ -195,14 +206,18 @@ export interface AdapterDeclaration {
    * stays governed by the artifact naming.
    */
   invocationHint?: string;
-  /** Retired artifact directories to clean up (project-relative). */
-  legacyArtifacts?: string[];
+  /** Invocation hint for the 2.x artifacts (e.g. `$openspec-e2e`). */
+  invocationHint2?: string;
   /** Consent-gated, ownership-aware extra files (Claude's vendored agents). */
   optionalArtifacts?: (install: boolean) => ExtraArtifact[];
 }
 
 export interface EditorAdapter {
   id: EditorId;
+  /** Naming family this compiled variant writes. */
+  style: ArtifactStyle;
+  /** User-facing invocation hint for this style (`/openspec-e2e`, `$openspec-e2e`). */
+  invocationHint?: string;
   /** Short label used in log messages. */
   label: string;
   /** Human-readable name used in user-facing messages. */
@@ -270,6 +285,8 @@ export interface EditorAdapter {
   registerInstructions?(projectRoot: string, instructions: string[]): void;
   /** Optional: secondary files written alongside commandFilePath (Cursor skill). */
   extraArtifacts?(meta: CommandMeta): ExtraArtifact[];
+  /** Relative paths of this style's artifacts that another adapter also writes. */
+  sharedArtifactPaths?(meta: CommandMeta): string[];
   /**
    * Optional: consent-gated secondary files (claude's vendored Playwright
    * agents). Only written when `install` is true — the caller resolves

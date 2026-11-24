@@ -127,7 +127,7 @@ export function installOpenSpecBlock(
     const after = existing.slice(endIdx);
     const updated =
       before +
-      "\n" +
+      (before === "" ? "" : "\n\n") +
       markerStart +
       "\n\n" +
       standardsContent.trim() +
@@ -352,6 +352,7 @@ export function installProjectRules(
   projectRoot: string,
   standardsContent: string,
   detected: EditorAdapter[],
+  options: { skipCopyFor?: (adapter: EditorAdapter) => boolean } = {},
 ): void {
   if (detected.length === 0) return;
 
@@ -361,6 +362,7 @@ export function installProjectRules(
   // Full-standards rules files carry the complete block themselves; wrapper
   // files (CLAUDE.md, CODEBUDDY.md) only import AGENTS.md.
   for (const adapter of detected) {
+    if (options.skipCopyFor?.(adapter)) continue;
     if (fullRulesFile(adapter, projectRoot) !== null) {
       installOpenSpecBlock(projectRoot, standardsContent, adapter);
     } else if (wrapperRulesFile(adapter, projectRoot) !== null) {
@@ -581,8 +583,9 @@ function markersPaired(content: string, start: string, end: string): boolean {
 /**
  * Remove openspec-pw marker blocks (both namespaces) from a single file,
  * deleting the file entirely when it empties out. `pristineBody`, when given,
- * is the block body the tool writes on creation: a file matching that exact
- * generated form is deleted whole rather than left as a title-only shell.
+ * marks the file as tool-owned: a file matching that exact generated form, or
+ * one whose only remaining content is the generated title, is deleted whole
+ * instead of left as a shell.
  * Exported for the init deselect-removal flow (CLAUDE.md wrapper cleanup);
  * cleanProjectRules wraps it for the remove command's context.
  */
@@ -692,10 +695,20 @@ export function removeMarkersFromFile(
   }
   updated = updated.replace(/\n{3,}/g, "\n\n").trim();
 
-  // Delete empty file rather than leaving a ghost.
-  if (updated === "") {
+  // Files refreshed by versions that wrote a single newline after the title —
+  // or whose block body came from another standards revision — miss the
+  // pristine check above; delete the title-only shell instead of leaving it.
+  const titleOnly =
+    pristineBodies !== undefined &&
+    updated === `# ${rulesFileTitle(projectRoot)}`;
+  if (updated === "" || titleOnly) {
     rmSync(dest);
-    console.log(chalk.green(`  ✓ Removed empty ${fileLabel}`));
+    if (titleOnly) pruneEmptyDirs(dirname(dest), projectRoot);
+    console.log(
+      chalk.green(
+        titleOnly ? `  ✓ Removed ${fileLabel}` : `  ✓ Removed empty ${fileLabel}`,
+      ),
+    );
     return true;
   }
 

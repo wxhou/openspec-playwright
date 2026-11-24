@@ -47,8 +47,9 @@ env:
   # agent started (a dev server, for instance) and then throws it away.
   CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS: "0"
   # Pinned deliberately: `--bare` is slated to become the default for `-p`, and
-  # bare mode does not load `.claude/commands/`, which would silently disable
-  # `/opsx:apply`. The preflight step below fails if the pin ever drifts.
+  # bare mode loads neither `.claude/commands/` nor project skills, which would
+  # silently disable the apply/e2e/verify workflow. The preflight step below
+  # fails if the pin ever drifts.
   CLAUDE_CODE_VERSION: "2.1.310"
 
 jobs:
@@ -72,7 +73,7 @@ jobs:
 
       - run: npx playwright install --with-deps chromium
 
-      - run: npm install -g @fission-ai/openspec@1 openspec-playwright@latest
+      - run: npm install -g @fission-ai/openspec@2 openspec-playwright@latest
 
       # No change name here: a PR job must never fail because two changes are
       # open at once. These four checks do not need one; the agent job runs the
@@ -108,7 +109,7 @@ jobs:
 
       - name: Install CLIs
         run: |
-          npm install -g @fission-ai/openspec@1
+          npm install -g @fission-ai/openspec@2
           npm install -g openspec-playwright@latest
           npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
 
@@ -123,15 +124,41 @@ jobs:
             echo "::error::Claude Code version drifted from the pin; re-test the pipeline before unpinning"; exit 1; }
           # `.claude/` sits in the init-managed gitignore block, so the command
           # files are never in git — regenerate them here before asserting.
-          # `openspec update` is not enough: it only refreshes tools already
-          # configured in the global config, which a fresh runner does not have.
-          # `core` profile omits `/opsx:verify`, which stage 5 runs.
-          openspec init --tools claude --profile custom --no-animation >/dev/null
+          # A clean runner has no global `workflows` list, so `--profile custom`
+          # alone installs nothing (1.x and 2.x alike): set it explicitly.
+          # 2.1 installs skills globally by default; `--scope project` keeps
+          # them in the checkout. Only 2.1+ knows the flag, so probe its help.
+          # Capture the text first: `grep -q` exits on the first match and the
+          # SIGPIPE would fail the step under pipefail.
+          openspec config set workflows '["apply","verify"]' >/dev/null
+          HELP=$(openspec init --help 2>&1 || true)
+          SCOPE=
+          case "$HELP" in *--scope*) SCOPE="--scope project" ;; esac
+          openspec init --tools claude --profile custom $SCOPE --no-animation >/dev/null
           openspec-pw init --tools claude --no-mcp --no-hook >/dev/null
-          test -f .claude/commands/opsx/apply.md || {
-            echo "::error::/opsx:apply was not produced by 'openspec init --tools claude' — check the OpenSpec CLI version"; exit 1; }
-          test -f .claude/commands/opsx/e2e.md || {
-            echo "::error::/opsx:e2e was not produced by 'openspec-pw init' — check the openspec-pw CLI version"; exit 1; }
+
+          # Resolve the workflow surface at runtime: 2.x installs skills under
+          # `.agents/skills/`, 1.x command files under `.claude/commands/`.
+          # Prefer the major's surface, fall back to the other so a partially
+          # installed set still resolves, and fail only when neither exists.
+          MAJOR=$(openspec --version | grep -oE '[0-9]+' | head -1)
+          if [ "${MAJOR:-1}" -ge 2 ] && [ -f .agents/skills/openspec-apply-change/SKILL.md ]; then
+            APPLY=/openspec-apply-change; VERIFY=/openspec-verify-change
+          elif [ -f .claude/commands/opsx/apply.md ]; then
+            APPLY=/opsx:apply; VERIFY=/opsx:verify
+          elif [ -f .agents/skills/openspec-apply-change/SKILL.md ]; then
+            APPLY=/openspec-apply-change; VERIFY=/openspec-verify-change
+          else
+            echo "::error::no resolvable apply workflow — check the OpenSpec CLI version"; exit 1
+          fi
+          if [ "${MAJOR:-1}" -ge 2 ] && { [ -f .agents/skills/openspec-e2e/SKILL.md ] || [ -e .claude/skills/openspec-e2e ]; }; then
+            E2E=/openspec-e2e
+          else
+            E2E=/opsx:e2e
+          fi
+          echo "APPLY=$APPLY" >> "$GITHUB_ENV"
+          echo "VERIFY=$VERIFY" >> "$GITHUB_ENV"
+          echo "E2E=$E2E" >> "$GITHUB_ENV"
 
       - name: Resolve change
         id: resolve
@@ -161,7 +188,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           CHANGE: ${{ steps.resolve.outputs.change }}
         run: |
-          claude -p "/opsx:apply $CHANGE. Run \`openspec-pw gate $CHANGE --skip e2e\` and revise until it exits 0. E2E tests are generated in a later step — do not write them yourself." \
+          claude -p "$APPLY $CHANGE. Run \`openspec-pw gate $CHANGE --skip e2e\` and revise until it exits 0. E2E tests are generated in a later step — do not write them yourself." \
             --permission-mode acceptEdits \
             --permission-prompts none \
             --tools "Bash,Read,Edit,Write" \
@@ -204,7 +231,7 @@ jobs:
           E2E_AUTH_CHECK_PATH: ${{ vars.E2E_AUTH_CHECK_PATH }}
           BASE_URL: ${{ secrets.BASE_URL || 'http://localhost:3000' }}
         run: |
-          claude -p "/opsx:e2e $CHANGE --auto" \
+          claude -p "$E2E $CHANGE --auto" \
             --permission-mode acceptEdits \
             --permission-prompts none \
             --tools "Bash,Read,Edit,Write" \
@@ -245,7 +272,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           CHANGE: ${{ steps.resolve.outputs.change }}
         run: |
-          claude -p "/opsx:verify $CHANGE" \
+          claude -p "$VERIFY $CHANGE" \
             --permission-mode acceptEdits \
             --permission-prompts none \
             --tools "Bash,Read" \
@@ -265,6 +292,9 @@ jobs:
           git config user.email "openspec-pw@users.noreply.github.com"
           git checkout -B "$BRANCH"
           git add -A
+          # 2.x writes its project-scope skills into the checkout; they are
+          # generated tooling, not part of this change, so keep them out of the PR.
+          git reset -q -- .agents/skills/openspec-* || true
           git commit -m "feat(openspec): apply $CHANGE" || echo "Nothing to commit"
           git push -u origin "$BRANCH"
           cost() { jq -r '.total_cost_usd // 0' "$1" 2>/dev/null || echo 0; }
