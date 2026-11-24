@@ -200,16 +200,15 @@ describe("init pre-select: artifact manifest tier", () => {
     mkdirSync(join(tmpRoot, ".cursor"), { recursive: true });
 
     let preselected: string[] = [];
-    let names: string[] = [];
+    let configuredSeen: string[] = [];
     await init(
       { mcp: false },
       {
         isTTY: true,
-        prompt: async (allEditors, pre, configured) => {
+        prompt: async (_allEditors, pre, configured) => {
           if (!configured) throw new Error("configured set missing on re-init");
           preselected = [...pre];
-          names = allEditors
-            .map((a) => configured.has(a.id) ? `${a.displayName} (configured)` : a.displayName);
+          configuredSeen = [...configured];
           return ["claude"];
         },
         confirm: async () => true,
@@ -217,8 +216,7 @@ describe("init pre-select: artifact manifest tier", () => {
     );
 
     expect(preselected).toEqual(["claude"]);
-    expect(names).toContain("Claude Code (configured)");
-    expect(names).not.toContain("Cursor (configured)");
+    expect(configuredSeen).toEqual(["claude"]);
   });
 
   it("Codex alone is pre-selected from the shared skill artifact", async () => {
@@ -241,23 +239,23 @@ describe("init pre-select: artifact manifest tier", () => {
     expect(preselected).toContain("codex");
   });
 
-  it("first-run bypass: zero openspec-pw state → project-level detected pre-selected, no suffix", async () => {
+  it("first-run bypass: zero openspec-pw state → project-level detected pre-selected, empty configured tier", async () => {
     // Project marker dirs only; empty injected home so global pi/omp stay silent
     const home = mkdtempSync(join(tmpdir(), "ospw-preselect-home-"));
     mkdirSync(join(tmpRoot, ".claude"), { recursive: true });
     mkdirSync(join(tmpRoot, ".cursor"), { recursive: true });
 
     let preselected: string[] = [];
-    let names: string[] = [];
+    let configuredSeen: string[] = [];
     try {
       await init(
         { mcp: false },
         {
           isTTY: true,
           homeDir: home,
-          prompt: async (allEditors, pre, configured) => {
+          prompt: async (_allEditors, pre, configured) => {
             preselected = [...pre];
-            names = allEditors.map((a) => (configured?.has(a.id) ? "(configured)" : ""));
+            configuredSeen = [...(configured ?? [])];
             return ["claude"];
           },
           confirm: async () => true,
@@ -268,7 +266,24 @@ describe("init pre-select: artifact manifest tier", () => {
     }
 
     expect(preselected).toEqual(["claude", "cursor"]);
-    expect(names.every((n) => n === "")).toBe(true); // no (configured) suffix in bypass tier
+    expect(configuredSeen).toEqual([]);
+  });
+
+  it("skips the editor prompt when stdin is not a TTY", async () => {
+    mkdirSync(join(tmpRoot, ".cursor"), { recursive: true });
+    const home = mkdtempSync(join(tmpdir(), "ospw-preselect-home-"));
+    try {
+      // stdout is a TTY here, stdin is not — before the guard the checkbox
+      // rendered and waited forever.
+      await init(
+        { mcp: false, frontend: true },
+        { isTTY: true, homeDir: home, confirm: async () => true },
+      );
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+
+    expect(existsSync(join(tmpRoot, CURSOR_COMMAND))).toBe(true);
   });
 
   it("first-run: globally-installed editors are listed unchecked with a hint", async () => {

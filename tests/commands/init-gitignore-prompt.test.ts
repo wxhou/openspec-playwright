@@ -96,14 +96,18 @@ describe("group row labels", () => {
 describe("customize prefill", () => {
   it("checks exactly the paths of the groups that stayed checked", () => {
     const kept = ["MCP config and settings"];
-    const items = buildCustomizeChoices(groups, kept);
+    const blocks = buildCustomizeChoices(groups, kept);
+
+    expect(blocks.map((b) => b.label)).toEqual(groups.map((g) => g.label));
+    const items = blocks.flatMap((b) => b.choices);
     const checked = items.filter((i) => i.checked).map((i) => i.value);
     const expected = groups.find((g) => g.label === kept[0])?.paths ?? [];
     expect(new Set(checked)).toEqual(new Set(expected));
   });
 
   it("covers every path once, in group order", () => {
-    const items = buildCustomizeChoices(groups, []);
+    const items = buildCustomizeChoices(groups, []).flatMap((b) => b.choices);
+
     expect(items.map((i) => i.value)).toEqual(groups.flatMap((g) => g.paths));
     expect(items.every((i) => !i.checked)).toBe(true);
   });

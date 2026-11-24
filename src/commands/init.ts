@@ -491,7 +491,12 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
       'The --agents option requires at least one configured editor (claude) and cannot be combined with "--tools none".',
     );
   }
-  if (selectedIds === null && isTTY) {
+  // A checkbox reads stdin: stdout being a TTY is not enough, or a redirected
+  // stdin makes the prompt hang. Injected prompts need no such check.
+  if (
+    selectedIds === null &&
+    (deps.prompt !== undefined || (isTTY && process.stdin.isTTY === true))
+  ) {
     interactiveSelection = true;
     selectedIds = await prompt(
       getAllAdapters(),

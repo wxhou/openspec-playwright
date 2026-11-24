@@ -456,6 +456,30 @@ describe("runRemoveAll interactive confirm", () => {
     );
   });
 
+  it("treats Ctrl+C at the prompt as a decline", async () => {
+    const logs: string[] = [];
+    vi.mocked(console.log).mockImplementation((msg?: unknown) =>
+      logs.push(String(msg)),
+    );
+    const code = await runRemoveAll(
+      { root: [roots], cwd: emptyCwd },
+      {
+        isTTY: true,
+        confirm: async () => {
+          const err = new Error("User force closed the prompt");
+          err.name = "ExitPromptError";
+          throw err;
+        },
+      },
+    );
+
+    expect(code).toBe(0);
+    expect(logs.join("\n")).toContain("Aborted");
+    expect(readFileSync(join(projectA, "AGENTS.md"), "utf-8")).toContain(
+      "OPENSPEC-PW:START",
+    );
+  });
+
   it("does not prompt without a TTY", async () => {
     let prompted = false;
     vi.mocked(console.log).mockImplementation(() => {});

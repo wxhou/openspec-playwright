@@ -90,15 +90,25 @@ export function expandGroupSelection(
 /**
  * Prefill for the per-path list reached from the customize row: a path stays
  * checked when its group stayed checked, so the two levels cannot disagree.
+ * Returns one block per group — the caller renders each block under its own
+ * separator, so no parallel index bookkeeping can misalign.
  */
 export function buildCustomizeChoices(
   groups: readonly { label: string; paths: readonly string[] }[],
   keptLabels: readonly string[],
-): { name: string; value: string; checked: boolean }[] {
+): {
+  label: string;
+  choices: { name: string; value: string; checked: boolean }[];
+}[] {
   const kept = new Set(keptLabels);
-  return groups.flatMap((g) =>
-    g.paths.map((p) => ({ name: p, value: p, checked: kept.has(g.label) })),
-  );
+  return groups.map((g) => ({
+    label: g.label,
+    choices: g.paths.map((p) => ({
+      name: p,
+      value: p,
+      checked: kept.has(g.label),
+    })),
+  }));
 }
 
 /** Sentinel for the customize row; cannot collide with a group label. */
@@ -146,12 +156,9 @@ export async function promptSelectGitignorePaths(
   const keptLabels = groups
     .filter((g) => picked.includes(g.label))
     .map((g) => g.label);
-  const items = buildCustomizeChoices(groups, keptLabels);
-  let cursor = 0;
-  const choices = groups.flatMap((g) => {
-    const block = items.slice(cursor, cursor + g.paths.length);
-    cursor += g.paths.length;
-    return [new Separator(g.label), ...block];
-  });
+  const choices = buildCustomizeChoices(groups, keptLabels).flatMap((block) => [
+    new Separator(block.label),
+    ...block.choices,
+  ]);
   return (await checkbox({ message: MESSAGE, choices, pageSize: 20 })) as string[];
 }

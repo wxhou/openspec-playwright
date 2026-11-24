@@ -244,7 +244,7 @@ openspec-pw flake         # 检测测试文件中的不稳定模式（静态模�
 openspec-pw gate [change]  # 跑全部质量检查，退出码 0 / 1 / 2（通过 / 不达标 / 无法判定；--repeat N 重跑失败的 E2E 以区分 flaky 与真失败）
 openspec-pw migrate       # 迁移旧测试文件到新目录结构
 openspec-pw explore       # 探索应用路由（--file <path> 指定 app-exploration.md）
-openspec-pw remove        # 移除集成（--all 扫描 home 与 Windows 盘根；--yes 才执行）
+openspec-pw remove        # 移除集成（--all 扫描 home 与 Windows 盘根；TTY 下确认后执行，--yes 跳过确认）
 ```
 
 `install --claude` 安装 Claude Code CLI 本体；`init` 安装项目集成。默认只打印官方 native installer 命令；`--run` 执行，`--verify` 检查已有安装，`--channel stable|latest` 选择通道（默认 `latest`），`--version x.y.z` 固定版本。native 安装后若找不到 `claude`，请打开新终端或把 `~/.local/bin` 加入 `PATH`。只走 Anthropic 官方渠道；Claude Code 仅在 Anthropic 支持的国家/地区可用（https://www.anthropic.com/supported-countries），本命令不提供镜像、代理或地区绕过。
@@ -387,7 +387,7 @@ OpenSpec 1.x 下同一工作流用 `/opsx:e2e`（Claude Code / CodeBuddy CLI / G
 
 如果你的应用需要登录，配置一次凭证后，所有测试自动以已登录状态运行。
 
-> **凭据自动忽略**：init 和 update 会在 `.gitignore` 尾部维护一个标记块，忽略 `tests/playwright/credentials.yaml`、其 `.bak`、`tests/playwright/test-results/` 和探索截图（`tests/playwright/screenshots/`——随开发过时，本地留档）——以及 auth storageState（`playwright/.auth/`，已登录会话 cookie）、MCP 配置（`.mcp.json`、`opencode.json(c)`、`.roo/mcp.json`、`.trae/mcp.json`——用户自加的 server 常在 env/headers 里放 API key）、工具本地数据（`.codegraph/`、`.playwright-mcp/`）、第一层名如 `.claude/`、`.cursor/`、`.codebuddy/`、`.agents/`、`.dsh/`、`.gemini/`、`.qwen/`、`.kimi-code/`、`.github/prompts/`（整目录忽略），以及 `.roo/commands/openspec-e2e.md`、`.trae/commands/openspec-e2e.md`（对应的 1.x `opsx-` 路径同样受管）、`openspec/`、`AGENTS.md`、`CLAUDE.md`、`CODEBUDDY.md`、`GEMINI.md`、`QWEN.md`、`.github/copilot-instructions.md`、`.roo/rules/openspec-pw.md`、`.trae/rules/project_rules.md`（生成的产物按设计留在本地）。标记块幂等、不碰你自己的规则，`remove` 时自动清理。无法写入时会降级为警告并列出未覆盖路径。注意：ignore 规则对已被 git 追踪的文件无效——若凭据曾提交过，请执行 `git rm --cached tests/playwright/credentials.yaml`。也可以改用 `E2E_USERNAME` / `E2E_PASSWORD` 环境变量。
+> **凭据自动忽略**：init 和 update 会在 `.gitignore` 尾部维护一个标记块，忽略 `tests/playwright/credentials.yaml`、其 `.bak`、`tests/playwright/test-results/` 和探索截图（`tests/playwright/screenshots/`——随开发过时，本地留档）——以及 auth storageState（`playwright/.auth/`，已登录会话 cookie）、MCP 配置（`.mcp.json`、`opencode.json(c)`、`.roo/mcp.json`、`.trae/mcp.json`——用户自加的 server 常在 env/headers 里放 API key）、工具本地数据（`.codegraph/`、`.playwright-mcp/`）、第一层名如 `.claude/`、`.cursor/`、`.codebuddy/`、`.agents/`、`.dsh/`、`.gemini/`、`.qwen/`、`.kimi-code/`、`.github/prompts/`（整目录忽略），以及 `.roo/commands/openspec-e2e.md`、`.trae/commands/openspec-e2e.md`（对应的 1.x `opsx-` 路径同样受管）、`openspec/`、`AGENTS.md`、`CLAUDE.md`、`CODEBUDDY.md`、`GEMINI.md`、`QWEN.md`、`.github/copilot-instructions.md`、`.roo/rules/openspec-pw.md`、`.trae/rules/project_rules.md`（生成的产物按设计留在本地）。编辑器根目录按整目录忽略，你在其中放的自有文件（如 `.agents/skills/team-skill/`、`.github/prompts/team.prompt.md`）需 `git add -f` 才能提交。标记块幂等、不碰你自己的规则，`remove` 时自动清理。无法写入时会降级为警告并列出未覆盖路径。注意：ignore 规则对已被 git 追踪的文件无效——若凭据曾提交过，请执行 `git rm --cached tests/playwright/credentials.yaml`。也可以改用 `E2E_USERNAME` / `E2E_PASSWORD` 环境变量。
 
 ```bash
 # 1.（可选）编辑测试用户（角色测试）

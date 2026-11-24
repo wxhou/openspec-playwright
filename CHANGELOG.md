@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `src/commands/init-gitignore-prompt.ts`、`src/shared/gitignore-managed.ts`、`tests/commands/init-gitignore-prompt.test.ts`、`tests/gitignore-managed.test.ts`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
 - **feat(cli): 精简 init 编辑器选择与 remove --all 确认**. 编辑器多选按 Configured / Detected / Other 分段并一屏显示；`remove --all` 在 TTY 下打印计划后就地确认（默认否），非 TTY 仍只列计划。
   - `src/commands/init.ts`、`src/commands/remove.ts`、`tests/commands/editor-prompt-groups.test.ts`、`tests/commands/remove-all.test.ts`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
+- **fix(cli): 补齐提示的 stdin 守卫与中断处理**. 编辑器多选仅在 stdin 为 TTY 时出现，重定向 stdin 不再挂起；`remove --all` 确认时 Ctrl+C 按拒绝处理；CLI 帮助、`docs/llms.txt` 与两份 README 的 remove 描述同步为「TTY 确认、非 TTY 只列计划」。
+  - `src/commands/init.ts`、`src/commands/remove.ts`、`src/index.ts`、`docs/llms.txt`、`README.md`、`README.zh-CN.md`、`tests/commands/init-preselect.test.ts`、`tests/commands/remove-all.test.ts`、`CHANGELOG.md`
 
 ## [0.3.124] - 2026-11-24
 - **docs(cli): 生成物与元数据同步 2.x 命名**. 生成的 seed / credentials / playwright.config 去掉写死的 1.x 命令名；包描述、站点与 llms 摘要统一为 2.x 与 16 家编辑器，README 命令示例以 2.x 为主。

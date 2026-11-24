@@ -815,9 +815,17 @@ export async function runRemoveAll(
         return confirm({ message, default: false });
       });
     const count = discovery.projects.length;
-    const confirmed = await ask(
-      `Remove these artifacts from ${count} project${count === 1 ? "" : "s"}?`,
-    );
+    let confirmed: boolean;
+    try {
+      confirmed = await ask(
+        `Remove these artifacts from ${count} project${count === 1 ? "" : "s"}?`,
+      );
+    } catch (err) {
+      // Ctrl+C rejects from @inquirer/prompts; treat it as a decline, not a
+      // stack trace. Any other error still surfaces.
+      if ((err as Error)?.name !== "ExitPromptError") throw err;
+      confirmed = false;
+    }
     if (!confirmed) {
       console.log(chalk.gray("\n  Aborted — nothing was changed.\n"));
       return 0;

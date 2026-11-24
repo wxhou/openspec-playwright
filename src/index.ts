@@ -206,11 +206,11 @@ program
   )
   .option(
     "--all",
-    "Discover projects on this machine and print the removal plan (dry run)",
+    "Discover projects on this machine and show the removal plan (asks before removing on a TTY)",
   )
   .option(
     "--yes",
-    "With --all: actually remove (without it, --all only prints the plan)",
+    "With --all: remove without asking (non-TTY runs only print the plan)",
   )
   .option(
     "--root <dir>",
