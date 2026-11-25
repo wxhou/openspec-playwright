@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- **fix(e2e): 收口档位文档的四处不一致**. 一次性脚本限定为「完全没有浏览器工具」一档（小程序保留自己的例外），与「有 MCP 时禁止脚本」不再冲突；web 版 `app-exploration.md` 把 `BASE_URL:`/`Browser tools:` 提到标题之后前两行、小程序版把 `Browser tools:` 提到首位，Step 4.2 的必填句同时补上 web 限定；报告头 `Base URL` 只对 web 目标成立（小程序写 `n/a`），换档时 `Tool:` 列出全部 server 与最低档；Session state 段补回「换服务不能保鲜」，与路由表的降档规则各司其职。
+  - `templates/{e2e-command,app-exploration,miniprogram/app-exploration}.md`、`tests/e2e-template-auto.test.ts`
 - **fix(e2e): 修正子代理委派提示的 loop 与执行顺序**. `init-agents` 补 `--loop <your loop>`——缺省会写出 Copilot 格式，与 Claude Code 的 `.claude/agents/` 对不上；注明该命令整份重写 `.mcp.json`，须在 `openspec-pw init` 之前执行；无官方 loop 的编辑器明确走 hand-write，官方 healer 仍禁用。
   - `templates/e2e-command.md`、`tests/e2e-template-auto.test.ts`
 - **fix(cli): 受管 .gitignore 块剔除冗余旧条目**. 块内不再保留「已从受管列表移除、但仍被某条受管目录覆盖」的行，升级后不会同时存在旧窄条目与新目录条目；覆盖关系单向（宽泛目录行、用户手写行、其覆盖者被 opt-out 的窄行均保留）。

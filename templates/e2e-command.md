@@ -42,7 +42,7 @@
 | Phase | Use | Why |
 | ----- | --- | --- |
 | Exploration (Step 4) | Playwright browser MCP when connected — `playwright-test` preferred (it also runs and debugs tests); `playwright` (`@playwright/mcp`) gives browser tools only. Start with `browser_navigate` / `browser_snapshot` / `browser_click` | iterative reasoning over live page structure |
-| `playwright-test` and `playwright` absent (Step 4) | `openspec-pw explore --file <path>` when a route table exists; chrome-devtools when configured for capabilities `explore` cannot read; one throwaway script (`node <file>`) under `tmp/` only when neither answers the question, deleted after Step 4 | cheapest way to read a page with no Playwright browser MCP |
+| `playwright-test` and `playwright` absent (Step 4) | `openspec-pw explore --file <path>` when a route table exists; chrome-devtools when configured for capabilities `explore` cannot read; one throwaway script (`node <file>`) under `tmp/` only when no browser tool is attached at all — the mini target keeps its own exception — deleted after Step 4 | cheapest way to read a page with no Playwright browser MCP |
 | Planning (Step 5) | `planner_*` tools when exposed | keeps page state while drafting the plan |
 | Generation (Step 6) | `generator_*` tools when exposed; otherwise hand-write the spec | record-then-write keeps the recorded flow and the spec in sync |
 | First execution (Step 9) | CLI `npx playwright test <file> --reporter=line` | no tool schemas or accessibility trees loaded into context |
@@ -150,7 +150,7 @@ If seed fails → **HARD STOP**. Report the failing output and wait — environm
 
 **4.1. Verify BASE_URL**: navigate; HTTP 5xx → **STOP: backend error**. Read `app-knowledge.md` for known risks. Confirm the page belongs to **your app** (known element or title) — a foreign server on the port invalidates every test (false green).
 
-**4.2. Explore each route**: navigate → check console errors → snapshot DOM → screenshot. For ≥5 routes on the web target with no Playwright browser MCP connected (see the routing table), use `openspec-pw explore --file <path-to-app-exploration.md>`. The command reads the route table, so write that file first in both modes — use the packaged `templates/app-exploration.md` as the shape. The first fields after the title MUST be `BASE_URL:` and `Browser tools:` in change mode (`openspec/changes/<name>/specs/playwright/app-exploration.md`) — write `none (rung <n>)` when no browser tool is attached; the project-root file written in all mode may omit both, and `openspec-pw explore` then falls back to env/detection. Keep the lines when you reshape the sections, and add the missing one when an existing change-mode file lacks it. It runs sequentially; for parallel browsers use the MCP tools in the routing table.
+**4.2. Explore each route**: navigate → check console errors → snapshot DOM → screenshot. For ≥5 routes on the web target with no Playwright browser MCP connected (see the routing table), use `openspec-pw explore --file <path-to-app-exploration.md>`. The command reads the route table, so write that file first in both modes — use the packaged `templates/app-exploration.md` as the shape. On the web target, the first fields after the title MUST be `BASE_URL:` and `Browser tools:` in change mode (`openspec/changes/<name>/specs/playwright/app-exploration.md`) — write `none (rung <n>)` when no browser tool is attached; the project-root file written in all mode may omit both, and `openspec-pw explore` then falls back to env/detection. Keep the lines when you reshape the sections, and add the missing one when an existing change-mode file lacks it. It runs sequentially; for parallel browsers use the MCP tools in the routing table.
 
 **App-level error decisions**:
 
@@ -183,7 +183,7 @@ Record findings in `app-exploration.md`. Output path:
 
 **Idempotency**: If `app-exploration.md` exists → read, verify routes, update only changed/new routes. **Route Snapshot Hash**: Navigate to sitemap.xml → hash content → if unchanged since last exploration, skip re-exploration entirely. Store hash in `app-knowledge.md` → `Exploration State`.
 
-**Session state**: `playwright-test` browser tools run in the paused test's fixture context — a fresh context with empty storage on every run. That is E2E isolation, not a config problem. For logged-in flows, use the storageState chain: `auth.setup.ts` (Step 7) writes `playwright/.auth/user.json`; `playwright.config.ts` feeds it in via `use.storageState` + `dependencies: ['setup']`. A persistent-profile login is not a valid precondition.
+**Session state**: `playwright-test` browser tools run in the paused test's fixture context — a fresh context with empty storage on every run. That is E2E isolation, not a config problem. For logged-in flows, use the storageState chain: `auth.setup.ts` (Step 7) writes `playwright/.auth/user.json`; `playwright.config.ts` feeds it in via `use.storageState` + `dependencies: ['setup']`. A persistent-profile login is not a valid precondition. Because every run starts fresh, never switch browser servers to carry state — a different server starts its own context. The routing table's step-down rule is about availability, not state.
 
 **4.3. Update shared knowledge**: Extract project-level findings to `tests/playwright/app-knowledge.md`. Auto-de-duplicate by key.
 
@@ -333,8 +333,8 @@ Wait for user input. Track escalation attempts — if 3 consecutive Phase 3 with
 **Header** (both modes, required) — a report without the `Tool:` line is incomplete; fill it before reporting results:
 - Date `<timestamp>`
 - Mode `all` or `change (<change-name>)`
-- Base URL `<url>`
-- Tool: `<server> (rung <n>)` — write `none (rung <n>)` when no browser tool was attached
+- Base URL `<url>` — web only; the mini target has no `BASE_URL:`, write `n/a`
+- Tool: `<server> (rung <n>)` — write `none (rung <n>)` when no browser tool was attached; when the run switched rungs, list every server used and the lowest rung
 
 Compile into `openspec/reports/playwright-e2e-<name>-<timestamp>.md` from Phase 1–3 output:
 - Summary table (App Bugs / Test Bugs healed / Flaky-RAFT / Escalations)

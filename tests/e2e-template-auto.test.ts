@@ -97,6 +97,14 @@ describe("e2e-command template: autonomous mode", () => {
     expect(at("openspec-pw explore --file")).toBeLessThan(
       at("one throwaway script"),
     );
+    // The table row and the prose after it govern the same case: a script is
+    // the no-browser-tool rung, never a fallback while chrome-devtools is up —
+    // except on the mini target, which keeps its own exception.
+    expect(routing).toContain("only when no browser tool is attached at all");
+    expect(routing).toContain("the mini target keeps its own exception");
+    // A re-run always starts in a fresh context, so switching servers to keep
+    // state cannot work; the session-state paragraph must say so.
+    expect(template).toContain("never switch browser servers to carry state");
     // The repair row must name all three page-diagnosis tools in order:
     // `test_list` → diagnose in the page → `test_debug` → `test_run`.
     // Scoped to the row because `browser_snapshot` also appears in the
@@ -202,6 +210,31 @@ describe("e2e-command template: autonomous mode", () => {
     );
     expect(reportSection).toContain("Tool: `<server> (rung <n>)`");
     expect(reportSection).toContain("without the `Tool:` line is incomplete");
+    // A run may step down mid-way; one recorded server would lose that.
+    expect(reportSection).toContain(
+      "list every server used and the lowest rung",
+    );
+    // The mini target has no BASE_URL, so the report field needs a value for it.
+    expect(reportSection).toContain(
+      "the mini target has no `BASE_URL:`, write `n/a`",
+    );
+
+    // Step 4.2 requires these lines as the first fields after the title; the
+    // templates must order them that way or they contradict the instruction.
+    // The anchor is the full line: "Generated:" also appears inside the
+    // `Browser tools:` parenthetical, so the bare token would match there and
+    // the comparison would stop testing line order.
+    // indexOf returns -1 for a missing anchor, and `-1 < positive` would pass.
+    const before = (haystack: string, first: string, second: string) => {
+      const a = haystack.indexOf(first);
+      const b = haystack.indexOf(second);
+      if (a === -1) throw new Error(`missing template anchor: ${first}`);
+      if (b === -1) throw new Error(`missing template anchor: ${second}`);
+      expect(a).toBeLessThan(b);
+    };
+    before(web, "BASE_URL:", "\nGenerated: <timestamp>");
+    before(web, "Browser tools:", "\nGenerated: <timestamp>");
+    before(mini, "Browser tools:", "\nGenerated: <timestamp>");
   });
 
   // Playwright falls through to its Copilot generator when `--loop` is
