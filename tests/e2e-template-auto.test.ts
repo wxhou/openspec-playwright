@@ -178,11 +178,23 @@ describe("e2e-command template: autonomous mode", () => {
     expect(step42).toContain("MUST be `BASE_URL:` and `Browser tools:` in change mode");
     expect(step42).toContain("may omit both");
     expect(step42).toContain("openspec/changes/<name>/specs/playwright/");
+    // The batch command is the no-Playwright-MCP rung; without the qualifier it
+    // contradicts the routing table for runs that do have a browser MCP.
+    expect(step42).toContain("no Playwright browser MCP connected");
 
     const miniSection = template.slice(
       template.indexOf("## Mini-program target"),
     );
     expect(miniSection).toContain("`Browser tools:`");
+    // The mini template has no BASE_URL field, so the mini section cannot
+    // require one.
+    expect(miniSection).toContain("has no `BASE_URL:`");
+    expect(miniSection).not.toContain("`BASE_URL:` and `Browser tools:` header lines");
+
+    // `rung <n>` is written into both artifacts; the numbers must be defined
+    // once, or two runs record the same server under different rungs.
+    expect(template).toContain("**rung 1**");
+    expect(template).toContain("**rung 3**");
 
     const reportSection = template.slice(
       template.indexOf("### 10. Report results"),

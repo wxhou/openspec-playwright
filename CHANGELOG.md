@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `src/commands/init.ts`、`tests/init.test.ts`
 - **refactor(init): 编辑器多选提示移出 init.ts**. 分组与提示逻辑移入 `init-editor-prompt.ts`，init.ts 回到 1500 行上限内。
   - `src/commands/init.ts`、`src/commands/init-editor-prompt.ts`、`tests/commands/editor-prompt-groups.test.ts`
-- **chore(test): 测试不再依赖本机安装的 OpenSpec 主版本**. doctor / editors-cursor / remove-minimax / update 四个测试文件固定 1.x 主版本桩，全量测试在任何机器上一致。
+- **chore(test): 测试不再依赖本机安装的 OpenSpec 主版本**. editors-cursor / remove-minimax / update 三个测试文件固定 1.x 主版本桩；doctor 的提示断言改为跟随已装主版本，不再假设 1.x。
   - `tests/doctor.test.ts`、`tests/editors-cursor.test.ts`、`tests/commands/remove-minimax.test.ts`、`tests/update.test.ts`
 - **fix(cli): update 不再强制绕过 npm 缓存**. 自动安装不再带 `--prefer-online`，`latest` 解析最多延迟一个 registry 缓存周期（300 秒）。
   - `src/commands/update.ts`
