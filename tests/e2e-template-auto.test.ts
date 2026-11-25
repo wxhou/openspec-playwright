@@ -52,7 +52,8 @@ describe("e2e-command template: autonomous mode", () => {
   // CI has no browser MCP. Without a documented third rung the agent improvises
   // and reports "the tool was denied" instead of producing exploration data.
   it("documents the no-MCP fallback for headless exploration", () => {
-    expect(template).toContain("No browser MCP");
+    expect(template).toContain("`playwright-test` and `playwright` absent (Step 4)");
+    expect(template).toContain("openspec-pw explore --file");
     expect(template).toContain("npx playwright test <file>");
     expect(template).toContain("Step down only when the tool above");
     expect(template).toContain("deleted after Step 4");
@@ -62,9 +63,71 @@ describe("e2e-command template: autonomous mode", () => {
     expect(template).not.toContain("Steps 5–9");
     expect(template).toContain("First execution (Step 9)");
     expect(template).toContain("Repair loop (Step 9, Phase 2");
-    expect(template).toContain("installs without MCP (`--no-mcp`)");
-    expect(template).toContain("Do not write a `.mjs` script");
+    expect(template).toContain("re-runs `openspec-pw init --no-mcp` in CI");
+    expect(template).toContain(
+      "Never write a throwaway script while a browser MCP is present",
+    );
+    expect(template).toContain("`playwright-test` preferred");
     expect(template).toContain("only Planner also ships as an agent file");
+  });
+
+  // The MCP-first diagnosis loop was lost twice to prose compression: the
+  // "always required" guarantee and the Healer tool table disappeared in the
+  // 297-line rewrite. Lock the rung order by row label, and guard every
+  // anchor — indexOf returns -1 for a missing anchor, and `-1 < positive`
+  // would pass silently.
+  it("keeps browser-MCP diagnosis ahead of a throwaway script", () => {
+    const start = template.indexOf("**Browser tool routing**");
+    const end = template.indexOf("**Context budget**");
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+    const routing = template.slice(start, end);
+    const at = (needle: string): number => {
+      const index = routing.indexOf(needle);
+      if (index === -1) throw new Error(`missing routing anchor: ${needle}`);
+      return index;
+    };
+
+    expect(at("Exploration (Step 4)")).toBeLessThan(
+      at("`playwright-test` and `playwright` absent (Step 4)"),
+    );
+    expect(at("openspec-pw explore --file")).toBeLessThan(
+      at("one throwaway script"),
+    );
+    // The repair row must name all three page-diagnosis tools in order:
+    // `test_list` → diagnose in the page → `test_debug` → `test_run`.
+    // Scoped to the row because `browser_snapshot` also appears in the
+    // exploration row, where a slice-wide indexOf would match it instead.
+    const rowStart = at("Repair loop (Step 9, Phase 2");
+    const rowEnd = routing.indexOf("\n", rowStart);
+    expect(rowEnd).toBeGreaterThan(rowStart);
+    const repair = routing.slice(rowStart, rowEnd);
+    const positions = [
+      "test_list",
+      "browser_snapshot",
+      "browser_console_messages",
+      "browser_network_requests",
+      "test_debug",
+      "test_run",
+    ].map((tool) => {
+      const index = repair.indexOf(tool);
+      if (index === -1) throw new Error(`missing repair tool: ${tool}`);
+      return index;
+    });
+    expect(positions).toEqual([...positions].sort((a, b) => a - b));
+    // Phase 2-3 is what the agent actually executes. If it drifts from the
+    // routing table again, the browser-side diagnosis silently disappears —
+    // the failure mode this test exists to catch.
+    const fixStart = template.indexOf("2-3. **Fix + verify**");
+    const fixEnd = template.indexOf("2-4.", fixStart);
+    expect(fixStart).toBeGreaterThan(-1);
+    expect(fixEnd).toBeGreaterThan(fixStart);
+    const fixStep = template.slice(fixStart, fixEnd);
+    expect(fixStep).toContain("repair loop from the routing table");
+    expect(fixStep).toContain("browser_console_messages");
+    // The browser-only server is named too, so a session without
+    // `playwright-test` still routes to MCP instead of a script.
+    expect(at("browser-only `playwright` server")).toBeGreaterThan(-1);
   });
 
   it("closes every ask-user path in --auto", () => {

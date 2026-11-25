@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- **fix(e2e): 恢复浏览器 MCP 优先的诊断循环**. 路由段按阶段分档并先枚举工具，`openspec-pw explore` 补进无 Playwright MCP 时的探索路径，有浏览器 MCP 时禁止写一次性脚本；修复循环与 Phase 2-3 步骤同步列出 `browser_*` 诊断工具，并区分 `playwright-test`（还能跑/调测试）与只有浏览器工具的 `playwright`。
+  - `templates/e2e-command.md`、`tests/e2e-template-auto.test.ts`
 - **fix(cli): update 复用已安装包，跳过已是最新的安装**. 全局安装已是已发布 latest 时不再 `npm install -g`；同步内容改用已安装包内的 `templates/`、`standards/`，一次运行只查一次 registry。
   - `src/commands/update.ts`、`tests/update.test.ts`
 - **fix(cli): update 的内容来源与安装判定更严格**. 只有已发布的全局安装可代表发布包内容（检出目录不再作为来源）；运行的不是全局最新副本时把后续步骤交给全局副本；registry 不可达时不再声称「已更新到最新」。
@@ -30,8 +32,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `README.md`、`README.zh-CN.md`
 - **refactor(e2e): 收敛 e2e 模板的重复指令**. 退缩规则与原因集中到 STOP 语义，Step 8 改为指向生成的 config，模板 353 → 348 行。
   - `templates/e2e-command.md`
-- **docs(e2e): 按阶段选择浏览器工具**. 每阶段一个默认浏览器工具，修复循环才用 test_* MCP，禁用手写 .mjs 重做 playwright test。
-  - `templates/e2e-command.md`、`tests/e2e-template-auto.test.ts`
 - **feat(cli): .gitignore 选择改为分组开关**. 四组各一行、取消整组即提交整组，自定义入口继承分组状态；六个编辑器目录改为整目录忽略，受管路径 49 → 40。
   - `src/commands/init-gitignore-prompt.ts`、`src/shared/gitignore-managed.ts`、`tests/commands/init-gitignore-prompt.test.ts`、`tests/gitignore-managed.test.ts`、`README.md`、`README.zh-CN.md`
 - **feat(cli): 精简 init 编辑器选择与 remove --all 确认**. 编辑器多选按 Configured / Detected / Other 分段；`remove --all` 在 TTY 下打印计划后就地确认。
