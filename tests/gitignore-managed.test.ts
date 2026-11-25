@@ -197,6 +197,70 @@ describe("ensureGitignoreEntries", () => {
   });
 });
 
+describe("stale managed entries", () => {
+  const block = (...entries: string[]): string =>
+    `${GITIGNORE_BLOCK_BEGIN}\n${entries.join("\n")}\n${GITIGNORE_BLOCK_END}\n`;
+
+  it("prunes an entry that a kept directory line already covers", () => {
+    writeFileSync(
+      join(projectRoot, ".gitignore"),
+      block(".agents/", ".agents/skills/opsx-e2e/"),
+    );
+    const result = ensureGitignoreEntries(projectRoot);
+    expect(result.pruned).toEqual([".agents/skills/opsx-e2e/"]);
+    // Opt-out removals and stale pruning are reported separately.
+    expect(result.removed).not.toContain(".agents/skills/opsx-e2e/");
+    const after = readFileSync(join(projectRoot, ".gitignore"), "utf-8");
+    expect(after).not.toContain(".agents/skills/opsx-e2e/");
+    expect(after).toContain("\n.agents/\n");
+  });
+
+  it("keeps a broad directory line that only narrow managed paths sit under", () => {
+    writeFileSync(join(projectRoot, ".gitignore"), block(".roo/"));
+    ensureGitignoreEntries(projectRoot);
+    const after = readFileSync(join(projectRoot, ".gitignore"), "utf-8");
+    // `.roo/commands/…` does not cover `.roo/` — coverage is one-way.
+    expect(after).toContain("\n.roo/\n");
+  });
+
+  it("keeps a stale line whose only cover is opted out", () => {
+    writeFileSync(
+      join(projectRoot, ".gitignore"),
+      block(".agents/skills/opsx-e2e/"),
+    );
+    const result = ensureGitignoreEntries(projectRoot, {
+      skip: [".agents/skills/team-skill/"],
+    });
+    // `.agents/` cannot enter the block (it would ignore the opted-out path),
+    // so the narrow line is the only rule keeping that directory ignored.
+    expect(result.pruned).toEqual([]);
+    const after = readFileSync(join(projectRoot, ".gitignore"), "utf-8");
+    expect(after).toContain(".agents/skills/opsx-e2e/");
+  });
+
+  it("keeps user lines that no managed path covers", () => {
+    writeFileSync(join(projectRoot, ".gitignore"), block("*.log", ".old-tool/"));
+    const result = ensureGitignoreEntries(projectRoot);
+    expect(result.pruned).toEqual([]);
+    const after = readFileSync(join(projectRoot, ".gitignore"), "utf-8");
+    expect(after).toContain("*.log");
+    expect(after).toContain(".old-tool/");
+  });
+
+  it("is idempotent after pruning", () => {
+    writeFileSync(
+      join(projectRoot, ".gitignore"),
+      block(".agents/", ".agents/skills/opsx-e2e/"),
+    );
+    ensureGitignoreEntries(projectRoot);
+    const before = readFileSync(join(projectRoot, ".gitignore"), "utf-8");
+    const second = ensureGitignoreEntries(projectRoot);
+    expect(second.changed).toBe(false);
+    expect(second.pruned).toEqual([]);
+    expect(readFileSync(join(projectRoot, ".gitignore"), "utf-8")).toBe(before);
+  });
+});
+
 describe("removeManagedBlock", () => {
   it("removes the block, keeps user lines, deletes empty file (task 3.8)", () => {
     writeFileSync(join(projectRoot, ".gitignore"), "# mine\nnode_modules/\n");

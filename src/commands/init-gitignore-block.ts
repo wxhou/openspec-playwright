@@ -59,7 +59,9 @@ export function maintainManagedGitignore(options: {
     if (result.changed) {
       const delta = [
         result.added.length ? `+${result.added.length}` : "",
-        result.removed.length ? `-${result.removed.length}` : "",
+        result.removed.length + result.pruned.length
+          ? `-${result.removed.length + result.pruned.length}`
+          : "",
       ]
         .filter(Boolean)
         .join(" ");

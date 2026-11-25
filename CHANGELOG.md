@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- **fix(cli): 受管 .gitignore 块剔除冗余旧条目**. 块内不再保留「已从受管列表移除、但仍被某条受管目录覆盖」的行，升级后不会同时存在旧窄条目与新目录条目；覆盖关系单向（宽泛目录行、用户手写行、其覆盖者被 opt-out 的窄行均保留）。
+  - `src/shared/gitignore-managed.ts`、`src/commands/init-gitignore-block.ts`、`tests/gitignore-managed.test.ts`
 - **fix(cli): 取消路径不再谎报 .gitignore 已应用，stdin 判定可注入**. 受管块写入失败时，Ctrl+C 的提示改为「凭据未被忽略」而不是「已应用」；`init` 的 stdin TTY 判定改用 `InitDeps.stdinIsTTY`，测试不再依赖 runner 的 stdin。
   - `src/commands/init.ts`、`src/commands/init-gitignore-block.ts`、`tests/init.test.ts`、`tests/commands/init-preselect.test.ts`
 - **fix(e2e): 修复循环先读失败产物再进浏览器**. `test-results/**/error-context.md`（失败瞬间的 ARIA 快照）提升为诊断第一步，`browser_snapshot` / console / network 只用于产物没有记录的错误形态；无浏览器 MCP 时明确「产物就是全部证据」，不再把进页面当成必经步骤。

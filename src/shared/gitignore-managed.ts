@@ -150,6 +150,15 @@ export function managedPathsOverlap(a: string, b: string): boolean {
   return false;
 }
 
+/**
+ * One-way coverage: a directory entry covers lines beneath it, never the
+ * reverse. `managedPathsOverlap` is symmetric — using it to prune would let a
+ * narrow child delete a broad user line such as `.roo/`.
+ */
+function coversLine(entry: string, line: string): boolean {
+  return entry === line || (entry.endsWith("/") && line.startsWith(entry));
+}
+
 /** Is this managed path covered by any recorded opt-out? */
 export function coveredBySkips(
   path: string,
@@ -321,6 +330,8 @@ export function ensureGitignoreEntries(
   changed: boolean;
   added: string[];
   removed: string[];
+  /** Redundant entries dropped from the block — not opt-out driven. */
+  pruned: string[];
 } {
   const omitted = new Set(opts.omit ?? []);
   // `skip: undefined` means "keep the block's record in force", not "reset":
@@ -364,6 +375,7 @@ export function ensureGitignoreEntries(
 
   let added: string[];
   let removed: string[] = [];
+  let pruned: string[] = [];
   if (beginIdx !== -1) {
     // Well-formed block: add only the lines missing from its body, drop the
     // ones the caller wants kept committable, and rewrite the skip record.
@@ -374,21 +386,41 @@ export function ensureGitignoreEntries(
     removed = content
       .filter((l) => coveredBySkips(l.trim(), skipped))
       .map((l) => l.trim());
-    const bodySet = new Set(kept.map((l) => l.trim()));
+    // Entries dropped from MANAGED_GITIGNORE_PATHS stay in old blocks forever
+    // unless pruned. Prune only when a managed directory that is still in the
+    // block covers the line — that leaves the ignore semantics unchanged. An
+    // opted-out path is not in the block, so it cannot cover its leftovers.
+    const managed = new Set<string>(MANAGED_GITIGNORE_PATHS);
+    const coverProviders = MANAGED_GITIGNORE_PATHS.filter(
+      (p) => !coveredBySkips(p, skipped),
+    );
+    const stale = new Set(
+      kept.filter((l) => {
+        const p = l.trim();
+        return (
+          !managed.has(p) &&
+          coverProviders.some((m) => m !== p && coversLine(m, p))
+        );
+      }),
+    );
+    const survivors = kept.filter((l) => !stale.has(l));
+    pruned = [...stale].map((l) => l.trim());
+    const bodySet = new Set(survivors.map((l) => l.trim()));
     added = uncovered.filter((p) => !bodySet.has(p));
     if (
       added.length === 0 &&
       removed.length === 0 &&
+      pruned.length === 0 &&
       skipLine === existingSkipLine
     ) {
-      return { changed: false, added: [], removed: [] };
+      return { changed: false, added: [], removed: [], pruned: [] };
     }
     lines.splice(
       beginIdx + 1,
       endIdx - beginIdx - 1,
       ...(skipLine ? [skipLine] : []),
       ...added,
-      ...kept,
+      ...survivors,
     );
   } else {
     // No well-formed block: append one at the tail. Orphan markers, if
@@ -399,7 +431,7 @@ export function ensureGitignoreEntries(
     // block even when every path is already covered by the user's rules.
     added = [...uncovered];
     if (added.length === 0 && skipLine === undefined) {
-      return { changed: false, added: [], removed: [] };
+      return { changed: false, added: [], removed: [], pruned: [] };
     }
     lines.push(
       GITIGNORE_BLOCK_BEGIN,
@@ -416,7 +448,7 @@ export function ensureGitignoreEntries(
     gitignorePath,
     lines.join("\n") + (hadTrailingNewline || !hadFile ? "\n" : ""),
   );
-  return { changed: true, added, removed };
+  return { changed: true, added, removed, pruned };
 }
 
 /**
