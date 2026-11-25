@@ -416,3 +416,88 @@ describe("runRemoveAll --yes", () => {
     expect(existsSync(outside)).toBe(true);
   });
 });
+
+describe("runRemoveAll interactive confirm", () => {
+  it("asks once on a TTY and executes when confirmed", async () => {
+    const asked: string[] = [];
+    vi.mocked(console.log).mockImplementation(() => {});
+    const code = await runRemoveAll(
+      { root: [roots], cwd: emptyCwd },
+      {
+        isTTY: true,
+        confirm: async (message) => {
+          asked.push(message);
+          return true;
+        },
+      },
+    );
+
+    expect(code).toBe(0);
+    expect(asked).toEqual(["Remove these artifacts from 2 projects?"]);
+    expect(readFileSync(join(projectA, "AGENTS.md"), "utf-8")).not.toContain(
+      "OPENSPEC-PW:START",
+    );
+  });
+
+  it("changes nothing when the confirm is declined", async () => {
+    const logs: string[] = [];
+    vi.mocked(console.log).mockImplementation((msg?: unknown) =>
+      logs.push(String(msg)),
+    );
+    const code = await runRemoveAll(
+      { root: [roots], cwd: emptyCwd },
+      { isTTY: true, confirm: async () => false },
+    );
+
+    expect(code).toBe(0);
+    expect(logs.join("\n")).toContain("Aborted");
+    expect(readFileSync(join(projectA, "AGENTS.md"), "utf-8")).toContain(
+      "OPENSPEC-PW:START",
+    );
+  });
+
+  it("treats Ctrl+C at the prompt as a decline", async () => {
+    const logs: string[] = [];
+    vi.mocked(console.log).mockImplementation((msg?: unknown) =>
+      logs.push(String(msg)),
+    );
+    const code = await runRemoveAll(
+      { root: [roots], cwd: emptyCwd },
+      {
+        isTTY: true,
+        confirm: async () => {
+          const err = new Error("User force closed the prompt");
+          err.name = "ExitPromptError";
+          throw err;
+        },
+      },
+    );
+
+    expect(code).toBe(0);
+    expect(logs.join("\n")).toContain("Aborted");
+    expect(readFileSync(join(projectA, "AGENTS.md"), "utf-8")).toContain(
+      "OPENSPEC-PW:START",
+    );
+  });
+
+  it("does not prompt without a TTY", async () => {
+    let prompted = false;
+    vi.mocked(console.log).mockImplementation(() => {});
+    const code = await runRemoveAll(
+      { root: [roots], cwd: emptyCwd },
+      {
+        isTTY: false,
+        confirm: async () => {
+          prompted = true;
+          return true;
+        },
+      },
+    );
+
+    expect(code).toBe(0);
+    expect(prompted).toBe(false);
+    expect(readFileSync(join(projectA, "AGENTS.md"), "utf-8")).toContain(
+      "OPENSPEC-PW:START",
+    );
+  });
+});

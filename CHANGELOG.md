@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+- **fix(cli): 取消路径不再谎报 .gitignore 已应用，stdin 判定可注入**. 受管块写入失败时，Ctrl+C 的提示改为「凭据未被忽略」而不是「已应用」；`init` 的 stdin TTY 判定改用 `InitDeps.stdinIsTTY`，测试不再依赖 runner 的 stdin。
+  - `src/commands/init.ts`、`src/commands/init-gitignore-block.ts`、`tests/init.test.ts`、`tests/commands/init-preselect.test.ts`
+- **fix(e2e): 修复循环先读失败产物再进浏览器**. `test-results/**/error-context.md`（失败瞬间的 ARIA 快照）提升为诊断第一步，`browser_snapshot` / console / network 只用于产物没有记录的错误形态；无浏览器 MCP 时明确「产物就是全部证据」，不再把进页面当成必经步骤。
+  - `templates/e2e-command.md`、`tests/e2e-template-auto.test.ts`
+- **fix(e2e): 探索产物记录浏览器档位，change 模式必填**. `app-exploration.md`（web 与小程序）新增 `Browser tools:` 行并写明它记录「产出这份探索的工具」——复用文件不改，换工具重新探索才更新；change 模式该行与 `BASE_URL:` 必填，项目根目录可选。报告模板新增 `Tool: <server> (rung <n>)`，缺行视为不完整。
+  - `templates/{app-exploration,miniprogram/app-exploration,e2e-command}.md`、`tests/e2e-template-auto.test.ts`
+- **docs(standards): §6 验收判据分档、修正无断言检验并启用 ⚪ 档位**. 权限验证只在 E2E/集成验收要求真实登录态，隔离单测的鉴权 mock 明示豁免；无断言检验改为「破坏被测分支或改反返回值」，不再误杀空态测试；「注释密度与命名习惯」「一个行为一组断言」从 🟡 长句拆出，独立标为 ⚪；§0 优先级规则四条并为两条，⚪ 明确「偏离无需说明」。
+  - `standards/employee-standards.md`、`standards/employee-standards.en.md`、`docs/script.js`
+- **fix(e2e): 恢复浏览器 MCP 优先的诊断循环**. 路由段按阶段分档并先枚举工具，`openspec-pw explore` 补进无 Playwright MCP 时的探索路径，有浏览器 MCP 时禁止写一次性脚本，并保留「脚本不得替代 `npx playwright test`」这条无条件规则（`--no-mcp` 的 CI 路径同样适用）；修复循环与 Phase 2-3 步骤同步列出 `browser_*` 诊断工具，并区分 `playwright-test`（还能跑/调测试）与只有浏览器工具的 `playwright`。
+  - `templates/e2e-command.md`、`tests/e2e-template-auto.test.ts`
+- **fix(cli): 清理过期注释与重复提示**. `syncE2eCommands` 上方的旧 JSDoc 删除（它描述的合并函数已不存在）；minimal 模式的跳过提示不再重复列一遍功能名；`isGlobalInstall` 用例补 Windows 大小写分支，两侧平台都断言。
+  - `src/commands/update.ts`、`src/commands/init.ts`、`tests/update.test.ts`
+- **docs(readme): 标注分组开关数与嵌套 opt-out 的行为**. `--auto-pipeline` 下只有三个分组（`openspec/` 保持可提交）；opt-out 落在受管目录内部时整个目录保持可提交且不再作为候选项。
+  - `README.md`、`README.zh-CN.md`
+- **fix(cli): update 复用已安装包，跳过已是最新的安装**. 全局安装已是已发布 latest 时不再 `npm install -g`；同步内容改用已安装包内的 `templates/`、`standards/`，一次运行只查一次 registry。
+  - `src/commands/update.ts`、`tests/update.test.ts`
+- **fix(cli): update 的内容来源与安装判定更严格**. 只有已发布的全局安装可代表发布包内容（检出目录不再作为来源）；运行的不是全局最新副本时把后续步骤交给全局副本；registry 不可达时不再声称「已更新到最新」。
+  - `src/commands/update.ts`、`tests/update.test.ts`
+- **fix(gitignore): 受管目录内的 skip 不再被整目录忽略覆盖**. 记录的 skip 落在受管目录内时该目录不进块，也不作为忽略候选；已写入的整目录行会被移除。
+  - `src/shared/gitignore-managed.ts`、`tests/gitignore-managed.test.ts`
+- **fix(cli): init 的 Ctrl+C 按取消处理**. 编辑器多选、移除确认、agents 确认与 `.gitignore` 多选被中断时打印取消提示、停止后续写入、退出码 0。
+  - `src/commands/init.ts`、`tests/init.test.ts`
+- **fix(cli): init 在 .gitignore 提示处取消仍写入受管块**. 取消时按默认集合写入受管 `.gitignore` 块后再停止，生成的凭据文件不会失去忽略保护。
+  - `src/commands/init.ts`、`tests/init.test.ts`
+- **refactor(init): 编辑器多选提示移出 init.ts**. 分组与提示逻辑移入 `init-editor-prompt.ts`，init.ts 回到 1500 行上限内。
+  - `src/commands/init.ts`、`src/commands/init-editor-prompt.ts`、`tests/commands/editor-prompt-groups.test.ts`
+- **chore(test): 测试不再依赖本机安装的 OpenSpec 主版本**. editors-cursor / remove-minimax / update 三个测试文件固定 1.x 主版本桩；doctor 的提示断言改为跟随已装主版本，不再假设 1.x。
+  - `tests/doctor.test.ts`、`tests/editors-cursor.test.ts`、`tests/commands/remove-minimax.test.ts`、`tests/update.test.ts`
+- **fix(cli): update 不再强制绕过 npm 缓存**. 自动安装不再带 `--prefer-online`，`latest` 解析最多延迟一个 registry 缓存周期（300 秒）。
+  - `src/commands/update.ts`
+- **refactor(cli): 精简 init/update 的控制台输出**. 删除实现出处说明、逐条播报与重复提示，保留错误、实际写入结果、Summary 与 Next steps。
+  - `src/commands/init.ts`、`src/commands/update.ts`、`src/commands/editors/registry.ts`、`tests/init.test.ts`、`tests/init-mcp-scope.test.ts`、`tests/update.test.ts`
+- **docs(readme): 合并双表并收敛重复说明**. 16 家编辑器合并为一张表，删去与 CLI 章节重复的架构叙述，EN 与 zh 同步。
+  - `README.md`、`README.zh-CN.md`
+- **docs(readme): remove --all 的描述与实际行为对齐**. 两份 README 不再称其为「默认 dry run」，改为「先列计划再确认」。
+  - `README.md`、`README.zh-CN.md`
+- **refactor(e2e): 收敛 e2e 模板的重复指令**. 退缩规则与原因集中到 STOP 语义，Step 8 改为指向生成的 config，模板 353 → 348 行。
+  - `templates/e2e-command.md`
+- **feat(cli): .gitignore 选择改为分组开关**. 四组各一行、取消整组即提交整组，自定义入口继承分组状态；六个编辑器目录改为整目录忽略，受管路径 49 → 40。
+  - `src/commands/init-gitignore-prompt.ts`、`src/shared/gitignore-managed.ts`、`tests/commands/init-gitignore-prompt.test.ts`、`tests/gitignore-managed.test.ts`、`README.md`、`README.zh-CN.md`
+- **feat(cli): 精简 init 编辑器选择与 remove --all 确认**. 编辑器多选按 Configured / Detected / Other 分段；`remove --all` 在 TTY 下打印计划后就地确认。
+  - `src/commands/init.ts`、`src/commands/remove.ts`、`tests/commands/editor-prompt-groups.test.ts`、`tests/commands/remove-all.test.ts`、`README.md`、`README.zh-CN.md`
+- **fix(cli): 补齐提示的 stdin 守卫与中断处理**. 编辑器多选仅在 stdin 为 TTY 时出现，`remove --all` 确认时 Ctrl+C 按拒绝处理。
+  - `src/commands/init.ts`、`src/commands/remove.ts`、`src/index.ts`、`docs/llms.txt`、`README.md`、`README.zh-CN.md`、`tests/commands/init-preselect.test.ts`、`tests/commands/remove-all.test.ts`
+
 ## [0.3.124] - 2026-11-24
 - **docs(cli): 生成物与元数据同步 2.x 命名**. 生成的 seed / credentials / playwright.config 去掉写死的 1.x 命令名；包描述、站点与 llms 摘要统一为 2.x 与 16 家编辑器，README 命令示例以 2.x 为主。
   - `templates/{seed.spec.ts,credentials.yaml,playwright.config.ts}`、`package.json`、`docs/{llms.txt,script.js}`、`README.md`、`tests/init.test.ts`、`CHANGELOG.md`

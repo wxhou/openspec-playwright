@@ -216,8 +216,10 @@ describe("doctor.ts: fallback command hint", () => {
     }
 
     // Every registered adapter is listed exactly once, under its own hint.
+    // The default style follows the installed OpenSpec major — the hint and
+    // the expectation must use the same one.
     const expected = new Map<string, string[]>();
-    for (const adapter of getAllAdapters("opsx")) {
+    for (const adapter of getAllAdapters()) {
       const command = slashCommandForAdapter(adapter);
       expected.set(command, [
         ...(expected.get(command) ?? []),
@@ -227,7 +229,7 @@ describe("doctor.ts: fallback command hint", () => {
     expect([...groups.keys()].sort()).toEqual([...expected.keys()].sort());
     expect(
       [...groups.values()].reduce((sum, names) => sum + names.length, 0),
-    ).toBe(getAllAdapters("opsx").length);
+    ).toBe(getAllAdapters().length);
     for (const [command, names] of expected) {
       expect((groups.get(command) ?? []).sort()).toEqual(names.sort());
     }

@@ -72,6 +72,7 @@ import {
 } from "./editors/configured.js";
 import { cleanOptedOutCopies, ruleCopyPredicate } from "./init-rules-copy.js";
 import { maintainManagedGitignore } from "./init-gitignore-block.js";
+import { promptSelectEditors } from "./init-editor-prompt.js";
 import type { EditorAdapter, EditorId } from "./editors.js";
 import {
   ensureTestRunnerMcp,
@@ -87,6 +88,7 @@ import {
   detectCodeGraphStatus,
   codegraphHintLines,
   skippableManagedPaths,
+  readManagedSkipsSafe,
   isIgnoredPath,
   installOrRefreshChecklist,
   installLintConfig,
@@ -152,14 +154,33 @@ export interface InitOptions {
   ruleFiles?: boolean;
 }
 
+/**
+ * Ctrl+C at an @inquirer/prompts prompt: the user cancelled the run. That is
+ * not an error — stop the remaining steps and exit successfully.
+ */
+function isPromptCancelled(err: unknown): boolean {
+  return (err as { name?: string } | null)?.name === "ExitPromptError";
+}
+
+/** Report a cancelled run; the caller stops the remaining steps. */
+function reportCancelled(note?: string): void {
+  console.log(
+    chalk.gray(
+      `  ✗ Cancelled (Ctrl+C) — ${note ?? "stopping without further changes."}`,
+    ),
+  );
+}
+
 export interface InitDeps {
   /** Interactive selection prompt; defaults to @inquirer/prompts checkbox.
-   * Receives the pre-selected id set (configured tier or first-run bypass)
-   * and the configured id set (`(configured)` suffix driver). */
+   * Receives the pre-selected id set (configured tier or first-run bypass),
+   * the configured id set, and the detected id set (Configured/Detected/Other
+   * grouping driver). */
   prompt?: (
     allEditors: EditorAdapter[],
     preselectedIds: ReadonlySet<EditorId>,
     configuredIds?: ReadonlySet<EditorId>,
+    detectedIds?: ReadonlySet<EditorId>,
   ) => Promise<EditorId[]>;
   /**
    * Confirmation prompt for the deselect-removal list; defaults to
@@ -178,35 +199,10 @@ export interface InitDeps {
   ) => Promise<string[]>;
   /** Override TTY detection (tests inject false here). */
   isTTY?: boolean;
+  /** Override stdin TTY detection — prompts read stdin, not stdout. */
+  stdinIsTTY?: boolean;
   /** Override home dir for Pi/Oh My Pi global detection (tests inject an empty dir). */
   homeDir?: string;
-}
-
-/**
- * Interactive multi-select of all supported editors, pre-selecting the
- * editors passed in `preselected`. In the artifact-manifest tier those are
- * the configured editors — the `configured` set drives the "(configured)"
- * name suffix. In the first-run bypass tier `configured` is empty, so no
- * suffix renders. Dynamically imports @inquirer/prompts so non-interactive
- * runs never load it.
- */
-export async function promptSelectEditors(
-  allEditors: EditorAdapter[],
-  preselected: ReadonlySet<EditorId>,
-  configured: ReadonlySet<EditorId> = new Set(),
-): Promise<EditorId[]> {
-  const { checkbox } = await import("@inquirer/prompts");
-  const selected = await checkbox({
-    message: "Select editors to configure",
-    choices: allEditors.map((a) => ({
-      name: configured.has(a.id)
-        ? `${a.displayName} (configured)`
-        : a.displayName,
-      value: a.id,
-      checked: preselected.has(a.id),
-    })),
-  });
-  return selected as EditorId[];
 }
 
 /**
@@ -440,6 +436,10 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   }
 
   const isTTY = deps.isTTY ?? process.stdout.isTTY === true;
+  // Prompts read stdin, so stdout being a TTY is not enough: a piped stdin
+  // would hang them. Separate seam — a test that injects `isTTY` alone still
+  // depends on the runner's stdin.
+  const stdinIsTTY = deps.stdinIsTTY ?? process.stdin.isTTY === true;
   const prompt = deps.prompt ?? promptSelectEditors;
   let selectedIds: EditorId[] | null;
   // True only when the selection came from the interactive prompt — the
@@ -458,13 +458,25 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
       'The --agents option requires at least one configured editor (claude) and cannot be combined with "--tools none".',
     );
   }
-  if (selectedIds === null && isTTY) {
+  // A checkbox reads stdin: stdout being a TTY is not enough, or a redirected
+  // stdin makes the prompt hang. Injected prompts need no such check.
+  if (
+    selectedIds === null &&
+    (deps.prompt !== undefined || (isTTY && stdinIsTTY))
+  ) {
     interactiveSelection = true;
-    selectedIds = await prompt(
-      getAllAdapters(),
-      preselectedIds,
-      configuredIds,
-    );
+    try {
+      selectedIds = await prompt(
+        getAllAdapters(),
+        preselectedIds,
+        configuredIds,
+        new Set(detected.map((a) => a.id)),
+      );
+    } catch (err) {
+      if (!isPromptCancelled(err)) throw err;
+      reportCancelled();
+      return;
+    }
   }
 
   const editors =
@@ -658,7 +670,14 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
         }
       }
 
-      const agreed = await confirmPrompt("Proceed with removal?");
+      let agreed: boolean;
+      try {
+        agreed = await confirmPrompt("Proceed with removal?");
+      } catch (err) {
+        if (!isPromptCancelled(err)) throw err;
+        reportCancelled();
+        return;
+      }
 
       if (!agreed) {
         console.log(
@@ -707,8 +726,10 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   }
 
   // Set in the minimal scaffold phase; the Summary links the contract doc
-  // only when this run generated it.
+  // only when this run generated it. Minimal-mode skip reasons are collected
+  // here and printed once, after the E2E-command phase.
   let readmeGenerated = false;
+  const minimalSkips: { name: string; reason: string }[] = [];
   if (frontendSignal === null) {
     // Detection fact only — the mode decision is printed in the Summary
     // (an explicit --frontend keeps frontend mode despite the unreadable
@@ -737,9 +758,6 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
       }
       try {
         ensureTestRunnerMcp(adapter, projectRoot);
-        if (adapter.supportsMcp !== false) {
-          console.log(chalk.gray(`  (Restart ${adapter.label} to activate)`));
-        }
       } catch (err) {
         const e = err as { stderr?: string };
         if (e.stderr?.includes("already exists")) {
@@ -779,21 +797,12 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
         }
       }
     }
-    // Naming provenance: search results for "Playwright MCP" surface the
-    // separate @playwright/mcp package (server name "playwright"); ours is
-    // the official init-agents name for the test-runner superset.
-    console.log(
-      chalk.gray(
-        "  (server name \"playwright-test\" = the official `playwright init-agents` name; superset of @playwright/mcp — see README)",
-      ),
-    );
   } else if (options.mcp !== false && editors.length > 0) {
     // Reaching here guarantees mode !== "frontend" (the if above consumed it).
-    console.log(
-      chalk.gray(
-        "  - Minimal mode — skipping Playwright MCP (backend projects test with their own stack)",
-      ),
-    );
+    minimalSkips.push({
+      name: "Playwright MCP",
+      reason: "backend projects test with their own stack",
+    });
   }
 
   // 4b. Vendored official Playwright agents (claude only, opt-in). Every
@@ -805,9 +814,15 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     if (!agentsConsent && interactiveSelection) {
       const e2eName =
         resolveArtifactStyle() === "openspec" ? "/openspec-e2e" : "/opsx:e2e";
-      agentsConsent = await confirmPrompt(
-        `Install the official Playwright planner agent into .claude/agents/? (delegation target for ${e2eName} exploration-to-plan)`,
-      );
+      try {
+        agentsConsent = await confirmPrompt(
+          `Install the official Playwright planner agent into .claude/agents/? (delegation target for ${e2eName} exploration-to-plan)`,
+        );
+      } catch (err) {
+        if (!isPromptCancelled(err)) throw err;
+        reportCancelled();
+        return;
+      }
     }
     if (agentsConsent) {
       console.log(chalk.blue("\n─── Installing Vendored Agents ───"));
@@ -820,11 +835,10 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
       );
     }
   } else if (claudeEditor && options.agents === true) {
-    console.log(
-      chalk.gray(
-        "  - Minimal mode — skipping vendored agents (their tools depend on the Playwright MCP)",
-      ),
-    );
+    minimalSkips.push({
+      name: "vendored agents",
+      reason: "their tools depend on the Playwright MCP",
+    });
   }
 
   // 5. Install E2E command for each selected editor (frontend mode only —
@@ -839,9 +853,18 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
       installCommand(adapter, meta, projectRoot);
     }
   } else if (editors.length > 0) {
+    minimalSkips.push({
+      name: "E2E command",
+      reason: "it drives the Playwright workflow",
+    });
+  }
+
+  if (minimalSkips.length > 0) {
     console.log(
       chalk.gray(
-        "  - Minimal mode — skipping E2E command (it drives the Playwright workflow)",
+        `  - Minimal mode — skipping ${minimalSkips
+          .map((s) => `${s.name} (${s.reason})`)
+          .join(", ")}`,
       ),
     );
   }
@@ -855,21 +878,12 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   } else {
     // Frontend mode: a tool-owned tests/README.md from a previous
     // minimal-mode run is an outdated marker — prune it (ownership-aware).
-    console.log(chalk.blue("\n─── Generating Seed Test ───"));
+    console.log(chalk.blue("\n─── Generating Scaffold ───"));
     await pruneMinimalModeReadme(projectRoot);
     await generateSeedTest(projectRoot, target);
-
-    // 6b. Generate shared pages directory
-    console.log(chalk.blue("\n─── Generating Shared Pages ───"));
     await generateSharedPages(projectRoot, target);
     await generateTestPlanTemplate(projectRoot, target);
-
-    // 6c. Generate playwright.config.ts
-    console.log(chalk.blue("\n─── Generating Playwright Config ───"));
     await generatePlaywrightConfig(projectRoot, target);
-
-    // 7. Generate app-knowledge.md
-    console.log(chalk.blue("\n─── Generating App Knowledge ───"));
     await generateAppKnowledge(projectRoot, target);
   }
 
@@ -910,19 +924,44 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   ];
   // Interactive opt-out of individual managed paths. Non-TTY runs keep the
   // full set (today's behavior); the choice lands in the block header so a
-  // later update never re-adds a path the user chose to commit.
-  const gitignoreCandidates = skippableManagedPaths(pipelineOmit);
+  // later update never re-adds a path the user chose to commit. A recorded
+  // skip inside a managed directory keeps that directory out of the managed
+  // set — it must not be offered as "keep ignoring" either.
+  const gitignoreCandidates = skippableManagedPaths(
+    pipelineOmit,
+    readManagedSkipsSafe(projectRoot),
+  );
   // A checkbox reads stdin, so stdout being a TTY is not enough: a piped
   // stdin would hang the prompt. An injected prompt needs no such check.
   const askGitignore =
     gitignoreCandidates.length > 0 &&
     (deps.gitignorePrompt !== undefined ||
-      (isTTY && process.stdin.isTTY === true));
-  const selectedPaths = askGitignore
-    ? await (deps.gitignorePrompt ?? promptSelectGitignorePaths)(
+      (isTTY && stdinIsTTY));
+  let selectedPaths: string[] | undefined;
+  if (askGitignore) {
+    try {
+      selectedPaths = await (deps.gitignorePrompt ?? promptSelectGitignorePaths)(
         groupGitignoreCandidates(gitignoreCandidates),
-      )
-    : undefined;
+      );
+    } catch (err) {
+      if (!isPromptCancelled(err)) throw err;
+      // The scaffold already wrote credentials — the managed block must cover
+      // them before this run stops.
+      const applied = maintainManagedGitignore({
+        projectRoot,
+        selectedPaths: undefined,
+        candidates: gitignoreCandidates,
+        omit: pipelineOmit,
+        ruleFiles: options.ruleFiles,
+      });
+      reportCancelled(
+        applied
+          ? "default .gitignore entries applied, stopping."
+          : "the .gitignore block could not be written — generated credentials are NOT ignored, stopping.",
+      );
+      return;
+    }
+  }
   maintainManagedGitignore({
     projectRoot,
     selectedPaths,

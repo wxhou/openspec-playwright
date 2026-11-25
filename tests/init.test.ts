@@ -666,6 +666,20 @@ describe("init mode selection & transparency", () => {
     expect(existsSync(join(tmpRoot, ".claude/agents"))).toBe(false);
   });
 
+  it("minimal mode merges MCP, agents, and E2E skip reasons into one block", async () => {
+    writeFileSync(
+      join(tmpRoot, "package.json"),
+      JSON.stringify({ dependencies: { express: "^4.0.0" }, scripts: { dev: "node server.js" } }),
+    );
+    const { init } = await import("../../src/commands/init.js");
+    await init({ tools: "claude", agents: true });
+    const skipLines = logs.filter((l) => l.includes("Minimal mode — skipping"));
+    expect(skipLines).toHaveLength(1);
+    expect(skipLines[0]).toContain("Playwright MCP");
+    expect(skipLines[0]).toContain("vendored agents");
+    expect(skipLines[0]).toContain("E2E command");
+  });
+
   it("--frontend override enables vendored agents despite a missed signal", async () => {
     writeFileSync(
       join(tmpRoot, "package.json"),
@@ -684,6 +698,15 @@ describe("init mode selection & transparency", () => {
     await init({ tools: "none" });
     expect(logs.some((l) => l.includes("Mode: frontend"))).toBe(true);
     expect(logs.some((l) => l.includes("dev script: vite"))).toBe(true);
+    expect(logs.filter((l) => l.includes("Generating Scaffold"))).toHaveLength(1);
+    for (const old of [
+      "Generating Seed Test",
+      "Generating Shared Pages",
+      "Generating Playwright Config",
+      "Generating App Knowledge",
+    ]) {
+      expect(logs.some((l) => l.includes(old))).toBe(false);
+    }
     expect(existsSync(join(tmpRoot, "tests/playwright/seed.spec.ts"))).toBe(true);
     expect(existsSync(join(tmpRoot, "playwright.config.ts"))).toBe(true);
   });
@@ -1097,5 +1120,120 @@ describe("init: OpenSpec CLI guard", () => {
     expect(out).toContain("npm install -g @fission-ai/openspec@1");
     expect(out).toContain("openspec config profile core");
     expect(out).not.toContain("--scope project");
+  });
+});
+
+// ─── init: prompt cancellation (Ctrl+C) ─────────────────────────────────────
+
+describe("init prompt cancellation", () => {
+  let tmpRoot: string;
+  let cwdSpy: ReturnType<typeof import("vitest")["vi"]["spyOn"]>;
+  const logs: string[] = [];
+
+  const cancelError = () => {
+    const err = new Error("User force closed the prompt") as Error & {
+      name: string;
+    };
+    err.name = "ExitPromptError";
+    return err;
+  };
+
+  beforeEach(() => {
+    tmpRoot = mkdtempSync(join(tmpdir(), "ospw-pw-init-cancel-"));
+    mkdirSync(join(tmpRoot, "openspec"), { recursive: true });
+    writeFileSync(
+      join(tmpRoot, "package.json"),
+      JSON.stringify({ scripts: { dev: "vite" } }),
+    );
+    cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(tmpRoot);
+    logs.length = 0;
+    vi.spyOn(console, "log").mockImplementation((...args: unknown[]) => {
+      logs.push(args.join(" "));
+    });
+  });
+
+  afterEach(() => {
+    vi.mocked(console.log).mockRestore();
+    cwdSpy.mockRestore();
+    rmSync(tmpRoot, { recursive: true, force: true });
+  });
+
+  it("treats Ctrl+C at the editor prompt as cancel: no artifacts, no error", async () => {
+    const { init } = await import("../../src/commands/init.js");
+    await init(
+      {},
+      {
+        isTTY: true,
+        prompt: async () => {
+          throw cancelError();
+        },
+      },
+    );
+    expect(logs.some((l) => l.includes("Cancelled"))).toBe(true);
+    expect(existsSync(join(tmpRoot, "tests"))).toBe(false);
+    expect(existsSync(join(tmpRoot, ".claude"))).toBe(false);
+    expect(logs.some((l) => l.includes("✗ User force closed"))).toBe(false);
+  });
+
+  it("treats Ctrl+C at the .gitignore prompt as cancel: earlier writes stay", async () => {
+    const { init } = await import("../../src/commands/init.js");
+    await init(
+      { tools: "claude", mcp: false },
+      {
+        gitignorePrompt: async () => {
+          throw cancelError();
+        },
+      },
+    );
+    expect(logs.some((l) => l.includes("Cancelled"))).toBe(true);
+    // Written before the prompt — kept.
+    expect(existsSync(join(tmpRoot, "tests/playwright/seed.spec.ts"))).toBe(true);
+    // The managed block is written before the run stops, so generated
+    // credentials stay ignored.
+    const gitignore = readFileSync(join(tmpRoot, ".gitignore"), "utf-8");
+    expect(gitignore).toContain("tests/playwright/credentials.yaml");
+    // After the prompt — not written.
+    expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(false);
+    expect(logs.some((l) => l.includes("Setup complete"))).toBe(false);
+  });
+
+  it("does not claim the ignore block was applied when .gitignore is unwritable", async () => {
+    const { init } = await import("../../src/commands/init.js");
+    // A directory at the file path makes the write fail (EISDIR) without
+    // permission games.
+    mkdirSync(join(tmpRoot, ".gitignore"));
+    await init(
+      { tools: "claude", mcp: false },
+      {
+        gitignorePrompt: async () => {
+          throw cancelError();
+        },
+      },
+    );
+    expect(logs.some((l) => l.includes("NOT ignored"))).toBe(true);
+    expect(logs.some((l) => l.includes("default .gitignore entries applied"))).toBe(
+      false,
+    );
+  });
+
+  it("treats Ctrl+C at the removal confirmation as cancel: nothing is removed", async () => {
+    const { init } = await import("../../src/commands/init.js");
+    // A configured editor whose artifact would be removed when deselected.
+    const cmdPath = join(tmpRoot, ".claude", "commands", "opsx", "e2e.md");
+    mkdirSync(join(tmpRoot, ".claude", "commands", "opsx"), { recursive: true });
+    writeFileSync(cmdPath, "---\nname: opsx-e2e\n---\n");
+    await init(
+      { mcp: false },
+      {
+        isTTY: true,
+        prompt: async () => [],
+        confirm: async () => {
+          throw cancelError();
+        },
+      },
+    );
+    expect(logs.some((l) => l.includes("Cancelled"))).toBe(true);
+    expect(existsSync(cmdPath)).toBe(true);
+    expect(logs.some((l) => l.includes("Setup complete"))).toBe(false);
   });
 });

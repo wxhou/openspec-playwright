@@ -3,6 +3,7 @@
 Generated: <timestamp>
 Target: miniprogram
 Project: <wxaProject path>
+Browser tools: <server> (rung <n>) — <degradation reason, or "none">   (required in change mode; optional at the project root. Records the tool that produced this exploration — a reused file keeps it, a re-exploration that switches tools replaces it and updates Generated:. write "none (rung <n>)" when no browser tool is attached; keep the line through section reshaping)
 
 ## Exploration Summary
 

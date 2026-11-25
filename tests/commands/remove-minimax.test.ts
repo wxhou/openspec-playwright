@@ -22,6 +22,13 @@ vi.mock("../../src/shared/index.js", async (importOriginal) => {
   })) };
 });
 
+// The fixture is a 1.x MiniMax skill (opsx-e2e). Pin the OpenSpec major so
+// the adapter registry resolves the same naming family on any machine.
+vi.mock("../../src/shared/openspec-version.js", () => ({
+  OPENSPEC_LATEST_MAJOR: 2,
+  openSpecCliStatus: vi.fn(() => ({ ok: true, major: 1 })),
+}));
+
 import { removeInProject } from "../../src/commands/remove.js";
 
 // Real detection on purpose: this suite proves the MiniMax Code skill

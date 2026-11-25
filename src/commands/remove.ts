@@ -724,12 +724,24 @@ export function removeOptionError(options: {
   return null;
 }
 
+export interface RemoveAllDeps {
+  /** Override TTY detection (tests inject true/false). */
+  isTTY?: boolean;
+  /** Confirmation prompt; defaults to @inquirer/prompts confirm (default No). */
+  confirm?: (message: string) => Promise<boolean>;
+}
+
 /**
- * Machine-wide removal. Without `yes` this only prints the plan and never
- * writes; with `yes` every discovered project is cleaned, one project's
- * failure never stops the rest, and a nonzero exit code signals failures.
+ * Machine-wide removal. Without `yes` this prints the plan and asks once when
+ * interactive (TTY) — a decline exits 0 with nothing changed; non-TTY runs
+ * only print the plan. With `yes` every discovered project is cleaned, one
+ * project's failure never stops the rest, and a nonzero exit code signals
+ * failures.
  */
-export async function runRemoveAll(options: RemoveAllOptions = {}): Promise<number> {
+export async function runRemoveAll(
+  options: RemoveAllOptions = {},
+  deps: RemoveAllDeps = {},
+): Promise<number> {
   const cwd = options.cwd ?? process.cwd();
   const roots = options.root?.length ? options.root : undefined;
   // A typo in --root must not read as "nothing to clean"; neither must a
@@ -785,12 +797,39 @@ export async function runRemoveAll(options: RemoveAllOptions = {}): Promise<numb
       }
       console.log(chalk.gray(`  would remove: ${plan}`));
     }
-    console.log(
-      chalk.gray(
-        "\n  Dry run — nothing was changed. Re-run with --yes to remove.\n",
-      ),
-    );
-    return 0;
+    const interactive =
+      deps.isTTY ??
+      (process.stdin.isTTY === true && process.stdout.isTTY === true);
+    if (!interactive) {
+      console.log(
+        chalk.gray(
+          "\n  Dry run — nothing was changed. Re-run with --yes to remove.\n",
+        ),
+      );
+      return 0;
+    }
+    const ask =
+      deps.confirm ??
+      (async (message: string) => {
+        const { confirm } = await import("@inquirer/prompts");
+        return confirm({ message, default: false });
+      });
+    const count = discovery.projects.length;
+    let confirmed: boolean;
+    try {
+      confirmed = await ask(
+        `Remove these artifacts from ${count} project${count === 1 ? "" : "s"}?`,
+      );
+    } catch (err) {
+      // Ctrl+C rejects from @inquirer/prompts; treat it as a decline, not a
+      // stack trace. Any other error still surfaces.
+      if ((err as Error)?.name !== "ExitPromptError") throw err;
+      confirmed = false;
+    }
+    if (!confirmed) {
+      console.log(chalk.gray("\n  Aborted — nothing was changed.\n"));
+      return 0;
+    }
   }
 
   let removed = 0;

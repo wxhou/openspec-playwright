@@ -267,11 +267,6 @@ export function installOptionalArtifacts(
     writeFileSync(absPath, extra.contents);
     console.log(chalk.green(`  ✓ ${adapter.label}: ${extra.relativePath}`));
   }
-  console.log(
-    chalk.gray(
-      "  (official `playwright init-agents` claude-loop snapshot — provenance: templates/agents/SOURCE.md)",
-    ),
-  );
 }
 
 // ─── Install helpers ─────────────────────────────────────────────────────

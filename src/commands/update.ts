@@ -1,5 +1,6 @@
 import { createRequire } from "node:module";
 import { join, basename, sep } from "path";
+import { fileURLToPath } from "url";
 import {
   existsSync,
   readFileSync,
@@ -57,6 +58,100 @@ import { readTextFileCapped } from "../shared/file-read.js";
 import { pipelineGitignoreOmit } from "./pipeline.js";
 import { fullRulesFile, wrapperHasMarkers, hasRuleFileMarkers } from "./editors/project-rules.js";
 import type { EditorAdapter } from "./editors.js";
+
+/**
+ * Root of the running package: `dist/commands/update.js` → package root,
+ * `src/commands/update.ts` (dev/tests) → repo root. Both carry `templates/`
+ * and `standards/`, so the running copy can serve as the bundle source.
+ */
+const PACKAGE_ROOT = fileURLToPath(new URL("../../", import.meta.url));
+
+/** Version of the running package. */
+function runningVersion(): string | undefined {
+  try {
+    const pkg = JSON.parse(
+      readFileSync(join(PACKAGE_ROOT, "package.json"), "utf-8"),
+    ) as { version?: string };
+    return pkg.version;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Latest published version, fetched at most once per run and reused by the
+ * install-skip check, the bundle-source choice, and the version-shadow
+ * self-check. Empty string means "could not be determined" (offline).
+ */
+let publishedVersionCache: string | undefined;
+async function publishedLatestVersion(): Promise<string | undefined> {
+  if (publishedVersionCache !== undefined) {
+    return publishedVersionCache || undefined;
+  }
+  try {
+    const { stdout } = await execFileAsync(
+      "npm",
+      ["view", "openspec-playwright", "version"],
+      { timeout: 30000 },
+    );
+    publishedVersionCache = stdout.trim();
+  } catch {
+    publishedVersionCache = "";
+  }
+  return publishedVersionCache || undefined;
+}
+
+/**
+ * The global npm install of this CLI: its root and version. Fetched at most
+ * once per run — the install-skip check, the bundle-source choice and the
+ * "is the running copy the global one" question all read the same answer.
+ */
+let globalInstallCache: { root?: string; version?: string } | undefined;
+async function globalInstall(): Promise<{ root?: string; version?: string }> {
+  if (globalInstallCache) return globalInstallCache;
+  let result: { root?: string; version?: string } = {};
+  try {
+    const { stdout } = await execFileAsync("npm", ["root", "-g"], {
+      timeout: 15000,
+    });
+    const root = stdout.trim();
+    if (root) {
+      result = { root };
+      const pkgPath = join(root, "openspec-playwright", "package.json");
+      if (existsSync(pkgPath)) {
+        const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as {
+          version?: string;
+        };
+        result.version = pkg.version;
+      }
+    }
+  } catch {
+    /* npm unavailable — treated as "no global install" */
+  }
+  globalInstallCache = result;
+  return result;
+}
+
+/**
+ * Is the running package the global install? A checkout or a project-local
+ * copy is not: only the published install may stand in for the published
+ * package's content.
+ */
+export function isGlobalInstall(
+  runningRoot: string,
+  globalRoot: string | undefined,
+): boolean {
+  if (!globalRoot) return false;
+  // Separators differ per platform (npm prints POSIX paths on Windows too),
+  // so compare a normalized form; Windows paths are case-insensitive.
+  const norm = (p: string): string =>
+    p.replace(/[\\/]+$/, "").split(/[\\/]/).join("/");
+  const running = norm(runningRoot);
+  const global = norm(join(globalRoot, "openspec-playwright"));
+  return process.platform === "win32"
+    ? running.toLowerCase() === global.toLowerCase()
+    : running === global;
+}
 
 /** Any openspec-pw command artifact in either naming family exists. */
 function hasAnyCommandArtifacts(projectRoot: string): boolean {
@@ -139,35 +234,46 @@ export async function update(options: UpdateOptions) {
   // 1. Update CLI tool from npm
   if (options.cli !== false) {
     console.log(chalk.blue("─── Updating CLI ───"));
+    // Already at the published latest → nothing to install.
+    const latest = await publishedLatestVersion();
+    const global = await globalInstall();
+    const installed = global.version;
+    const globalIsLatest = isCliCurrent(installed, latest);
     let cliUpdated = false;
-    try {
-      await execFileAsync(
-        "npm",
-        ["install", "-g", "openspec-playwright@latest", "--prefer-online"],
-        {
-          timeout: 120000,
-          cwd: projectRoot,
-          stdio: "inherit",
-        },
-      );
-      console.log(chalk.green("  ✓ CLI updated via npm"));
-      cliUpdated = true;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.log(chalk.yellow(`  ⚠ Failed to update CLI via npm: ${msg}`));
-      console.log(
-        chalk.gray("  Run manually: npm install -g openspec-playwright@latest"),
-      );
+    if (globalIsLatest) {
+      console.log(chalk.green(`  ✓ CLI already at latest (${installed})`));
+    } else {
+      try {
+        await execFileAsync(
+          "npm",
+          ["install", "-g", "openspec-playwright@latest"],
+          {
+            timeout: 120000,
+            cwd: projectRoot,
+            stdio: "inherit",
+          },
+        );
+        console.log(chalk.green("  ✓ CLI updated via npm"));
+        cliUpdated = true;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.log(chalk.yellow(`  ⚠ Failed to update CLI via npm: ${msg}`));
+        console.log(
+          chalk.gray("  Run manually: npm install -g openspec-playwright@latest"),
+        );
+      }
     }
 
     // Re-execute remaining steps (templates, commands, AGENTS.md) with the
-    // newly-installed binary so that the latest code handles project setup.
-    // The original process still runs old code and would miss AGENTS.md creation
-    // (which was added in a later version).
-    if (cliUpdated) {
-      console.log(
-        chalk.gray("  Re-executing remaining steps with updated binary..."),
-      );
+    // newest binary so that the latest code handles project setup. The
+    // running copy is the global one only when it is the global install at
+    // the published latest — an older binary, a shadowing devDependency or a
+    // checkout must hand the rest of the run to the global copy.
+    const runningIsLatestGlobal =
+      globalIsLatest &&
+      isGlobalInstall(PACKAGE_ROOT, global.root) &&
+      runningVersion() === installed;
+    if (!runningIsLatestGlobal && (cliUpdated || globalIsLatest)) {
       try {
         // Re-run with --no-cli (avoid re-updating the just-updated CLI) and
         // forward the user's other flags so the restarted process honors them
@@ -180,9 +286,6 @@ export async function update(options: UpdateOptions) {
           stdio: "inherit",
           cwd: projectRoot,
         });
-        console.log(
-          chalk.green("  ✓ Post-update tasks completed with latest binary"),
-        );
         return;
       } catch {
         console.log(
@@ -208,18 +311,14 @@ export async function update(options: UpdateOptions) {
     if (devDepVersion) {
       console.log(chalk.blue("─── Syncing devDependency ───"));
       console.log(
-        chalk.yellow("  ⚠ openspec-playwright found in devDependencies —"),
-      );
-      console.log(
-        chalk.gray(
-          "    Node module resolution will use local version, not global CLI.",
+        chalk.yellow(
+          "  ⚠ openspec-playwright is in devDependencies (shadows the global CLI) — syncing to latest",
         ),
       );
-      console.log(chalk.gray("    Syncing local devDependency to latest..."));
       try {
         await execFileAsync(
           "npm",
-          ["install", "-D", "openspec-playwright@latest", "--prefer-online"],
+          ["install", "-D", "openspec-playwright@latest"],
           {
             timeout: 120000,
             cwd: projectRoot,
@@ -247,7 +346,8 @@ export async function update(options: UpdateOptions) {
   if (options.skill !== false) {
     console.log(chalk.blue("\n─── Updating Commands ───"));
     try {
-      const tmpDir = await fetchLatestBundle();
+      const bundle = await resolveBundle();
+      const tmpDir = bundle.root;
 
       const fetchedChecklist = join(tmpDir, "templates", "lint-guidelines.md");
       if (existsSync(fetchedChecklist)) {
@@ -295,8 +395,17 @@ export async function update(options: UpdateOptions) {
         options.lang,
       );
 
-      rmSync(tmpDir, { recursive: true, force: true });
-      console.log(chalk.green("  ✓ Commands & templates updated to latest"));
+      if (bundle.disposable) rmSync(tmpDir, { recursive: true, force: true });
+      // "updated to latest" is only true for content fetched from the
+      // registry — offline, the installed package is the best source there is.
+      const registryReachable = (await publishedLatestVersion()) !== undefined;
+      console.log(
+        chalk.green(
+          registryReachable
+            ? "  ✓ Commands & templates updated to latest"
+            : "  ✓ Commands & templates synced from the installed package (registry unreachable)",
+        ),
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.log(chalk.yellow(`  ⚠ Failed to update from npm: ${msg}`));
@@ -330,7 +439,8 @@ export async function update(options: UpdateOptions) {
     );
     console.log(chalk.blue("\n─── Standards Sync ───"));
     try {
-      const tmpDir = await fetchLatestBundle();
+      const bundle = await resolveBundle();
+      const tmpDir = bundle.root;
       const fetchedChecklist = join(tmpDir, "templates", "lint-guidelines.md");
       if (existsSync(fetchedChecklist)) {
         checklistTemplate = readFileSync(fetchedChecklist, "utf-8");
@@ -343,7 +453,7 @@ export async function update(options: UpdateOptions) {
         hasCommandArtifacts(projectRoot, codebuddy) || wrapperHasMarkers(codebuddy, projectRoot),
         options.lang,
       );
-      rmSync(tmpDir, { recursive: true, force: true });
+      if (bundle.disposable) rmSync(tmpDir, { recursive: true, force: true });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.log(chalk.yellow(`  ⚠ Standards sync failed: ${msg}`));
@@ -378,14 +488,7 @@ export async function update(options: UpdateOptions) {
       } else {
         console.log(chalk.blue("\n─── Installing Playwright MCP ───"));
         for (const adapter of getAllAdapters()) {
-          if (!hasCommandArtifacts(projectRoot, adapter)) {
-            console.log(
-              chalk.gray(
-                `  - ${adapter.label}: not configured in this project (run "openspec-pw init --tools ${adapter.id}" to add)`,
-              ),
-            );
-            continue;
-          }
+          if (!hasCommandArtifacts(projectRoot, adapter)) continue;
           if (isTestRunnerMcpInstalled(adapter, projectRoot)) {
             console.log(
               chalk.green(
@@ -396,11 +499,6 @@ export async function update(options: UpdateOptions) {
           }
           try {
             ensureTestRunnerMcp(adapter, projectRoot);
-            if (adapter.supportsMcp !== false) {
-              console.log(
-                chalk.gray(`  (Restart ${adapter.label} to activate)`),
-              );
-            }
           } catch {
             console.log(
               chalk.yellow(
@@ -532,18 +630,8 @@ async function checkVersionShadow(projectRoot: string): Promise<void> {
   }
   if (!resolvedVersion || !resolvedPath) return;
 
-  let publishedVersion: string | undefined;
-  try {
-    const { stdout } = await execFileAsync(
-      "npm",
-      ["view", "openspec-playwright", "version"],
-      { timeout: 30000 },
-    );
-    publishedVersion = stdout.trim();
-  } catch {
-    // offline / npm registry unavailable — skip silently
-    return;
-  }
+  // Reuse the version resolved earlier in this run (one registry round trip).
+  const publishedVersion = await publishedLatestVersion();
   if (!publishedVersion || resolvedVersion === publishedVersion) return;
 
   const lines = versionMismatchLines(
@@ -559,11 +647,64 @@ async function checkVersionShadow(projectRoot: string): Promise<void> {
 }
 
 /**
- * Fetch the latest published bundle into a fresh tmp dir via `npm pack` and
- * extract it. Returns the tmp dir path (commands/templates/standards live in
- * it). Shared by the full phase and the `--no-skill` standards-only path.
+ * Bundle source decision: the running package already carries the published
+ * content when it is at the published latest — or when the registry cannot be
+ * reached. Otherwise the published package must be fetched.
+ *
+ * Only the published install may stand in for the published package: a
+ * checkout can carry unreleased edits, which must not reach a user's project.
  */
-async function fetchLatestBundle(): Promise<string> {
+export function chooseBundleSource(
+  latest: string | undefined,
+  running: string | undefined,
+  hasLocalContent: boolean,
+  runningIsGlobal: boolean,
+): "local" | "pack" {
+  if (!hasLocalContent) return "pack";
+  if (!runningIsGlobal) return "pack";
+  if (latest === undefined) return "local";
+  return running === latest ? "local" : "pack";
+}
+
+/** The global install can be left alone only when it is the published latest. */
+export function isCliCurrent(
+  installed: string | undefined,
+  latest: string | undefined,
+): boolean {
+  return Boolean(installed && latest && installed === latest);
+}
+
+/**
+ * Source of the published content (templates/, standards/): the running
+ * package when it already is the published latest — or when the registry
+ * cannot be reached — otherwise a fresh `npm pack` of the published package.
+ */
+interface BundleSource {
+  /** Directory holding templates/ and standards/. */
+  root: string;
+  /** True for a temp dir this run owns and must delete. */
+  disposable: boolean;
+}
+
+/**
+ * Resolve the bundle root. Shared by the full phase and the `--no-skill`
+ * standards-only path.
+ */
+async function resolveBundle(): Promise<BundleSource> {
+  const latest = await publishedLatestVersion();
+  const running = runningVersion();
+  const global = await globalInstall();
+  const hasLocalContent = existsSync(
+    join(PACKAGE_ROOT, "templates", "e2e-command.md"),
+  );
+  const runningIsGlobal = isGlobalInstall(PACKAGE_ROOT, global.root);
+  if (
+    chooseBundleSource(latest, running, hasLocalContent, runningIsGlobal) ===
+    "local"
+  ) {
+    return { root: PACKAGE_ROOT, disposable: false };
+  }
+
   const tmpDir = join(tmpdir(), "openspec-e2e-update");
   rmSync(tmpDir, { recursive: true, force: true });
   mkdirSync(tmpDir, { recursive: true });
@@ -587,20 +728,9 @@ async function fetchLatestBundle(): Promise<string> {
     cwd: tmpDir,
     strip: 1,
   });
-  return tmpDir;
+  return { root: tmpDir, disposable: true };
 }
 
-/**
- * Drift-aware refresh of every configured editor's command artifact.
- *
- * Write authorization = tool-owned artifacts exist ("existing artifacts are
- * the manifest") — never detect(): a global config dir or a hand-created
- * marker directory does not authorize writes. update maintains territory; it
- * never expands it. Editors without artifacts are reported and skipped.
- *
- * Extracted from `update()` so the per-adapter refresh is testable without a
- * network round-trip to the npm registry.
- */
 /**
  * Refresh the e2e command for every editor that already carries one. Migration
  * deletes the 1.x file before the 2.x write, so migrated editors stay
@@ -633,16 +763,25 @@ export function syncE2eCommands(projectRoot: string, body: string): boolean {
     );
     return false;
   }
-  syncCommandArtifacts(projectRoot, body, migrated);
+  const unchanged = syncCommandArtifacts(projectRoot, body, migrated);
+  if (unchanged > 0) {
+    console.log(
+      chalk.gray(
+        `  - ${unchanged} editor${unchanged === 1 ? "" : "s"} already current`,
+      ),
+    );
+  }
   return true;
 }
 
+/** Rewrite stale command artifacts; returns how many editors needed no write. */
 export function syncCommandArtifacts(
   projectRoot: string,
   body: string,
   migratedIds?: ReadonlySet<string>,
-): void {
+): number {
   const meta = buildCommandMeta(body);
+  let unchanged = 0;
   for (const adapter of getAllAdapters()) {
     const relPath = adapter.commandFilePath(meta.id);
     const absPath = join(projectRoot, relPath);
@@ -655,11 +794,6 @@ export function syncCommandArtifacts(
       !existsSync(absPath) &&
       !migratedIds?.has(adapter.id)
     ) {
-      console.log(
-        chalk.gray(
-          `  - ${adapter.label}: not configured in this project (run "openspec-pw init --tools ${adapter.id}" to add)`,
-        ),
-      );
       continue;
     }
     // Drift-aware: only rewrite a command file when its content differs
@@ -688,11 +822,10 @@ export function syncCommandArtifacts(
     if (needsWrite) {
       installCommand(adapter, meta, projectRoot);
     } else {
-      console.log(
-        chalk.gray(`  - ${adapter.label}: ${relPath} already current`),
-      );
+      unchanged += 1;
     }
   }
+  return unchanged;
 }
 
 /**
