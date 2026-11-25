@@ -1066,6 +1066,15 @@ describe("update: where the content comes from", () => {
         "C:\\npm\\node_modules",
       ),
     ).toBe(true);
+    // Windows paths are case-insensitive, POSIX ones are not. Asserting both
+    // directions pins the platform branch; identical casing would pass either
+    // way and leave the case-folding untested.
+    expect(
+      isGlobalInstall(
+        "c:\\NPM\\node_modules\\openspec-playwright\\",
+        "C:\\npm\\node_modules",
+      ),
+    ).toBe(process.platform === "win32");
     expect(
       isGlobalInstall("/Users/dev/checkouts/openspec-playwright/", "/usr/local/lib/node_modules"),
     ).toBe(false);

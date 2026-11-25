@@ -67,6 +67,9 @@ describe("e2e-command template: autonomous mode", () => {
     expect(template).toContain(
       "Never write a throwaway script while a browser MCP is present",
     );
+    // The MCP-conditional ban does not cover the `--no-mcp` CI path, where a
+    // script is allowed; the unconditional rule must survive on its own.
+    expect(template).toContain("never a substitute for `npx playwright test`");
     expect(template).toContain("`playwright-test` preferred");
     expect(template).toContain("only Planner also ships as an agent file");
   });

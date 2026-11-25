@@ -133,7 +133,7 @@ openspec-pw init --tools none            # 不配置编辑器，只生成脚手�
 
 init 打印的预选提示**不是**安装集；`Selected editors:` 行才是。
 
-**选择忽略。** 交互式 init 以四个分组开关展示受管 `.gitignore` 路径，默认全选——回车保持忽略；取消整组即提交该组全部路径，「自定义」进入逐项列表。被提交的路径记录在块首 `# openspec-pw: skip=…` 行，`update` 不再补回，之后可重新勾选恢复。规范文件始终注入（`--no-rule-files` 只装 AGENTS.md）。非交互运行沿用先前选择；新项目忽略全部受管路径。
+**选择忽略。** 交互式 init 以四个分组开关展示受管 `.gitignore` 路径（`--auto-pipeline` 下为三个，`openspec/` 保持可提交），默认全选——回车保持忽略；取消整组即提交该组全部路径，「自定义」进入逐项列表。被提交的路径记录在块首 `# openspec-pw: skip=…` 行，`update` 不再补回，之后可重新勾选恢复精确记录的单条路径。若 opt-out 落在某个受管目录内部，整个目录都会保持可提交（git 无法在被忽略的目录里重新包含文件），该目录也不再作为候选项出现。规范文件始终注入（`--no-rule-files` 只装 AGENTS.md）。非交互运行沿用先前选择；新项目忽略全部受管路径。
 
 **取消勾选 = 移除。** 交互式 init 中取消勾选已探测的编辑器，会先确认一次再删除其 openspec-pw 产物；只动工具自有领土，你自己的配置条目和改过的 vendored agent 保留。共用的 `.mcp.json` 条目在仍有其他选中编辑器（Claude Code、CodeBuddy、MiniMax、Copilot）读取时保留。`--tools` 与非 TTY 运行不做移除。
 

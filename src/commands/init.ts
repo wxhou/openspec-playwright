@@ -856,8 +856,9 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   if (minimalSkips.length > 0) {
     console.log(
       chalk.gray(
-        `  - Minimal mode — skipping ${minimalSkips.map((s) => s.name).join(", ")}\n` +
-          `    (${minimalSkips.map((s) => `${s.name}: ${s.reason}`).join("; ")})`,
+        `  - Minimal mode — skipping ${minimalSkips
+          .map((s) => `${s.name} (${s.reason})`)
+          .join(", ")}`,
       ),
     );
   }

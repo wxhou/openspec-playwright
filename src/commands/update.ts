@@ -732,17 +732,6 @@ async function resolveBundle(): Promise<BundleSource> {
 }
 
 /**
- * Drift-aware refresh of every configured editor's command artifact.
- *
- * Write authorization = tool-owned artifacts exist ("existing artifacts are
- * the manifest") — never detect(): a global config dir or a hand-created
- * marker directory does not authorize writes. update maintains territory; it
- * never expands it. Editors without artifacts are reported and skipped.
- *
- * Extracted from `update()` so the per-adapter refresh is testable without a
- * network round-trip to the npm registry.
- */
-/**
  * Refresh the e2e command for every editor that already carries one. Migration
  * deletes the 1.x file before the 2.x write, so migrated editors stay
  * authorized while no artifact exists at that path. Returns whether the

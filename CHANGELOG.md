@@ -6,8 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-- **fix(e2e): 恢复浏览器 MCP 优先的诊断循环**. 路由段按阶段分档并先枚举工具，`openspec-pw explore` 补进无 Playwright MCP 时的探索路径，有浏览器 MCP 时禁止写一次性脚本；修复循环与 Phase 2-3 步骤同步列出 `browser_*` 诊断工具，并区分 `playwright-test`（还能跑/调测试）与只有浏览器工具的 `playwright`。
+- **fix(e2e): 恢复浏览器 MCP 优先的诊断循环**. 路由段按阶段分档并先枚举工具，`openspec-pw explore` 补进无 Playwright MCP 时的探索路径，有浏览器 MCP 时禁止写一次性脚本，并保留「脚本不得替代 `npx playwright test`」这条无条件规则（`--no-mcp` 的 CI 路径同样适用）；修复循环与 Phase 2-3 步骤同步列出 `browser_*` 诊断工具，并区分 `playwright-test`（还能跑/调测试）与只有浏览器工具的 `playwright`。
   - `templates/e2e-command.md`、`tests/e2e-template-auto.test.ts`
+- **fix(cli): 清理过期注释与重复提示**. `syncE2eCommands` 上方的旧 JSDoc 删除（它描述的合并函数已不存在）；minimal 模式的跳过提示不再重复列一遍功能名；`isGlobalInstall` 用例补 Windows 大小写分支，两侧平台都断言。
+  - `src/commands/update.ts`、`src/commands/init.ts`、`tests/update.test.ts`
+- **docs(readme): 标注分组开关数与嵌套 opt-out 的行为**. `--auto-pipeline` 下只有三个分组（`openspec/` 保持可提交）；opt-out 落在受管目录内部时整个目录保持可提交且不再作为候选项。
+  - `README.md`、`README.zh-CN.md`
 - **fix(cli): update 复用已安装包，跳过已是最新的安装**. 全局安装已是已发布 latest 时不再 `npm install -g`；同步内容改用已安装包内的 `templates/`、`standards/`，一次运行只查一次 registry。
   - `src/commands/update.ts`、`tests/update.test.ts`
 - **fix(cli): update 的内容来源与安装判定更严格**. 只有已发布的全局安装可代表发布包内容（检出目录不再作为来源）；运行的不是全局最新副本时把后续步骤交给全局副本；registry 不可达时不再声称「已更新到最新」。
