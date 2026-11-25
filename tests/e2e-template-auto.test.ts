@@ -204,6 +204,17 @@ describe("e2e-command template: autonomous mode", () => {
     expect(reportSection).toContain("without the `Tool:` line is incomplete");
   });
 
+  // Playwright falls through to its Copilot generator when `--loop` is
+  // omitted, so the command must carry it; and because `init-agents` rewrites
+  // `.mcp.json` wholesale, it has to run before `openspec-pw init`.
+  it("names the agentic loop and the mcp-rewrite order", () => {
+    expect(template).toContain("npx playwright init-agents --loop <your loop>");
+    expect(template).toContain("omitting `--loop` writes the Copilot set");
+    expect(template).toContain("Run it **before** `openspec-pw init`");
+    expect(template).toContain("Editors with no official loop keep hand-writing");
+    expect(template).not.toContain("install it with `npx playwright init-agents`");
+  });
+
   it("closes every ask-user path in --auto", () => {
     expect(template).toContain("E2E ABORTED: change name required");
     expect(template).toContain("E2E ABORTED: no specs");

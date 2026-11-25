@@ -221,7 +221,9 @@ Create `openspec/changes/<name>/specs/playwright/test-plan.md`. Inputs: specs, a
 
 **MCP recording flow (conditional)**: if `playwright-test` exposes `generator_setup_page` / `generator_write_test` / `generator_read_log`, record-then-write: run each step in the real browser, let `generator_write_test` emit the spec, then review it against the per-assertion check, selector priority, and anchor rule (recorded output has no anchors — add one per test). Otherwise hand-write.
 
-**Subagent delegation (conditional)**: with subagents and `.claude/agents/playwright-test-generator.md` present (install it with `npx playwright init-agents`; `--agents` ships Planner only), you may delegate generation. The prompt must carry Generation scope, Spec idempotency, the per-assertion check, selector priority, and Write scope; verify the output against them.
+**Subagent delegation (conditional)**: with subagents and your editor's Playwright agent file present (`.claude/agents/playwright-test-generator.md` for Claude Code; `--agents` ships Planner only), you may delegate generation. The prompt must carry Generation scope, Spec idempotency, the per-assertion check, selector priority, and Write scope; verify the output against them.
+
+**Installing the generator**: `npx playwright init-agents --loop <your loop>` — `claude`, `opencode`, `codex`, `copilot`, `vscode`; omitting `--loop` writes the Copilot set whatever your editor. Run it **before** `openspec-pw init` — it rewrites `.mcp.json` wholesale, and init then restores the `playwright-test` server. Editors with no official loop keep hand-writing; that is the default path, not a degradation. The command also emits the official healer; its use stays banned.
 
 **Page Object pattern** (read BasePage.ts first):
 ```typescript
