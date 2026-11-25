@@ -30,13 +30,12 @@
 > **STOP semantics**: **STOP** ends the turn — report the blocker, make no further tool calls, wait.
 > - **HARD STOP** (backend 5xx, seed failure, Phase 3 escalation, test-plan gate): report and wait.
 > - **SELF-HEAL** (only where stated, e.g. missing app-exploration): run the referenced step, then continue.
-> - **ABORT** (`--auto`): every STOP becomes `E2E ABORTED: <reason>` with a non-zero exit; never wait, never pass a blocker.
+> - **ABORT** (`--auto`): every STOP, and every question that would otherwise wait for a human, becomes `E2E ABORTED: <reason>` with a non-zero exit — never wait, never pass a blocker. Where a safe default exists (keep an existing test), take it and note the decision in the report. Reasons used here: `change name required`, `no specs`, `test data required`, `auth credentials required`.
 
-**Autonomous mode (`--auto`)** — for CI; three substitutions:
+**Autonomous mode (`--auto`)** — for CI; two substitutions:
 
 1. **Step 5 gate → `openspec-pw coverage <name> --plan <test-plan.md>`** from the repo root. Exit `1` lists uncovered scenarios; fix and re-run until `0`. Your own reading is not approval.
 2. **Phase 3 → abort** with a structured failure after applying the healer guardrails.
-3. **Every STOP or unanswerable question → `E2E ABORTED: <reason>`.** If a safe default exists (keep an existing test), take it and note the decision in the report.
 
 **Browser tool routing** — pick by phase, not by tool preference:
 
@@ -56,8 +55,6 @@ Step down only when the tool above is unavailable or failing; record the tool us
 **Context budget**: use `--reporter=line`, inspect only the routes under test, and keep traces/screenshots on disk — summarize evidence in the report instead of pasting it.
 
 **MCP tool names**: bare names below belong to the `playwright-test` server; prefix them when your editor namespaces tools (e.g. `mcp__playwright-test__test_run`).
-
-Never switch tools to reuse state (see Session state).
 
 ## Mini-program target
 
@@ -80,7 +77,7 @@ Never switch tools to reuse state (see Session state).
 
 **UI first.** Assert visible results with `page.getByRole/ByLabel/ByPlaceholder/ByText/ByTestId + expect()`; use `page.request` only for setup, HTTP mocks (`page.route()`), or non-visible state. Assert user-visible outcomes, not DOM structure. A click or navigation is not an outcome — assert the resulting state.
 
-**Selector priority**: verified selector from app-exploration.md > getByRole > getByLabel > getByPlaceholder > getByText > `[data-testid]` (getByTestId) > CSS id/class > positional. Step 4, 2-5, and app-knowledge.md use this order.
+**Selector priority**: verified selector from app-exploration.md > getByRole > getByLabel > getByPlaceholder > getByText > `[data-testid]` (getByTestId) > CSS id/class > positional. Step 4, 2-2, and app-knowledge.md use this order.
 
 **Strict locators**: a locator must resolve to exactly one element. If several match, narrow it with role + accessible name, a parent scope, or `filter` — never hide ambiguity with `.first()` / `.nth()` unless the test intentionally enumerates a list.
 
@@ -117,7 +114,7 @@ await expect(page.getByText('总金额: ¥800')).toBeVisible();
 
 ### 1. Select the change or mode
 
-**Change mode**: use the given name, or auto-select if only one change exists. If several exist and no name was given → `openspec list --json`, ask the user, and wait (no editor-specific prompt tooling — this workflow runs everywhere). In `--auto`, abort with `E2E ABORTED: change name required` instead of waiting. Infer from context only when the conversation names one change. Empty specs → STOP, suggest "all" mode; in `--auto`, abort with `E2E ABORTED: no specs`.
+**Change mode**: use the given name, or auto-select if only one change exists. If several exist and no name was given → `openspec list --json`, ask the user, and wait (no editor-specific prompt tooling — this workflow runs everywhere). In `--auto`: `E2E ABORTED: change name required`. Infer from context only when the conversation names one change. Empty specs → STOP, suggest "all" mode; `--auto`: `E2E ABORTED: no specs`.
 
 **"all" mode**: discover routes from `${BASE_URL}/sitemap.xml`, else home-page links, else common paths (`/`, `/login`, `/dashboard`, `/admin`, `/profile`, `/settings`). Deduplicate by pathname. Persist routes to `app-knowledge.md` → **Routes** table (replace, do not append); group Guest vs Protected by direct access.
 
@@ -170,12 +167,10 @@ If seed fails → **HARD STOP**. Report the failing output and wait — environm
 
 **Element extraction from snapshot**:
 
-| Element type | Selector priority |
-| ------------ | ----------------- |
-| Buttons | `getByRole` > `getByLabel` > `getByText` > `[data-testid]` |
-| Form fields | `label` > `placeholder` > `[data-testid]` > `name` |
-| Navigation | `getByRole` > `text` > `href` |
-| Headings, errors | For assertions |
+| Element type | Narrowing beyond the priority above |
+| ------------ | ----------------------------------- |
+| Form fields | `getByLabel` > `getByPlaceholder` > `getByTestId` > `name` attribute |
+| Navigation | `getByRole` > `getByText` > `href` |
 | Special (canvas, iframe, CAPTCHA, OTP, Shadow DOM, file upload) | Detect & note strategy |
 
 **Special elements**: canvas (`role=img` → `evaluate: getContext`), iframe (`frameLocator`), CAPTCHA (`.g-recaptcha` / `[data-sitekey]` → bypass/skip), OTP (single-character inputs → dev bypass / `E2E_OTP_CODE`), Shadow DOM (`role=generic` with no children → `evaluate: el.shadowRoot`), contenteditable (type + textContent), file upload (`setInputFiles`); record the strategy.
@@ -247,7 +242,7 @@ export class LoginPage extends BasePage {
 
 **Selector caching**: Use already-verified selectors from `app-exploration.md`. Only navigate to verify if selector is missing or marked Fragile.
 
-**Test data fabrication**: Never invent. Follow §4 of employee standards (数据编撰禁令) — ask user, use `TODO(user)` markers. In `--auto`, abort with `E2E ABORTED: test data required` instead of waiting or inventing.
+**Test data fabrication**: Never invent. Follow §4 of employee standards (数据编撰禁令) — ask user, use `TODO(user)` markers. `--auto`: `E2E ABORTED: test data required`.
 
 **Test coverage — empty states**: For list/detail pages, explore and test empty state UI.
 
@@ -258,7 +253,7 @@ export class LoginPage extends BasePage {
 - **API login**: Generate `auth.setup.ts` using `E2E_USERNAME`/`E2E_PASSWORD` + `E2E_AUTH_API` (default `/api/auth/login`); set `E2E_AUTH_REQUIRED=true` and verify the session before saving state. API login assumes cookie auth — use UI login for token/localStorage flows.
 - **UI login**: Generate using browser form fill; set `E2E_AUTH_REQUIRED=true`.
 - **Multi-user**: Read users from `tests/playwright/credentials.yaml`. Generate one setup per role, each reading `E2E_<ROLE>_USERNAME` / `E2E_<ROLE>_PASSWORD` (role name uppercased; non-alphanumeric characters become `_`) and writing `playwright/.auth/<role>.json`; add a Playwright project per role with its own `storageState`.
-- **No credentials**: If auth is required but no user is available, skip auth setup, leave protected routes pending, and record them as skipped in the report. Never generate placeholder credentials. In `--auto`, abort with `E2E ABORTED: auth credentials required`.
+- **No credentials**: If auth is required but no user is available, skip auth setup, leave protected routes pending, and record them as skipped in the report. Never generate placeholder credentials. `--auto`: `E2E ABORTED: auth credentials required`.
 
 Always use env vars, never hardcode. If auth.setup.ts exists → verify, update only if stale.
 
@@ -268,7 +263,7 @@ Always use env vars, never hardcode. If auth.setup.ts exists → verify, update 
 
 If missing → generate minimal config with webServer, projects, reporters, `trace: 'retain-on-failure'`, and `screenshot: 'only-on-failure'`. If exists → preserve all fields; add only the missing webServer block, plus `trace`/`screenshot` when they are unset — evidence on failure without bloating every run.
 
-**BASE_URL auto-detect**: `process.env.BASE_URL` → env port (`PLAYWRIGHT_PORT` / `E2E_PORT` / `VITE_PORT` / `PORT`) → package.json script port → `vite.config.*` → `.env*` files → framework default → `seed.spec.ts` → fallback `http://localhost:3000`.
+**BASE_URL**: the generated `playwright.config.ts` already auto-detects it (env vars, script/vite/`.env`, framework defaults, `seed.spec.ts`, then `http://localhost:3000`) — keep the detected value and add a fallback only when the config has none.
 
 ### 9. Execute tests
 
@@ -301,13 +296,13 @@ When tests fail → **Healer** (3 phases):
 
 **Phase 2 — Repair** (for Test Bug / Ambiguous):
 
-2-0. **Diagnose**: read failing specs + app-knowledge.md fixes; per test output TEST, ROUTE, ASSERTION, EXPECTED_BEHAVIOR, KNOWN_FIX and classify `ready-to-fix` / `needs-assertion-fix` / `needs-phase3` / `needs-more-diagnosis`. Then compare ASSERTION vs ACTUAL: selector typo, moved element, or drift is safe to fix; behavior changes, differing data, missing post-interaction elements, or requirement drift need Phase 3 (an assertion update is always a Phase 3 decision).
+2-1. **Diagnose**: read failing specs + app-knowledge.md fixes; per test output TEST, ROUTE, ASSERTION, EXPECTED_BEHAVIOR, KNOWN_FIX and classify `ready-to-fix` / `needs-assertion-fix` / `needs-phase3` / `needs-more-diagnosis`. Then compare ASSERTION vs ACTUAL: selector typo, moved element, or drift is safe to fix; behavior changes, differing data, missing post-interaction elements, or requirement drift need Phase 3 (an assertion update is always a Phase 3 decision).
 
-2-5. **Selector repair**: Follow the Testing Principles selector priority. If the target element is gone, do not substitute the closest matching element — escalate unless the selector is provably stale and identifies the same element. If the `playwright-test` MCP exposes `browser_generate_locator`, use it to generate and validate the candidate against the live page before rewriting.
+2-2. **Selector repair**: Follow the Testing Principles selector priority. If the target element is gone, do not substitute the closest matching element — escalate unless the selector is provably stale and identifies the same element. If the `playwright-test` MCP exposes `browser_generate_locator`, use it to generate and validate the candidate against the live page before rewriting.
 
-2-6. **Fix + verify**: apply fix → verify with test-runner MCP tools when available (`test_list` → `test_debug` → repair → `test_run` scoped to the single test file; else `npx playwright test --grep "<test-name>"`). Max 3 attempts per test, one error per round: fix one error, re-run, then the next.
+2-3. **Fix + verify**: apply fix → verify with test-runner MCP tools when available (`test_list` → `test_debug` → repair → `test_run` scoped to the single test file; else `npx playwright test --grep "<test-name>"`). Max 3 attempts per test, one error per round: fix one error, re-run, then the next.
 
-2-7. **Log**: Append healed selector/assertion to `app-knowledge.md`. Auto-de-duplicate by Route + Old Selector (selectors) or Test + Old Assertion (assertions).
+2-4. **Log**: Append healed selector/assertion to `app-knowledge.md`. Auto-de-duplicate by Route + Old Selector (selectors) or Test + Old Assertion (assertions).
 
 **Phase 3 — Escalate** (after ≥3 heals or ambiguous comparison): STOP and output:
 ```

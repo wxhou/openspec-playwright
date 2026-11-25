@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- **refactor(e2e): 收敛 e2e 模板的重复指令**. `--auto` 的退缩规则与四个 reason 集中到 STOP 语义，各步只写原因；Step 8 的 BASE_URL 八级链改为指向生成的 config；删除与「do not switch to escape a diagnosable failure」重复的一句；元素选择器表删掉与全局优先级重复的 Buttons/Headings 行并对齐措辞；Phase 2 编号由 `2-0`/`2-5~2-7` 改为 `2-1~2-4`。行为不变，模板 353 → 348 行。
+  - `templates/e2e-command.md`、`CHANGELOG.md`
 - **docs(e2e): 按阶段选择浏览器工具**. `/openspec-e2e` 的路由表改为每阶段一个默认工具：探索用浏览器 MCP、计划/生成用 `planner_*`/`generator_*`、首次执行与复跑用 CLI、只有失败后的修复循环用 `test_*` MCP；无 MCP 时先 chrome-devtools 再一次性脚本。补「角色是阶段，只有 Planner 有 agent 文件」与上下文预算规则，并禁止用 `.mjs` 重做 `npx playwright test` 的工作。
   - `templates/e2e-command.md`、`tests/e2e-template-auto.test.ts`、`CHANGELOG.md`
 - **feat(cli): .gitignore 选择改为分组开关**. 交互式 init 的四组（本地数据与凭据、编辑器命令与目录、MCP 配置与设置、OpenSpec 产物）各一行并标注条目数，取消整组即提交整组，「自定义单条路径」进入逐项列表并继承分组状态；回车行为不变。`.agents/`、`.dsh/`、`.gemini/`、`.qwen/`、`.kimi-code/`、`.github/prompts/` 改为整目录忽略，`.roo/` 与 `.trae/` 保持单文件（规则副本仍可提交），受管路径 49 → 40。
