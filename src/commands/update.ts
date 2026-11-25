@@ -142,8 +142,15 @@ export function isGlobalInstall(
   globalRoot: string | undefined,
 ): boolean {
   if (!globalRoot) return false;
-  const norm = (p: string): string => p.replace(/[\\/]+$/, "");
-  return norm(runningRoot) === norm(join(globalRoot, "openspec-playwright"));
+  // Separators differ per platform (npm prints POSIX paths on Windows too),
+  // so compare a normalized form; Windows paths are case-insensitive.
+  const norm = (p: string): string =>
+    p.replace(/[\\/]+$/, "").split(/[\\/]/).join("/");
+  const running = norm(runningRoot);
+  const global = norm(join(globalRoot, "openspec-playwright"));
+  return process.platform === "win32"
+    ? running.toLowerCase() === global.toLowerCase()
+    : running === global;
 }
 
 /** Any openspec-pw command artifact in either naming family exists. */

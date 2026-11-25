@@ -1059,6 +1059,13 @@ describe("update: where the content comes from", () => {
     expect(
       isGlobalInstall("/usr/local/lib/node_modules/openspec-playwright/", "/usr/local/lib/node_modules"),
     ).toBe(true);
+    // Windows separators and a trailing backslash normalize to the same path.
+    expect(
+      isGlobalInstall(
+        "C:\\npm\\node_modules\\openspec-playwright\\",
+        "C:\\npm\\node_modules",
+      ),
+    ).toBe(true);
     expect(
       isGlobalInstall("/Users/dev/checkouts/openspec-playwright/", "/usr/local/lib/node_modules"),
     ).toBe(false);
