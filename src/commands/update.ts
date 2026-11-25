@@ -101,23 +101,49 @@ async function publishedLatestVersion(): Promise<string | undefined> {
   return publishedVersionCache || undefined;
 }
 
-/** Version installed in the global npm root, or undefined when unreadable. */
-async function globalInstalledVersion(): Promise<string | undefined> {
+/**
+ * The global npm install of this CLI: its root and version. Fetched at most
+ * once per run — the install-skip check, the bundle-source choice and the
+ * "is the running copy the global one" question all read the same answer.
+ */
+let globalInstallCache: { root?: string; version?: string } | undefined;
+async function globalInstall(): Promise<{ root?: string; version?: string }> {
+  if (globalInstallCache) return globalInstallCache;
+  let result: { root?: string; version?: string } = {};
   try {
     const { stdout } = await execFileAsync("npm", ["root", "-g"], {
       timeout: 15000,
     });
     const root = stdout.trim();
-    if (!root) return undefined;
-    const pkgPath = join(root, "openspec-playwright", "package.json");
-    if (!existsSync(pkgPath)) return undefined;
-    const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as {
-      version?: string;
-    };
-    return pkg.version;
+    if (root) {
+      result = { root };
+      const pkgPath = join(root, "openspec-playwright", "package.json");
+      if (existsSync(pkgPath)) {
+        const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as {
+          version?: string;
+        };
+        result.version = pkg.version;
+      }
+    }
   } catch {
-    return undefined;
+    /* npm unavailable — treated as "no global install" */
   }
+  globalInstallCache = result;
+  return result;
+}
+
+/**
+ * Is the running package the global install? A checkout or a project-local
+ * copy is not: only the published install may stand in for the published
+ * package's content.
+ */
+export function isGlobalInstall(
+  runningRoot: string,
+  globalRoot: string | undefined,
+): boolean {
+  if (!globalRoot) return false;
+  const norm = (p: string): string => p.replace(/[\\/]+$/, "");
+  return norm(runningRoot) === norm(join(globalRoot, "openspec-playwright"));
 }
 
 /** Any openspec-pw command artifact in either naming family exists. */
@@ -203,11 +229,13 @@ export async function update(options: UpdateOptions) {
     console.log(chalk.blue("─── Updating CLI ───"));
     // Already at the published latest → nothing to install.
     const latest = await publishedLatestVersion();
-    const installed = await globalInstalledVersion();
-    if (isCliCurrent(installed, latest)) {
+    const global = await globalInstall();
+    const installed = global.version;
+    const globalIsLatest = isCliCurrent(installed, latest);
+    let cliUpdated = false;
+    if (globalIsLatest) {
       console.log(chalk.green(`  ✓ CLI already at latest (${installed})`));
     } else {
-      let cliUpdated = false;
       try {
         await execFileAsync(
           "npm",
@@ -227,33 +255,38 @@ export async function update(options: UpdateOptions) {
           chalk.gray("  Run manually: npm install -g openspec-playwright@latest"),
         );
       }
+    }
 
-      // Re-execute remaining steps (templates, commands, AGENTS.md) with the
-      // newly-installed binary so that the latest code handles project setup.
-      // The original process still runs old code and would miss AGENTS.md creation
-      // (which was added in a later version).
-      if (cliUpdated) {
-        try {
-          // Re-run with --no-cli (avoid re-updating the just-updated CLI) and
-          // forward the user's other flags so the restarted process honors them
-          // too (e.g. --no-mcp must still skip the MCP phase, --lang must switch).
-          const reExecArgs = ["update", "--no-cli"];
-          if (options.mcp === false) reExecArgs.push("--no-mcp");
-          if (options.skill === false) reExecArgs.push("--no-skill");
-          if (options.lang) reExecArgs.push("--lang", options.lang);
-          execFileSync("openspec-pw", reExecArgs, {
-            stdio: "inherit",
-            cwd: projectRoot,
-          });
-          return;
-        } catch {
-          console.log(
-            chalk.yellow(
-              "  ⚠ Re-execution failed, continuing with current binary...",
-            ),
-          );
-          // Fall through — let the old binary attempt remaining steps
-        }
+    // Re-execute remaining steps (templates, commands, AGENTS.md) with the
+    // newest binary so that the latest code handles project setup. The
+    // running copy is the global one only when it is the global install at
+    // the published latest — an older binary, a shadowing devDependency or a
+    // checkout must hand the rest of the run to the global copy.
+    const runningIsLatestGlobal =
+      globalIsLatest &&
+      isGlobalInstall(PACKAGE_ROOT, global.root) &&
+      runningVersion() === installed;
+    if (!runningIsLatestGlobal && (cliUpdated || globalIsLatest)) {
+      try {
+        // Re-run with --no-cli (avoid re-updating the just-updated CLI) and
+        // forward the user's other flags so the restarted process honors them
+        // too (e.g. --no-mcp must still skip the MCP phase, --lang must switch).
+        const reExecArgs = ["update", "--no-cli"];
+        if (options.mcp === false) reExecArgs.push("--no-mcp");
+        if (options.skill === false) reExecArgs.push("--no-skill");
+        if (options.lang) reExecArgs.push("--lang", options.lang);
+        execFileSync("openspec-pw", reExecArgs, {
+          stdio: "inherit",
+          cwd: projectRoot,
+        });
+        return;
+      } catch {
+        console.log(
+          chalk.yellow(
+            "  ⚠ Re-execution failed, continuing with current binary...",
+          ),
+        );
+        // Fall through — let the old binary attempt remaining steps
       }
     }
   }
@@ -356,7 +389,16 @@ export async function update(options: UpdateOptions) {
       );
 
       if (bundle.disposable) rmSync(tmpDir, { recursive: true, force: true });
-      console.log(chalk.green("  ✓ Commands & templates updated to latest"));
+      // "updated to latest" is only true for content fetched from the
+      // registry — offline, the installed package is the best source there is.
+      const registryReachable = (await publishedLatestVersion()) !== undefined;
+      console.log(
+        chalk.green(
+          registryReachable
+            ? "  ✓ Commands & templates updated to latest"
+            : "  ✓ Commands & templates synced from the installed package (registry unreachable)",
+        ),
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.log(chalk.yellow(`  ⚠ Failed to update from npm: ${msg}`));
@@ -601,13 +643,18 @@ async function checkVersionShadow(projectRoot: string): Promise<void> {
  * Bundle source decision: the running package already carries the published
  * content when it is at the published latest — or when the registry cannot be
  * reached. Otherwise the published package must be fetched.
+ *
+ * Only the published install may stand in for the published package: a
+ * checkout can carry unreleased edits, which must not reach a user's project.
  */
 export function chooseBundleSource(
   latest: string | undefined,
   running: string | undefined,
   hasLocalContent: boolean,
+  runningIsGlobal: boolean,
 ): "local" | "pack" {
   if (!hasLocalContent) return "pack";
+  if (!runningIsGlobal) return "pack";
   if (latest === undefined) return "local";
   return running === latest ? "local" : "pack";
 }
@@ -639,10 +686,15 @@ interface BundleSource {
 async function resolveBundle(): Promise<BundleSource> {
   const latest = await publishedLatestVersion();
   const running = runningVersion();
+  const global = await globalInstall();
   const hasLocalContent = existsSync(
     join(PACKAGE_ROOT, "templates", "e2e-command.md"),
   );
-  if (chooseBundleSource(latest, running, hasLocalContent) === "local") {
+  const runningIsGlobal = isGlobalInstall(PACKAGE_ROOT, global.root);
+  if (
+    chooseBundleSource(latest, running, hasLocalContent, runningIsGlobal) ===
+    "local"
+  ) {
     return { root: PACKAGE_ROOT, disposable: false };
   }
 

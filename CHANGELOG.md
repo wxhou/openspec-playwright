@@ -6,28 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-- **fix(cli): update 复用已安装包，跳过已是最新的安装**. 全局安装版本与已发布 latest 相同时不再执行 `npm install -g`；同步命令、模板与规范时，运行版本等于 latest（或 registry 不可达）直接使用已安装包内的 `templates/`、`standards/`，不再 `npm pack` 取同一份发布包；一次运行只查一次 registry。
-  - `src/commands/update.ts`、`tests/update.test.ts`、`CHANGELOG.md`
-- **fix(cli): init 的 Ctrl+C 按取消处理**. 编辑器多选、移除确认、agents 确认与 `.gitignore` 多选被中断时打印取消提示、停止后续写入、退出码 0（原为红色错误 + 退出码 1）。
-  - `src/commands/init.ts`、`tests/init.test.ts`、`CHANGELOG.md`
-- **chore(test): 测试不再依赖本机安装的 OpenSpec 主版本**. doctor / editors-cursor / remove-minimax 三个测试文件固定 1.x 主版本桩（与其 fixture 一致），doctor 的编辑器分组断言改用与实现一致的默认命名族，update 的默认桩固定为 1.x；6 个随机器而变的失败消失，全量测试在任何机器上一致。
-  - `tests/doctor.test.ts`、`tests/editors-cursor.test.ts`、`tests/commands/remove-minimax.test.ts`、`tests/update.test.ts`、`CHANGELOG.md`
-- **fix(cli): update 不再强制绕过 npm 缓存**. 移除自动安装（全局 CLI 与 devDependency 同步）的 `--prefer-online`；发布后 `latest` 解析最多延迟一个 packument 缓存周期（registry `max-age=300`），换取更少的网络请求。版本不一致时的手动修复提示仍保留该 flag。
-  - `src/commands/update.ts`、`CHANGELOG.md`
-- **refactor(cli): 精简 init/update 的控制台输出**. 删除 MCP 与 agents 的命名出处说明、逐编辑器 `Restart` 提醒、四个无内容的 scaffold 标题（合并为一个）、update 中未配置编辑器与 `already current` 的逐条播报（改为一行数量汇总）、re-exec 流程播报与 devDependency 的三行解释；minimal 模式的三条 skip 合并为一块。错误/警告、实际写入结果、Summary 与 Next steps 不变。
-  - `src/commands/init.ts`、`src/commands/update.ts`、`src/commands/editors/registry.ts`、`tests/init.test.ts`、`tests/init-mcp-scope.test.ts`、`tests/update.test.ts`、`CHANGELOG.md`
-- **docs(readme): 合并双表并收敛重复说明**. 16 家编辑器合并为一张表（命令 / 产物 / MCP / 规则钩子），1.x 命名映射只留一处；`E2E_AUTH_*`、全局配置目录、安装清单同一条事实各留一处；受管 `.gitignore` 的 40 条路径移出「认证配置」，独立成「受管 `.gitignore` 路径」小节。第二轮删掉 Architecture 里与 CLI Commands 重复且已漂移的 CLI 树、逐编辑器的 MCP 条目 JSON 与规则加载复述、`remove --all` 的重复产物清单，小程序检查项改指 doctor 表；同时修正 Architecture 指向已合并的 Usage 表、`global.teardown.ts` 被标成 init 生成物两处失实。第三轮删掉「首次配置清单」（四步并入 Setup，保留 `--with-deps`/`xcode-select` 两条修复提示）、Architecture 的模板树与 Healer 块、Gemini/Qwen/Roo/Trae 的命令格式细节。第四轮删掉内部机制叙述——预选判据、40 条路径枚举、小程序信号分级、agents 归属细节、CLI 深层解释、审计五态表、doctor 机制说明、架构文件树——只留可操作结论。EN 与 zh 同步。
-  - `README.md`、`README.zh-CN.md`、`CHANGELOG.md`
-- **refactor(e2e): 收敛 e2e 模板的重复指令**. `--auto` 的退缩规则与四个 reason 集中到 STOP 语义，各步只写原因；Step 8 的 BASE_URL 八级链改为指向生成的 config；删除与「do not switch to escape a diagnosable failure」重复的一句；元素选择器表删掉与全局优先级重复的 Buttons/Headings 行并对齐措辞；Phase 2 编号由 `2-0`/`2-5~2-7` 改为 `2-1~2-4`。行为不变，模板 353 → 348 行。
-  - `templates/e2e-command.md`、`CHANGELOG.md`
-- **docs(e2e): 按阶段选择浏览器工具**. `/openspec-e2e` 的路由表改为每阶段一个默认工具：探索用浏览器 MCP、计划/生成用 `planner_*`/`generator_*`、首次执行与复跑用 CLI、只有失败后的修复循环用 `test_*` MCP；无 MCP 时先 chrome-devtools 再一次性脚本。补「角色是阶段，只有 Planner 有 agent 文件」与上下文预算规则，并禁止用 `.mjs` 重做 `npx playwright test` 的工作。
-  - `templates/e2e-command.md`、`tests/e2e-template-auto.test.ts`、`CHANGELOG.md`
-- **feat(cli): .gitignore 选择改为分组开关**. 交互式 init 的四组（本地数据与凭据、编辑器命令与目录、MCP 配置与设置、OpenSpec 产物）各一行并标注条目数，取消整组即提交整组，「自定义单条路径」进入逐项列表并继承分组状态；回车行为不变。`.agents/`、`.dsh/`、`.gemini/`、`.qwen/`、`.kimi-code/`、`.github/prompts/` 改为整目录忽略，`.roo/` 与 `.trae/` 保持单文件（规则副本仍可提交），受管路径 49 → 40。
-  - `src/commands/init-gitignore-prompt.ts`、`src/shared/gitignore-managed.ts`、`tests/commands/init-gitignore-prompt.test.ts`、`tests/gitignore-managed.test.ts`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
-- **feat(cli): 精简 init 编辑器选择与 remove --all 确认**. 编辑器多选按 Configured / Detected / Other 分段并一屏显示；`remove --all` 在 TTY 下打印计划后就地确认（默认否），非 TTY 仍只列计划。
-  - `src/commands/init.ts`、`src/commands/remove.ts`、`tests/commands/editor-prompt-groups.test.ts`、`tests/commands/remove-all.test.ts`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
-- **fix(cli): 补齐提示的 stdin 守卫与中断处理**. 编辑器多选仅在 stdin 为 TTY 时出现，重定向 stdin 不再挂起；`remove --all` 确认时 Ctrl+C 按拒绝处理；CLI 帮助、`docs/llms.txt` 与两份 README 的 remove 描述同步为「TTY 确认、非 TTY 只列计划」。
-  - `src/commands/init.ts`、`src/commands/remove.ts`、`src/index.ts`、`docs/llms.txt`、`README.md`、`README.zh-CN.md`、`tests/commands/init-preselect.test.ts`、`tests/commands/remove-all.test.ts`、`CHANGELOG.md`
+- **fix(cli): update 复用已安装包，跳过已是最新的安装**. 全局安装已是已发布 latest 时不再 `npm install -g`；同步内容改用已安装包内的 `templates/`、`standards/`，一次运行只查一次 registry。
+  - `src/commands/update.ts`、`tests/update.test.ts`
+- **fix(cli): update 的内容来源与安装判定更严格**. 只有已发布的全局安装可代表发布包内容（检出目录不再作为来源）；运行的不是全局最新副本时把后续步骤交给全局副本；registry 不可达时不再声称「已更新到最新」。
+  - `src/commands/update.ts`、`tests/update.test.ts`
+- **fix(gitignore): 受管目录内的 skip 不再被整目录忽略覆盖**. 记录的 skip 落在受管目录内时该目录不进块，也不作为忽略候选；已写入的整目录行会被移除。
+  - `src/shared/gitignore-managed.ts`、`tests/gitignore-managed.test.ts`
+- **fix(cli): init 的 Ctrl+C 按取消处理**. 编辑器多选、移除确认、agents 确认与 `.gitignore` 多选被中断时打印取消提示、停止后续写入、退出码 0。
+  - `src/commands/init.ts`、`tests/init.test.ts`
+- **fix(cli): init 在 .gitignore 提示处取消仍写入受管块**. 取消时按默认集合写入受管 `.gitignore` 块后再停止，生成的凭据文件不会失去忽略保护。
+  - `src/commands/init.ts`、`tests/init.test.ts`
+- **refactor(init): 编辑器多选提示移出 init.ts**. 分组与提示逻辑移入 `init-editor-prompt.ts`，init.ts 回到 1500 行上限内。
+  - `src/commands/init.ts`、`src/commands/init-editor-prompt.ts`、`tests/commands/editor-prompt-groups.test.ts`
+- **chore(test): 测试不再依赖本机安装的 OpenSpec 主版本**. doctor / editors-cursor / remove-minimax / update 四个测试文件固定 1.x 主版本桩，全量测试在任何机器上一致。
+  - `tests/doctor.test.ts`、`tests/editors-cursor.test.ts`、`tests/commands/remove-minimax.test.ts`、`tests/update.test.ts`
+- **fix(cli): update 不再强制绕过 npm 缓存**. 自动安装不再带 `--prefer-online`，`latest` 解析最多延迟一个 registry 缓存周期（300 秒）。
+  - `src/commands/update.ts`
+- **refactor(cli): 精简 init/update 的控制台输出**. 删除实现出处说明、逐条播报与重复提示，保留错误、实际写入结果、Summary 与 Next steps。
+  - `src/commands/init.ts`、`src/commands/update.ts`、`src/commands/editors/registry.ts`、`tests/init.test.ts`、`tests/init-mcp-scope.test.ts`、`tests/update.test.ts`
+- **docs(readme): 合并双表并收敛重复说明**. 16 家编辑器合并为一张表，删去与 CLI 章节重复的架构叙述，EN 与 zh 同步。
+  - `README.md`、`README.zh-CN.md`
+- **docs(readme): remove --all 的描述与实际行为对齐**. 两份 README 不再称其为「默认 dry run」，改为「先列计划再确认」。
+  - `README.md`、`README.zh-CN.md`
+- **refactor(e2e): 收敛 e2e 模板的重复指令**. 退缩规则与原因集中到 STOP 语义，Step 8 改为指向生成的 config，模板 353 → 348 行。
+  - `templates/e2e-command.md`
+- **docs(e2e): 按阶段选择浏览器工具**. 每阶段一个默认浏览器工具，修复循环才用 test_* MCP，禁用手写 .mjs 重做 playwright test。
+  - `templates/e2e-command.md`、`tests/e2e-template-auto.test.ts`
+- **feat(cli): .gitignore 选择改为分组开关**. 四组各一行、取消整组即提交整组，自定义入口继承分组状态；六个编辑器目录改为整目录忽略，受管路径 49 → 40。
+  - `src/commands/init-gitignore-prompt.ts`、`src/shared/gitignore-managed.ts`、`tests/commands/init-gitignore-prompt.test.ts`、`tests/gitignore-managed.test.ts`、`README.md`、`README.zh-CN.md`
+- **feat(cli): 精简 init 编辑器选择与 remove --all 确认**. 编辑器多选按 Configured / Detected / Other 分段；`remove --all` 在 TTY 下打印计划后就地确认。
+  - `src/commands/init.ts`、`src/commands/remove.ts`、`tests/commands/editor-prompt-groups.test.ts`、`tests/commands/remove-all.test.ts`、`README.md`、`README.zh-CN.md`
+- **fix(cli): 补齐提示的 stdin 守卫与中断处理**. 编辑器多选仅在 stdin 为 TTY 时出现，`remove --all` 确认时 Ctrl+C 按拒绝处理。
+  - `src/commands/init.ts`、`src/commands/remove.ts`、`src/index.ts`、`docs/llms.txt`、`README.md`、`README.zh-CN.md`、`tests/commands/init-preselect.test.ts`、`tests/commands/remove-all.test.ts`
 
 ## [0.3.124] - 2026-11-24
 - **docs(cli): 生成物与元数据同步 2.x 命名**. 生成的 seed / credentials / playwright.config 去掉写死的 1.x 命令名；包描述、站点与 llms 摘要统一为 2.x 与 16 家编辑器，README 命令示例以 2.x 为主。

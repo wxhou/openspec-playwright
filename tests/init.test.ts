@@ -1188,6 +1188,10 @@ describe("init prompt cancellation", () => {
     expect(logs.some((l) => l.includes("Cancelled"))).toBe(true);
     // Written before the prompt — kept.
     expect(existsSync(join(tmpRoot, "tests/playwright/seed.spec.ts"))).toBe(true);
+    // The managed block is written before the run stops, so generated
+    // credentials stay ignored.
+    const gitignore = readFileSync(join(tmpRoot, ".gitignore"), "utf-8");
+    expect(gitignore).toContain("tests/playwright/credentials.yaml");
     // After the prompt — not written.
     expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(false);
     expect(logs.some((l) => l.includes("Setup complete"))).toBe(false);

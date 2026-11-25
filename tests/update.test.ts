@@ -1021,22 +1021,29 @@ describe("update: 1.x → 2.x e2e migration", () => {
 describe("update: where the content comes from", () => {
   it("uses the running package when it is the published latest", async () => {
     const { chooseBundleSource } = await import("../../src/commands/update.js");
-    expect(chooseBundleSource("1.2.3", "1.2.3", true)).toBe("local");
+    expect(chooseBundleSource("1.2.3", "1.2.3", true, true)).toBe("local");
   });
 
   it("fetches the published package when the running copy is behind", async () => {
     const { chooseBundleSource } = await import("../../src/commands/update.js");
-    expect(chooseBundleSource("1.2.3", "1.2.2", true)).toBe("pack");
+    expect(chooseBundleSource("1.2.3", "1.2.2", true, true)).toBe("pack");
   });
 
   it("falls back to the running package when the registry is unreachable", async () => {
     const { chooseBundleSource } = await import("../../src/commands/update.js");
-    expect(chooseBundleSource(undefined, "1.2.2", true)).toBe("local");
+    expect(chooseBundleSource(undefined, "1.2.2", true, true)).toBe("local");
   });
 
   it("fetches when the running package carries no templates", async () => {
     const { chooseBundleSource } = await import("../../src/commands/update.js");
-    expect(chooseBundleSource("1.2.3", "1.2.3", false)).toBe("pack");
+    expect(chooseBundleSource("1.2.3", "1.2.3", false, true)).toBe("pack");
+  });
+
+  it("never serves a checkout's content to a user project", async () => {
+    const { chooseBundleSource } = await import("../../src/commands/update.js");
+    // A local checkout at the same version may carry unreleased edits.
+    expect(chooseBundleSource("1.2.3", "1.2.3", true, false)).toBe("pack");
+    expect(chooseBundleSource(undefined, "1.2.3", true, false)).toBe("pack");
   });
 
   it("skips the install only when the global copy is the published latest", async () => {
@@ -1045,5 +1052,18 @@ describe("update: where the content comes from", () => {
     expect(isCliCurrent("1.2.2", "1.2.3")).toBe(false);
     expect(isCliCurrent(undefined, "1.2.3")).toBe(false);
     expect(isCliCurrent("1.2.3", undefined)).toBe(false);
+  });
+
+  it("recognizes the global install as the running copy", async () => {
+    const { isGlobalInstall } = await import("../../src/commands/update.js");
+    expect(
+      isGlobalInstall("/usr/local/lib/node_modules/openspec-playwright/", "/usr/local/lib/node_modules"),
+    ).toBe(true);
+    expect(
+      isGlobalInstall("/Users/dev/checkouts/openspec-playwright/", "/usr/local/lib/node_modules"),
+    ).toBe(false);
+    expect(
+      isGlobalInstall("/usr/local/lib/node_modules/openspec-playwright/", undefined),
+    ).toBe(false);
   });
 });

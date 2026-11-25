@@ -209,7 +209,7 @@ openspec-pw remove        # 移除集成（--all 扫描 home 与 Windows 盘根�
 
 **`remove`** 只删工具自有产物（编辑器命令、MCP 条目、规则块、受管 `.gitignore` 块、钩子、schema、lint 清单、vendored agents），以及仍与内置模板字节一致的模板文件。你自己的文件、`tests/**`、`credentials.yaml`、`openspec/specs` 永不触碰；改过的工具文件保留并提示；经 symlink 指向项目外的路径跳过。
 
-`remove --all` 扫描 home 目录（Windows 上再加各盘根），找持有上述任一产物的项目。默认只列计划：TTY 下删除前询问一次，`--yes` 跳过询问，非 TTY 只打印计划。`--root <dir>`（可重复）替换扫描根。单个项目失败不阻断其余项目；结束时打印 `removed N / skipped M / failed K`，有失败则退出码非零。
+`remove --all` 扫描 home 目录（Windows 上再加各盘根），找持有上述任一产物的项目。先列出待删计划：TTY 下删除前询问一次，`--yes` 跳过询问，非 TTY 只打印计划。`--root <dir>`（可重复）替换扫描根。单个项目失败不阻断其余项目；结束时打印 `removed N / skipped M / failed K`，有失败则退出码非零。
 
 `openspec-pw gate` 按 `validate → lint → typecheck → test → flake → e2e` 执行，默认首败即停（`--keep-going` 跑完全部），退出 `0` / `1` / `2`（通过 / 不达标 / 无法判定）。它还会让声明了 scenario 却无 E2E 测试的 change、以及新出现的 `test.fixme(` 判失败；lint/TS/Playwright 配置或超时被调大只出现在 `flags` 中，不判失败。
 

@@ -444,6 +444,47 @@ describe("init-time opt-outs recorded in the block header", () => {
   });
 });
 
+describe("a recorded opt-out inside a managed directory", () => {
+  const readBlock = () =>
+    readFileSync(join(projectRoot, ".gitignore"), "utf-8");
+
+  it("keeps the whole directory out of the block", () => {
+    // The opt-out predates the directory-wide entries: ignoring `.agents/`
+    // would ignore the file the user chose to commit.
+    const result = ensureGitignoreEntries(projectRoot, {
+      skip: [".agents/skills/openspec-e2e/"],
+    });
+    expect(result.added).not.toContain(".agents/");
+    expect(readBlock()).not.toContain("\n.agents/\n");
+    expect(findUncoveredManagedPaths(projectRoot, [".agents/skills/openspec-e2e/"])).not.toContain(
+      ".agents/",
+    );
+  });
+
+  it("drops an already-written directory line once the opt-out appears", () => {
+    ensureGitignoreEntries(projectRoot);
+    expect(readBlock()).toContain("\n.agents/\n");
+    const result = ensureGitignoreEntries(projectRoot, {
+      skip: [".agents/skills/openspec-e2e/"],
+    });
+    expect(result.removed).toContain(".agents/");
+    expect(readBlock()).not.toContain("\n.agents/\n");
+  });
+
+  it("does not offer the directory as a keep-ignoring candidate", () => {
+    expect(
+      skippableManagedPaths([], [".agents/skills/openspec-e2e/"]),
+    ).not.toContain(".agents/");
+    // An exactly recorded opt-out stays a candidate — the prompt is where
+    // the user re-checks it.
+    expect(skippableManagedPaths([], ["tmp/"])).toContain("tmp/");
+    // A sibling file is not covered by a file opt-out.
+    expect(
+      skippableManagedPaths(["tests/playwright/credentials.yaml"]),
+    ).toContain("tests/playwright/credentials.yaml.bak");
+  });
+});
+
 describe("managed gitignore coverage for OpenCode JSONC config", () => {
   it("manages opencode.json and opencode.jsonc with the same standing", () => {
     expect(MANAGED_GITIGNORE_PATHS).toContain("opencode.json");

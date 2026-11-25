@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { groupEditorChoices } from "../../src/commands/init.js";
-import { getAllAdapters } from "../../src/commands/editors/registry.js";
+import { groupEditorChoices } from "../../src/commands/init-editor-prompt.js";
+import { getAllAdapters } from "../../src/commands/editors.js";
 
 const all = getAllAdapters();
 

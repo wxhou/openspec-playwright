@@ -114,15 +114,6 @@ export function managedPathFor(
   return relative(projectRoot, absPath).split(sep).join("/");
 }
 
-/** Candidates for the init selection prompt: managed paths minus locked/omitted. */
-export function skippableManagedPaths(omit: readonly string[] = []): string[] {
-  const omitted = new Set(omit);
-  const locked = new Set<string>(LOCKED_GITIGNORE_PATHS);
-  return MANAGED_GITIGNORE_PATHS.filter(
-    (p) => !locked.has(p) && !omitted.has(p),
-  );
-}
-
 /**
  * Load the run directory's ignore rules (.git/info/exclude first, then
  * .gitignore). Per-file read tolerance (review F1): an unreadable rule
@@ -143,6 +134,68 @@ export function loadIgnoreRules(projectRoot: string): ReturnType<typeof ignore> 
 }
 
 /**
+ * Do two managed-path strings overlap? True when they are equal or when one
+ * is a directory that contains the other. Directory-ness comes from the
+ * trailing slash the managed set uses, so a file never swallows a sibling
+ * file (`credentials.yaml` vs `credentials.yaml.bak`).
+ *
+ * Overlap decides an opt-out's reach: ignoring a directory also ignores
+ * everything under it, so a recorded skip inside a managed directory keeps
+ * that directory out of the managed set.
+ */
+export function managedPathsOverlap(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (a.endsWith("/") && b.startsWith(a)) return true;
+  if (b.endsWith("/") && a.startsWith(b)) return true;
+  return false;
+}
+
+/** Is this managed path covered by any recorded opt-out? */
+export function coveredBySkips(
+  path: string,
+  skips: Iterable<string>,
+): boolean {
+  for (const s of skips) {
+    if (managedPathsOverlap(path, s)) return true;
+  }
+  return false;
+}
+
+/**
+ * Does this managed path contain a recorded opt-out? Only a directory can
+ * contain one. Such a path cannot be offered as "keep ignoring": ignoring
+ * the directory would ignore the opted-out path inside it.
+ */
+export function containsSkip(
+  path: string,
+  skips: Iterable<string>,
+): boolean {
+  if (!path.endsWith("/")) return false;
+  for (const s of skips) {
+    if (s !== path && s.startsWith(path)) return true;
+  }
+  return false;
+}
+
+/**
+ * Candidates for the init selection prompt: managed paths minus locked/omitted
+ * and minus paths that contain a recorded opt-out. An exactly recorded opt-out
+ * stays a candidate — the prompt is where the user re-checks it.
+ */
+export function skippableManagedPaths(
+  omit: readonly string[] = [],
+  recordedSkips: readonly string[] = [],
+): string[] {
+  const locked = new Set<string>(LOCKED_GITIGNORE_PATHS);
+  return MANAGED_GITIGNORE_PATHS.filter(
+    (p) =>
+      !locked.has(p) &&
+      !coveredBySkips(p, omit) &&
+      !containsSkip(p, recordedSkips),
+  );
+}
+
+/**
  * Managed paths NOT yet covered by any ignore rule — existence-independent
  * (a path that does not exist on disk is exactly the forward-looking case
  * this module exists for). Never throws (review F1): rule-file read errors
@@ -150,16 +203,17 @@ export function loadIgnoreRules(projectRoot: string): ReturnType<typeof ignore> 
  * on plain path strings.
  *
  * `omit` drops paths from the managed set for callers that need one of them
- * committed (the auto pipeline needs `openspec/` in the tree).
+ * committed (the auto pipeline needs `openspec/` in the tree). A skip inside
+ * a managed directory keeps the whole directory out — ignoring the directory
+ * would ignore the user's own files too.
  */
 export function findUncoveredManagedPaths(
   projectRoot: string,
   omit: readonly string[] = [],
 ): string[] {
   const ig = loadIgnoreRules(projectRoot);
-  const skipped = new Set(omit);
   return MANAGED_GITIGNORE_PATHS.filter(
-    (rel) => !skipped.has(rel) && !ig.ignores(rel),
+    (rel) => !coveredBySkips(rel, omit) && !ig.ignores(rel),
   );
 }
 
@@ -313,10 +367,12 @@ export function ensureGitignoreEntries(
   if (beginIdx !== -1) {
     // Well-formed block: add only the lines missing from its body, drop the
     // ones the caller wants kept committable, and rewrite the skip record.
+    // A line that covers a skipped path goes too — a recorded opt-out for
+    // `.agents/skills/…` must not be undone by an `.agents/` line.
     const content = body.filter((l) => !l.trim().startsWith(SKIP_LINE_PREFIX));
-    const kept = content.filter((l) => !skipped.has(l.trim()));
+    const kept = content.filter((l) => !coveredBySkips(l.trim(), skipped));
     removed = content
-      .filter((l) => skipped.has(l.trim()))
+      .filter((l) => coveredBySkips(l.trim(), skipped))
       .map((l) => l.trim());
     const bodySet = new Set(kept.map((l) => l.trim()));
     added = uncovered.filter((p) => !bodySet.has(p));
@@ -445,8 +501,9 @@ export function detectTrackedFiles(
   projectRoot: string,
   omit: readonly string[] = [],
 ): string[] {
-  const skipped = new Set(omit);
-  const paths = MANAGED_GITIGNORE_PATHS.filter((p) => !skipped.has(p));
+  const paths = MANAGED_GITIGNORE_PATHS.filter(
+    (p) => !coveredBySkips(p, omit),
+  );
   const args = ["-C", projectRoot, "ls-files", "--", ...paths];
   let stdout: string = "";
   try {

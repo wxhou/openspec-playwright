@@ -72,6 +72,7 @@ import {
 } from "./editors/configured.js";
 import { cleanOptedOutCopies, ruleCopyPredicate } from "./init-rules-copy.js";
 import { maintainManagedGitignore } from "./init-gitignore-block.js";
+import { promptSelectEditors } from "./init-editor-prompt.js";
 import type { EditorAdapter, EditorId } from "./editors.js";
 import {
   ensureTestRunnerMcp,
@@ -87,6 +88,7 @@ import {
   detectCodeGraphStatus,
   codegraphHintLines,
   skippableManagedPaths,
+  readManagedSkipsSafe,
   isIgnoredPath,
   installOrRefreshChecklist,
   installLintConfig,
@@ -161,9 +163,11 @@ function isPromptCancelled(err: unknown): boolean {
 }
 
 /** Report a cancelled run; the caller stops the remaining steps. */
-function reportCancelled(): void {
+function reportCancelled(note?: string): void {
   console.log(
-    chalk.gray("  ✗ Cancelled (Ctrl+C) — stopping without further changes."),
+    chalk.gray(
+      `  ✗ Cancelled (Ctrl+C) — ${note ?? "stopping without further changes."}`,
+    ),
   );
 }
 
@@ -197,64 +201,6 @@ export interface InitDeps {
   isTTY?: boolean;
   /** Override home dir for Pi/Oh My Pi global detection (tests inject an empty dir). */
   homeDir?: string;
-}
-
-/**
- * Ordered buckets for the editor prompt: configured editors first, then
- * detected-but-not-configured, then the rest. Empty buckets are dropped so a
- * first-run project never shows an empty "Configured" section.
- */
-export function groupEditorChoices(
-  allEditors: readonly EditorAdapter[],
-  configured: ReadonlySet<EditorId>,
-  detected: ReadonlySet<EditorId>,
-): { label: string; editors: EditorAdapter[] }[] {
-  const rest = allEditors.filter((a) => !configured.has(a.id));
-  return [
-    {
-      label: "Configured",
-      editors: allEditors.filter((a) => configured.has(a.id)),
-    },
-    { label: "Detected", editors: rest.filter((a) => detected.has(a.id)) },
-    { label: "Other", editors: rest.filter((a) => !detected.has(a.id)) },
-  ]
-    .filter((bucket) => bucket.editors.length > 0)
-    .map((bucket) => ({
-      label: `${bucket.label} (${bucket.editors.length})`,
-      editors: bucket.editors,
-    }));
-}
-
-/**
- * Interactive multi-select of all supported editors, pre-selecting the
- * editors passed in `preselected` and grouping them by state so the list
- * fits one screen. Dynamically imports @inquirer/prompts so non-interactive
- * runs never load it.
- */
-export async function promptSelectEditors(
-  allEditors: EditorAdapter[],
-  preselected: ReadonlySet<EditorId>,
-  configured: ReadonlySet<EditorId> = new Set(),
-  detected: ReadonlySet<EditorId> = new Set(),
-): Promise<EditorId[]> {
-  const { checkbox, Separator } = await import("@inquirer/prompts");
-  const choices = groupEditorChoices(allEditors, configured, detected).flatMap(
-    (group, index) => [
-      ...(index === 0 ? [] : [new Separator(" ")]),
-      new Separator(group.label),
-      ...group.editors.map((a) => ({
-        name: a.displayName,
-        value: a.id,
-        checked: preselected.has(a.id),
-      })),
-    ],
-  );
-  const selected = await checkbox({
-    message: "Select editors to configure",
-    choices,
-    pageSize: 20,
-  });
-  return selected as EditorId[];
 }
 
 /**
@@ -971,8 +917,13 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   ];
   // Interactive opt-out of individual managed paths. Non-TTY runs keep the
   // full set (today's behavior); the choice lands in the block header so a
-  // later update never re-adds a path the user chose to commit.
-  const gitignoreCandidates = skippableManagedPaths(pipelineOmit);
+  // later update never re-adds a path the user chose to commit. A recorded
+  // skip inside a managed directory keeps that directory out of the managed
+  // set — it must not be offered as "keep ignoring" either.
+  const gitignoreCandidates = skippableManagedPaths(
+    pipelineOmit,
+    readManagedSkipsSafe(projectRoot),
+  );
   // A checkbox reads stdin, so stdout being a TTY is not enough: a piped
   // stdin would hang the prompt. An injected prompt needs no such check.
   const askGitignore =
@@ -987,7 +938,16 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
       );
     } catch (err) {
       if (!isPromptCancelled(err)) throw err;
-      reportCancelled();
+      // The scaffold already wrote credentials — the managed block must cover
+      // them before this run stops.
+      maintainManagedGitignore({
+        projectRoot,
+        selectedPaths: undefined,
+        candidates: gitignoreCandidates,
+        omit: pipelineOmit,
+        ruleFiles: options.ruleFiles,
+      });
+      reportCancelled("default .gitignore entries applied, stopping.");
       return;
     }
   }
