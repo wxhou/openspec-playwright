@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- **fix(e2e): 修复循环先读失败产物再进浏览器**. `test-results/**/error-context.md`（失败瞬间的 ARIA 快照）提升为诊断第一步，`browser_snapshot` / console / network 只用于产物没有记录的错误形态；无浏览器 MCP 时明确「产物就是全部证据」，不再把进页面当成必经步骤。
+  - `templates/e2e-command.md`、`tests/e2e-template-auto.test.ts`
+- **fix(e2e): 探索产物记录浏览器档位，change 模式必填**. `app-exploration.md`（web 与小程序）新增 `Browser tools:` 行并写明它记录「产出这份探索的工具」——复用文件不改，换工具重新探索才更新；change 模式该行与 `BASE_URL:` 必填，项目根目录可选。报告模板新增 `Tool: <server> (rung <n>)`，缺行视为不完整。
+  - `templates/{app-exploration,miniprogram/app-exploration,e2e-command}.md`、`tests/e2e-template-auto.test.ts`
+- **docs(standards): §6 验收判据分档、修正无断言检验并启用 ⚪ 档位**. 权限验证只在 E2E/集成验收要求真实登录态，隔离单测的鉴权 mock 明示豁免；无断言检验改为「破坏被测分支或改反返回值」，不再误杀空态测试；「注释密度与命名习惯」「一个行为一组断言」从 🟡 长句拆出，独立标为 ⚪；§0 优先级规则四条并为两条，⚪ 明确「偏离无需说明」。
+  - `standards/employee-standards.md`、`standards/employee-standards.en.md`、`docs/script.js`
 - **fix(e2e): 恢复浏览器 MCP 优先的诊断循环**. 路由段按阶段分档并先枚举工具，`openspec-pw explore` 补进无 Playwright MCP 时的探索路径，有浏览器 MCP 时禁止写一次性脚本，并保留「脚本不得替代 `npx playwright test`」这条无条件规则（`--no-mcp` 的 CI 路径同样适用）；修复循环与 Phase 2-3 步骤同步列出 `browser_*` 诊断工具，并区分 `playwright-test`（还能跑/调测试）与只有浏览器工具的 `playwright`。
   - `templates/e2e-command.md`、`tests/e2e-template-auto.test.ts`
 - **fix(cli): 清理过期注释与重复提示**. `syncE2eCommands` 上方的旧 JSDoc 删除（它描述的合并函数已不存在）；minimal 模式的跳过提示不再重复列一遍功能名；`isGlobalInstall` 用例补 Windows 大小写分支，两侧平台都断言。

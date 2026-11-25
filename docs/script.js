@@ -2,13 +2,8 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 这份代码库是你的：它的用途是什么、如何构建，由你来决定，并继续在此基础上开发。动手前读 \`openspec/config.yaml\`（技术栈、结构、约定、约束等）；文件不存在或为空 → 本条跳过，其余条款照常适用
 - 不确定属实的事实先核实再作答——已装源码/类型定义 → 官方文档 → 网络搜索，仍无法确认就问用户，不按记忆作答
 - OpenSpec 命令：用 \`openspec --help\` 查看；不在 PATH 时改用 \`npx openspec --help\`
-- 优先级：
-  - 🔴 CRITICAL：不可协商的硬性约束——违反 → 静默 bug/安全漏洞/不可逆损失，或绕过用户授权；无法同时满足时停下向用户确认，同意后按用户指示执行，不可达则报告并中止、不自行放行
-  - 🟡 IMPORTANT（偏离说明理由，谨慎执行）
-  - ⚪ STANDARD（按标准执行）
-  - 未标注的条款按 🟡 处理
-  - 条款冲突按 🔴 > 🟡 > ⚪ 裁决；同级冲突先看是否已有条款规定了违规后的处置（如代码质量节的 auto-fix 循环）——有则先按该条款执行，无才停下问用户
-  - 用户显式指令可偏离 🟡/⚪ 即刻生效；与 🔴 冲突 → 先复述风险，用户终裁后执行
+- 优先级三档：🔴 不可协商——违反 → 静默 bug/安全漏洞/不可逆损失，或绕过用户授权；无法同时满足时停下向用户确认，同意后按用户指示执行，不可达则报告并中止、不自行放行。🟡 偏离说明理由，谨慎执行。⚪ 标准实践，可调整，偏离无需说明。未标注的条款按 🟡 处理
+- 条款冲突按 🔴 > 🟡 > ⚪ 裁决；同级冲突先按该条款执行（如代码质量节的 auto-fix 循环），无才停下问用户；用户显式指令可偏离 🟡/⚪ 即刻生效，遇 🔴 先复述风险，用户终裁后执行
 - **修复预算**：同一失败（同一检查或断言）最多修复 2 轮，不同失败分别计；连续 3 轮失败项未减少即停
 
 - 被用户纠正后，把防再犯规则写进项目 \`openspec/config.yaml\` 的 \`context\`；经用户确认后合入
@@ -31,7 +26,8 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🔴 引入新依赖前先实查该生态的包注册源——AI 会幻觉包名（抢注攻击）；该生态有安装期脚本时（如 npm postinstall）再检查：下载并执行外部内容、包名与惯用名高度相似 → 可疑即弃
 - 🟡 精准改动：只改必要的，每一行都应能直接追溯到用户的请求；不"改进"相邻的代码/注释/格式，不重构没坏的东西；改完清理自己造成的垃圾（清理与重构分开提交）。匹配现有风格
 - 🟡 模块化与关注点分离：新增/改动的逻辑落在职责所属的模块——先复用承载同一职责的既有模块，没有才按现有目录约定新建；不因正在编辑就塞进当前文件，不塞进邻近的无关文件或万能工具（如 \`utils\`/\`helpers\`/\`common\`），不把无关职责塞进同一模块
-- 🟡 实现注释只写 why——约束、取舍、workaround、反直觉决策，一行以内。公共接口必须写明用途，签名表达不了的契约必须写明（单位、返回语义、抛出的错误、副作用、前置条件）；文档注释的存在性交给 lint（清单见 \`lint-guidelines.md\`；未安装或该语言无对应规则 → 跳过，按本语言惯例写）。不写改动叙述、分步叙述、已删代码的引用、注释掉的代码、复述代码字面含义（用户明确要求的除外）。匹配周围代码的注释密度与命名习惯。机制标注（lint/类型抑制、来源与授权、TODO(user)、spec 锚）不属此列。判据：删掉这句，读者会不会调用错或改错？不会 → 删。
+- 🟡 实现注释只写 why——约束、取舍、workaround、反直觉决策，一行以内。公共接口必须写明用途，签名表达不了的契约必须写明（单位、返回语义、抛出的错误、副作用、前置条件）；文档注释的存在性交给 lint（清单见 \`lint-guidelines.md\`；未安装或该语言无对应规则 → 跳过，按本语言惯例写）。不写改动叙述、分步叙述、已删代码的引用、注释掉的代码、复述代码字面含义（用户明确要求的除外）。机制标注（lint/类型抑制、来源与授权、TODO(user)、spec 锚）不属此列。判据：删掉这句，读者会不会调用错或改错？不会 → 删。
+- ⚪ 注释密度与命名习惯匹配周围代码：同文件内一致即可，不要求对齐某个外部标准
 - 🟡 代码文件行数上限 1500：本次编辑推过 1500 即违例，按职责拆分；存量已超限的报告不动，不得继续堆叠（生成/vendored 产物除外）
 - 🟡 新建或改建数据结构时，把非法组合挡在构造处（联合类型、枚举、构造参数校验），而不是散落成各使用点的 if 兜底；动态语言在构造或解析入口一次拦截；未被本次改动触及的既有结构不动
 - 🟡 状态建模：改动涉及相互约束的布尔/可空字段/阶段分支时，先理清状态、状态转换、非法组合与竞态；派生值不单独建模。简单流程不必引入状态机库；长流程、跨进程、可恢复/并行再考虑工作流引擎，关键协议再考虑形式化模型。
@@ -100,7 +96,8 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🔴 禁止将临时文件提交到版本控制（确保 \`.gitignore\` 含 \`tmp/\`；已跟踪的历史文件先 \`git rm --cached\`）；用户名下或来历不明的可疑文件报告请示、不自行删
 
 ## 测试与验证策略
-- 🟡 测试只随验收存在：验收条款（规范 requirement / change 完成条 / 任务验收标准）或用户在会话中明确要求，点名才写；未点名的有价值场景（业务核心计算/状态转换、边界与错误路径、被多处复用的工具、修过 bug 的回归）→ 提议用户（收尾汇总一次提出），不静默略过；一个行为一组断言
+- 🟡 测试只随验收存在：验收条款（规范 requirement / change 完成条 / 任务验收标准）或用户在会话中明确要求，点名才写；未点名的有价值场景（业务核心计算/状态转换、边界与错误路径、被多处复用的工具、修过 bug 的回归）→ 提议用户（收尾汇总一次提出），不静默略过
+- ⚪ 一个行为一组断言：断言粒度按可读性取舍，不强制拆分或合并
 - 🔴 保持现有测试通过；红了先分类——行为本次有意变更（重构不算：重构只改结构，红即改坏）→ 更新断言；行为本次已删 → 专属测试随之删除并列明；范围外红测 → 报告不动；不得据本节 DO NOT 或「代码质量」节简化条款跳过/删除既有测试
 - 🟡 测试断言与实现的分歧先裁定谁错（spec 还是实现——矛盾本身是发现）；拿不准停下问用户，不单方面弱化断言把两边凑绿
 - 🟡 测试钉住行为，不钉实现：断言可观察结果（返回值、输出、状态变化、对外调用），不断言内部结构（私有方法与字段、调用顺序、内部状态名）；判据：重构实现而行为不变时，测试不该需要改动
@@ -110,11 +107,11 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🟡 按点名写测试时，该层覆盖不到才抽 UI 客户端逻辑（hook/组合式函数/纯函数）为独立单元测；用户可见交互 → 浏览器验证；纯逻辑 → 证据验证，不开浏览器
 - 🟡 修复类任务先复现后修复：复现先落成一个会失败的测试（可自动化的前提下；无法用测试表达时用截图或测量并说明），完成前后各重现 bug 一次（修前 = 证明它存在，且失败来自预期的那条断言；修后 = 证明它消失）；同法 ≥2 次未复现 → 以已试次数与现有证据回报并停下，等用户提供复现条件，或经用户明示授权后按分析修复
 - 🟡 验收期望锚定验收标准写「预期 X，实测 Y」，不得从实现反推（期望编造禁令见数据编撰节）
-- 🟡 验证证据取自本次运行：证据=实际跑的命令与输出，不编造、不复用旧证据；先核对加载的是本次产物（清缓存/停用 Service Worker/核 hash）；权限类必须真实登录态=以真实凭据过登录流程（UI 登录或 API 登录取回），构造/硬编码 token 一律算注入；多角色各角色单独登录
+- 🟡 验证证据取自本次运行：证据=实际跑的命令与输出，不编造、不复用旧证据；先核对加载的是本次产物（清缓存/停用 Service Worker/核 hash）；E2E/集成验收的权限验证必须真实登录态=以真实凭据过登录流程（UI 登录或 API 登录取回），构造/硬编码 token 一律算注入；多角色各角色单独登录；隔离单元测试内的鉴权 mock 不在此限
 - 🟡 验证不止于跑测试：另查跨组件共享状态与不变量、有无硬编码或预置输出绕过真实实现——单测全绿而组合行为崩掉是常见形态
 - 🟡 UI 测试：检查是否存在预期外的无限循环——动画、渲染、轮询、重连、定时器、监听器、重定向都须有终止条件或清理，预期内的必要加载指示除外；卸载或离开页面后不得残留。
 - 🔴 仅截图不算通过——交互必须验证结果（点击后的状态/跳转/渲染），断言只作辅助证据；样式类改动（无行为变化）核对渲染截图并呈现给用户即可
-- 🔴 无断言价值的测试一律不写，点名不豁免：纯透传、getter/样板、类型系统已保证的行为、只断言 mock 拓扑而非可观察行为；检验：把该测试依赖的返回值改成空/null，测试仍过 → 判为无断言价值
+- 🔴 无断言价值的测试一律不写，点名不豁免：纯透传、getter/样板、类型系统已保证的行为、只断言 mock 拓扑而非可观察行为；检验：破坏被测分支或把核心返回值改反后测试仍过 → 判为无断言价值
   - UI 渲染冒烟/快照/纯存在断言同判；行为级组件测试按本节点名标准判断，不因「不是 E2E」排除。
 
 ## 性能与资源边界
@@ -136,13 +133,8 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - This codebase is yours: what it's for and how it's built are your call, and you'll keep building on it. Read \`openspec/config.yaml\` first (tech stack, structure, conventions, constraints, etc.); no file or empty → skip this item, the rest applies as usual
 - verify facts you are not sure are true before answering — installed source/types → official docs → web search; if still unconfirmed, ask the user instead of answering from memory
 - OpenSpec commands: run \`openspec --help\` to list them, or \`npx openspec --help\` when it is not on PATH
-- Priority:
-  - 🔴 CRITICAL — a non-negotiable hard constraint: violation → silent bug/security hole/irreversible loss, or bypassing user authorization; when it cannot be satisfied simultaneously with what you are doing, stop and confirm with the user, act per their instruction; unreachable → report and abort, never self-clear
-  - 🟡 IMPORTANT (deviations need justification, proceed with caution)
-  - ⚪ STANDARD (follow as standard practice)
-  - unmarked rules are treated as 🟡
-  - clause conflicts resolve 🔴 > 🟡 > ⚪; for same-tier conflicts, if an existing clause already specifies the handling after its violation (e.g. the Code Quality auto-fix loop), follow that clause first — stop and ask the user only when none does
-  - explicit user instructions may override 🟡/⚪ rules and take effect immediately; if one conflicts with a 🔴 → restate the risk first, the user makes the final call
+- Priority — three tiers: 🔴 non-negotiable: violation → silent bug/security hole/irreversible loss, or bypassing user authorization; when it cannot be satisfied simultaneously with what you are doing, stop and confirm with the user, act per their instruction; unreachable → report and abort, never self-clear. 🟡 deviations need justification. ⚪ standard practice, adjustable, deviations need none. unmarked rules are treated as 🟡
+- clause conflicts resolve 🔴 > 🟡 > ⚪; for same-tier conflicts, follow that clause first when it already specifies the handling after its violation (e.g. the Code Quality auto-fix loop), and stop to ask the user only when none does; explicit user instructions may override 🟡/⚪ rules and take effect immediately, while a conflict with a 🔴 → restate the risk first, the user makes the final call
 - **Repair budget**: one failure (the same check or assertion) gets at most 2 rounds of repair; different failures count separately; stop after 3 rounds with no reduction in failing items
 - When corrected by the user, write the prevention rule into the project's \`openspec/config.yaml\` \`context\`; land it after user confirmation
 
@@ -164,7 +156,8 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🔴 Before adding any new dependency, verify it on that ecosystem's package registry first — LLMs hallucinate package names (squatting attacks); if that ecosystem has install-time scripts (e.g. npm postinstall), check them: lifecycle scripts that download and execute external content, or names closely imitating a common package → discard
 - 🟡 Surgical changes: touch only what's needed, every line traceable to the user's request; don't "improve" adjacent code/comments/formatting, don't refactor what isn't broken; clean up your own mess (cleanup and refactor in separate commits). Match existing style
 - 🟡 Modularity and separation of concerns: new/changed logic belongs in the module that owns the responsibility — reuse an existing module that already carries the same responsibility first, and only create one following the existing directory conventions; never bolt it onto the current file just because you are editing it, an unrelated neighboring file, or a catch-all utility (e.g., utils/helpers/common), never pack unrelated responsibilities into the same module
-- 🟡 Implementation comments carry only the why — constraints, tradeoffs, workarounds, counterintuitive decisions, one line max. The public interface must state its purpose, and any contract the signature cannot express must be stated (units, return semantics, errors raised, side effects, preconditions); leave docstring existence to lint (checklist in \`lint-guidelines.md\`; if it is not installed, or the language has no matching rule, skip and follow that language's convention). Never write change narration, step narration, references to deleted code, commented-out code, or literal-meaning restatements (unless the user explicitly asked). Match the surrounding code's comment density and naming. Mechanism markings (lint/type suppression, source and authorization, TODO(user), spec anchors) are exempt. Test: if deleting this line would not make a reader call or change the code wrongly, delete it.
+- 🟡 Implementation comments carry only the why — constraints, tradeoffs, workarounds, counterintuitive decisions, one line max. The public interface must state its purpose, and any contract the signature cannot express must be stated (units, return semantics, errors raised, side effects, preconditions); leave docstring existence to lint (checklist in \`lint-guidelines.md\`; if it is not installed, or the language has no matching rule, skip and follow that language's convention). Never write change narration, step narration, references to deleted code, commented-out code, or literal-meaning restatements (unless the user explicitly asked). Mechanism markings (lint/type suppression, source and authorization, TODO(user), spec anchors) are exempt. Test: if deleting this line would not make a reader call or change the code wrongly, delete it.
+- ⚪ Comment density and naming match the surrounding code: consistent within the file is enough, with no external standard to align to
 - 🟡 Code file line limit 1500: this edit pushing a file past 1500 is a violation — split by responsibility, never extend; existing over-limit files are reported, not touched (generated/vendored artifacts exempt)
 - 🟡 When creating or reshaping data structures, make illegal combinations impossible at construction (unions, enums, constructor validation) instead of scattering if-guards across call sites. In dynamic languages, block once at the construction or parse entry point; leave existing structures untouched unless this change touches them
 - 🟡 State modeling: when a change touches mutually constrained booleans, nullable fields, or phase branches, first reason through the states, transitions, illegal combinations, and races; never model derived values as states. Simple flows do not need a state-machine library; only long-running, cross-process, recoverable, or parallel flows justify a workflow engine, and only critical protocols justify formal models.
@@ -233,7 +226,8 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🔴 Never commit temp files to version control (ensure \`.gitignore\` has \`tmp/\`, already-tracked ones get \`git rm --cached\` first); user-owned or unclear-origin suspicious files get reported, not deleted
 
 ## Testing & Verification Strategy
-- 🟡 Tests exist only where acceptance demands them: write tests only for cases named by acceptance clauses (spec requirements / change acceptance criteria / task acceptance standards) or explicitly requested by the user in the session; for valuable un-named scenarios (core business computation/state transitions, boundary & error paths, widely reused utilities, bug-fix regressions) → propose to the user (bundled, raised once at wrap-up), never skip silently; one behavior one assertion set
+- 🟡 Tests exist only where acceptance demands them: write tests only for cases named by acceptance clauses (spec requirements / change acceptance criteria / task acceptance standards) or explicitly requested by the user in the session; for valuable un-named scenarios (core business computation/state transitions, boundary & error paths, widely reused utilities, bug-fix regressions) → propose to the user (bundled, raised once at wrap-up), never skip silently
+- ⚪ One behavior, one assertion set: assertion granularity is a readability call; neither splitting nor merging is mandated
 - 🔴 Keep existing tests passing; triage reds first — the tested behavior changed intentionally this round (a refactor doesn't count: it changes structure only, so red means the structure broke, not a stale assertion) → update assertions; behavior deleted this round → its tests go with it, itemized; pre-existing reds outside scope → report, don't touch; never cite this section's DO NOT rules or the Code Quality section's simplification clauses to skip/delete existing tests
 - 🟡 When a test assertion disagrees with the implementation, first rule on who is wrong (the spec or the code — the contradiction itself is a finding); unsure → stop and ask the user; never unilaterally weaken assertions to make both green
 - 🟡 Tests pin behavior, not implementation: assert observable results (return values, output, state changes, outbound calls), never internal structure (private methods and fields, call order, internal state names); criterion: a refactor that preserves behavior should require no test changes
@@ -243,11 +237,11 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🟡 When writing named tests, extract client-side logic (hooks/composables/pure functions) into independent unit tests only when that layer can't cover it; user-visible interaction → browser-verify; pure logic → evidence verification, no browser
 - 🟡 Fix tasks: express the reproduction as a test that fails before the fix (when it can be automated; otherwise use screenshots or measurements and say so), reproduce before and after completion (before = prove it exists, with the failure coming from the expected assertion; after = prove it's gone); same-method ≥2 failed reproductions → report attempts and existing evidence and stop — wait for repro conditions from the user, or proceed with analysis-driven fixes only after explicit user authorization
 - 🟡 All acceptance expectations anchor to acceptance criteria ("expected X, got Y") and must never be reverse-engineered from the implementation; the no-fabricating-expectations rule lives in the Data Fabrication section
-- 🟡 Verification evidence comes from this run: the commands actually run and their output, never fabricated, never reused from earlier runs; first confirm the tested build is the current one (clear cache/disable the Service Worker/check the hash); permission checks need a real login state = a session from the real login flow (UI login or API login exchange) — constructed/hardcoded tokens count as injection; each role logs in separately
+- 🟡 Verification evidence comes from this run: the commands actually run and their output, never fabricated, never reused from earlier runs; first confirm the tested build is the current one (clear cache/disable the Service Worker/check the hash); permission checks in E2E/integration acceptance need a real login state = a session from the real login flow (UI login or API login exchange) — constructed/hardcoded tokens count as injection; each role logs in separately; auth mocks inside isolated unit tests are exempt
 - 🟡 Verification goes beyond running tests: also check cross-component shared state and invariants, and whether anything hardcodes or precomputes outputs instead of implementing the behavior — all unit tests green while composition breaks is a common shape
 - 🟡 UI tests: check for unintended infinite loops — animations, rendering, polling, reconnection, timers, listeners, and redirects all need a termination condition or cleanup, except intended essential loading indicators; nothing may remain after unmount or leaving the page.
 - 🔴 Screenshot alone does not pass — interactions must verify the result (state/navigation/render after click); assertions serve only as auxiliary evidence; style-only changes (no behavior change) verify the rendered screenshot and present it to the user
-- 🔴 Tests without assertion value are never written — naming by acceptance doesn't exempt them: pass-throughs, getters/boilerplate, type-system-guaranteed behavior, asserting mock topology instead of observable behavior; cheapest check: change the values the test depends on to empty/null — if it still passes, it has no assertion value
+- 🔴 Tests without assertion value are never written — naming by acceptance doesn't exempt them: pass-throughs, getters/boilerplate, type-system-guaranteed behavior, asserting mock topology instead of observable behavior; cheapest check: break the branch under test or invert the core return value — if it still passes, it has no assertion value
   - UI render-smoke/snapshot/existence assertions are judged the same; behavior-level component tests follow this section's naming standard and are not excluded for "not being E2E".
 
 ## Performance & Resource Bounds

@@ -118,19 +118,78 @@ describe("e2e-command template: autonomous mode", () => {
       return index;
     });
     expect(positions).toEqual([...positions].sort((a, b) => a - b));
+    // The failure artifact already contains the DOM at the moment of failure.
+    // Without it named first, the repair loop sends every selector failure
+    // through a browser round-trip that returns the same ARIA snapshot.
+    const artifact = repair.indexOf("error-context.md");
+    if (artifact === -1) throw new Error("missing failure artifact: error-context.md");
+    expect(artifact).toBeLessThan(positions[0]);
     // Phase 2-3 is what the agent actually executes. If it drifts from the
     // routing table again, the browser-side diagnosis silently disappears —
     // the failure mode this test exists to catch.
-    const fixStart = template.indexOf("2-3. **Fix + verify**");
+    const fixStart = template.indexOf("2-3. **Diagnose, fix + verify**");
     const fixEnd = template.indexOf("2-4.", fixStart);
     expect(fixStart).toBeGreaterThan(-1);
     expect(fixEnd).toBeGreaterThan(fixStart);
     const fixStep = template.slice(fixStart, fixEnd);
     expect(fixStep).toContain("repair loop from the routing table");
     expect(fixStep).toContain("browser_console_messages");
+    expect(fixStep).toContain("error-context.md");
     // The browser-only server is named too, so a session without
     // `playwright-test` still routes to MCP instead of a script.
     expect(at("browser-only `playwright` server")).toBeGreaterThan(-1);
+  });
+
+  // The routing rule says to record the tool, but `app-exploration.md` had no
+  // slot for it — the ainovel run (2026-11-25) wrote the record into the report
+  // instead. A field is what makes the requirement executable.
+  it("gives the rung record a fixed slot in the exploration file", () => {
+    const web = readFileSync(
+      bundledTemplatePath("templates/app-exploration.md"),
+      "utf-8",
+    );
+    const mini = readFileSync(
+      bundledTemplatePath("templates/miniprogram/app-exploration.md"),
+      "utf-8",
+    );
+    expect(web).toContain("Browser tools: <server> (rung <n>)");
+    expect(mini).toContain("Browser tools: <server> (rung <n>)");
+    expect(web).toContain('write "none (rung <n>)" when no browser tool is attached');
+    expect(mini).toContain('write "none (rung <n>)" when no browser tool is attached');
+    // The project-root file is long-lived across runs, so the rung is only
+    // mandatory where the run is scoped to a change.
+    expect(web).toContain("required in change mode");
+    expect(mini).toContain("required in change mode");
+    // A reused file must not have its recorded tool rewritten by a later run.
+    expect(web).toContain("a reused file keeps it");
+    expect(mini).toContain("a reused file keeps it");
+
+    const routing = template.slice(
+      template.indexOf("**Browser tool routing**"),
+      template.indexOf("**Context budget**"),
+    );
+    expect(routing).toContain("`Browser tools:`");
+
+    const step42 = template.slice(
+      template.indexOf("**4.2. Explore each route**"),
+      template.indexOf("**App-level error decisions**"),
+    );
+    expect(step42).toContain("`Browser tools:`");
+    expect(step42).toContain("MUST be `BASE_URL:` and `Browser tools:` in change mode");
+    expect(step42).toContain("may omit both");
+    expect(step42).toContain("openspec/changes/<name>/specs/playwright/");
+
+    const miniSection = template.slice(
+      template.indexOf("## Mini-program target"),
+    );
+    expect(miniSection).toContain("`Browser tools:`");
+
+    const reportSection = template.slice(
+      template.indexOf("### 10. Report results"),
+      template.indexOf("## Guardrails"),
+    );
+    expect(reportSection).toContain("Tool: `<server> (rung <n>)`");
+    expect(reportSection).toContain("without the `Tool:` line is incomplete");
   });
 
   it("closes every ask-user path in --auto", () => {
