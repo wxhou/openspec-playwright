@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- **docs(readme): 合并双表并收敛重复说明**. 16 家编辑器合并为一张表（命令 / 产物 / MCP / 规则钩子），1.x 命名映射只留一处；`E2E_AUTH_*`、全局配置目录、安装清单同一条事实各留一处；受管 `.gitignore` 的 40 条路径移出「认证配置」，独立成「受管 `.gitignore` 路径」小节。第二轮删掉 Architecture 里与 CLI Commands 重复且已漂移的 CLI 树、逐编辑器的 MCP 条目 JSON 与规则加载复述、`remove --all` 的重复产物清单，小程序检查项改指 doctor 表；同时修正 Architecture 指向已合并的 Usage 表、`global.teardown.ts` 被标成 init 生成物两处失实。第三轮删掉「首次配置清单」（四步并入 Setup，保留 `--with-deps`/`xcode-select` 两条修复提示）、Architecture 的模板树与 Healer 块、Gemini/Qwen/Roo/Trae 的命令格式细节。第四轮删掉内部机制叙述——预选判据、40 条路径枚举、小程序信号分级、agents 归属细节、CLI 深层解释、审计五态表、doctor 机制说明、架构文件树——只留可操作结论。EN 与 zh 同步。
+  - `README.md`、`README.zh-CN.md`、`CHANGELOG.md`
 - **refactor(e2e): 收敛 e2e 模板的重复指令**. `--auto` 的退缩规则与四个 reason 集中到 STOP 语义，各步只写原因；Step 8 的 BASE_URL 八级链改为指向生成的 config；删除与「do not switch to escape a diagnosable failure」重复的一句；元素选择器表删掉与全局优先级重复的 Buttons/Headings 行并对齐措辞；Phase 2 编号由 `2-0`/`2-5~2-7` 改为 `2-1~2-4`。行为不变，模板 353 → 348 行。
   - `templates/e2e-command.md`、`CHANGELOG.md`
 - **docs(e2e): 按阶段选择浏览器工具**. `/openspec-e2e` 的路由表改为每阶段一个默认工具：探索用浏览器 MCP、计划/生成用 `planner_*`/`generator_*`、首次执行与复跑用 CLI、只有失败后的修复循环用 `test_*` MCP；无 MCP 时先 chrome-devtools 再一次性脚本。补「角色是阶段，只有 Planner 有 agent 文件」与上下文预算规则，并禁止用 `.mjs` 重做 `npx playwright test` 的工作。

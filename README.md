@@ -22,9 +22,9 @@
 - [How It Works](#how-it-works)
 - [CLI Commands](#cli-commands)
 - [Selecting Editors on Init](#selecting-editors-on-init)
+- [Managed `.gitignore` paths](#managed-gitignore-paths)
 - [Official Playwright Agents](#official-playwright-agents)
 - [What `openspec-pw init` Does](#what-openspec-pw-init-does)
-- [First-Time Setup Checklist](#first-time-setup-checklist)
 - [`openspec-pw doctor` Checks](#what-openspec-pw-doctor-checks)
 - [App Server Detection](#app-server-detection)
 - [Authentication](#authentication)
@@ -49,70 +49,52 @@ openspec init --scope project  # 2.x keeps skills in the repo; on a 1.x CLI run:
 openspec-pw init          # Install Playwright E2E integration (--tools to pick editors, --agents for the official agents)
 ```
 
+Then, once per project:
+
+1. `npx playwright install chromium` — on Linux CI images add `--with-deps`; on macOS run `xcode-select --install` first if the install fails.
+2. Start your dev server (`npm run dev`) in a separate terminal; set `BASE_URL` if the app is not on the detected port.
+3. `npx playwright test tests/playwright/seed.spec.ts` validates the environment — if it fails, check `webServer` in `playwright.config.ts`.
+4. Run `/openspec-e2e <change-name>`; reports land in `openspec/reports/`. Configure auth first if the app needs login ([Authentication](#authentication); debug with `npx playwright test --project=setup`).
+
 ## Supported AI Coding Assistants
 
-Naming follows the installed OpenSpec major: the commands below are the 2.x names; on 1.x the same products use `opsx-e2e` (`/opsx:e2e` in Claude Code, CodeBuddy CLI, and Gemini CLI; `/opsx-e2e` elsewhere; `$opsx-e2e` in Codex; `/skill:opsx-e2e` in Kimi Code).
+Naming follows the installed OpenSpec major: the table below uses the 2.x names; on 1.x the same products install `opsx-e2e` artifacts at `opsx-` paths (for example `.claude/commands/opsx/e2e.md`) and invoke them as `/opsx:e2e` in Claude Code, CodeBuddy CLI, and Gemini CLI, `/opsx-e2e` elsewhere, `$opsx-e2e` in Codex, and `/skill:opsx-e2e` in Kimi Code.
 
-| Editor | Command | Playwright MCP | AGENTS.md hook |
-|---|---|---|---|
-| **Claude Code** (Anthropic) | `/openspec-e2e` | yes (project `.mcp.json`) | via `CLAUDE.md` → `@AGENTS.md` |
-| **OpenCode** (SST) | `/openspec-e2e` | yes (`opencode.jsonc`) | `instructions` field |
-| **Cline** | `/openspec-e2e` | yes (`.cline/mcp.json`) | native |
-| **Cursor** | `/openspec-e2e` | yes (`.cursor/mcp.json`) | native |
-| **Pi** (earendil-works) | `/openspec-e2e` | **no** — uses `openspec-pw explore` + `npx playwright test` | native |
-| **Oh My Pi (omp)** | `/openspec-e2e` | yes (`.omp/mcp.json`) | native |
-| **CodeBuddy CLI** (Tencent) | `/openspec-e2e` | yes (project `.mcp.json`) | via `CODEBUDDY.md` → `@AGENTS.md` |
-| **MiniMax Code** (`mcode` CLI) | `/openspec-e2e` | yes (project `.mcp.json`) | native (`AGENTS.md`) |
-| **DeepSeek Harness** (`dsh`) | `openspec-e2e` skill | **no project-level carrier** — configure Playwright MCP in your `$DSH_HOME` profile patch | native (`AGENTS.md`) |
-| **Gemini CLI** | `/openspec-e2e` | yes (`.gemini/settings.json`) | `GEMINI.md` |
-| **Qwen Code** | `/openspec-e2e` | yes (`.qwen/settings.json`) | `QWEN.md` |
-| **GitHub Copilot** (VS Code) | `/openspec-e2e` | yes (project `.mcp.json`) | `.github/copilot-instructions.md` |
-| **Roo Code** | `/openspec-e2e` | yes (`.roo/mcp.json`) | `.roo/rules/openspec-pw.md` |
-| **Trae** | `/openspec-e2e` | yes (`.trae/mcp.json`, Project MCP beta) | `.trae/rules/project_rules.md` |
-| **Codex** | `$openspec-e2e` skill | **no JSON carrier** — project MCP lives in `.codex/config.toml` (TOML, not supported) | native (`AGENTS.md`) |
-| **Kimi Code** | `/skill:openspec-e2e` skill | yes (`.kimi-code/mcp.json`) | native (`AGENTS.md`) |
-
-The command body is identical across editors: 2.x writes `/openspec-e2e` everywhere; 1.x rewrites `/opsx:` → `/opsx-` at install time for hyphen-style editors and keeps the colon form in Claude Code, CodeBuddy CLI, and Gemini CLI. Per-editor install paths, detection signals, and auth/MCP nuances are detailed in the [Usage](#usage) and [Prerequisites](#prerequisites) sections below.
+| Editor | Command | Artifact | Playwright MCP | AGENTS.md hook |
+|---|---|---|---|---|
+| **Claude Code** (Anthropic) | `/openspec-e2e <change-name>` | `.claude/skills/openspec-e2e/SKILL.md` + shared `.agents/skills/openspec-e2e/SKILL.md` | yes (project `.mcp.json`) | via `CLAUDE.md` → `@AGENTS.md` |
+| **OpenCode** (SST) | `/openspec-e2e <change-name>` | `.opencode/commands/openspec-e2e.md` | yes (`opencode.jsonc`) | `instructions` field |
+| **Cline** | `/openspec-e2e <change-name>` | `.cline/skills/openspec-e2e/SKILL.md` | yes (`.cline/mcp.json`) | native |
+| **Cursor** | `/openspec-e2e <change-name>` | `.cursor/commands/openspec-e2e.md` + `.cursor/skills/openspec-e2e/SKILL.md` | yes (`.cursor/mcp.json`) | native |
+| **Pi** (earendil-works) | `/openspec-e2e <change-name>` | `.pi/prompts/openspec-e2e.md` (filename = command) | **no MCP client** — `openspec-pw explore` + `npx playwright test`, no Healer step | native |
+| **Oh My Pi (omp)** | `/openspec-e2e <change-name>` | `.omp/commands/openspec-e2e.md` | yes (`.omp/mcp.json`) | native |
+| **CodeBuddy CLI** (Tencent) | `/openspec-e2e <change-name>` | `.codebuddy/commands/openspec-e2e.md` | yes (project `.mcp.json`) | via `CODEBUDDY.md` → `@AGENTS.md` |
+| **MiniMax Code** (`mcode` CLI) | `/openspec-e2e <change-name>` | `.agents/skills/openspec-e2e/SKILL.md` (skill) | yes (project `.mcp.json`) | native (`AGENTS.md`) |
+| **DeepSeek Harness** (`dsh`) | `openspec-e2e` skill | `.dsh/skills/openspec-e2e/SKILL.md` (skill) | **no project-level carrier** — configure Playwright MCP in your `$DSH_HOME` profile patch | native (`AGENTS.md`) |
+| **Gemini CLI** | `/openspec-e2e <change-name>` | `.gemini/commands/openspec-e2e.toml` (TOML) | yes (`.gemini/settings.json`) | `GEMINI.md` |
+| **Qwen Code** | `/openspec-e2e <change-name>` | `.qwen/commands/openspec-e2e.md` | yes (`.qwen/settings.json`) | `QWEN.md` |
+| **GitHub Copilot** (VS Code) | `/openspec-e2e <change-name>` | `.github/prompts/openspec-e2e.prompt.md` | yes (project `.mcp.json`) | `.github/copilot-instructions.md` |
+| **Roo Code** | `/openspec-e2e <change-name>` | `.roo/commands/openspec-e2e.md` | yes (`.roo/mcp.json`) | `.roo/rules/openspec-pw.md` |
+| **Trae** | `/openspec-e2e <change-name>` | `.trae/commands/openspec-e2e.md` | yes (`.trae/mcp.json`, Project MCP beta) | `.trae/rules/project_rules.md` |
+| **Codex** | `$openspec-e2e <change-name>` | `.agents/skills/openspec-e2e/SKILL.md` (skill) | **no JSON carrier** — project MCP lives in `.codex/config.toml` (TOML, not supported) | native (`AGENTS.md`) |
+| **Kimi Code** | `/skill:openspec-e2e <change-name>` | `.kimi-code/skills/openspec-e2e/SKILL.md` (skill) | yes (`.kimi-code/mcp.json`) | native (`AGENTS.md`) |
 
 ## Usage
 
-Pick the editor that matches your project and invoke its command. All sixteen editors run the same workflow; on OpenSpec 2.x every editor uses `/openspec-e2e` (`$openspec-e2e` in Codex, `/skill:openspec-e2e` in Kimi Code). On 1.x the same products keep the `opsx` names — `/opsx:e2e` in Claude Code, CodeBuddy CLI, and Gemini CLI, `/opsx-e2e` elsewhere, `$opsx-e2e` / `/skill:opsx-e2e` in Codex / Kimi Code — and live at the `opsx-` paths (for example `.claude/commands/opsx/e2e.md`). Only the name and artifact location differ.
-
-| Editor | Command | Install location |
-|---|---|---|
-| Claude Code | `/openspec-e2e <change-name>` | `.claude/skills/openspec-e2e/SKILL.md` + shared `.agents/skills/openspec-e2e/SKILL.md` |
-| OpenCode | `/openspec-e2e <change-name>` | `.opencode/commands/openspec-e2e.md` |
-| Cline | `/openspec-e2e <change-name>` | `.cline/skills/openspec-e2e/SKILL.md` |
-| Cursor | `/openspec-e2e <change-name>` | `.cursor/commands/openspec-e2e.md` + `.cursor/skills/openspec-e2e/SKILL.md` |
-| Pi | `/openspec-e2e <change-name>` | `.pi/prompts/openspec-e2e.md` (filename = command) |
-| Oh My Pi | `/openspec-e2e <change-name>` | `.omp/commands/openspec-e2e.md` |
-| CodeBuddy CLI | `/openspec-e2e <change-name>` | `.codebuddy/commands/openspec-e2e.md` |
-| MiniMax Code CLI | `/openspec-e2e <change-name>` | `.agents/skills/openspec-e2e/SKILL.md` (skill) |
-| DeepSeek Harness (`dsh`) | `openspec-e2e` skill | `.dsh/skills/openspec-e2e/SKILL.md` (skill) |
-| Gemini CLI | `/openspec-e2e <change-name>` | `.gemini/commands/openspec-e2e.toml` (TOML) |
-| Qwen Code | `/openspec-e2e <change-name>` | `.qwen/commands/openspec-e2e.md` |
-| GitHub Copilot (VS Code) | `/openspec-e2e <change-name>` | `.github/prompts/openspec-e2e.prompt.md` |
-| Roo Code | `/openspec-e2e <change-name>` | `.roo/commands/openspec-e2e.md` |
-| Trae | `/openspec-e2e <change-name>` | `.trae/commands/openspec-e2e.md` |
-| Codex | `$openspec-e2e <change-name>` | `.agents/skills/openspec-e2e/SKILL.md` (skill) |
-| Kimi Code | `/skill:openspec-e2e <change-name>` | `.kimi-code/skills/openspec-e2e/SKILL.md` (skill) |
+The command body is identical across editors; only the name and artifact location differ. Invoke it with a change name, e.g. `/openspec-e2e add-checkout` (`$openspec-e2e add-checkout` in Codex, `/skill:openspec-e2e add-checkout` in Kimi Code). Per-editor MCP, detection, and auth details are in [Prerequisites](#prerequisites).
 
 <details>
 <summary><strong>Per-editor nuances</strong> (expand only if init reports a divergence)</summary>
 
 - **Cursor**: skill uses `disable-model-invocation: true` (only runs when explicitly invoked). If you want Cursor support but have no `.cursor/` yet: `mkdir -p .cursor`.
-- **Pi**: no MCP client — browser exploration runs via `openspec-pw explore`, test execution via `npx playwright test` in the shell (no Healer step).
 - **Oh My Pi**: also inherits MCP servers already configured in `.claude/` / `.cursor/` / `opencode.jsonc` when those are present.
-- **CodeBuddy CLI**: on 1.x it uses colon naming (`/opsx:e2e`, same as Claude Code); 2.x uses `/openspec-e2e` like every editor.
-- **MiniMax Code**: the workflow is delivered as a **Skill** (`SKILL.md`), because the `mcode` CLI loads no user-defined command files — skills are its only user-extensible command mechanism. It reads `AGENTS.md` natively, no wrapper. **Integration target is the `mcode` CLI; the desktop app is not covered.**
-- **DeepSeek Harness**: the workflow is delivered as a **Skill** at `.dsh/skills/openspec-e2e/SKILL.md` — dsh's rank-100 project root, which also beats the `.agents/skills` copy a MiniMax setup leaves behind. No project-level MCP carrier exists (dsh keeps MCP servers in per-user profile patch layers under `$DSH_HOME`, disabled by default), so browser exploration falls back to `openspec-pw explore` and test execution to `npx playwright test`. dsh is a developer preview; the adapter only relies on its documented skill-discovery contract.
-- **Gemini CLI**: commands are TOML (`description` + `prompt`); on 1.x the command body keeps the `/opsx:` colon form, while 2.x uses `/openspec-e2e`. MCP entries go under `mcpServers` in `.gemini/settings.json`, and the standards block lives in `GEMINI.md`.
-- **Qwen Code**: markdown commands with a `description` frontmatter; MCP in `.qwen/settings.json`, standards in `QWEN.md`.
-- **GitHub Copilot**: targets the VS Code surface — prompt files under `.github/prompts/`, MCP in the workspace-root `.mcp.json` (`mcpServers` map; stdio entries carry `type: "stdio"`, shared with Claude/CodeBuddy/MiniMax), standards in `.github/copilot-instructions.md`. Detection uses Copilot-specific markers only — a plain `.github/` directory in any repository does not count.
-- **Roo Code**: markdown commands with a heading + description; MCP in `.roo/mcp.json`; standards live in the tool-owned `.roo/rules/openspec-pw.md` (Roo loads every file in that directory).
-- **Trae**: markdown commands with name/description frontmatter; project MCP in `.trae/mcp.json` (Project MCP, beta — older IDE builds may ignore it); standards in `.trae/rules/project_rules.md`.
-- **Codex**: the workflow is a **Skill** at `.agents/skills/openspec-e2e/SKILL.md`, invoked as `$openspec-e2e` (1.x: `.agents/skills/opsx-e2e/SKILL.md`, `$opsx-e2e`). That directory is shared with MiniMax Code, so deselecting Codex keeps the skill while MiniMax stays selected. Codex's project MCP lives in `.codex/config.toml` (TOML), which this tool does not merge — browser exploration falls back to `openspec-pw explore` and `npx playwright test`.
-- **Kimi Code**: the workflow is a **Skill** at `.kimi-code/skills/openspec-e2e/SKILL.md`, invoked as `/skill:openspec-e2e` (1.x: `.kimi-code/skills/opsx-e2e/SKILL.md`, `/skill:opsx-e2e`). MCP in `.kimi-code/mcp.json`; project rules via `AGENTS.md` (Kimi's automatic `AGENTS.md` loading is not documented).
+- **MiniMax Code**: skills are the only user-extensible command mechanism in the `mcode` CLI, which loads no user-defined command files. **Integration target is the `mcode` CLI; the desktop app is not covered.**
+- **DeepSeek Harness**: `.dsh/skills` is dsh's rank-100 project root, so it beats the `.agents/skills` copy a MiniMax setup leaves behind. Developer preview — the adapter relies only on its documented skill-discovery contract.
+- **GitHub Copilot**: targets the VS Code surface — MCP entries are `stdio` and shared with Claude/CodeBuddy/MiniMax; detection uses Copilot-specific markers only, so a plain `.github/` directory in any repository does not count.
+- **Roo Code**: Roo loads every file in `.roo/rules/`.
+- **Trae**: Project MCP is beta — older IDE builds may ignore `.trae/mcp.json`.
+- **Codex**: the skill directory is shared with MiniMax Code, so deselecting Codex keeps the skill while MiniMax stays selected; browser exploration falls back to `openspec-pw explore` and `npx playwright test`.
+- **Kimi Code**: Kimi's automatic `AGENTS.md` loading is not documented, so treat that hook as unverified.
 
 </details>
 
@@ -139,88 +121,23 @@ case-insensitive, repeats are de-duplicated, and `all`/`none` cannot be
 mixed with specific ids. A `--tools` id is configured even when the editor
 is not detected (its config directory is created).
 
-Without `--tools`, an interactive multi-select is shown on TTY terminals,
-grouped as `Configured (N)` / `Detected (N)` / `Other (N)` so the list fits
-one screen. The pre-select reads the **openspec-pw configuration manifest,
-not directory presence**: editors that carry openspec-pw products (command
-files, MCP entries, claude's legacy skill dir) are pre-checked in the
-Configured section. A project with no openspec-pw state at all (first run)
-pre-checks **project-level signals only** — marker dirs plus root
-intent files (root `CLAUDE.md` → claude, root `.cursorrules` → cursor,
-root `opencode.json(c)` → opencode, root `CODEBUDDY.md` → codebuddy).
-Editors installed on your machine but
-not used by the project (e.g. Pi / Oh My Pi / MiniMax Code detected via the
-global `~/.pi/agent/` / `~/.omp/agent/` / `~/.minimax-code/` home dirs) are
-**listed unchecked** with a gray hint line. Once anything is configured, foreign files that keep an editor's directory
-alive (the official `openspec` CLI's own `opsx-*` files, your own
-settings, global home dirs) no longer influence the pre-select.
-`--tools` is documented as orthogonal to `--no-mcp`: the former picks
-*which* editors, the latter *whether* to install the Playwright MCP server
-for them.
+Without `--tools`, a TTY shows a multi-select grouped as `Configured` / `Detected` / `Other`: editors this project already uses are pre-checked, editors installed globally but unused are listed unchecked, and a first-run project pre-checks only project-level signals (root `CLAUDE.md`, `.cursorrules`, `opencode.json(c)`, `CODEBUDDY.md`). `--tools` picks *which* editors; `--no-mcp` decides *whether* their Playwright MCP server is installed.
 
-**Standards language.** The employee-standards block in `AGENTS.md` is
-written in Chinese or English. `init --lang zh|en` selects it explicitly;
-without the flag, an installed block's language wins, then the operating
-system's language (macOS `AppleLanguages`/`AppleLocale`, Windows
-`PreferredUILanguages`/`LocaleName`), then the terminal locale (`LANGUAGE` >
-`LC_ALL` > `LC_MESSAGES` > `LANG`), then English. `update --lang` switches an
-installed block; without a block the flag has no effect. Neither IP nor region
-is detected.
+**Standards language.** `init --lang zh|en` selects the language of the AGENTS.md standards block; without the flag, an installed block's language wins, then the OS locale, then the terminal locale, then English. `update --lang` switches an installed block. IP and region are never detected.
 
-Init prints two output signals: the pre-select hint line (only when
-`--tools` is not given) — `Configured (pre-select):` on projects with
-openspec-pw state, `Detected (pre-select):` in the first-run fallback —
-is **not** the install set; the `Selected editors:` line (always printed,
-before any editor is configured) is the actual install set. When in
-doubt, read `Selected editors`.
+Init prints a pre-select hint (not the install set) and a `Selected editors:` line (the actual install set).
 
-**Choosing what to ignore.** After the editor selection, interactive init
-shows the managed `.gitignore` paths as group toggles — local data and
-credentials, editor commands and directories, MCP config and settings, and
-OpenSpec artifacts — one row each with its path count, all checked, so
-pressing Enter keeps the previous behavior. Uncheck a group to commit every
-path in it; the "Customize individual paths…" row opens the per-path list
-prefilled from the group state. A committed path is recorded on the block's
-header line (`# openspec-pw: skip=…`) so `update` never re-adds it, and
-re-running init with it checked takes it back. `AGENTS.md`, `CLAUDE.md`,
-`CODEBUDDY.md`, `GEMINI.md`, `QWEN.md`,
-`.github/copilot-instructions.md`, `.roo/rules/openspec-pw.md` and
-`.trae/rules/project_rules.md` are not offered; by default every init injects
-the standards block into them (use `--no-rule-files` to install only AGENTS.md).
-Non-interactive runs (including
-a piped stdin) skip the prompt and keep whatever an earlier interactive run
-recorded; a fresh project ignores everything managed.
+**Choosing what to ignore.** Interactive init lists the managed `.gitignore` paths as four group toggles, all checked — Enter keeps them ignored; unchecking a group commits every path in it, and the "Customize" row opens the per-path list. Committed paths are recorded on the block's `# openspec-pw: skip=…` line, so `update` leaves them out and a later init can restore them. Rule files are always injected (use `--no-rule-files` to install only AGENTS.md). Non-interactive runs keep the previous choices; a fresh project ignores everything managed.
 
-**Deselect = remove.** In the interactive multi-select, a *detected editor
-you deselect* has its openspec-pw products removed — command/skill files,
-the editor's openspec-pw MCP entries (claude's wrapper block and legacy
-skill directory included, plus any tool-owned vendored agents), after one
-confirmation listing everything about
-to be removed. Declining keeps the old behavior (deselect merely skips
-writes this run). Only openspec-pw-owned territory is touched — your own
-config entries in the same files stay (user-modified vendored agent files
-are kept and reported, never deleted). Shared rules: the AGENTS.md
-openspec-pw block is removed only when **no** editor remains selected; a
-symlinked CLAUDE.md is never written through. MCP entries are judged per
-**config file**: Claude Code, CodeBuddy CLI, MiniMax Code and GitHub Copilot
-share the project-root `.mcp.json`, so the shared entry is kept (and reported as kept
-in the confirmation list) while any still-selected editor reads that file —
-those editors load it at runtime, and deleting it would cut the Playwright
-MCP of an editor you kept. Deselect all four and the entry goes as usual. `--tools` and non-TTY runs
-never remove anything (`--tools` is an explicit allow list). Removal
-feeds straight back into the pre-select: a removed editor is no longer
-pre-checked on the next init (the pre-select reads the openspec-pw
-manifest, so directory residue — kept `mcp.json`, your own files, global
-home dirs — no longer matters). A *fully* deselected and confirmed
-project resets to the first-run pre-select on the next init.
+**Deselect = remove.** In interactive init, deselecting a detected editor offers to delete its openspec-pw products (one confirmation). Only tool-owned territory is touched — your own config entries and edited vendored agents stay. A shared `.mcp.json` entry is kept while another selected editor (Claude Code, CodeBuddy, MiniMax, Copilot) still reads that file. `--tools` and non-TTY runs never remove anything.
 
-**Editor territory**: `update` only maintains editors that already have
-openspec-pw command artifacts in the project — it never adds new editors
-(a global config dir or a hand-created `.cursor/` does not authorize
-writes). To add an editor to an initialized project, re-run
-`openspec-pw init --tools <id>` (idempotent).
+**Editor territory**: `update` only maintains editors already configured in the project; to add one, run `openspec-pw init --tools <id>`.
 
 </details>
+
+### Managed `.gitignore` paths
+
+The block itself lists all 40 paths it covers (local data and credentials, editor commands and directories, MCP config, OpenSpec artifacts, and the always-ignored rule files) — open `.gitignore` to see them. Editor roots are ignored whole, so your own files under them (e.g. `.agents/skills/team-skill/`) need `git add -f`. If the block cannot be written, a warning lists the uncovered paths. Ignore rules do not apply to already-tracked files: if credentials were committed before, run `git rm --cached tests/playwright/credentials.yaml`.
 
 ### Init Modes: frontend vs minimal
 
@@ -230,8 +147,7 @@ keywords > monorepo workspace members):
 
 - **frontend mode** (signal hit): the full Playwright scaffold — e2e
   command, seed test, `BasePage`, test plan, `playwright.config.ts`, auth
-  setup, credentials, MCP gate, agents gate. Behavior unchanged from
-  versions before the modes existed.
+  setup, credentials, MCP gate, agents gate.
 - **minimal mode** (no signal, or no readable `package.json` — e.g.
   Python/Go backends): only a `tests/README.md` describing the
   acceptance-test contract (real requests against a real running service,
@@ -249,12 +165,7 @@ openspec-pw init --frontend      # force the full scaffold despite no signal
 openspec-pw init --no-frontend   # force minimal mode despite a hit
 ```
 
-Upgrading later: once the project gains a frontend signal (or you pass
-`--frontend`), re-running `init` installs the full scaffold incrementally
-and prunes the tool-owned `tests/README.md` (a modified one is kept with a
-notice). Minimal-mode projects are first-class: `update` syncs their
-standards block and wrapper, `doctor` checks them without failing on
-missing Playwright, and `remove` cleans the README and markers.
+Later, `--frontend` (or a newly detected signal) adds the full scaffold incrementally and prunes the untouched `tests/README.md`; minimal projects stay supported by `update`, `doctor`, and `remove`.
 
 ### Mini-Program Target
 
@@ -262,44 +173,9 @@ missing Playwright, and `remove` cleans the README and markers.
 target is a separate dimension from the install mode: a mini-program project
 is always frontend mode.
 
-Detection runs in tiers. Strong signals — `project.config.json`, a built
-`mp-weixin` output directory, or `@tarojs/*` / `@dcloudio/*` dependencies —
-beat any web signal. A bare `app.json` is weak: it counts only when it has a
-`pages` array and a companion file (`app.wxss`, `sitemap.json`,
-`project.private.config.json`), so an Expo web app is not misread. Override
-either way:
+Detection looks for `project.config.json`, a built `mp-weixin` output, `@tarojs/*` / `@dcloudio/*` dependencies, or a genuine `app.json` (with `pages` and a companion file); override with `--miniprogram` / `--no-miniprogram`. After generation, `update` / `remove` / `doctor` follow the generated artifacts (`wxa-test.ts` or `wxaProject`) instead of re-detecting, and re-running `init --miniprogram` over a web scaffold stops with a migration instruction instead of a half-converted project.
 
-```bash
-openspec-pw init --miniprogram      # force the mini-program target
-openspec-pw init --no-miniprogram   # force the web target
-```
-
-After generation, `update` / `remove` / `doctor` follow the generated
-artifacts (`wxa-test.ts` or `wxaProject`) instead of re-detecting, so an
-existing web scaffold is never switched by a later `update`. Re-running
-`init --miniprogram` over an existing web scaffold stops with a migration
-instruction rather than leaving a half-converted project.
-
-The scaffold uses the official
-[`@open-wxa/wxa-runner-playwright`](https://open-wxa.github.io/wxa-runner/)
-fixture, which runs the build output in Chrome against the official base
-library. Generated files: `playwright.config.ts` (`channel: 'chrome'`,
-`wxaProject`, `wxaServerOptions.setup`), the `wxa-test.ts` re-export wrapper,
-`wxa.setup.ts`, `pages/BasePage.ts`, and a seed test that opens
-`entryPagePath` (or `pages[0]`) and asserts `toHavePath`. No `auth.setup.ts`
-and no `credentials.yaml` — login state belongs in `wxa.setup.ts`.
-
-Dependencies: `@playwright/test@^1.65`,
-`@open-wxa/wxa-runner-playwright@^0.13`,
-`@open-wxa/wxa-runner-core@^0.13`, `wxa-runner@^0.13` (the CLI the
-`/openspec-e2e` exploration step drives), and Google Chrome
-(`npx playwright install chrome`). For Taro the build script is `build:weapp`;
-for uni-app it is `build:mp-weixin`. In a monorepo the step runs from the
-package that owns the script (`npm --prefix <member> run <script>`). Generated
-CI installs Chrome and runs that build before `npx playwright test`; `doctor`
-checks Chrome, the fixture, the Playwright version (>=1.64), and the
-`wxaProject` output directory. Upgrade the fixture import in
-`tests/playwright/wxa-test.ts` — `update` keeps a modified copy.
+The scaffold uses the official [`@open-wxa/wxa-runner-playwright`](https://open-wxa.github.io/wxa-runner/) fixture: the `wxa-test.ts` wrapper, `wxa.setup.ts` (auth state lives here — no `auth.setup.ts` or `credentials.yaml`), a Chrome-channel `playwright.config.ts`, and a seed test. Dependencies: `@playwright/test@^1.65`, `@open-wxa/wxa-runner-{playwright,core}@^0.13`, `wxa-runner@^0.13`, and Chrome (`npx playwright install chrome`). Generated CI installs Chrome and runs the app build (`build:weapp` for Taro, `build:mp-weixin` for uni-app) before the tests.
 
 Limitations: tests run in headless Chrome, not WeChat DevTools. DevTools-only
 APIs (real login, payment, native components) are outside the harness. CI
@@ -311,59 +187,17 @@ failing seed as that app being unsupported, not as a reason to write specs.
 ### Official Playwright Agents
 
 <details>
-<summary>opt-in <code>--agents</code> — what gets vendored, ownership rules, division of labor with the pipeline</summary>
+<summary>opt-in <code>--agents</code> — what gets vendored and how updates treat it</summary>
 
 ```bash
 openspec-pw init --tools claude --agents   # additionally install the official planner agent
 ```
 
-`--agents` (off by default) installs a byte-identical snapshot of the one
-agent definition Playwright's official `playwright init-agents` (claude loop)
-generates into `.claude/agents/` that fits this tool's pipeline:
+`--agents` (off by default) vendors one byte-identical snapshot of Playwright's official `init-agents` output into `.claude/agents/`: `playwright-test-planner.md`, which explores the app and drafts the test plan (delegable for context isolation). The official `generator` and `healer` agents are deliberately not installed — generation runs inside the pipeline, and the official healer edits assertions to force green, the opposite of the honest-failure exit the Healer step keeps.
 
-- `playwright-test-planner.md` — explore the app, produce a test plan
-  (delegation target for `/openspec-e2e` Step 5, for context isolation)
+Ownership is content-based: unmodified snapshots are refreshed by `update` and removed by `remove`, edited copies are never overwritten or deleted, and `doctor` warns (non-blocking) when their `playwright-test` MCP entry is missing. Init asks once (default No); minimal-mode projects skip agents along with MCP.
 
-The official `generator` and `healer` agents are not vendored: generation
-runs inside the `/openspec-e2e` pipeline (recording flow), which carries the
-workflow rules a delegated subagent would not inherit, and the official
-healer edits assertions/expected values to force tests green — the opposite
-of the pipeline's honest-failure exit. Projects with older installs keep
-those files: unmodified copies are still recognized as tool-owned (listed by
-`doctor`, removed by `remove`), edited copies are user-owned and never
-touched.
-
-Their `tools:` frontmatter references the `playwright-test` MCP server —
-the very entry `openspec-pw init` installs — so the MCP prerequisite is
-already satisfied. On the interactive path, init appends one confirmation
-(default **No**); minimal-mode projects skip the phase alongside the MCP
-(phase follows the same frontend-mode gate — `--frontend` override included
-— since the agents' tools are MCP tools). Ownership is content-based: files matching the bundled
-snapshot (`templates/agents/SOURCE.md` records the upstream baseline) are
-tool-owned — `update` refreshes them when a newer snapshot ships and
-removal paths delete them; files you edited (or refreshed with a newer
-official `init-agents`) are **never overwritten or deleted**, only
-reported. `doctor` shows their presence, ownership, and — when the
-`playwright-test` MCP entry is missing — a non-blocking warning.
-
-**Division of labor vs `/openspec-e2e`**: the command template is the
-OpenSpec-anchored pipeline (plan → generate → heal with the App Bug
-Registry → Phase 3 human escalation); the vendored agents are standalone
-subagents for ad-hoc calls when no OpenSpec change is in flight. Inside the
-workflow, the Planner and Generator steps may delegate to their subagents
-when installed (the rules travel with the delegation prompt, and you verify
-the output); the Healer step **never delegates** — the pipeline's guardrails
-replace the official healer's autonomous assertion editing. The project's
-AGENTS.md §6 binds agents from any source. Never mix official-healer output
-into a `/openspec-e2e` delivery.
-
-> **If you insist on running `npx playwright init-agents` yourself**: it is
-> clobber-type — it rewrites `.mcp.json` wholesale (your own MCP entries are
-> destroyed; fixture-verified), creates a parallel `opencode.json` next to
-> an existing `opencode.jsonc`, and wants a re-run on every Playwright
-> upgrade. Run it *before* `openspec-pw init` if you must, and check
-> `git diff .mcp.json` afterward. With `--agents` you never need it —
-> `update` ships newer official snapshots.
+> **Running `npx playwright init-agents` yourself is clobber-type**: it rewrites `.mcp.json` wholesale (your own entries are destroyed) and creates a parallel `opencode.json`. Run it *before* `openspec-pw init` if you must, and check `git diff .mcp.json`. With `--agents` you don't need it.
 
 </details>
 
@@ -384,28 +218,19 @@ openspec-pw explore       # Explore app routes with Playwright (--file <path> se
 openspec-pw remove        # Remove integration (--all scans home + Windows drives; asks before removing on a TTY, --yes skips)
 ```
 
-`install --claude` installs the Claude Code CLI binary; `init` installs project integration. It prints the official native installer command by default; `--run` executes it, `--verify` checks an existing install, `--channel stable|latest` selects the channel (default `latest`), and `--version x.y.z` pins a version. After a fresh native install, open a new terminal or add `~/.local/bin` to `PATH` if `claude` is not found. It uses official Anthropic channels only; it does not provide mirrors, proxies, or region workarounds.
+`install --claude` prints the official native installer command (`--run` executes it, `--verify` checks an existing install, `--channel stable|latest`, `--version x.y.z`). It uses official Anthropic channels only — no mirrors, proxies, or region workarounds.
 
-**`remove`** cleans the current project: editor command carriers, the `playwright-test` / legacy `playwright` MCP entries, rules-file marker blocks, the managed `.gitignore` block, the Stop hook, `openspec/schemas/playwright-e2e/`, the lint checklist, vendored agents, the legacy skill directory, and — when still byte-identical to the bundled templates — `tests/README.md`, `tests/playwright/README.md` (mini-program target), `.github/workflows/openspec-pw.yml`, `.github/workflows/openspec-auto.yml`, the generated `eslint.config.mjs`, and the ruff managed block. User data is never touched (`tests/**`, `credentials.yaml`, `openspec/specs`), and edited tool files are kept with a notice — except a rules file that, once its marker block is removed, holds nothing but the generated `# <project-dir>` heading: that one is deleted whole even when the block body differs from the bundled revision. Paths that resolve outside the project through a symlink are never deleted or rewritten, and an official OpenSpec `OPENSPEC:` block is not treated as ours. The `AGENTS.md` entry that init adds to OpenCode's `instructions` list is left in place — it cannot be told apart from a user-added entry. Scaffold files you are expected to edit (`playwright.config.ts`, `tests/playwright/seed.spec.ts`, `auth.setup.ts`, `pages/`, `test-plan.template.md`) stay, and config files left as empty containers (`{"mcpServers":{}}`) are kept because their ownership cannot be proven.
+**`remove`** deletes only tool-owned artifacts (editor commands, MCP entries, rules blocks, the managed `.gitignore` block, hooks, the schema, the lint checklist, vendored agents) plus template files still byte-identical to the bundled copies. Your own files, `tests/**`, `credentials.yaml`, and `openspec/specs` are never touched; edited tool files are kept with a notice; paths that resolve outside the project through a symlink are skipped.
 
-`remove --all` scans for projects that carry openspec-pw territory — editor command files, the schema directory, marker blocks, the managed `.gitignore` block, or a tool-owned leftover such as `tests/README.md`, the lint checklist, a generated CI workflow, tool-generated ESLint/ruff config, the legacy skill directory, a tool-owned vendored agent, or the Stop hook. A lone MCP entry is not a discovery signal (`playwright-test` is also the server name Playwright's own agent init writes), so only an explicit single-project `remove` cleans one; batch mode removes only `playwright-test` and leaves the legacy `playwright` name alone. Default scan roots are your home directory, plus every existing drive root on Windows. It is a **dry run by default**: it prints each project and the artifact groups it would remove, then — on a TTY — asks once before executing. Add `--yes` to skip the question; non-TTY runs only print the plan. `--root <dir>` (repeatable, `~` expanded) replaces the default roots — an explicit `--root` defines the whole scope, so the cwd project is not added; a missing or UNC path exits 2. Without `--root`, the cwd project is included and listed first. One project's failure never stops the rest; a project that cannot be written counts as skipped, while any other error counts as failed. The run ends with `removed N / skipped M / failed K` (project counts) and exits nonzero when anything failed.
+`remove --all` scans your home directory (every drive root on Windows) for projects holding any of those artifacts. It is a dry run by default: on a TTY it asks once before deleting, `--yes` skips the question, and non-TTY runs only print the plan. `--root <dir>` (repeatable) replaces the scan roots. One project's failure never stops the rest; the run ends with `removed N / skipped M / failed K` and a non-zero exit when anything failed.
 
-`openspec-pw gate` is the single verdict the rest of the tooling calls — the Claude Code Stop hook and the generated CI workflow both invoke it rather than keeping their own check lists. It runs `validate → lint → typecheck → test → flake → e2e` (cheap first, stop at the first failure unless `--keep-going`), and exit codes are three-valued: `0` every check passed, `1` a check failed, `2` the run could not decide (tool missing, timeout, ambiguous change name).
+`openspec-pw gate` runs `validate → lint → typecheck → test → flake → e2e`, stops at the first failure unless `--keep-going`, and exits `0` / `1` / `2` (pass / fail / cannot decide). It also fails a change that declares scenarios but has no E2E tests, and any newly added `test.fixme(`; edits to lint/TS/Playwright configs and raised timeouts are reported under `flags`, not failed.
 
-Two deterministic guards stop a false green:
+**Runtime flake evidence.** `gate --repeat <N>` reruns only the E2E tests that failed on the first run (`--retries=N`). Tests that pass at least once are listed as flaky and do not fail the gate unless `--strict-flake` is given. Playwright artifacts land in `tmp/gate-flake-*`. `--hook` cannot be combined with `--repeat`.
 
-- a change whose delta spec declares scenarios but whose `tests/playwright/changes/<change>/` holds no test files fails E2E — only when the project has a Playwright config, so backend-only projects are unaffected;
-- any newly added `test.fixme(` in the diff fails the gate and is listed with file and line.
+**Stop hook.** `init --hook` installs a Claude Code Stop hook that runs `gate --hook`: `static` (default) or `full` (adds flake and e2e — use it only once the change's E2E tests exist). A red gate exits 2, so the agent keeps working instead of claiming done. `--no-hook` or `remove` takes it out; your own hooks are untouched.
 
-Edits to lint config, `tsconfig*.json`, Playwright or Vitest config appear under `flags` in the verdict, as does any timeout raised inside a test file (`timeout: N` / `test.setTimeout(N)`). They are reported, not failed: loosening a config or extending a timeout is sometimes legitimate, but a reviewer needs to know when the ruler moved — a raised timeout turns a failing test green without fixing the race it tripped over.
-
-**Runtime flake evidence.** `gate --repeat <N>` reruns only the E2E tests that failed on the first run (`--last-failed`), with `--retries=N`. Tests that pass at least once on the rerun are listed as flaky in the verdict and in `--json` (`flaky`, with pass/fail attempt counts and any trace from a failed attempt); tests that fail every attempt stay real failures. Flaky is reported, not failed, unless `--strict-flake` is also given, so a first-run flake no longer forces a red gate. The feature is opt-in and does not touch `playwright.config.*`; Playwright artifacts land in `tmp/gate-flake-<pid>-<timestamp>/` (or the OS temp directory when `tmp/` is not ignored). It is probabilistic: it only catches tests that fail on the first run and pass on rerun. The Stop hook does not pass `--repeat`, and combining `--hook` with `--repeat` is rejected with exit code 2.
-
-**Stop hook.** `openspec-pw init --hook` merges a `Stop` hook into `.claude/settings.json` that runs `openspec-pw gate --hook`. When the gate is red the hook exits 2 with the failing checks on stderr, so the agent keeps working instead of claiming done. Two tiers: `static` (default — validate, lint, typecheck, unit tests) and `full` (adds flake and e2e). Use `full` only once the change's E2E tests exist: before that, the "scenarios but no tests" guard fails the gate on every turn and the hook blocks work that is on the right track. It blocks at most once per turn (honouring Claude Code's `stop_hook_active`) and caches its verdict against a working-tree fingerprint, so an unchanged tree is not re-checked. `--no-hook` or `openspec-pw remove` removes it; your own hooks in the same file are never touched.
-
-**Autonomous pipeline.** `openspec-pw init --auto-pipeline` writes `.github/workflows/openspec-auto.yml` once and never overwrites it. Two triggers on purpose: every pull request runs `gate` only — mark that job as a **required status check**, or a PR with a red gate can still merge — while a `openspec:auto` label or a manual dispatch starts the headless agent (apply → static gate → generate E2E → full gate) and opens the PR. Required secret: `ANTHROPIC_API_KEY`. For authenticated apps, also provide `E2E_USERNAME` / `E2E_PASSWORD` secrets and the `E2E_AUTH_*` repository variables; the E2E stage forwards them. Stages run cheapest-first: apply verifies itself with `gate --skip e2e` (the change's E2E tests do not exist yet, and the "scenarios but no tests" guard would fail a full gate — a loop that cannot terminate), a static gate follows at zero token cost, then the browser-driven E2E stage, and only then the full gate as the job's own verdict. Apply is judged by `openspec list --json` task counts, because a headless run that stops to ask a question still exits 0. A final verify pass (2.x `/openspec-verify-change`, 1.x `/opsx:verify`) is advisory — its report and every stage's `total_cost_usd` land in the PR body, and it never blocks. The E2E step runs the e2e command (2.x `/openspec-e2e`, 1.x `/opsx:e2e`) with `--auto`: the human plan approval becomes `openspec-pw coverage --plan`, and every point that would wait for a person becomes a structured abort with a non-zero exit. Because CI checks out the repository, `openspec/` is kept out of the managed `.gitignore` block in pipeline projects — the specs and changes must be committed or the agent has nothing to apply. A rule outside the block that still ignores `openspec/` is reported, not rewritten.
-
-> **Upgrading an existing pipeline?** The generator never overwrites `.github/workflows/openspec-auto.yml`. If the file still passes `--plan "tests/playwright/changes/$CHANGE/test-plan.md"`, change it to `--plan "openspec/changes/$CHANGE/specs/playwright/test-plan.md"` and add the E2E auth env block, or delete the workflow and re-run `openspec-pw init --auto-pipeline`.
+**Autonomous pipeline.** `init --auto-pipeline` writes `.github/workflows/openspec-auto.yml` once and never overwrites it. Every pull request runs `gate` only — mark that job a **required status check** — while an `openspec:auto` label or manual dispatch starts the headless agent (apply → static gate → generate E2E → full gate) and opens the PR. Required secret: `ANTHROPIC_API_KEY`; authenticated apps also need `E2E_USERNAME` / `E2E_PASSWORD` secrets and the `E2E_AUTH_*` variables. Stages run cheapest-first; apply is judged by `openspec list --json` task counts, and the final verify pass is advisory. Because CI checks out the repository, `openspec/` must stay committed in pipeline projects.
 
 ## How It Works
 
@@ -418,25 +243,13 @@ Every test the Generator writes carries a **spec anchor** — one comment line a
 test('coupon expires after 7 days', async ({ page }) => { ... });
 ```
 
-The anchor's `<capability>#<requirement>` uses the requirement's **exact title text** from the delta spec (no slug conversion), so `openspec-pw audit` can check it against the live main spec with plain text matching. The audit reports five states:
-
-| State | Signal | Meaning |
-|---|---|---|
-| Anchor's requirement gone from the main spec | ⚠ issue, cites the archived change that removed it | Test is a retire candidate — delete, `test.fixme` with reason, or keep if the behavior lives on |
-| Anchor's capability segment is a change/proposal name | ⚠ issue, precise diagnosis | Generator slip — fix the anchor; the test itself needs no review |
-| Anchor's capability directory missing (not a change name) | ⚠ issue (separate class) | Likely a capability rename — verify before retiring |
-| Anchor-free tests in a change dir | ℹ one info line per directory | Pre-anchors legacy or missing anchors — visibility only, never an issue count |
-| `test.fixme` tests | skipped | A declared "known-stale, kept on purpose" — reporting it would be noise |
-
-Audit is **report-only** — it never deletes or edits tests; retiring a test is always a human decision. Existing anchor-free tests are not migrated; they age out as new tests carry anchors. Recorded (`generator_write_test`) output is step-cut and carries no anchors — the template's review checklist adds them.
+The anchor's `<capability>#<requirement>` uses the requirement's **exact title text** from the delta spec (no slug conversion), so `openspec-pw audit` can check it against the live main spec. The audit flags a requirement that no longer exists (retire candidate), a change name used as the capability (generator slip — fix the anchor), and a missing capability directory (likely rename); anchor-free tests are listed as info, and `test.fixme` tests are skipped. Audit is **report-only** — it never deletes or edits tests.
 
 <details>
 <summary><strong>Workflow tree</strong> — 10 steps from change selection to per-change report</summary>
 
 ```
-/openspec-e2e <change-name>          # every editor
-$openspec-e2e <change-name>          # Codex
-/skill:openspec-e2e <change-name>    # Kimi Code
+/openspec-e2e <change-name>          # Codex `$openspec-e2e`, Kimi `/skill:openspec-e2e`
 /openspec-e2e <change-name> --auto   # headless — no human checkpoint (see Autonomous pipeline)
   │
   ├── 1. Select change → read openspec/changes/<name>/specs/
@@ -446,28 +259,22 @@ $openspec-e2e <change-name>          # Codex
   ├── 3. Validate env → run seed.spec.ts
   │
   ├── 4. Explore app → browser exploration (Playwright MCP / `openspec-pw explore`)
-  │       ├─ Read app-knowledge.md (project-level knowledge)
-  │       ├─ Extract routes from specs
-  │       ├─ Navigate each route → snapshot → screenshot
-  │       └─ Write app-exploration.md (change-level findings)
-  │           └─ Extract patterns → update app-knowledge.md
+  │       └─ Write app-exploration.md; extract shared patterns → app-knowledge.md
   │
   ├── 5. Planner → generates test-plan.md
   │
   ├── 6. Generator → creates tests/playwright/changes/<name>/<name>.spec.ts
-  │       └─ Verifies selectors in real browser before writing
   │
   ├── 7. Configure auth → auth.setup.ts (if required)
   │
   ├── 8. Configure playwright → playwright.config.ts
   │
-  ├── 9. Execute tests → npx playwright test
-  │       └─ Healer (if needed) → auto-heals failures via MCP
+  ├── 9. Execute tests → npx playwright test (Healer repairs failures via MCP)
   │
   └── 10. Report → openspec/reports/playwright-e2e-<name>-<timestamp>.md
 ```
 
-On OpenSpec 1.x the same workflow is invoked with `/opsx:e2e` (Claude Code / CodeBuddy CLI / Gemini CLI) or `/opsx-e2e` (most other editors); the numbered steps are unchanged.
+The numbered steps are the same on OpenSpec 1.x; only the command name changes (see the [naming note](#supported-ai-coding-assistants)).
 
 </details>
 
@@ -477,84 +284,56 @@ On OpenSpec 1.x the same workflow is invoked with `/opsx:e2e` (Claude Code / Cod
 
 1. **Node.js >= 22**
 2. **One or more supported editors** — see the [Supported AI Coding Assistants](#supported-ai-coding-assistants) table. Pi, Oh My Pi, MiniMax Code, DeepSeek Harness, Gemini CLI, Qwen Code, GitHub Copilot, Roo Code, Codex and Kimi Code are also detected via their global config dirs (`~/.pi/agent/`, `~/.omp/agent/`, `~/.minimax-code/`, `~/.dsh/`, `~/.gemini/`, `~/.qwen/`, `~/.copilot/`, `~/.roo/`, `~/.codex/`, `~/.kimi-code/`).
-3. **OpenSpec** initialized: `npm install -g @fission-ai/openspec@latest && openspec init --scope project` (1.x is also supported: install `@1` and run `openspec init`)
-4. **Playwright MCP** (for test execution + Healer) — installed automatically by `openspec-pw init` when a frontend signal is detected (skipped for API-only projects — API tests use the `request` fixture), **project-scoped** (written to a project file; Claude Code uses `--scope project` → project-root `.mcp.json`, never your global `~/.claude.json`). A single server matching the official `playwright init-agents` layout:
-   - `playwright-test` — official test-runner server (`npx playwright run-test-mcp-server`, bundled with the `playwright` package). Superset of `@playwright/mcp`: one entry exposes both `browser_*` tools (exploration + Healer page inspection) and the structured `test_run` / `test_debug` / `test_list` workflow tools for the Healer loop.
-   - **Claude Code**: `claude mcp add --scope project playwright-test npx playwright run-test-mcp-server` (stored in project-root `.mcp.json`; kept local by the managed `.gitignore` block — user-added servers often carry API keys, so sharing requires an explicit `git add -f .mcp.json`)
-   - **OpenCode**: merged into `opencode.jsonc` under `mcp["playwright-test"] = { type: "local", command: ["npx", "playwright", "run-test-mcp-server"] }`
-   - **Cline**: merged into `.cline/mcp.json` under `mcpServers["playwright-test"] = { "command": "npx", "args": ["playwright", "run-test-mcp-server"] }`
-   - **Cursor**: merged into `.cursor/mcp.json` under `mcpServers["playwright-test"] = { "command": "npx", "args": ["playwright", "run-test-mcp-server"] }`
-   - **Oh My Pi**: merged into `.omp/mcp.json` under `mcpServers["playwright-test"] = { "command": "npx", "args": ["playwright", "run-test-mcp-server"] }`
-   - **CodeBuddy CLI**: merged into project-root `.mcp.json` under `mcpServers["playwright-test"] = { "command": "npx", "args": ["playwright", "run-test-mcp-server"] }` (direct file read/write, never via the `codebuddy mcp` CLI — the CLI starts a port-bound service that conflicts with running sessions)
-   - **MiniMax Code**: merged into project-root `.mcp.json` under `mcpServers["playwright-test"] = { "command": "npx", "args": ["playwright", "run-test-mcp-server"] }` (direct file read/write — MiniMax Code auto-loads the project-root `.mcp.json`)
-   - **Pi**: no MCP client, skipped — browser exploration uses `openspec-pw explore` instead
+3. **OpenSpec** initialized — see [Setup](#setup) (1.x is supported too: install `@1` and run plain `openspec init`)
+4. **Playwright MCP** (for test execution + Healer) — installed automatically by `openspec-pw init` when a frontend signal is detected (skipped for API-only projects — API tests use the `request` fixture), **project-scoped** (written to the editor's project file from the table above, never your global config):
+   - `playwright-test` — the official `playwright init-agents` test-runner server: `{ "command": "npx", "args": ["playwright", "run-test-mcp-server"] }` under `mcpServers` (Claude Code: `claude mcp add --scope project` → project-root `.mcp.json`; `opencode.jsonc` nests it under `mcp`). CodeBuddy and MiniMax Code are written directly, never through their CLIs — CodeBuddy's `mcp` CLI starts a port-bound service that conflicts with running sessions.
+   - Pi and DeepSeek Harness have no project-level MCP client; browser exploration uses `openspec-pw explore` instead.
 
-> **OpenSpec 1.x and 2.x supported**: naming follows the installed major. 2.x uses `/openspec-e2e` and `openspec-e2e` artifacts (skills under `.agents/skills/`); 1.x uses `/opsx:e2e` / `/opsx-e2e` and `opsx-e2e` artifacts. `openspec-pw doctor` accepts both; 3.x is rejected.
+> **OpenSpec 1.x and 2.x supported**: naming follows the installed major (see the [naming note](#supported-ai-coding-assistants)). `openspec-pw doctor` accepts both; 3.x is rejected.
 
 > Project-scoped servers prompt for approval the first time they are used interactively (`claude mcp reset-project-choices` resets those choices).
 
-> **Server name `playwright-test`**: this is the name Playwright's own `playwright init-agents` CLI ships — same name, same transport (`npx playwright run-test-mcp-server`, the `playwright` package's built-in subcommand). It is **not** the same server as `@playwright/mcp` (a separate npm package that registers as `playwright` with ~67 `browser_*` tools); the test-runner is its **superset** (~80 tools: the full `browser_*` set plus the structured `test_run` / `test_debug` / `test_list` workflow tools the Healer loop uses). The two servers coexist under different names; search results for "Playwright MCP" usually surface `@playwright/mcp` docs.
-
-Browser exploration is provided out of the box by Playwright MCP and `openspec-pw explore`; no extra browser tool is needed.
+> **Server name `playwright-test`**: this is the server Playwright's own `playwright init-agents` ships (same `npx playwright run-test-mcp-server` transport). It is **not** `@playwright/mcp` (a separate package registering as `playwright` with ~67 `browser_*` tools) — the test-runner is its superset, adding the structured `test_run` / `test_debug` / `test_list` tools the Healer loop uses. The two coexist; searching "Playwright MCP" usually surfaces `@playwright/mcp` docs.
 
 ## What `openspec-pw init` Does
 
-1. Detects supported editors in the project (see the [Supported AI Coding Assistants](#supported-ai-coding-assistants) table; Pi, Oh My Pi, MiniMax Code, DeepSeek Harness, Gemini CLI, Qwen Code, GitHub Copilot, Roo Code, Codex and Kimi Code are also detected via their global config dirs `~/.pi/agent/` / `~/.omp/agent/` / `~/.minimax-code/` / `~/.dsh/` / `~/.gemini/` / `~/.qwen/` / `~/.copilot/` / `~/.roo/` / `~/.codex/` / `~/.kimi-code/`)
-2. Installs the E2E command or skill for each selected editor (paths in the [Usage](#usage) table)
+1. Detects supported editors in the project — project markers, or the global config dirs listed under [Prerequisites](#prerequisites) — and picks up the editors already configured by openspec-pw (see [Selecting Editors on Init](#selecting-editors-on-init))
+2. Installs the E2E command or skill for each selected editor (paths in the [Supported AI Coding Assistants](#supported-ai-coding-assistants) table)
 3. Generates `tests/playwright/seed.spec.ts`, `auth.setup.ts`, `credentials.yaml`, `app-knowledge.md`, `test-plan.template.md`, `pages/BasePage.ts`, plus the project-root `lint-guidelines.md` swallow-error and docstring lint checklist (refreshed by `update` while unmodified, removed by `remove`)
 
-> **`--lint-config` (opt-in)**: creates a minimal `eslint.config.mjs` (eslint 9+ declared, no config anywhere in the project or its ancestors up to the git root; TypeScript projects get the declared parser — `typescript-eslint` or `@typescript-eslint/parser` — wired into `files`/`languageOptions`) and creates or extends the ruff config with a managed `extend-select = ["B904"]` block (`.ruff.toml` > `ruff.toml` > `pyproject.toml`, ruff's own precedence). Existing configs are never edited — a paste-ready snippet is printed instead. Re-runs are idempotent; a hand-edited managed block is kept as-is.
+> **`--lint-config` (opt-in)**: creates a minimal `eslint.config.mjs` (eslint 9+ projects with no config anywhere up to the git root) and extends the ruff config with a managed `extend-select = ["B904"]` block. Existing configs are never edited — a paste-ready snippet is printed instead.
 4. Generates `playwright.config.ts` with automatic dev script and port detection (Vite/Next/Nuxt/Astro, `.env`, and `--port`)
-5. Detects a frontend signal (layered detection: framework config files → framework dependencies → frontend dev commands, plus monorepo workspace member detection so a pnpm/npm workspace with the frontend in `apps/*` is recognized); with none found, prints guidance in the Summary — run `openspec-pw init` in the app directory (monorepo), or use Playwright's `request` fixture for API-only projects
+5. Picks the install mode from the frontend signal (see [Init Modes](#init-modes-frontend-vs-minimal)); with none found, prints guidance in the Summary — run `openspec-pw init` in the app directory (monorepo), or use Playwright's `request` fixture for API-only projects
 
-> **Note**: After running `openspec-pw init`, manually install the Chromium browser: `npx playwright install chromium`
-
-## First-Time Setup Checklist
-
-Run through these steps in order when using the E2E workflow for the first time:
-
-| Step | Command | If it fails |
-|------|---------|-------------|
-| 1. Install CLI | `npm install -g openspec-playwright@latest` | Check Node.js version `node -v` (needs >= 22) |
-| 2. Install OpenSpec | `npm install -g @fission-ai/openspec@latest && openspec init --scope project` | `npm cache clean -f && npm install -g @fission-ai/openspec@latest` |
-| 3. Initialize E2E | `openspec-pw init` | Run `openspec-pw doctor` to see what's missing |
-| 4. Install browsers | `npx playwright install chromium` | Linux CI images may need system deps: `npx playwright install --with-deps chromium` (macOS may need `xcode-select --install` first) |
-| 5. Start dev server | `npm run dev` (in a separate terminal) | Confirm port, set `BASE_URL` if non-standard |
-| 6. Validate env | `npx playwright test tests/playwright/seed.spec.ts` | Check `webServer` in `playwright.config.ts` |
-| 7. Configure auth (if needed) | See "Authentication" below | Debug with `npx playwright test --project=setup` |
-| 8. Run first E2E | `/openspec-e2e <change-name>` (every editor; Codex `$openspec-e2e`, Kimi `/skill:openspec-e2e`; on 1.x `/opsx:e2e` / `/opsx-e2e`) | Check `openspec/reports/` for the report |
-
-`openspec-pw init` installs the Playwright MCP server for the selected editors; `openspec-pw doctor` verifies it.
-
-### What `openspec-pw doctor` checks
+## What `openspec-pw doctor` checks
 
 `openspec-pw doctor` verifies prerequisites and exits non-zero if any **required** check fails.
 
 | Category | Required checks | Optional checks |
 |---|---|---|
-| **Node.js** | `node` version | `engines` compatibility (vs `package.json`) |
+| **Node.js** | `node` version | `engines` compatibility |
 | **npm** | `npm` availability | — |
 | **Playwright Config** | config file exists (`ts`/`js`/`mjs`/`mts`) | — |
-| **OpenSpec** | directory initialized, CLI major is 1 or 2 (missing, unreadable, or 3.x fails) | `.spec.md` specs count |
-| **Playwright Browsers** | CLI version, Chromium binary downloaded | — |
-| **Playwright Test** | `@playwright/test` framework installed | — |
-| **Mini Program** | Chrome, `@open-wxa/wxa-runner-playwright`, `@playwright/test` >=1.64, `wxaProject` output (mini-program target only) | — |
-| **Playwright MCP** | test-runner server configured for each **authorized** editor (command artifacts exist; unauthorized editors get an info line pointing at `init --tools <id>` — never a warning) | `playwright-cli` (@playwright/cli on PATH) — optional ⚠, never block |
-| **Cursor E2E** | command + skill files present when Cursor is authorized | not configured → info pointing at `init --tools cursor` |
-| **Vendored Agents** | — | official agent snapshots' presence + ownership (owned/modified); non-blocking ⚠ when their `playwright-test` MCP dependency is missing |
-| **Sync** | standards in sync when initialized (drift → `openspec-pw update`; AGENTS.md without markers counts as not-initialized, always ok) | not initialized (gated, non-blocking) |
-| **Tests** | `tests/playwright/` directory exists | `auth.setup.ts` presence · `storage-state` integrity — config declares `storageState` but the state file is missing → ⚠ + `npx playwright test --project=setup` (never blocks) |
+| **OpenSpec** | directory initialized, CLI major 1 or 2 | `.spec.md` count |
+| **Playwright Browsers** | CLI version, Chromium downloaded | — |
+| **Playwright Test** | `@playwright/test` installed | — |
+| **Mini Program** | Chrome, wxa fixture, `@playwright/test` >=1.64, `wxaProject` output | — |
+| **Playwright MCP** | server configured for each configured editor | `playwright-cli` on PATH |
+| **Cursor E2E** | command + skill files when Cursor is configured | hint pointing at `init --tools cursor` |
+| **Vendored Agents** | — | snapshots' presence and ownership |
+| **Sync** | standards in sync when initialized | not initialized |
+| **Tests** | `tests/playwright/` exists | `auth.setup.ts` presence, `storageState` file present |
 | **Seed Test** | — | `seed.spec.ts` presence |
-| **Lint** | — | swallow-error checklist coverage, semantic-first when the linter can resolve the config (`eslint --print-config` / `ruff check --show-settings` on a representative source file; configs in ancestor directories up to the git root count), literal text probe as fallback (never blocks): ESLint without effective `no-empty` → info pointing at `lint-guidelines.md`; ruff without effective `B904` → gap info; `ruff`/`pylint` PATH awareness; a missing config face stays silent, both faces absent → one info line |
+| **Lint** | — | swallow-error checklist coverage (semantic check when the linter can resolve its config, text probe otherwise) |
 | **App Server** | — | dev script, base URL, reachability |
-| **CodeGraph** | — | CLI availability, index presence, MCP installation (warnings, non-blocking) |
+| **CodeGraph** | — | CLI availability, index presence, MCP installation |
 
 Run with `--json` for machine-readable output.
 
 ## App Server Detection
 
 <details>
-<summary>Priority chain, sample output, existing-config handling</summary>
+<summary>Priority chain and existing-config handling</summary>
 
 Generated `playwright.config.ts` automatically detects the app URL in this priority order:
 
@@ -567,16 +346,7 @@ Generated `playwright.config.ts` automatically detects the app URL in this prior
 7. `seed.spec.ts` `BASE_URL` constant
 8. fallback: `http://localhost:3000`
 
-Run `openspec-pw doctor` to see the detected dev script and base URL:
-
-```text
-─── App Server ───
-  ✓ dev-script: npm run dev:all
-  ✓ base-url: http://localhost:5125 (vite.config.ts)
-  ⚠ reachable: fetch failed (diagnostic only; Playwright webServer may start it)
-```
-
-If your project already has `playwright.config.ts`, `openspec-pw init` will not overwrite it. It prints patch hints for missing `webServer`, `testDir`, `storageState`, and setup-project wiring.
+Run `openspec-pw doctor` to see the detected dev script and base URL. If your project already has `playwright.config.ts`, `init` will not overwrite it — it prints patch hints for missing `webServer`, `testDir`, `storageState`, and setup-project wiring.
 
 </details>
 
@@ -584,14 +354,14 @@ If your project already has `playwright.config.ts`, `openspec-pw init` will not 
 
 If your app requires login, set up credentials once, then all tests run authenticated automatically.
 
-> **Credentials are ignored automatically**: init and update maintain a marked block at the tail of your `.gitignore` that ignores `tests/playwright/credentials.yaml`, its `.bak`, `tests/playwright/test-results/`, and exploration screenshots (`tests/playwright/screenshots/` — they age as the app evolves; stay local like app-exploration.md) — plus auth storageState (`playwright/.auth/`, logged-in session cookies), MCP config (`.mcp.json`, `opencode.json(c)`, `.roo/mcp.json`, `.trae/mcp.json` — user-added servers often carry API keys in env/headers), tool-local data (`.codegraph/`, `.playwright-mcp/`), and first-tier names like `.claude/`, `.cursor/`, `.codebuddy/`, `.agents/`, `.dsh/`, `.gemini/`, `.qwen/`, `.kimi-code/`, `.github/prompts/` (whole editor territories), and `.roo/commands/openspec-e2e.md` / `.trae/commands/openspec-e2e.md` with their 1.x `opsx-` siblings, `openspec/`, `AGENTS.md`, `CLAUDE.md`, `CODEBUDDY.md`, `GEMINI.md`, `QWEN.md`, `.github/copilot-instructions.md`, `.roo/rules/openspec-pw.md`, `.trae/rules/project_rules.md` (the generated products stay local, per design). Editor roots are ignored whole, so files you add under them — say `.agents/skills/team-skill/` or `.github/prompts/team.prompt.md` — need `git add -f` to be tracked. The block is idempotent, never touches your own rules, and is cleaned up by `remove`. If the block cannot be written, a warning lists the uncovered paths instead. Note: ignore rules do not apply to already-tracked files — if credentials were committed before, run `git rm --cached tests/playwright/credentials.yaml`. Alternatively keep credentials in the `E2E_USERNAME` / `E2E_PASSWORD` env vars. Interactive init can uncheck individual paths; the opt-outs are stored on the block's `# openspec-pw: skip=…` header line and honored by every later `update`.
+> **Credentials are ignored automatically** by the managed `.gitignore` block (see [Managed `.gitignore` paths](#managed-gitignore-paths)). Ignore rules do not apply to already-tracked files: if credentials were committed before, run `git rm --cached tests/playwright/credentials.yaml`. Alternatively keep them in the `E2E_USERNAME` / `E2E_PASSWORD` env vars.
 
 ```bash
 # 1. (Optional) Edit test users for role-based tests
 vim tests/playwright/credentials.yaml
 
 # 2. Enable auth and set environment variables
-export E2E_AUTH_REQUIRED=true
+export E2E_AUTH_REQUIRED=true # without it auth.setup.ts is skipped
 export E2E_AUTH_METHOD=api # or ui
 export E2E_AUTH_API=/api/auth/login # optional; this is the default
 export E2E_USERNAME=your-email@example.com
@@ -604,7 +374,7 @@ npx playwright test --project=setup
 /openspec-e2e my-feature
 ```
 
-Supports **API login** (preferred, cookie-based) and **UI login** (fallback, for token/localStorage auth). For multi-user tests (admin vs user), add multiple users in `credentials.yaml` and run `/openspec-e2e` (Codex `$openspec-e2e`, Kimi `/skill:openspec-e2e`; on 1.x `/opsx:e2e` in Claude/CodeBuddy/Gemini, `/opsx-e2e` elsewhere) — it reads role labels from specs and users from `credentials.yaml`, then generates one setup per role. Each setup reads `E2E_<ROLE>_USERNAME` and `E2E_<ROLE>_PASSWORD` (role name uppercased; non-alphanumeric characters become `_`).
+Supports **API login** (preferred, cookie-based) and **UI login** (fallback, for token/localStorage auth). For multi-user tests (admin vs user), add multiple users in `credentials.yaml` and run `/openspec-e2e` (Codex `$openspec-e2e`, Kimi `/skill:openspec-e2e`) — it reads role labels from specs and users from `credentials.yaml`, then generates one setup per role. Each setup reads `E2E_<ROLE>_USERNAME` and `E2E_<ROLE>_PASSWORD` (role name uppercased; non-alphanumeric characters become `_`).
 
 ## Customization
 
@@ -620,88 +390,20 @@ Edit `tests/playwright/seed.spec.ts` to match your app's:
 Edit `tests/playwright/credentials.yaml`:
 - Add one entry per role for role-based tests
 
-Auth environment variables:
-- `E2E_AUTH_REQUIRED=true` — actually run `auth.setup.ts`; without it the setup test is skipped
-- `E2E_AUTH_API` — login endpoint for API login (default `/api/auth/login`); assumes cookie auth
-- `E2E_AUTH_METHOD=ui` — use UI login instead, for token/localStorage auth
-- `E2E_AUTH_CHECK_PATH` — optional path asserted after login, before the session is saved
-- `E2E_<ROLE>_USERNAME` / `E2E_<ROLE>_PASSWORD` — one pair per role for multi-user setups
+Auth variables are shown in the quick start above; `E2E_AUTH_CHECK_PATH` optionally asserts a path after login, before the session is saved.
 
 In CI, set the `E2E_AUTH_*` values as repository variables; the workflow passes them to the test step. For multi-user CI, add the per-role credential pairs as secrets and forward them in the workflow env — the shipped workflow forwards only `E2E_USERNAME` / `E2E_PASSWORD`.
-
-> **Upgrading an existing project?** `openspec-pw update` leaves an existing `auth.setup.ts` and `.github/workflows/openspec-pw.yml` untouched. Merge the `E2E_AUTH_*` handling from the current templates, or regenerate those files; otherwise the new variables are ignored. `update` (default run — `--no-skill` skips template syncing) also rewrites legacy 1.x `/opsx:e2e` mentions in `tests/playwright/seed.spec.ts` and `playwright.config.*` in place — your other edits there are kept.
 
 ## Architecture
 
 <details>
-<summary>Templates, CLI, editors, standards, test assets, exploration tree</summary>
+<summary>Standards delivery and coexistence</summary>
 
-```
-Templates (in npm package, installed to tests/playwright/)
-  └── seed.spec.ts, auth.setup.ts, credentials.yaml, app-knowledge.md, test-plan.template.md, pages/BasePage.ts
+Employee-grade standards live in **AGENTS.md** as the single source of truth; the hook column in the [Supported table](#supported-ai-coding-assistants) is how each editor reaches it. Claude Code needs CLAUDE.md to import it with `@AGENTS.md` (it does not read AGENTS.md by default): the `@` line may sit anywhere outside backticks/code blocks, and outside the OPENSPEC-PW markers. CodeBuddy prefers CODEBUDDY.md when both exist.
 
-CLI (openspec-pw)
-  ├── init       → Installs commands & templates
-  ├── update     → Syncs commands & templates from npm
-  ├── migrate    → Migrates old test files to new structure
-  ├── audit      → Audits tests for orphaned specs and issues
-  ├── coverage   → Analyzes spec–test coverage for changes
-  ├── flake      → Detects flake patterns in test files (static + raised timeouts)
-  ├── doctor     → Checks prerequisites
-  ├── explore    → Explores app routes with Playwright
-  └── remove     → Removes integration (--all: scan home / Windows drives; --yes executes)
+**Per-editor rules copies.** AGENTS.md is the only mandatory rules file; the wrapper and per-editor rules files are convenience copies. `init --no-rule-files` installs AGENTS.md and removes those copies (unless they hold user content outside the block); `init --rule-files` restores them. The choice is recorded on the managed `.gitignore` block's skip line and honored by later runs.
 
-Editors → command/skill paths and MCP config files are listed in the Usage and Prerequisites sections above.
-```
-
-Employee-grade standards live in **AGENTS.md** as the single source of truth. Claude Code
-loads them via a CLAUDE.md that imports AGENTS.md through `@AGENTS.md` — Claude Code's
-documented mechanism for reusing AGENTS.md, which it does not read by default. Import
-position is unconstrained
-("anywhere in your CLAUDE.md"); the only rule is the `@` line must not sit inside backticks
-or a code block. The import line sits outside the OPENSPEC-PW:START/END comments (stripped
-before context injection), so the markers act as the tool-owned boundary while the import is
-honored. OpenCode registers AGENTS.md in `opencode.jsonc` under `instructions`. Cline,
-Cursor, MiniMax Code, DeepSeek Harness, Codex and Kimi Code auto-detect `AGENTS.md` natively — no wrapper file needed. Gemini CLI, Qwen Code, GitHub Copilot, Roo Code and Trae read
-their own native rules files (GEMINI.md, QWEN.md, `.github/copilot-instructions.md`,
-`.roo/rules/openspec-pw.md`, `.trae/rules/project_rules.md`), which carry the full standards
-block directly. CodeBuddy CLI loads them
-the same way Claude Code does, via a thin CODEBUDDY.md wrapper with the same `@AGENTS.md`
-import (CodeBuddy prefers CODEBUDDY.md over AGENTS.md when both exist).
-
-**Per-editor rules copies.** AGENTS.md is the only mandatory rules file; the wrapper and
-full-standards files above are convenience copies. `init --no-rule-files` installs AGENTS.md
-and skips those copies (removing copies left by an earlier run, including ones `update`
-refreshed — unless they hold user content outside the block), while
-`init --rule-files` restores them. The opt-out is recorded on the managed `.gitignore`
-block's `# openspec-pw: skip=…` line, so later `init` / `update` runs honor it without
-repeating the flag; a re-run with neither flag keeps the recorded decision, and `doctor`
-reports a skipped carrier as intentionally disabled rather than missing.
-
-> **Coexisting with the official `@fission-ai/openspec` CLI**: its `openspec update` runs a
-> "legacy cleanup" that deletes any root AGENTS.md/CLAUDE.md block wrapped in plain
-> `OPENSPEC:START/END` markers. openspec-pw blocks use the exclusive `OPENSPEC-PW:` namespace,
-> which the official matcher cannot see (verified against v1.11.0). Legacy projects are
-> migrated automatically on the next `openspec-pw update`/`init`; if the block was already
-> wiped, `openspec-pw update` warns loudly and `openspec-pw init` restores it.
-
-```
-Test Assets (tests/playwright/)
-  ├── seed.spec.ts         → Env validation
-  ├── auth.setup.ts        → Session recording
-  ├── global.teardown.ts   → Post-test cleanup (optional)
-  ├── credentials.yaml     → Test users
-  ├── app-knowledge.md     → Project-level selector patterns (cross-change)
-  ├── test-plan.template.md → Test plan structure for new changes
-  └── pages/BasePage.ts    → Shared page object class
-
-Exploration (openspec/changes/<name>/specs/playwright/)
-  ├── app-exploration.md → This change's routes + verified selectors
-  └── test-plan.md       → This change's test cases
-
-Healer Agent (playwright-test MCP server)
-  └── test_run / test_debug / test_list + browser_* tools
-```
+> **Coexisting with the official `@fission-ai/openspec` CLI**: its `openspec update` deletes root AGENTS.md/CLAUDE.md blocks wrapped in plain `OPENSPEC:START/END` markers. openspec-pw uses the exclusive `OPENSPEC-PW:` namespace, which that matcher cannot see; if a block was already wiped, `openspec-pw init` restores it.
 
 </details>
 
