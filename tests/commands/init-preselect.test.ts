@@ -274,10 +274,11 @@ describe("init pre-select: artifact manifest tier", () => {
     const home = mkdtempSync(join(tmpdir(), "ospw-preselect-home-"));
     try {
       // stdout is a TTY here, stdin is not — before the guard the checkbox
-      // rendered and waited forever.
+      // rendered and waited forever. Injected so the test does not depend on
+      // the runner's stdin.
       await init(
         { mcp: false, frontend: true },
-        { isTTY: true, homeDir: home, confirm: async () => true },
+        { isTTY: true, stdinIsTTY: false, homeDir: home, confirm: async () => true },
       );
     } finally {
       rmSync(home, { recursive: true, force: true });

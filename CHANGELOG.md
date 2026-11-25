@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- **fix(cli): 取消路径不再谎报 .gitignore 已应用，stdin 判定可注入**. 受管块写入失败时，Ctrl+C 的提示改为「凭据未被忽略」而不是「已应用」；`init` 的 stdin TTY 判定改用 `InitDeps.stdinIsTTY`，测试不再依赖 runner 的 stdin。
+  - `src/commands/init.ts`、`src/commands/init-gitignore-block.ts`、`tests/init.test.ts`、`tests/commands/init-preselect.test.ts`
 - **fix(e2e): 修复循环先读失败产物再进浏览器**. `test-results/**/error-context.md`（失败瞬间的 ARIA 快照）提升为诊断第一步，`browser_snapshot` / console / network 只用于产物没有记录的错误形态；无浏览器 MCP 时明确「产物就是全部证据」，不再把进页面当成必经步骤。
   - `templates/e2e-command.md`、`tests/e2e-template-auto.test.ts`
 - **fix(e2e): 探索产物记录浏览器档位，change 模式必填**. `app-exploration.md`（web 与小程序）新增 `Browser tools:` 行并写明它记录「产出这份探索的工具」——复用文件不改，换工具重新探索才更新；change 模式该行与 `BASE_URL:` 必填，项目根目录可选。报告模板新增 `Tool: <server> (rung <n>)`，缺行视为不完整。

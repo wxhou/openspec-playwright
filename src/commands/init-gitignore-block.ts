@@ -20,9 +20,12 @@ export function maintainManagedGitignore(options: {
   candidates: string[];
   omit: string[];
   ruleFiles: boolean | undefined;
-}): void {
+}): boolean {
   const { projectRoot, selectedPaths, candidates, omit, ruleFiles } = options;
   let skippedPaths: string[] = [];
+  // Callers that promise protection in a user-facing message need to know
+  // whether the write actually happened; the catch below only warns.
+  let applied = true;
   try {
     // Not asking ≠ "ignore everything again": a non-interactive run keeps
     // the opt-outs an earlier interactive run recorded, exactly like update.
@@ -70,6 +73,7 @@ export function maintainManagedGitignore(options: {
       );
     }
   } catch {
+    applied = false;
     const uncovered = findUncoveredManagedPaths(projectRoot, [
       ...omit,
       ...skippedPaths,
@@ -105,4 +109,5 @@ export function maintainManagedGitignore(options: {
       ),
     );
   }
+  return applied;
 }

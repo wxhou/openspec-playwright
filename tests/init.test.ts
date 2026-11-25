@@ -1197,6 +1197,25 @@ describe("init prompt cancellation", () => {
     expect(logs.some((l) => l.includes("Setup complete"))).toBe(false);
   });
 
+  it("does not claim the ignore block was applied when .gitignore is unwritable", async () => {
+    const { init } = await import("../../src/commands/init.js");
+    // A directory at the file path makes the write fail (EISDIR) without
+    // permission games.
+    mkdirSync(join(tmpRoot, ".gitignore"));
+    await init(
+      { tools: "claude", mcp: false },
+      {
+        gitignorePrompt: async () => {
+          throw cancelError();
+        },
+      },
+    );
+    expect(logs.some((l) => l.includes("NOT ignored"))).toBe(true);
+    expect(logs.some((l) => l.includes("default .gitignore entries applied"))).toBe(
+      false,
+    );
+  });
+
   it("treats Ctrl+C at the removal confirmation as cancel: nothing is removed", async () => {
     const { init } = await import("../../src/commands/init.js");
     // A configured editor whose artifact would be removed when deselected.

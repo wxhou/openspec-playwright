@@ -199,6 +199,8 @@ export interface InitDeps {
   ) => Promise<string[]>;
   /** Override TTY detection (tests inject false here). */
   isTTY?: boolean;
+  /** Override stdin TTY detection — prompts read stdin, not stdout. */
+  stdinIsTTY?: boolean;
   /** Override home dir for Pi/Oh My Pi global detection (tests inject an empty dir). */
   homeDir?: string;
 }
@@ -434,6 +436,10 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   }
 
   const isTTY = deps.isTTY ?? process.stdout.isTTY === true;
+  // Prompts read stdin, so stdout being a TTY is not enough: a piped stdin
+  // would hang them. Separate seam — a test that injects `isTTY` alone still
+  // depends on the runner's stdin.
+  const stdinIsTTY = deps.stdinIsTTY ?? process.stdin.isTTY === true;
   const prompt = deps.prompt ?? promptSelectEditors;
   let selectedIds: EditorId[] | null;
   // True only when the selection came from the interactive prompt — the
@@ -456,7 +462,7 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   // stdin makes the prompt hang. Injected prompts need no such check.
   if (
     selectedIds === null &&
-    (deps.prompt !== undefined || (isTTY && process.stdin.isTTY === true))
+    (deps.prompt !== undefined || (isTTY && stdinIsTTY))
   ) {
     interactiveSelection = true;
     try {
@@ -930,7 +936,7 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   const askGitignore =
     gitignoreCandidates.length > 0 &&
     (deps.gitignorePrompt !== undefined ||
-      (isTTY && process.stdin.isTTY === true));
+      (isTTY && stdinIsTTY));
   let selectedPaths: string[] | undefined;
   if (askGitignore) {
     try {
@@ -941,14 +947,18 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
       if (!isPromptCancelled(err)) throw err;
       // The scaffold already wrote credentials — the managed block must cover
       // them before this run stops.
-      maintainManagedGitignore({
+      const applied = maintainManagedGitignore({
         projectRoot,
         selectedPaths: undefined,
         candidates: gitignoreCandidates,
         omit: pipelineOmit,
         ruleFiles: options.ruleFiles,
       });
-      reportCancelled("default .gitignore entries applied, stopping.");
+      reportCancelled(
+        applied
+          ? "default .gitignore entries applied, stopping."
+          : "the .gitignore block could not be written — generated credentials are NOT ignored, stopping.",
+      );
       return;
     }
   }
