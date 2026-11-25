@@ -152,6 +152,21 @@ export interface InitOptions {
   ruleFiles?: boolean;
 }
 
+/**
+ * Ctrl+C at an @inquirer/prompts prompt: the user cancelled the run. That is
+ * not an error — stop the remaining steps and exit successfully.
+ */
+function isPromptCancelled(err: unknown): boolean {
+  return (err as { name?: string } | null)?.name === "ExitPromptError";
+}
+
+/** Report a cancelled run; the caller stops the remaining steps. */
+function reportCancelled(): void {
+  console.log(
+    chalk.gray("  ✗ Cancelled (Ctrl+C) — stopping without further changes."),
+  );
+}
+
 export interface InitDeps {
   /** Interactive selection prompt; defaults to @inquirer/prompts checkbox.
    * Receives the pre-selected id set (configured tier or first-run bypass),
@@ -498,12 +513,18 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     (deps.prompt !== undefined || (isTTY && process.stdin.isTTY === true))
   ) {
     interactiveSelection = true;
-    selectedIds = await prompt(
-      getAllAdapters(),
-      preselectedIds,
-      configuredIds,
-      new Set(detected.map((a) => a.id)),
-    );
+    try {
+      selectedIds = await prompt(
+        getAllAdapters(),
+        preselectedIds,
+        configuredIds,
+        new Set(detected.map((a) => a.id)),
+      );
+    } catch (err) {
+      if (!isPromptCancelled(err)) throw err;
+      reportCancelled();
+      return;
+    }
   }
 
   const editors =
@@ -697,7 +718,14 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
         }
       }
 
-      const agreed = await confirmPrompt("Proceed with removal?");
+      let agreed: boolean;
+      try {
+        agreed = await confirmPrompt("Proceed with removal?");
+      } catch (err) {
+        if (!isPromptCancelled(err)) throw err;
+        reportCancelled();
+        return;
+      }
 
       if (!agreed) {
         console.log(
@@ -746,8 +774,10 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   }
 
   // Set in the minimal scaffold phase; the Summary links the contract doc
-  // only when this run generated it.
+  // only when this run generated it. Minimal-mode skip reasons are collected
+  // here and printed once, after the E2E-command phase.
   let readmeGenerated = false;
+  const minimalSkips: { name: string; reason: string }[] = [];
   if (frontendSignal === null) {
     // Detection fact only — the mode decision is printed in the Summary
     // (an explicit --frontend keeps frontend mode despite the unreadable
@@ -776,9 +806,6 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
       }
       try {
         ensureTestRunnerMcp(adapter, projectRoot);
-        if (adapter.supportsMcp !== false) {
-          console.log(chalk.gray(`  (Restart ${adapter.label} to activate)`));
-        }
       } catch (err) {
         const e = err as { stderr?: string };
         if (e.stderr?.includes("already exists")) {
@@ -818,21 +845,12 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
         }
       }
     }
-    // Naming provenance: search results for "Playwright MCP" surface the
-    // separate @playwright/mcp package (server name "playwright"); ours is
-    // the official init-agents name for the test-runner superset.
-    console.log(
-      chalk.gray(
-        "  (server name \"playwright-test\" = the official `playwright init-agents` name; superset of @playwright/mcp — see README)",
-      ),
-    );
   } else if (options.mcp !== false && editors.length > 0) {
     // Reaching here guarantees mode !== "frontend" (the if above consumed it).
-    console.log(
-      chalk.gray(
-        "  - Minimal mode — skipping Playwright MCP (backend projects test with their own stack)",
-      ),
-    );
+    minimalSkips.push({
+      name: "Playwright MCP",
+      reason: "backend projects test with their own stack",
+    });
   }
 
   // 4b. Vendored official Playwright agents (claude only, opt-in). Every
@@ -844,9 +862,15 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     if (!agentsConsent && interactiveSelection) {
       const e2eName =
         resolveArtifactStyle() === "openspec" ? "/openspec-e2e" : "/opsx:e2e";
-      agentsConsent = await confirmPrompt(
-        `Install the official Playwright planner agent into .claude/agents/? (delegation target for ${e2eName} exploration-to-plan)`,
-      );
+      try {
+        agentsConsent = await confirmPrompt(
+          `Install the official Playwright planner agent into .claude/agents/? (delegation target for ${e2eName} exploration-to-plan)`,
+        );
+      } catch (err) {
+        if (!isPromptCancelled(err)) throw err;
+        reportCancelled();
+        return;
+      }
     }
     if (agentsConsent) {
       console.log(chalk.blue("\n─── Installing Vendored Agents ───"));
@@ -859,11 +883,10 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
       );
     }
   } else if (claudeEditor && options.agents === true) {
-    console.log(
-      chalk.gray(
-        "  - Minimal mode — skipping vendored agents (their tools depend on the Playwright MCP)",
-      ),
-    );
+    minimalSkips.push({
+      name: "vendored agents",
+      reason: "their tools depend on the Playwright MCP",
+    });
   }
 
   // 5. Install E2E command for each selected editor (frontend mode only —
@@ -878,9 +901,17 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
       installCommand(adapter, meta, projectRoot);
     }
   } else if (editors.length > 0) {
+    minimalSkips.push({
+      name: "E2E command",
+      reason: "it drives the Playwright workflow",
+    });
+  }
+
+  if (minimalSkips.length > 0) {
     console.log(
       chalk.gray(
-        "  - Minimal mode — skipping E2E command (it drives the Playwright workflow)",
+        `  - Minimal mode — skipping ${minimalSkips.map((s) => s.name).join(", ")}\n` +
+          `    (${minimalSkips.map((s) => `${s.name}: ${s.reason}`).join("; ")})`,
       ),
     );
   }
@@ -894,21 +925,12 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   } else {
     // Frontend mode: a tool-owned tests/README.md from a previous
     // minimal-mode run is an outdated marker — prune it (ownership-aware).
-    console.log(chalk.blue("\n─── Generating Seed Test ───"));
+    console.log(chalk.blue("\n─── Generating Scaffold ───"));
     await pruneMinimalModeReadme(projectRoot);
     await generateSeedTest(projectRoot, target);
-
-    // 6b. Generate shared pages directory
-    console.log(chalk.blue("\n─── Generating Shared Pages ───"));
     await generateSharedPages(projectRoot, target);
     await generateTestPlanTemplate(projectRoot, target);
-
-    // 6c. Generate playwright.config.ts
-    console.log(chalk.blue("\n─── Generating Playwright Config ───"));
     await generatePlaywrightConfig(projectRoot, target);
-
-    // 7. Generate app-knowledge.md
-    console.log(chalk.blue("\n─── Generating App Knowledge ───"));
     await generateAppKnowledge(projectRoot, target);
   }
 
@@ -957,11 +979,18 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     gitignoreCandidates.length > 0 &&
     (deps.gitignorePrompt !== undefined ||
       (isTTY && process.stdin.isTTY === true));
-  const selectedPaths = askGitignore
-    ? await (deps.gitignorePrompt ?? promptSelectGitignorePaths)(
+  let selectedPaths: string[] | undefined;
+  if (askGitignore) {
+    try {
+      selectedPaths = await (deps.gitignorePrompt ?? promptSelectGitignorePaths)(
         groupGitignoreCandidates(gitignoreCandidates),
-      )
-    : undefined;
+      );
+    } catch (err) {
+      if (!isPromptCancelled(err)) throw err;
+      reportCancelled();
+      return;
+    }
+  }
   maintainManagedGitignore({
     projectRoot,
     selectedPaths,

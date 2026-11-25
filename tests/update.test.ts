@@ -7,15 +7,19 @@ import {
   mkdtempSync,
   rmSync,
 } from "fs";
-import { join } from "path";
+import { dirname, join } from "path";
 import { tmpdir } from "os";
 import { fileURLToPath } from "url";
 
-// The CLI probe is overridden per test; the real classification is the default.
+// The CLI probe is stubbed: the default is 1.x, matching this file's
+// fixtures; the tests that exercise 2.x override it per case.
 vi.mock("../src/shared/openspec-version.js", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("../src/shared/openspec-version.js")>();
-  return { ...actual, openSpecCliStatus: vi.fn(actual.openSpecCliStatus) };
+  return {
+    ...actual,
+    openSpecCliStatus: vi.fn(() => ({ ok: true, major: 1 })),
+  };
 });
 
 // Complete §0–§7 body: syncEmployeeStandards rejects an English SSOT that is
@@ -483,6 +487,9 @@ describe("update.ts: --no-mcp registered + --no-cli recursion", () => {
     expect(src).toMatch(/if \(options\.mcp === false\) reExecArgs\.push\("--no-mcp"\)/);
     expect(src).toMatch(/if \(options\.skill === false\) reExecArgs\.push\("--no-skill"\)/);
     expect(src).toMatch(/if \(options\.lang\) reExecArgs\.push\("--lang", options\.lang\)/);
+    // Internal flow narration is not user-facing output.
+    expect(src).not.toMatch(/Re-executing remaining steps/);
+    expect(src).not.toMatch(/Post-update tasks completed/);
   });
 });
 
@@ -523,7 +530,8 @@ describe("update.ts: drift coverage regression guards", () => {
       "utf-8",
     );
     expect(src).toMatch(/hasCommandArtifacts\(projectRoot, adapter\)/);
-    expect(src).toMatch(/openspec-pw init --tools \$\{adapter\.id\}/);
+    // Unconfigured editors are skipped silently — no per-editor init hint.
+    expect(src).not.toMatch(/not configured in this project/);
   });
 
   it("frontend-signal skip announces itself (no silent MCP skip in update)", () => {
@@ -865,6 +873,34 @@ describe("syncCommandArtifacts", () => {
       false,
     );
   });
+
+  it("reports the unchanged count and stays silent about unconfigured editors", async () => {
+    const { syncCommandArtifacts } = await import("../../src/commands/update.js");
+    const { getAdapter, buildCommandMeta } = await import(
+      "../../src/commands/editors.js"
+    );
+
+    const body = "current body\n";
+    const meta = buildCommandMeta(body);
+    const adapter = getAdapter("minimax")!;
+    const skillPath = join(projectDir, adapter.commandFilePath(meta.id));
+    mkdirSync(dirname(skillPath), { recursive: true });
+    writeFileSync(skillPath, adapter.formatCommand(meta));
+
+    const logs: string[] = [];
+    const logSpy = vi
+      .spyOn(console, "log")
+      .mockImplementation((...args: unknown[]) => logs.push(args.join(" ")));
+    try {
+      const unchanged = syncCommandArtifacts(projectDir, body);
+      // MiniMax and Codex share the same skill file, so both read as current.
+      expect(unchanged).toBe(2);
+      expect(logs.some((l) => l.includes("not configured in this project"))).toBe(false);
+      expect(logs.some((l) => l.includes("already current"))).toBe(false);
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
 });
 
 describe("update: OpenSpec CLI version", () => {
@@ -977,5 +1013,37 @@ describe("update: 1.x → 2.x e2e migration", () => {
       vi.mocked(openSpecCliStatus).mockReset();
       rmSync(projectDir, { recursive: true, force: true });
     }
+  });
+});
+
+// ─── bundle source & CLI freshness decisions ────────────────────────────────
+
+describe("update: where the content comes from", () => {
+  it("uses the running package when it is the published latest", async () => {
+    const { chooseBundleSource } = await import("../../src/commands/update.js");
+    expect(chooseBundleSource("1.2.3", "1.2.3", true)).toBe("local");
+  });
+
+  it("fetches the published package when the running copy is behind", async () => {
+    const { chooseBundleSource } = await import("../../src/commands/update.js");
+    expect(chooseBundleSource("1.2.3", "1.2.2", true)).toBe("pack");
+  });
+
+  it("falls back to the running package when the registry is unreachable", async () => {
+    const { chooseBundleSource } = await import("../../src/commands/update.js");
+    expect(chooseBundleSource(undefined, "1.2.2", true)).toBe("local");
+  });
+
+  it("fetches when the running package carries no templates", async () => {
+    const { chooseBundleSource } = await import("../../src/commands/update.js");
+    expect(chooseBundleSource("1.2.3", "1.2.3", false)).toBe("pack");
+  });
+
+  it("skips the install only when the global copy is the published latest", async () => {
+    const { isCliCurrent } = await import("../../src/commands/update.js");
+    expect(isCliCurrent("1.2.3", "1.2.3")).toBe(true);
+    expect(isCliCurrent("1.2.2", "1.2.3")).toBe(false);
+    expect(isCliCurrent(undefined, "1.2.3")).toBe(false);
+    expect(isCliCurrent("1.2.3", undefined)).toBe(false);
   });
 });

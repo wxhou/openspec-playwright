@@ -161,6 +161,26 @@ describe("init MCP frontend gate", () => {
     expect(claudeMcpAddCalls()).toHaveLength(0);
   });
 
+  it("prints no implementation provenance or per-editor restart line", async () => {
+    writeFileSync(
+      join(root, "package.json"),
+      JSON.stringify({ scripts: { dev: "vite" } }),
+    );
+    const logs: string[] = [];
+    const logSpy = vi
+      .spyOn(console, "log")
+      .mockImplementation((...args: unknown[]) => logs.push(args.join(" ")));
+    try {
+      await init({ tools: "claude", agents: true });
+      expect(logs.some((l) => l.includes('server name "playwright-test"'))).toBe(false);
+      expect(logs.some((l) => l.includes("provenance"))).toBe(false);
+      expect(logs.some((l) => l.includes("to activate)"))).toBe(false);
+      expect(logs.some((l) => l.includes("Restart"))).toBe(true);
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+
   it("installs MCP when a frontend signal is present", async () => {
     writeFileSync(
       join(root, "package.json"),

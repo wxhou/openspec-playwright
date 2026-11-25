@@ -1,5 +1,6 @@
 import { createRequire } from "node:module";
 import { join, basename, sep } from "path";
+import { fileURLToPath } from "url";
 import {
   existsSync,
   readFileSync,
@@ -57,6 +58,67 @@ import { readTextFileCapped } from "../shared/file-read.js";
 import { pipelineGitignoreOmit } from "./pipeline.js";
 import { fullRulesFile, wrapperHasMarkers, hasRuleFileMarkers } from "./editors/project-rules.js";
 import type { EditorAdapter } from "./editors.js";
+
+/**
+ * Root of the running package: `dist/commands/update.js` → package root,
+ * `src/commands/update.ts` (dev/tests) → repo root. Both carry `templates/`
+ * and `standards/`, so the running copy can serve as the bundle source.
+ */
+const PACKAGE_ROOT = fileURLToPath(new URL("../../", import.meta.url));
+
+/** Version of the running package. */
+function runningVersion(): string | undefined {
+  try {
+    const pkg = JSON.parse(
+      readFileSync(join(PACKAGE_ROOT, "package.json"), "utf-8"),
+    ) as { version?: string };
+    return pkg.version;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Latest published version, fetched at most once per run and reused by the
+ * install-skip check, the bundle-source choice, and the version-shadow
+ * self-check. Empty string means "could not be determined" (offline).
+ */
+let publishedVersionCache: string | undefined;
+async function publishedLatestVersion(): Promise<string | undefined> {
+  if (publishedVersionCache !== undefined) {
+    return publishedVersionCache || undefined;
+  }
+  try {
+    const { stdout } = await execFileAsync(
+      "npm",
+      ["view", "openspec-playwright", "version"],
+      { timeout: 30000 },
+    );
+    publishedVersionCache = stdout.trim();
+  } catch {
+    publishedVersionCache = "";
+  }
+  return publishedVersionCache || undefined;
+}
+
+/** Version installed in the global npm root, or undefined when unreadable. */
+async function globalInstalledVersion(): Promise<string | undefined> {
+  try {
+    const { stdout } = await execFileAsync("npm", ["root", "-g"], {
+      timeout: 15000,
+    });
+    const root = stdout.trim();
+    if (!root) return undefined;
+    const pkgPath = join(root, "openspec-playwright", "package.json");
+    if (!existsSync(pkgPath)) return undefined;
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as {
+      version?: string;
+    };
+    return pkg.version;
+  } catch {
+    return undefined;
+  }
+}
 
 /** Any openspec-pw command artifact in either naming family exists. */
 function hasAnyCommandArtifacts(projectRoot: string): boolean {
@@ -139,58 +201,59 @@ export async function update(options: UpdateOptions) {
   // 1. Update CLI tool from npm
   if (options.cli !== false) {
     console.log(chalk.blue("─── Updating CLI ───"));
-    let cliUpdated = false;
-    try {
-      await execFileAsync(
-        "npm",
-        ["install", "-g", "openspec-playwright@latest", "--prefer-online"],
-        {
-          timeout: 120000,
-          cwd: projectRoot,
-          stdio: "inherit",
-        },
-      );
-      console.log(chalk.green("  ✓ CLI updated via npm"));
-      cliUpdated = true;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.log(chalk.yellow(`  ⚠ Failed to update CLI via npm: ${msg}`));
-      console.log(
-        chalk.gray("  Run manually: npm install -g openspec-playwright@latest"),
-      );
-    }
-
-    // Re-execute remaining steps (templates, commands, AGENTS.md) with the
-    // newly-installed binary so that the latest code handles project setup.
-    // The original process still runs old code and would miss AGENTS.md creation
-    // (which was added in a later version).
-    if (cliUpdated) {
-      console.log(
-        chalk.gray("  Re-executing remaining steps with updated binary..."),
-      );
+    // Already at the published latest → nothing to install.
+    const latest = await publishedLatestVersion();
+    const installed = await globalInstalledVersion();
+    if (isCliCurrent(installed, latest)) {
+      console.log(chalk.green(`  ✓ CLI already at latest (${installed})`));
+    } else {
+      let cliUpdated = false;
       try {
-        // Re-run with --no-cli (avoid re-updating the just-updated CLI) and
-        // forward the user's other flags so the restarted process honors them
-        // too (e.g. --no-mcp must still skip the MCP phase, --lang must switch).
-        const reExecArgs = ["update", "--no-cli"];
-        if (options.mcp === false) reExecArgs.push("--no-mcp");
-        if (options.skill === false) reExecArgs.push("--no-skill");
-        if (options.lang) reExecArgs.push("--lang", options.lang);
-        execFileSync("openspec-pw", reExecArgs, {
-          stdio: "inherit",
-          cwd: projectRoot,
-        });
-        console.log(
-          chalk.green("  ✓ Post-update tasks completed with latest binary"),
+        await execFileAsync(
+          "npm",
+          ["install", "-g", "openspec-playwright@latest"],
+          {
+            timeout: 120000,
+            cwd: projectRoot,
+            stdio: "inherit",
+          },
         );
-        return;
-      } catch {
+        console.log(chalk.green("  ✓ CLI updated via npm"));
+        cliUpdated = true;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.log(chalk.yellow(`  ⚠ Failed to update CLI via npm: ${msg}`));
         console.log(
-          chalk.yellow(
-            "  ⚠ Re-execution failed, continuing with current binary...",
-          ),
+          chalk.gray("  Run manually: npm install -g openspec-playwright@latest"),
         );
-        // Fall through — let the old binary attempt remaining steps
+      }
+
+      // Re-execute remaining steps (templates, commands, AGENTS.md) with the
+      // newly-installed binary so that the latest code handles project setup.
+      // The original process still runs old code and would miss AGENTS.md creation
+      // (which was added in a later version).
+      if (cliUpdated) {
+        try {
+          // Re-run with --no-cli (avoid re-updating the just-updated CLI) and
+          // forward the user's other flags so the restarted process honors them
+          // too (e.g. --no-mcp must still skip the MCP phase, --lang must switch).
+          const reExecArgs = ["update", "--no-cli"];
+          if (options.mcp === false) reExecArgs.push("--no-mcp");
+          if (options.skill === false) reExecArgs.push("--no-skill");
+          if (options.lang) reExecArgs.push("--lang", options.lang);
+          execFileSync("openspec-pw", reExecArgs, {
+            stdio: "inherit",
+            cwd: projectRoot,
+          });
+          return;
+        } catch {
+          console.log(
+            chalk.yellow(
+              "  ⚠ Re-execution failed, continuing with current binary...",
+            ),
+          );
+          // Fall through — let the old binary attempt remaining steps
+        }
       }
     }
   }
@@ -208,18 +271,14 @@ export async function update(options: UpdateOptions) {
     if (devDepVersion) {
       console.log(chalk.blue("─── Syncing devDependency ───"));
       console.log(
-        chalk.yellow("  ⚠ openspec-playwright found in devDependencies —"),
-      );
-      console.log(
-        chalk.gray(
-          "    Node module resolution will use local version, not global CLI.",
+        chalk.yellow(
+          "  ⚠ openspec-playwright is in devDependencies (shadows the global CLI) — syncing to latest",
         ),
       );
-      console.log(chalk.gray("    Syncing local devDependency to latest..."));
       try {
         await execFileAsync(
           "npm",
-          ["install", "-D", "openspec-playwright@latest", "--prefer-online"],
+          ["install", "-D", "openspec-playwright@latest"],
           {
             timeout: 120000,
             cwd: projectRoot,
@@ -247,7 +306,8 @@ export async function update(options: UpdateOptions) {
   if (options.skill !== false) {
     console.log(chalk.blue("\n─── Updating Commands ───"));
     try {
-      const tmpDir = await fetchLatestBundle();
+      const bundle = await resolveBundle();
+      const tmpDir = bundle.root;
 
       const fetchedChecklist = join(tmpDir, "templates", "lint-guidelines.md");
       if (existsSync(fetchedChecklist)) {
@@ -295,7 +355,7 @@ export async function update(options: UpdateOptions) {
         options.lang,
       );
 
-      rmSync(tmpDir, { recursive: true, force: true });
+      if (bundle.disposable) rmSync(tmpDir, { recursive: true, force: true });
       console.log(chalk.green("  ✓ Commands & templates updated to latest"));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -330,7 +390,8 @@ export async function update(options: UpdateOptions) {
     );
     console.log(chalk.blue("\n─── Standards Sync ───"));
     try {
-      const tmpDir = await fetchLatestBundle();
+      const bundle = await resolveBundle();
+      const tmpDir = bundle.root;
       const fetchedChecklist = join(tmpDir, "templates", "lint-guidelines.md");
       if (existsSync(fetchedChecklist)) {
         checklistTemplate = readFileSync(fetchedChecklist, "utf-8");
@@ -343,7 +404,7 @@ export async function update(options: UpdateOptions) {
         hasCommandArtifacts(projectRoot, codebuddy) || wrapperHasMarkers(codebuddy, projectRoot),
         options.lang,
       );
-      rmSync(tmpDir, { recursive: true, force: true });
+      if (bundle.disposable) rmSync(tmpDir, { recursive: true, force: true });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.log(chalk.yellow(`  ⚠ Standards sync failed: ${msg}`));
@@ -378,14 +439,7 @@ export async function update(options: UpdateOptions) {
       } else {
         console.log(chalk.blue("\n─── Installing Playwright MCP ───"));
         for (const adapter of getAllAdapters()) {
-          if (!hasCommandArtifacts(projectRoot, adapter)) {
-            console.log(
-              chalk.gray(
-                `  - ${adapter.label}: not configured in this project (run "openspec-pw init --tools ${adapter.id}" to add)`,
-              ),
-            );
-            continue;
-          }
+          if (!hasCommandArtifacts(projectRoot, adapter)) continue;
           if (isTestRunnerMcpInstalled(adapter, projectRoot)) {
             console.log(
               chalk.green(
@@ -396,11 +450,6 @@ export async function update(options: UpdateOptions) {
           }
           try {
             ensureTestRunnerMcp(adapter, projectRoot);
-            if (adapter.supportsMcp !== false) {
-              console.log(
-                chalk.gray(`  (Restart ${adapter.label} to activate)`),
-              );
-            }
           } catch {
             console.log(
               chalk.yellow(
@@ -532,18 +581,8 @@ async function checkVersionShadow(projectRoot: string): Promise<void> {
   }
   if (!resolvedVersion || !resolvedPath) return;
 
-  let publishedVersion: string | undefined;
-  try {
-    const { stdout } = await execFileAsync(
-      "npm",
-      ["view", "openspec-playwright", "version"],
-      { timeout: 30000 },
-    );
-    publishedVersion = stdout.trim();
-  } catch {
-    // offline / npm registry unavailable — skip silently
-    return;
-  }
+  // Reuse the version resolved earlier in this run (one registry round trip).
+  const publishedVersion = await publishedLatestVersion();
   if (!publishedVersion || resolvedVersion === publishedVersion) return;
 
   const lines = versionMismatchLines(
@@ -559,11 +598,54 @@ async function checkVersionShadow(projectRoot: string): Promise<void> {
 }
 
 /**
- * Fetch the latest published bundle into a fresh tmp dir via `npm pack` and
- * extract it. Returns the tmp dir path (commands/templates/standards live in
- * it). Shared by the full phase and the `--no-skill` standards-only path.
+ * Bundle source decision: the running package already carries the published
+ * content when it is at the published latest — or when the registry cannot be
+ * reached. Otherwise the published package must be fetched.
  */
-async function fetchLatestBundle(): Promise<string> {
+export function chooseBundleSource(
+  latest: string | undefined,
+  running: string | undefined,
+  hasLocalContent: boolean,
+): "local" | "pack" {
+  if (!hasLocalContent) return "pack";
+  if (latest === undefined) return "local";
+  return running === latest ? "local" : "pack";
+}
+
+/** The global install can be left alone only when it is the published latest. */
+export function isCliCurrent(
+  installed: string | undefined,
+  latest: string | undefined,
+): boolean {
+  return Boolean(installed && latest && installed === latest);
+}
+
+/**
+ * Source of the published content (templates/, standards/): the running
+ * package when it already is the published latest — or when the registry
+ * cannot be reached — otherwise a fresh `npm pack` of the published package.
+ */
+interface BundleSource {
+  /** Directory holding templates/ and standards/. */
+  root: string;
+  /** True for a temp dir this run owns and must delete. */
+  disposable: boolean;
+}
+
+/**
+ * Resolve the bundle root. Shared by the full phase and the `--no-skill`
+ * standards-only path.
+ */
+async function resolveBundle(): Promise<BundleSource> {
+  const latest = await publishedLatestVersion();
+  const running = runningVersion();
+  const hasLocalContent = existsSync(
+    join(PACKAGE_ROOT, "templates", "e2e-command.md"),
+  );
+  if (chooseBundleSource(latest, running, hasLocalContent) === "local") {
+    return { root: PACKAGE_ROOT, disposable: false };
+  }
+
   const tmpDir = join(tmpdir(), "openspec-e2e-update");
   rmSync(tmpDir, { recursive: true, force: true });
   mkdirSync(tmpDir, { recursive: true });
@@ -587,7 +669,7 @@ async function fetchLatestBundle(): Promise<string> {
     cwd: tmpDir,
     strip: 1,
   });
-  return tmpDir;
+  return { root: tmpDir, disposable: true };
 }
 
 /**
@@ -633,16 +715,25 @@ export function syncE2eCommands(projectRoot: string, body: string): boolean {
     );
     return false;
   }
-  syncCommandArtifacts(projectRoot, body, migrated);
+  const unchanged = syncCommandArtifacts(projectRoot, body, migrated);
+  if (unchanged > 0) {
+    console.log(
+      chalk.gray(
+        `  - ${unchanged} editor${unchanged === 1 ? "" : "s"} already current`,
+      ),
+    );
+  }
   return true;
 }
 
+/** Rewrite stale command artifacts; returns how many editors needed no write. */
 export function syncCommandArtifacts(
   projectRoot: string,
   body: string,
   migratedIds?: ReadonlySet<string>,
-): void {
+): number {
   const meta = buildCommandMeta(body);
+  let unchanged = 0;
   for (const adapter of getAllAdapters()) {
     const relPath = adapter.commandFilePath(meta.id);
     const absPath = join(projectRoot, relPath);
@@ -655,11 +746,6 @@ export function syncCommandArtifacts(
       !existsSync(absPath) &&
       !migratedIds?.has(adapter.id)
     ) {
-      console.log(
-        chalk.gray(
-          `  - ${adapter.label}: not configured in this project (run "openspec-pw init --tools ${adapter.id}" to add)`,
-        ),
-      );
       continue;
     }
     // Drift-aware: only rewrite a command file when its content differs
@@ -688,11 +774,10 @@ export function syncCommandArtifacts(
     if (needsWrite) {
       installCommand(adapter, meta, projectRoot);
     } else {
-      console.log(
-        chalk.gray(`  - ${adapter.label}: ${relPath} already current`),
-      );
+      unchanged += 1;
     }
   }
+  return unchanged;
 }
 
 /**

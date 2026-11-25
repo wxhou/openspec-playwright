@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   existsSync,
   mkdirSync,
@@ -26,6 +26,14 @@ import {
 } from "../src/commands/editors.js";
 import { removeInProject } from "../src/commands/remove.js";
 import { compareBlock } from "../src/shared/drift.js";
+
+// The fixtures in this file are 1.x artifacts (opsx-e2e). Pin the OpenSpec
+// major so the adapter registry resolves the same naming family on any
+// machine.
+vi.mock("../src/shared/openspec-version.js", () => ({
+  OPENSPEC_LATEST_MAJOR: 2,
+  openSpecCliStatus: vi.fn(() => ({ ok: true, major: 1 })),
+}));
 
 // Shared temp-dir lifecycle for filesystem-touching tests below.
 let tmpRoot: string;

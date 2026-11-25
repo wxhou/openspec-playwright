@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- **fix(cli): update 复用已安装包，跳过已是最新的安装**. 全局安装版本与已发布 latest 相同时不再执行 `npm install -g`；同步命令、模板与规范时，运行版本等于 latest（或 registry 不可达）直接使用已安装包内的 `templates/`、`standards/`，不再 `npm pack` 取同一份发布包；一次运行只查一次 registry。
+  - `src/commands/update.ts`、`tests/update.test.ts`、`CHANGELOG.md`
+- **fix(cli): init 的 Ctrl+C 按取消处理**. 编辑器多选、移除确认、agents 确认与 `.gitignore` 多选被中断时打印取消提示、停止后续写入、退出码 0（原为红色错误 + 退出码 1）。
+  - `src/commands/init.ts`、`tests/init.test.ts`、`CHANGELOG.md`
+- **chore(test): 测试不再依赖本机安装的 OpenSpec 主版本**. doctor / editors-cursor / remove-minimax 三个测试文件固定 1.x 主版本桩（与其 fixture 一致），doctor 的编辑器分组断言改用与实现一致的默认命名族，update 的默认桩固定为 1.x；6 个随机器而变的失败消失，全量测试在任何机器上一致。
+  - `tests/doctor.test.ts`、`tests/editors-cursor.test.ts`、`tests/commands/remove-minimax.test.ts`、`tests/update.test.ts`、`CHANGELOG.md`
+- **fix(cli): update 不再强制绕过 npm 缓存**. 移除自动安装（全局 CLI 与 devDependency 同步）的 `--prefer-online`；发布后 `latest` 解析最多延迟一个 packument 缓存周期（registry `max-age=300`），换取更少的网络请求。版本不一致时的手动修复提示仍保留该 flag。
+  - `src/commands/update.ts`、`CHANGELOG.md`
+- **refactor(cli): 精简 init/update 的控制台输出**. 删除 MCP 与 agents 的命名出处说明、逐编辑器 `Restart` 提醒、四个无内容的 scaffold 标题（合并为一个）、update 中未配置编辑器与 `already current` 的逐条播报（改为一行数量汇总）、re-exec 流程播报与 devDependency 的三行解释；minimal 模式的三条 skip 合并为一块。错误/警告、实际写入结果、Summary 与 Next steps 不变。
+  - `src/commands/init.ts`、`src/commands/update.ts`、`src/commands/editors/registry.ts`、`tests/init.test.ts`、`tests/init-mcp-scope.test.ts`、`tests/update.test.ts`、`CHANGELOG.md`
 - **docs(readme): 合并双表并收敛重复说明**. 16 家编辑器合并为一张表（命令 / 产物 / MCP / 规则钩子），1.x 命名映射只留一处；`E2E_AUTH_*`、全局配置目录、安装清单同一条事实各留一处；受管 `.gitignore` 的 40 条路径移出「认证配置」，独立成「受管 `.gitignore` 路径」小节。第二轮删掉 Architecture 里与 CLI Commands 重复且已漂移的 CLI 树、逐编辑器的 MCP 条目 JSON 与规则加载复述、`remove --all` 的重复产物清单，小程序检查项改指 doctor 表；同时修正 Architecture 指向已合并的 Usage 表、`global.teardown.ts` 被标成 init 生成物两处失实。第三轮删掉「首次配置清单」（四步并入 Setup，保留 `--with-deps`/`xcode-select` 两条修复提示）、Architecture 的模板树与 Healer 块、Gemini/Qwen/Roo/Trae 的命令格式细节。第四轮删掉内部机制叙述——预选判据、40 条路径枚举、小程序信号分级、agents 归属细节、CLI 深层解释、审计五态表、doctor 机制说明、架构文件树——只留可操作结论。EN 与 zh 同步。
   - `README.md`、`README.zh-CN.md`、`CHANGELOG.md`
 - **refactor(e2e): 收敛 e2e 模板的重复指令**. `--auto` 的退缩规则与四个 reason 集中到 STOP 语义，各步只写原因；Step 8 的 BASE_URL 八级链改为指向生成的 config；删除与「do not switch to escape a diagnosable failure」重复的一句；元素选择器表删掉与全局优先级重复的 Buttons/Headings 行并对齐措辞；Phase 2 编号由 `2-0`/`2-5~2-7` 改为 `2-1~2-4`。行为不变，模板 353 → 348 行。
