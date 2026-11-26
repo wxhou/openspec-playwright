@@ -25,7 +25,9 @@ const changelogPath = resolve(root, "CHANGELOG.md");
 let changelog = readFileSync(changelogPath, "utf8");
 const today = new Date().toISOString().slice(0, 10);
 const archived = changelog.replace(
-  /^## \[Unreleased\]\s*$/m,
+  // Trailing spaces/tabs only: `\s*` would swallow the blank line that
+  // separates the heading from its first category.
+  /^## \[Unreleased\][^\S\n]*$/m,
   `## [${version}] - ${today}`,
 );
 if (archived !== changelog) {
