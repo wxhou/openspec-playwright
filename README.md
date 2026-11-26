@@ -197,7 +197,7 @@ openspec-pw init --tools claude --agents   # additionally install the official p
 
 Ownership is content-based: unmodified snapshots are refreshed by `update` and removed by `remove`, edited copies are never overwritten or deleted, and `doctor` warns (non-blocking) when their `playwright-test` MCP entry is missing. Init asks once (default No); minimal-mode projects skip agents along with MCP.
 
-> **Running `npx playwright init-agents` yourself is clobber-type**: it rewrites `.mcp.json` wholesale (your own entries are destroyed) and creates a parallel `opencode.json`. Run it *before* `openspec-pw init` if you must, and check `git diff .mcp.json`. With `--agents` you don't need it.
+> **Running `npx playwright init-agents` yourself is clobber-type**: it rewrites `.mcp.json` wholesale (your own entries are destroyed) and creates a parallel `opencode.json`. Run it *before* `openspec-pw init` with your editor's `--loop` (`claude`, `opencode`, `codex`, `copilot`, `vscode`; omitting it writes the Copilot set) if you must, and check `git diff .mcp.json`. With `--agents` you don't need it.
 
 </details>
 

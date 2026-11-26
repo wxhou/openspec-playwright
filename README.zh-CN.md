@@ -184,7 +184,7 @@ openspec-pw init --tools claude --agents   # 额外安装官方 planner agent �
 
 归属按内容判定：未修改的快照由 `update` 刷新、由 `remove` 删除；改过的副本永不覆盖、永不删除；其 `playwright-test` MCP 条目缺失时 `doctor` 给出非阻断 ⚠。交互式 init 询问一次（默认 No）；minimal 项目与 MCP 一起跳过。
 
-> **自己跑 `npx playwright init-agents` 是清场重写型**：整文件重写 `.mcp.json`（你自己的条目会被销毁），已有 `opencode.jsonc` 时另立一个 `opencode.json`。必须跑的话请在 `openspec-pw init` **之前**，并检查 `git diff .mcp.json`。用 `--agents` 则不需要它。
+> **自己跑 `npx playwright init-agents` 是清场重写型**：整文件重写 `.mcp.json`（你自己的条目会被销毁），已有 `opencode.jsonc` 时另立一个 `opencode.json`。必须跑的话请带上编辑器的 `--loop`（`claude` / `opencode` / `codex` / `copilot` / `vscode`；省略会写成 Copilot 那套），在 `openspec-pw init` **之前**执行，并检查 `git diff .mcp.json`。用 `--agents` 则不需要它。
 
 </details>
 
