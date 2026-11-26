@@ -112,9 +112,11 @@ Tests: 197/197 pass. No version bump.
 
 ## CHANGELOG Style
 
-- `[Unreleased]` entries use one short sentence each; no diff narration.
-- Merge related changes into one entry — do not split the same pattern (for example, two untracking chores) into separate entries.
-- Keep the `- **scope(area): summary**.` line plus an optional file list.
+- Group each release under `### Added` / `### Changed` / `### Fixed` / `### Docs` / `### Internal`, in that order; omit empty categories.
+- One bullet per change, one short sentence; the category carries the type, so no `fix(cli):` prefix. No diff narration.
+- No file lists — readers need the behavior, not the diff.
+- Merge the same pattern across files into one bullet; split unrelated changes that happen to ship together.
+- The `## [Unreleased]` heading is fixed — `scripts/bump-docs.js` renames it on release.
 
 <!-- OPENSPEC-PW:START -->
 

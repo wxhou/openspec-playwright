@@ -6,125 +6,119 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-- **fix(e2e): 收口档位文档的四处不一致**. 一次性脚本限定为「完全没有浏览器工具」一档（小程序保留自己的例外），与「有 MCP 时禁止脚本」不再冲突；web 版 `app-exploration.md` 把 `BASE_URL:`/`Browser tools:` 提到标题之后前两行、小程序版把 `Browser tools:` 提到首位，Step 4.2 的必填句同时补上 web 限定；报告头 `Base URL` 只对 web 目标成立（小程序写 `n/a`），换档时 `Tool:` 列出全部 server 与最低档；Session state 段补回「换服务不能保鲜」，与路由表的降档规则各司其职。
-  - `templates/{e2e-command,app-exploration,miniprogram/app-exploration}.md`、`tests/e2e-template-auto.test.ts`
-- **fix(e2e): 修正子代理委派提示的 loop 与执行顺序**. `init-agents` 补 `--loop <your loop>`——缺省会写出 Copilot 格式，与 Claude Code 的 `.claude/agents/` 对不上；注明该命令整份重写 `.mcp.json`，须在 `openspec-pw init` 之前执行；无官方 loop 的编辑器明确走 hand-write，官方 healer 仍禁用。README 双语的自跑警告同样补上 `--loop`。
-  - `templates/e2e-command.md`、`tests/e2e-template-auto.test.ts`、`README.md`、`README.zh-CN.md`
-- **fix(cli): 受管 .gitignore 块剔除冗余旧条目**. 块内不再保留「已从受管列表移除、但仍被某条受管目录覆盖」的行，升级后不会同时存在旧窄条目与新目录条目；覆盖关系单向（宽泛目录行、用户手写行、其覆盖者被 opt-out 的窄行均保留）。
-  - `src/shared/gitignore-managed.ts`、`src/commands/init-gitignore-block.ts`、`tests/gitignore-managed.test.ts`
-- **fix(cli): 取消路径不再谎报 .gitignore 已应用，stdin 判定可注入**. 受管块写入失败时，Ctrl+C 的提示改为「凭据未被忽略」而不是「已应用」；`init` 的 stdin TTY 判定改用 `InitDeps.stdinIsTTY`，测试不再依赖 runner 的 stdin。
-  - `src/commands/init.ts`、`src/commands/init-gitignore-block.ts`、`tests/init.test.ts`、`tests/commands/init-preselect.test.ts`
-- **fix(e2e): 修复循环先读失败产物再进浏览器**. `test-results/**/error-context.md`（失败瞬间的 ARIA 快照）提升为诊断第一步，`browser_snapshot` / console / network 只用于产物没有记录的错误形态；无浏览器 MCP 时明确「产物就是全部证据」，不再把进页面当成必经步骤。
-  - `templates/e2e-command.md`、`tests/e2e-template-auto.test.ts`
-- **fix(e2e): 探索产物记录浏览器档位，change 模式必填**. `app-exploration.md`（web 与小程序）新增 `Browser tools:` 行并写明它记录「产出这份探索的工具」——复用文件不改，换工具重新探索才更新；change 模式该行与 `BASE_URL:` 必填，项目根目录可选。报告模板新增 `Tool: <server> (rung <n>)`，缺行视为不完整。
-  - `templates/{app-exploration,miniprogram/app-exploration,e2e-command}.md`、`tests/e2e-template-auto.test.ts`
-- **docs(standards): §6 验收判据分档、修正无断言检验并启用 ⚪ 档位**. 权限验证只在 E2E/集成验收要求真实登录态，隔离单测的鉴权 mock 明示豁免；无断言检验改为「破坏被测分支或改反返回值」，不再误杀空态测试；「注释密度与命名习惯」「一个行为一组断言」从 🟡 长句拆出，独立标为 ⚪；§0 优先级规则四条并为两条，⚪ 明确「偏离无需说明」。
-  - `standards/employee-standards.md`、`standards/employee-standards.en.md`、`docs/script.js`
-- **fix(e2e): 恢复浏览器 MCP 优先的诊断循环**. 路由段按阶段分档并先枚举工具，`openspec-pw explore` 补进无 Playwright MCP 时的探索路径，有浏览器 MCP 时禁止写一次性脚本，并保留「脚本不得替代 `npx playwright test`」这条无条件规则（`--no-mcp` 的 CI 路径同样适用）；修复循环与 Phase 2-3 步骤同步列出 `browser_*` 诊断工具，并区分 `playwright-test`（还能跑/调测试）与只有浏览器工具的 `playwright`。
-  - `templates/e2e-command.md`、`tests/e2e-template-auto.test.ts`
-- **fix(cli): 清理过期注释与重复提示**. `syncE2eCommands` 上方的旧 JSDoc 删除（它描述的合并函数已不存在）；minimal 模式的跳过提示不再重复列一遍功能名；`isGlobalInstall` 用例补 Windows 大小写分支，两侧平台都断言。
-  - `src/commands/update.ts`、`src/commands/init.ts`、`tests/update.test.ts`
-- **docs(readme): 标注分组开关数与嵌套 opt-out 的行为**. `--auto-pipeline` 下只有三个分组（`openspec/` 保持可提交）；opt-out 落在受管目录内部时整个目录保持可提交且不再作为候选项。
-  - `README.md`、`README.zh-CN.md`
-- **fix(cli): update 复用已安装包，跳过已是最新的安装**. 全局安装已是已发布 latest 时不再 `npm install -g`；同步内容改用已安装包内的 `templates/`、`standards/`，一次运行只查一次 registry。
-  - `src/commands/update.ts`、`tests/update.test.ts`
-- **fix(cli): update 的内容来源与安装判定更严格**. 只有已发布的全局安装可代表发布包内容（检出目录不再作为来源）；运行的不是全局最新副本时把后续步骤交给全局副本；registry 不可达时不再声称「已更新到最新」。
-  - `src/commands/update.ts`、`tests/update.test.ts`
-- **fix(gitignore): 受管目录内的 skip 不再被整目录忽略覆盖**. 记录的 skip 落在受管目录内时该目录不进块，也不作为忽略候选；已写入的整目录行会被移除。
-  - `src/shared/gitignore-managed.ts`、`tests/gitignore-managed.test.ts`
-- **fix(cli): init 的 Ctrl+C 按取消处理**. 编辑器多选、移除确认、agents 确认与 `.gitignore` 多选被中断时打印取消提示、停止后续写入、退出码 0。
-  - `src/commands/init.ts`、`tests/init.test.ts`
-- **fix(cli): init 在 .gitignore 提示处取消仍写入受管块**. 取消时按默认集合写入受管 `.gitignore` 块后再停止，生成的凭据文件不会失去忽略保护。
-  - `src/commands/init.ts`、`tests/init.test.ts`
-- **refactor(init): 编辑器多选提示移出 init.ts**. 分组与提示逻辑移入 `init-editor-prompt.ts`，init.ts 回到 1500 行上限内。
-  - `src/commands/init.ts`、`src/commands/init-editor-prompt.ts`、`tests/commands/editor-prompt-groups.test.ts`
-- **chore(test): 测试不再依赖本机安装的 OpenSpec 主版本**. editors-cursor / remove-minimax / update 三个测试文件固定 1.x 主版本桩；doctor 的提示断言改为跟随已装主版本，不再假设 1.x。
-  - `tests/doctor.test.ts`、`tests/editors-cursor.test.ts`、`tests/commands/remove-minimax.test.ts`、`tests/update.test.ts`
-- **fix(cli): update 不再强制绕过 npm 缓存**. 自动安装不再带 `--prefer-online`，`latest` 解析最多延迟一个 registry 缓存周期（300 秒）。
-  - `src/commands/update.ts`
-- **refactor(cli): 精简 init/update 的控制台输出**. 删除实现出处说明、逐条播报与重复提示，保留错误、实际写入结果、Summary 与 Next steps。
-  - `src/commands/init.ts`、`src/commands/update.ts`、`src/commands/editors/registry.ts`、`tests/init.test.ts`、`tests/init-mcp-scope.test.ts`、`tests/update.test.ts`
-- **docs(readme): 合并双表并收敛重复说明**. 16 家编辑器合并为一张表，删去与 CLI 章节重复的架构叙述，EN 与 zh 同步。
-  - `README.md`、`README.zh-CN.md`
-- **docs(readme): remove --all 的描述与实际行为对齐**. 两份 README 不再称其为「默认 dry run」，改为「先列计划再确认」。
-  - `README.md`、`README.zh-CN.md`
-- **refactor(e2e): 收敛 e2e 模板的重复指令**. 退缩规则与原因集中到 STOP 语义，Step 8 改为指向生成的 config，模板 353 → 348 行。
-  - `templates/e2e-command.md`
-- **feat(cli): .gitignore 选择改为分组开关**. 四组各一行、取消整组即提交整组，自定义入口继承分组状态；六个编辑器目录改为整目录忽略，受管路径 49 → 40。
-  - `src/commands/init-gitignore-prompt.ts`、`src/shared/gitignore-managed.ts`、`tests/commands/init-gitignore-prompt.test.ts`、`tests/gitignore-managed.test.ts`、`README.md`、`README.zh-CN.md`
-- **feat(cli): 精简 init 编辑器选择与 remove --all 确认**. 编辑器多选按 Configured / Detected / Other 分段；`remove --all` 在 TTY 下打印计划后就地确认。
-  - `src/commands/init.ts`、`src/commands/remove.ts`、`tests/commands/editor-prompt-groups.test.ts`、`tests/commands/remove-all.test.ts`、`README.md`、`README.zh-CN.md`
-- **fix(cli): 补齐提示的 stdin 守卫与中断处理**. 编辑器多选仅在 stdin 为 TTY 时出现，`remove --all` 确认时 Ctrl+C 按拒绝处理。
-  - `src/commands/init.ts`、`src/commands/remove.ts`、`src/index.ts`、`docs/llms.txt`、`README.md`、`README.zh-CN.md`、`tests/commands/init-preselect.test.ts`、`tests/commands/remove-all.test.ts`
+
+### Added
+- 探索产物新增 `Browser tools:` 行，报告新增 `Tool: <server> (rung <n>)` 行
+- `.gitignore` 选择改为四组开关，取消整组即提交整组，自定义入口继承分组状态
+- `init` 编辑器选择按 Configured / Detected / Other 分段；`remove --all` 在 TTY 下就地确认
+- `init` 的 Ctrl+C 按取消处理：打印提示、停止后续写入、退出码 0
+
+### Changed
+- 修复循环先读 `test-results/**/error-context.md`，进浏览器只用于产物没有记录的形态
+- 路由段按阶段分档，`openspec-pw explore` 回到无 Playwright MCP 时的探索路径
+- `update` 复用已安装包，全局已是 latest 时跳过安装，内容取自包内 `templates/`、`standards/`
+- `update` 只在全局安装为已发布最新副本时代表包内容；registry 不可达时不再声称已更新
+- `update` 不再带 `--prefer-online`
+- `init` / `update` 输出精简为错误、实际写入结果、Summary 与 Next steps
+
+### Fixed
+- 受管 `.gitignore` 块剔除被目录覆盖的冗余旧条目
+- 受管目录内的 skip 不再被整目录忽略覆盖
+- `init` 取消路径不再谎报 `.gitignore` 已应用；写入失败时提示凭据未被忽略
+- 取消 `.gitignore` 提示时仍写入默认受管块，凭据文件不失去忽略保护
+- 编辑器多选仅在 stdin 为 TTY 时出现，`remove --all` 确认时 Ctrl+C 按拒绝处理
+- e2e 一次性脚本只属「完全没有浏览器工具」档，小程序保留自己的例外
+- 探索文件头改为 `BASE_URL:` / `Browser tools:` 在前，Step 4.2 补 web 限定
+- 报告 `Base URL` 限定 web 目标；换档时 `Tool:` 列出全部 server 与最低档
+- 子代理委派提示补 `--loop`，并注明须在 `openspec-pw init` 之前执行，官方 healer 仍禁用
+- Session state 段补回「换服务不能保鲜」，与降档规则各司其职
+
+### Docs
+- 规范 §6 验收判据分档：权限验证限定 E2E/集成，无断言检验改为「破坏分支或改反返回值」，⚪ 档位启用
+- README 标注分组开关数与嵌套 opt-out 行为
+- README 编辑器表合并为一张，删去与 CLI 章节重复的架构叙述
+- README 不再称 `remove --all` 为「默认 dry run」
+- README 双语：`init-agents` 警告补上 `--loop`
+
+### Internal
+- 更新日志改为 Added / Changed / Fixed / Docs / Internal 分类，去掉逐条文件清单
+- 删除过期 JSDoc 与重复提示；`isGlobalInstall` 用例补 Windows 分支
+- `init` 的编辑器多选提示移入 `init-editor-prompt.ts`，`init.ts` 回到 1500 行内
+- 三个测试文件不再依赖本机 OpenSpec 主版本
+- e2e 模板收敛重复指令，353 → 348 行
 
 ## [0.3.124] - 2026-11-24
-- **docs(cli): 生成物与元数据同步 2.x 命名**. 生成的 seed / credentials / playwright.config 去掉写死的 1.x 命令名；包描述、站点与 llms 摘要统一为 2.x 与 16 家编辑器，README 命令示例以 2.x 为主。
-  - `templates/{seed.spec.ts,credentials.yaml,playwright.config.ts}`、`package.json`、`docs/{llms.txt,script.js}`、`README.md`、`tests/init.test.ts`、`CHANGELOG.md`
-- **docs(cli): 安装命令改用 `@latest`**. 文档、模板与 `init`/`doctor` 提示统一为 `npm install -g @fission-ai/openspec@latest`（最新版即 2.x），已装 1.x 时的提示仍为 `@1`。
-  - `src/shared/openspec-version.ts`、`src/commands/{init,doctor}.ts`、`templates/{auto-pipeline,github-workflow}.yml`、`docs/{llms.txt,index.html}`、`README.md`、`README.zh-CN.md`、`tests/{init,auto-pipeline}.test.ts`、`tests/shared/openspec-version.test.ts`、`tests/commands/doctor-openspec-version.test.ts`、`CHANGELOG.md`
-- **fix(cli): update 迁移生成物里的旧命令名**. `update` 原位改写 `tests/playwright/seed.spec.ts` 与 `playwright.config.*` 中遗留的 `/opsx:e2e`、`openspec-pw run` 文案（含更早的 `Then re-run /opsx:e2e.` 措辞），其余内容与用户改动保持不变；软链跳过，只读文件降级为提示，幂等，无遗留文案时不写入。
-  - `src/commands/update.ts`、`tests/commands/update-legacy-hints.test.ts`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
+
+### Changed
+- 生成的 seed / credentials / playwright.config 不再写死 1.x 命令名，包描述与站点统一为 2.x
+- 安装提示统一为 `npm install -g @fission-ai/openspec@latest`；已装 1.x 时仍提示 `@1`
+
+### Fixed
+- `update` 原位改写生成物里的旧命令名，保留用户改动、幂等，无残留时不写入
 
 ## [0.3.123] - 2026-11-24
-- **fix(cli): 规则副本刷新后不再留下标题空壳**. `init`/`update` 刷新过的副本，在 `--no-rule-files`、取消勾选或 `remove` 后不再残留 `# <目录名>` 空壳；块外有用户内容时仍只移除标记块。
-  - `src/commands/editors/project-rules.ts`、`tests/editors-rules-mode.test.ts`、`tests/commands/{init-rule-files,remove-command}.test.ts`、`CHANGELOG.md`
-- **fix(cli): 兼容 OpenSpec 2.x**. 版本闸门接受 1.x/2.x 并给出对应安装提示；2.x 下 e2e 产物改名 `openspec-e2e`（共享 skill + Claude 副本），从 1.x 升级时按内容自动迁移未改动的旧 `opsx-e2e`；自主流水线改为运行时探测工作流面（`APPLY`/`VERIFY`/`E2E` 经 `$GITHUB_ENV` 传递），干净 runner 显式写入 workflow 列表、2.1+ 传 `--scope project`，自动 PR 不提交 `.agents/skills/openspec-*`；新模板安装 `@2`，已生成的旧流水线保持 `@1` 仍可运行；彻底移除 pre-0.3.74 的 legacy skill 兼容。
-  - `src/shared/{openspec-version,discover,gitignore-managed}.ts`、`src/commands/{init,update,doctor,remove,migrate}.ts`、`src/commands/editors/*`、`templates/*.yml`、`standards/*`、`docs/*`、`README.md`、`README.zh-CN.md`、`tests/*`、`CHANGELOG.md`
-- **refactor(cli): 拆分 init 的受管 gitignore 与规则副本逻辑**. `init.ts` 1547 → 1421 行，7a 段与规则副本判定/清理分别移入 `init-gitignore-block.ts`、`init-rules-copy.ts`；无行为变化。
-  - `src/commands/init.ts`、`src/commands/init-gitignore-block.ts`、`src/commands/init-rules-copy.ts`、`CHANGELOG.md`
-- **fix(cli): 修正共享产物的配置归属并支持退出规则副本**. Codex 从共享 `.agents/skills` 正确预选、共享 `.mcp.json` 不再把四家编辑器一并标为已配置、`opencode.jsonc` 纳入受管 gitignore；新增 `init --rule-files/--no-rule-files`，退出记录写在受管块 skip 行，`update` 不重建、`doctor` 不判红。
-  - `src/commands/{init,update,doctor}.ts`、`src/commands/editors/{configured,project-rules}.ts`、`src/shared/{gitignore-managed,index}.ts`、`src/index.ts`、`README.md`、`README.zh-CN.md`、`tests/{update,smoke,gitignore-managed}.test.ts`、`tests/commands/{doctor,init-preselect,init-rule-files}.test.ts`、`CHANGELOG.md`
-- **docs(site): 补齐编辑器清单的中文入口**. Claude Code、Gemini CLI、Qwen Code、GitHub Copilot 的中文模式改指官方中文文档，Trae 指向中国站 `trae.cn`，Codex 指向官方中文页；英文模式保持原链接。
-  - `docs/index.html`、`CHANGELOG.md`
+
+### Added
+- 版本闸门接受 OpenSpec 1.x 与 2.x，并给出对应安装提示
+- 2.x 下 e2e 产物改名 `openspec-e2e`；从 1.x 升级时按内容自动迁移未改动的旧 `opsx-e2e`
+- 自主流水线改为运行时探测工作流面，自动 PR 不提交 `.agents/skills/openspec-*`
+- 新增 `init --rule-files/--no-rule-files`，退出记录写在受管块 skip 行
+
+### Changed
+- 新模板安装 `@2`，已生成的旧流水线保持 `@1` 仍可运行
+- 移除 pre-0.3.74 的 legacy skill 兼容
+
+### Fixed
+- 规则副本刷新后不再留下标题空壳
+- 共享产物配置归属：Codex 正确预选，共享 `.mcp.json` 不再误标四家编辑器已配置
+- `opencode.jsonc` 纳入受管 gitignore
+
+### Docs
+- 编辑器清单补齐中文入口（Claude Code / Gemini CLI / Qwen Code / GitHub Copilot / Trae / Codex）
+
+### Internal
+- `init.ts` 拆分受管 gitignore 与规则副本逻辑，1547 → 1421 行
 
 ## [0.3.122] - 2026-11-19
-- **docs(standards): 精简三处与 §0 重复的措辞**. §1 关键假设改为引用 §0 核实梯（删两处重述），注释纪律条目去掉与标题逐字重复的前缀，`lint-guidelines.md` 的未安装括注只保留首次出现；条数与语义不变。中英 SSOT、`docs/script.js` 内嵌与 `AGENTS.md` 镜像同步。
-  - `standards/employee-standards.md`、`standards/employee-standards.en.md`、`docs/script.js`、`AGENTS.md`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
-- **docs(standards): 经验沉淀改指项目 openspec/config.yaml**. §0 条款改为把防再犯规则写进项目的 `openspec/config.yaml` `context`，中英 SSOT、文档嵌入与测试锚点同步。
-  - `standards/employee-standards.md`、`standards/employee-standards.en.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
-- **feat(cli): 新增七个编辑器适配器**. 支持 Gemini CLI（TOML 命令）、Qwen Code、GitHub Copilot（VS Code prompt + 共享 `.mcp.json`）、Roo Code、Trae、Codex（与 MiniMax 共享技能）与 Kimi Code；命令产物新增 TOML 输出，MCP 配置新增可选的 `stdio` 类型，规则文件新增 `full` 模式（含父目录创建与 update 刷新），移除阶段新增共享命令产物保留；受管 gitignore 路径 24 → 40。
-  - `src/commands/editors/{types,shared,declaration,mcp-carriers,registry,removal}.ts`、`src/commands/editors/adapters/{gemini,qwen,github-copilot,roocode,trae,codex,kimi}.ts`、`src/commands/{init,update,doctor,remove}.ts`、`src/shared/gitignore-managed.ts`、`README.md`、`README.zh-CN.md`、`docs/index.html`、`tests/*`、`CHANGELOG.md`
+
+### Added
+- 新增七个编辑器适配器：Gemini CLI、Qwen Code、GitHub Copilot、Roo Code、Trae、Codex、Kimi Code
+
+### Docs
+- 规范中三处与 §0 重复的措辞精简，条数与语义不变
+- 经验沉淀改指项目的 `openspec/config.yaml` `context`
 
 ## [0.3.121] - 2026-11-18
-- **fix(cli): 规范语言默认跟随系统语言**. 未安装规范时优先读操作系统语言（macOS `AppleLanguages`/`AppleLocale`，Windows `PreferredUILanguages`/`LocaleName`），再回退终端 locale；`update` 自更新后的重执行保留 `--lang`；旧版无锚点中文块按 `## 0. 适用范围` / `## 一、代码质量` 两种旧标题兜底识别，不再被翻成英文。
-  - `src/shared/standards-language.ts`、`src/commands/update.ts`、`src/index.ts`、`tests/shared/standards-language.test.ts`、`tests/update.test.ts`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
+
+### Changed
+- 规范语言默认跟随系统语言，`update` 自更新后保留 `--lang`；旧版无锚点中文块按旧标题兜底识别
 
 ## [0.3.120] - 2026-11-18
-- **docs(standards): 压缩规范到 200 行目标内**. 中文版 213→187 行、英文版 194→171 行：删掉与 §1 重复的「修复预算」条款，成组子条目并入主条；§7 的 DO「先确认数据量级」经删条款对照实验确认与同节 🔴 无界读取条重复后删除；§1 的临时方案条款压成一句，并把「升级触发条件」并入同节 `debt:` 规则——盲评 A/B 显示删整行会失去「先跑通最小端到端」（PASS 2/6→0/6），故保留该句。新增 `tests/standards-length.test.ts` 把 SSOT 锁在 190 行内，安装进 `AGENTS.md` 后中英分别 190/174 行，不再触发 Claude Code 的启动超长警告。
-  - `standards/employee-standards.md`、`standards/employee-standards.en.md`、`docs/script.js`、`tests/{docs-sync,standards-length}.test.ts`、`CHANGELOG.md`
 
-- **docs(standards): 新增 §0「核实与求助」条款**. 不确定属实的事实先核实再作答——已装源码/类型定义 → 官方文档 → 网络搜索，仍无法确认就问用户，不按记忆作答；英文 SSOT 与 docs 内嵌同步。
-  - `standards/employee-standards.md`、`standards/employee-standards.en.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
-- **fix(cli): 要求 OpenSpec 1.x CLI**. OpenSpec 2.x 不再生成 `/opsx:*` 命令文件，改为在 `.agents/skills/` 下安装 skill，本工具的流水线模板依赖这些 1.x 产物。安装命令统一钉 `@1`；`doctor` 检出 2.x、缺 CLI 或版本不可读时判为不支持并退出 1，`init` 在 CLI 为 2.x 或版本不可读时中止，`update` 只警告不阻断；npm 包不再携带 v1 生成的 `.claude/` 命令与 skill 副本。
-  - `src/shared/openspec-version.ts`、`src/commands/{init,doctor,update}.ts`、`package.json`、`templates/{auto-pipeline,github-workflow}.yml`、`docs/index.html`、`docs/llms.txt`、`README.md`、`README.zh-CN.md`、`tests/shared/openspec-version.test.ts`、`tests/{smoke,init,auto-pipeline}.test.ts`、`tests/init-mcp-scope.test.ts`、`tests/commands/{doctor,doctor-lint-semantic,init-miniprogram,init-deselect,init-language,init-lint-config,init-minimax,init-preselect}.test.ts`、`CHANGELOG.md`
-- **feat(cli): 新增 `install --claude`**. 只包装官方 native installer：默认打印命令，`--run` 才执行，`--verify` 检查安装；默认 `latest`，支持 `stable` 与指定版本；不含镜像、代理或地区绕过。
-  - `src/index.ts`、`src/commands/install.ts`、`tests/commands/install.test.ts`、`tests/smoke.test.ts`、`README.md`、`README.zh-CN.md`、`docs/llms.txt`、`CHANGELOG.md`
-- **feat(cli): 新增小程序目标**. 检测强/弱小程序信号并支持 `--miniprogram` 强制；脚手架改用官方 `@open-wxa/wxa-runner-playwright` fixture，CI、doctor、update、remove 与 `/opsx:e2e` 同步支持；已存在小程序产物的项目会被重新判定为 frontend 模式。`update` / `remove` / `doctor` 只按生成物标记判定目标，既有 Web 脚手架不会被静默切换；`init --miniprogram` 遇到 Web 脚手架会拒绝半迁移。
-  - `src/index.ts`、`src/commands/{init,update,remove,pipeline,doctor}.ts`、`src/shared/{app-detect,miniprogram,workflow-render}.ts`、`templates/miniprogram/`、`templates/e2e-command.md`、`.claude/commands/opsx/e2e.md`、`package.json`、`package-lock.json`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
-- **fix(cli): 修正小程序目标解析与清理边界**. uni-app 默认产物跟随构建脚本，原生项目读取 `miniprogramRoot`；迁移护栏只在 frontend 模式生效并覆盖反向切换；`remove` 清理小程序 README，构建脚本改名后仍能识别工作流；CI 矩阵与文档统一到 Node 22。
-  - `src/shared/miniprogram.ts`、`src/commands/{init,miniprogram,remove}.ts`、`.github/workflows/ci.yml`、`README.md`、`README.zh-CN.md`、`tests/commands/{init-miniprogram,remove-command}.test.ts`、`tests/shared/miniprogram.test.ts`、`CHANGELOG.md`
-- **fix(cli): 修正小程序目标判定与归属边界**. 普通 `init` 遇到既有 Web 脚手架保持 Web；检测覆盖 workspace 成员；构建命令在拥有脚本的包里执行；`update` 不再覆盖用户改过的 `wxa-test.ts`（缺失时重建）；工作流归属不因构建脚本增删改名失效；迁移护栏提前到删除阶段之前。
-  - `src/shared/{app-detect,miniprogram,workflow-render}.ts`、`src/commands/{init,miniprogram,pipeline,remove,update}.ts`、`templates/e2e-command.md`、`.claude/commands/opsx/e2e.md`、`README.md`、`README.zh-CN.md`、`tests/shared/{app-detect,miniprogram,workflow-render}.test.ts`、`tests/commands/{init-miniprogram,remove-command}.test.ts`、`CHANGELOG.md`
-- **fix(cli): 按 workspace 成员解析小程序**. 仓库根拥有 `dev` 脚本时，产物目录、构建命令与页面清单改按检测到的成员目录解析；`entryPagePath` 在所有页面清单中优先；含空格的成员路径加引号；`wxaProject` 只有作为配置选项时才构成小程序标记。
-  - `src/shared/{app-detect,miniprogram}.ts`、`src/commands/miniprogram.ts`、`tests/shared/{app-detect,miniprogram}.test.ts`、`CHANGELOG.md`
-- **fix(cli): 修正工作流归属与小程序诊断输出**. `remove` 在构建脚本新增或删除后仍识别自己的工作流，用户额外添加的 npm 步骤会让文件保留；auto-pipeline 的构建步骤继承所服务步骤的 `if:`；`doctor` 的小程序检查给出构建/升级命令，不再打印 Web 专属的 dev-script 与 base-url 诊断；`/opsx:e2e` 探索补 `--setup` 与动态端口，依赖说明加入 `wxa-runner@^0.13`；原生小程序（无构建脚本、产物已存在）不再被要求构建。
-  - `src/commands/{remove,doctor,miniprogram,init}.ts`、`src/shared/workflow-render.ts`、`templates/e2e-command.md`、`.claude/commands/opsx/e2e.md`、`README.md`、`README.zh-CN.md`、`tests/commands/{remove-command,doctor-miniprogram,init-miniprogram}.test.ts`、`tests/shared/workflow-render.test.ts`、`CHANGELOG.md`
-- **docs(miniprogram): 说明编译框架的 data 键名**. uni-app / Taro 编译后会重命名页面 data 的键（`title` 变成 `b`），`/opsx:e2e`、探索模板与测试计划改为要求先读 `pageData()` 再断言稳定键；`remove` 在保留被改过的小程序 README 时给出提示。
-  - `templates/e2e-command.md`、`.claude/commands/opsx/e2e.md`、`templates/miniprogram/{app-exploration,test-plan,tests-readme}.md`、`src/commands/remove.ts`、`tests/commands/remove-command.test.ts`、`CHANGELOG.md`
-- **fix(cli): 按 Taro 的 outputRoot 解析产物并声明运行时限制**. 根 `project.config.json` 写死 `dist`、实际产物在 `dist/<platform>` 时，改用 Taro 的 `outputRoot` 并解析 `process.env.TARO_ENV`；Taro 3.6 实测在浏览器运行器里报 `没有找到页面实例`，README 与 `/opsx:e2e` 要求 seed 失败即停止，不关闭错误检查。
-  - `src/shared/miniprogram.ts`、`tests/shared/miniprogram.test.ts`、`templates/e2e-command.md`、`.claude/commands/opsx/e2e.md`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`
-- **chore(deps): 升级 Playwright 到 1.65.1**. `@playwright/test` 与 `playwright` 同步升到 `^1.65.1`；`engines.node` 提到 `>=22`，因为 Playwright 1.65 不再测试 Node 20。已装浏览器的项目需重跑 `npx playwright install`。
-  - `package.json`、`package-lock.json`、`README.md`、`README.zh-CN.md`、`docs/index.html`、`CHANGELOG.md`
-- **fix(cli): 移除 codegraph MCP 安装提示**. init / update 的摘要与 doctor 的 `codegraph-mcp` 检查不再打印 `codegraph install --target=auto --location=local`；已建索引时只保留 `codegraph sync` 一行，未建索引时仍提示可选的 `codegraph init`。
-  - `src/shared/codegraph.ts`、`src/commands/{doctor,init,update}.ts`、`tests/shared/codegraph.test.ts`、`tests/commands/doctor.test.ts`、`CHANGELOG.md`
-- **docs(standards): 新增大文件与外部制品源规范**. §8 要求 ≥1GB 制品按「显式指定 > 项目可信源 > 国际官方源」选源并确认版本，源不可用即显式失败并打印切换方法；改配置须用户选定，非交互只读；按官方元数据校验哈希；不按 IP/时区静默切换。§8 仅中文，英文 SSOT 覆盖 §0–§7。
-  - `standards/employee-standards.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
-- **feat(cli): 新增员工规范语言选择**. `init` / `update` 支持 `--lang zh|en`，按「显式参数 > 已安装块 > 系统 locale > 英文」选择规范语言；新增英文 SSOT `standards/employee-standards.en.md`；语言文件缺失或英文 SSOT 缺 §0–§7 时显式失败；`doctor` 按已安装块语言比对；只读 locale，不判断地区。
-  - `src/shared/standards-language.ts`、`src/commands/{init,update,doctor,standards-source}.ts`、`src/index.ts`、`src/shared/{drift,index}.ts`、`standards/employee-standards.en.md`、`package.json`、`README.md`、`README.zh-CN.md`、`tests/{docs-sync,drift,smoke}.test.ts`、`tests/update.standards.test.ts`、`tests/commands/{doctor,init-language}.test.ts`、`tests/shared/standards-language.test.ts`、`CHANGELOG.md`
-- **chore(standards): 规范 SSOT 移到 `standards/`**. `employee-standards.md` 与 `employee-standards.en.md` 从仓库根移入 `standards/`；运行时读取、npm 打包与 `standards:sync` 脚本同步更新。
-  - `standards/`、`package.json`、`scripts/sync-standards.mjs`、`src/commands/{init,update,editors/project-rules}.ts`、`src/shared/drift.ts`、`tests/{docs-sync,drift,smoke,standards-sync,editors,editors-codebuddy,update,update.standards}.test.ts`、`tests/commands/init-deselect.test.ts`、`CHANGELOG.md`
-- **docs(standards): 临时文件按写入日期分目录**. §5 要求临时文件放入 `tmp/` 下按写入当天建的日期目录（如 `tmp/20261117/`，当天首次写入时创建），文件名只需时间（`HHMMSS`，同名加序号），不再直接放在 `tmp/` 根下。
-  - `standards/employee-standards.md`、`standards/employee-standards.en.md`、`AGENTS.md`、`docs/script.js`、`tests/docs-sync.test.ts`、`CHANGELOG.md`
+### Added
+- 新增小程序目标：检测强/弱信号并支持 `--miniprogram` 强制，脚手架改用官方 `wxa-runner` fixture
+- 新增 `install --claude`：只包装官方安装器，默认打印命令，`--run` 才执行
+- `init` / `update` 支持 `--lang zh|en`，新增英文 SSOT；`doctor` 按已装块语言比对
+- 规范新增 §0「核实与求助」：不确定的事实先核实再作答，无法确认就问用户
+- 规范新增 §8 大文件与外部制品源：≥1GB 按可信源顺序选源并校验哈希
+
+### Changed
+- 安装命令钉 `@1`；检出 2.x、缺 CLI 或版本不可读时 `doctor` 退出 1、`init` 中止
+- 规范压缩到 190 行上限内，新增测试锁住长度
+- 规范 SSOT 移到 `standards/`，运行时读取、打包与同步脚本随之更新
+- 临时文件改为 `tmp/<日期>/` 分目录，文件名只需时间
+- Playwright 升到 1.65.1，`engines.node` 提到 `>=22`
+
+### Fixed
+- 小程序目标解析与清理边界：uni-app 跟随构建脚本、原生读取 `miniprogramRoot`，迁移护栏覆盖反向切换
+- 小程序目标判定与归属边界：既有 Web 脚手架保持 Web，`update` 不再覆盖用户改过的 `wxa-test.ts`
+- 按 workspace 成员解析小程序产物、构建命令与页面清单
+- 工作流归属：构建脚本增删改名后仍识别自己的工作流
+- 按 Taro `outputRoot` 解析产物；Taro 3.6 在浏览器运行器不可用时要求停止而非关闭检查
+- `remove` / `init` 摘要与 `doctor` 不再打印 codegraph 安装提示
+
+### Docs
+- 小程序模板说明编译框架会重命名 data 键，改为先读 `pageData()` 再断言稳定键
 
 ## [0.3.119] - 2026-11-15
 - **fix(e2e): 修正认证检查与升级提示**. API/UI 的 `E2E_AUTH_CHECK_PATH` 检查禁用重定向，UI setup 也执行该检查；README 补旧 `auth.setup.ts`/workflow 的升级提示；skill 选择器表与 `docs/llms.txt` 的 explore 描述对齐。
