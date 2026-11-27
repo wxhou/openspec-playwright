@@ -31,7 +31,7 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🟡 代码文件行数上限 1500：本次编辑推过 1500 即违例，按职责拆分；存量已超限的报告不动，不得继续堆叠（生成/vendored 产物除外）
 - 🟡 新建或改建数据结构时，把非法组合挡在构造处（联合类型、枚举、构造参数校验），而不是散落成各使用点的 if 兜底；动态语言在构造或解析入口一次拦截；未被本次改动触及的既有结构不动
 - 🟡 状态建模：改动涉及相互约束的布尔/可空字段/阶段分支时，先理清状态、状态转换、非法组合与竞态；派生值不单独建模。简单流程不必引入状态机库；长流程、跨进程、可恢复/并行再考虑工作流引擎，关键协议再考虑形式化模型。
-- 🟡 数据库迁移：schema 变更先确认项目已有的迁移工具与命令；按工具约定生成/编写并审查，不绕过工具手写脚本或迁移目录外 SQL；一个迁移只做一件事，已应用的不改；破坏性变更按 expand/contract 分阶段；没有迁移工具先问，不自行发明。
+- 🟡 数据库迁移：schema 变更走项目迁移工具与目录，生成后 lint/审查，不绕过工具手写 SQL；无工具先问，不自行发明——遗留手搓脚本须版本化、可审查、可回滚；AI 不直连共享环境执行 DDL，本地/独立测试库与一次性演示库不在此限；破坏性变更按 expand/contract 分阶段，已应用的迁移不改。
 - 🟡 会被重试、或可能中途失败的写操作做成幂等：重跑一次终态不变（不重复插入、不重复扣减）；做不到的在调用处注明不可重试，而不是默认调用方只调一次
 - 🟡 并发与事务：状态能各持一份就不共享；必须共享的收窄到单一写入口，其余只读。多步写同处一个事务或设计补偿（saga/outbox）；事务只包临界读写，不做外部调用；事务体须可整体重试。检查后行动改为原子条件写（条件 UPDATE/唯一约束/版本号），冲突时重试或显式失败；应用层锁只保护进程内状态。
 
@@ -120,14 +120,71 @@ const CLAUDE_MD_ZH = `# 项目规范
 - 🔴 禁止无界并发：大批量任务不限并发度地一次性发起、无上限开连接/进程/线程——并发池/信号量显式限流
 - 🟡 循环内 I/O 须批量化（N+1 查询、循环内发请求/写文件；流式分块写不算"攒齐"，错误日志保留、聚合输出）
 - 🟡 不写随输入增长的无界缓存（无上限、无淘汰的累积结构）
+`; // spec-embed:zh
+
+const ML_DELTA_ZH = `# 项目规范 · ML
+- 这份代码库是你的：训练什么、以什么指标评测，按 \`openspec/config.yaml\` 的约定执行；先读它（数据集、模型、算力、主指标、预算）
+- ML 库的 API 与默认值漂移极快，不凭记忆写——已装源码/类型定义 → 官方文档 → 网络搜索，仍无法确认就问用户
+- 优先级三档：🔴 违反 → 结论不可信、不可复现或不可逆损失；🟡 偏离需说明；⚪ 可调整；冲突按 🔴 > 🟡 > ⚪ 裁决
+
+## 评测完整性
+- 🔴 不改评测面：metric 计算、评测脚本、阈值、划分、解码/beam 参数、评分数据，以及评测包装器与超时处理，都不在可改范围；确需改 → 说清动机并取得授权
+- 🔴 上报值只来自本次真实运行且可重算：不改写、不手填、不拿旧结果冒充
+- 🔴 不挑 checkpoint、beam 或数据切片冒充"该实验的结果"；一次实验内不改主指标口径
+- 🟡 主指标与基线同列；基线在同预算下重跑，不引用别处的数字
+- 🟡 主指标是目标的代理：映射写进配置；指标不再改善真实目标 → 停下确认，不自行替换目标或口径
+
+## 数据边界
+- 🔴 训练期不读 test 划分或标签，不把 test 混入 train/val，不按 test 表现回调超参
+- 🔴 不静默替换数据集/模型/方法：拿不到、schema 不符、许可不清 → 停下告知
+- 🔴 不裁剪或子采样数据集让目标通过；改了分词或预处理就不与旧结果比较
+- 🔴 划分按形态选：时序 → 时间边界（测试严格在后）；同一实体多样本 → 按实体分组；其余 → 不变哈希键（按样本 ID，禁时间戳/随机数/当前日期入键）
+- 🔴 数据集不入版本控制（样本、权重与索引文件同算）
+
+## 训练运行与预算
+- 🟡 昂贵运行前填前置清单：参考实现、数据列与切分、模型规格、checkpoint 去向、超时依据、监控入口；填不满不启动
+- 🟡 先冒烟再批量：单卡/小样本跑通 → 一个小作业完整跑完 → 才并发或扩规模
+- 🟡 对照固定预算：同数据、划分、评测、步数、超时；改预算即新实验，分数不跨预算比较
+- 🟡 实验在专用分支/标签上跑，不在 main；统一入口启动，不绕过直接调训练器或容器；不擅自建虚拟环境或装依赖
+- 🟡 超时按作业规模设定，不用平台默认值截断；超参搜索写成 sweep 脚本，不逐个手调
+- 🔴 不因 OOM/超时改方法或评测口径（SFT→LoRA、缩短序列、关监控都算换方案）
+- 🔴 不杀、不覆盖运行中的实验；删或重置 runs/checkpoints 前取得明确同意
+
+## 可复现与台账
+- 🟡 seed 数与聚合规则、超参搜索空间与选择规则写清；单次运行不得表述为确定性结论
+- 🟡 每次运行落 config 快照、环境版本、日志与产物路径
+- 🟡 台账只追加不改写：commit、配置摘要、主指标、耗时、状态、产物
+- 🟡 保留判据：实质提升才保留；持平但更简单/更快也算赢；微小提升换来脆弱代码或更高耗时 → 不保留
+- 🟡 同数据重跑两次，比对聚合指标与逐样本预测；中途崩溃后能从 checkpoint 恢复
+- 🟡 运行标注 exploratory / confirmatory；探索性运行不作为主结论的证据
+- 🟡 多轮无提升先查文献与引用图，抽取「数据 + 方法 + 超参 → 分数」的配方，不随机抖超参
+- 🔴 不覆盖已有 run 目录；runs/、日志与 checkpoint 不进版本控制，只提交台账与配置快照
+
+## 代码、依赖与环境
+- 🟡 训练脚本从当前版本示例与文档出发，写前核对签名与默认值
+- 🟡 依赖锁定版本；CUDA、bf16、多卡路径在 GPU 环境验证
+- 🟡 训练脚本关进度条、按步记录指标、首步即记，保证日志可按行解析
+- 🔴 不吞异常、不关断言/告警、不硬编码值绕过报错、不 mock 真实训练管线让流程"跑通"
 
 ## 大文件与外部制品源
-- 🟡 单个制品或单次安装 ≥ 1GB 前先选源：显式指定 > 项目配置的可信源（如国内镜像） > 国际官方源，确认该源提供目标版本；不可用即显式失败并打印切换方法；改配置须用户选定，非交互环境只读配置
+- 🟡 单个制品或单次安装 ≥ 1GB 前先选源：显式指定 > 项目配置的可信源 > 国际官方源
 - 🟡 下载后按官方元数据校验大小与哈希，记录源、版本、哈希
 - 🔴 不按 IP、时区或语言静默切换源；探测只用于推荐
-- 🔴 缺包、版本不符或校验失败不得静默回退；显式失败，或经用户确认后回退并记录原因
+- 🔴 缺包、版本不符或校验失败不得静默回退；显式失败，或经确认后回退并记录
 - 🔴 第三方公益镜像不设为默认源，须项目显式加入可信清单
-- 🟡 生态级（pip/npm/go/cargo/apt/docker）改索引或 registry；制品级（模型/数据集/直链）按制品解析，不混用`; // spec-embed:zh
+
+## 结果汇报
+- 🟡 写"预期 X，实测 Y"；差异给解释或标注未解释
+- 🟡 算力披露到硬件、墙钟、单次与总量；失败与预实验成本一并说明
+- 🟡 给方差或区间，说明来源与算法（sd 或 sem）
+- 🟡 交付或对外发布附模型卡与数据卡：用途与局限、来源与许可、评测范围与已知失效
+- 🔴 不用单次最好成绩代表方法水平，不省略失败运行
+
+## 通用底线
+- 🔴 不编造数据、字段名、指标值、URL 或接口形态；缺就停下问
+- 🔴 破坏性命令（删权重/数据集/runs、reset --hard、rm -rf）执行前声明影响范围并取得同意
+- 🔴 密钥与 .env 不入版本控制，日志不打印凭据
+`; // spec-embed:ml-zh
 
 const CLAUDE_MD_EN = `# Project Guidelines
 - This codebase is yours: what it's for and how it's built are your call, and you'll keep building on it. Read \`openspec/config.yaml\` first (tech stack, structure, conventions, constraints, etc.); no file or empty → skip this item, the rest applies as usual
@@ -161,7 +218,7 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🟡 Code file line limit 1500: this edit pushing a file past 1500 is a violation — split by responsibility, never extend; existing over-limit files are reported, not touched (generated/vendored artifacts exempt)
 - 🟡 When creating or reshaping data structures, make illegal combinations impossible at construction (unions, enums, constructor validation) instead of scattering if-guards across call sites. In dynamic languages, block once at the construction or parse entry point; leave existing structures untouched unless this change touches them
 - 🟡 State modeling: when a change touches mutually constrained booleans, nullable fields, or phase branches, first reason through the states, transitions, illegal combinations, and races; never model derived values as states. Simple flows do not need a state-machine library; only long-running, cross-process, recoverable, or parallel flows justify a workflow engine, and only critical protocols justify formal models.
-- 🟡 Database migrations: before changing the schema, confirm the project's existing migration tool and commands; generate or write and review migrations via that tool, never bypass it with hand-written scripts or SQL outside the migrations directory; one concern per migration, never edit an applied migration; split destructive changes into expand/contract steps; if the repo has no migration tool, ask before inventing one.
+- 🟡 Database migrations: route schema changes through the project's tool and directory, lint/review the result, never bypass it with hand-written SQL; if no tool exists, ask before inventing one — legacy hand-rolled scripts must be versioned, reviewable, and rollbackable; the agent must not run DDL against shared environments, except local/isolated test databases and one-off demo databases. Split destructive changes into expand/contract steps; never edit an applied migration.
 - 🟡 Make write operations that may be retried or may fail midway idempotent: running twice leaves the same end state (no duplicate inserts, no double decrements). Where that is impossible, note "not retryable" at the call site instead of assuming a single call
 - 🟡 Concurrency and transactions: give each owner its own copy of state and avoid sharing when possible; when sharing is required, funnel writes through a single entry point and keep everyone else read-only. Multi-step writes must either live in one transaction or explicitly design compensation (saga/outbox); keep transactions limited to the critical reads and writes, make no external calls inside a transaction, and write the transaction body so it can be retried as a whole. Replace check-then-act with atomic conditional writes (conditional UPDATE / unique constraint / version number); on conflict, retry or fail explicitly. Application-level locks protect in-process state only.
 
@@ -250,6 +307,70 @@ const CLAUDE_MD_EN = `# Project Guidelines
 - 🔴 Never fan out unbounded concurrency: launching a large batch of tasks all at once without a concurrency cap, or opening connections/processes/threads without a limit — bound them with an explicit pool/semaphore
 - 🟡 Per-item I/O inside loops (N+1 queries, per-row requests/file writes) must be batched (streamed chunked writes aren't "accumulate-then-process"; error logs stay, aggregate the rest)
 - 🟡 No unbounded caches growing with input (accumulating structures without a cap or eviction)`; // spec-embed:en
+
+const ML_DELTA_EN = `# Project Guidelines · ML
+- This codebase is yours: what to train and how to evaluate it follow the conventions in \`openspec/config.yaml\` (datasets, models, compute, primary metric, budget); read it first
+- ML library APIs and defaults drift fast — never write from memory; installed source/types → official docs → web search; if still unconfirmed, ask the user
+- Priority — three tiers: 🔴 violation → untrustworthy or irreproducible results / irreversible loss; 🟡 deviations need justification; ⚪ adjustable; conflicts resolve 🔴 > 🟡 > ⚪
+
+## Evaluation Integrity
+- 🔴 Do not modify the evaluation surface: metric computation, eval scripts, thresholds, splits, decoding/beam parameters, scoring data, evaluation wrappers, and timeout handlers; if a change is truly needed → state the reason and get authorization
+- 🔴 Reported values come only from this real run and must be recomputable: no rewriting, no hand-filling, no stale results
+- 🔴 Do not pass off a cherry-picked checkpoint, beam, or slice as "the result"; do not change the primary metric mid-experiment
+- 🟡 Report the primary metric next to a baseline rerun under the same budget
+- 🟡 The primary metric is a proxy for the goal: write the mapping into config; when it no longer improves the real goal → stop and confirm, never replace the goal or the metric definition
+
+## Data Boundaries
+- 🔴 Do not read the test split or labels during training, mix test into train/val, or tune against test performance
+- 🔴 Do not silently substitute datasets, models, or methods: unavailable, schema mismatch, unclear license → stop and tell the user
+- 🔴 Do not truncate or subsample a dataset to make a target pass; after changing preprocessing, do not compare against old results
+- 🔴 Choose the split by data shape: time series → time boundary (test strictly later); repeated samples per entity → group by entity; otherwise → invariant hash key over sample IDs (never timestamps, random numbers, or the current date)
+- 🔴 Datasets never enter version control (samples, weights, and index files included)
+
+## Training Runs and Budgets
+- 🟡 Fill the pre-flight checklist first: reference implementation, dataset columns and splits, model spec, checkpoint destination, timeout rationale, monitoring entry; incomplete → do not launch
+- 🟡 Smoke-test before batching: single GPU / small sample → one job completes → only then parallelize or scale
+- 🟡 Hold comparisons to a fixed budget: data, split, evaluation, steps, timeout; a budget change starts a new experiment
+- 🟡 Run experiments on a dedicated branch/tag, never on main; launch through the single entrypoint, never call the trainer or container directly; never create a venv or install dependencies on your own
+- 🟡 Size timeouts to the job instead of accepting a platform default that truncates it; tune hyperparameters with a sweep script, not one at a time
+- 🔴 Do not change the method or evaluation protocol for OOM/timeout (SFT→LoRA, shorter sequences, or disabling monitoring all count as switching methods)
+- 🔴 Do not kill or overwrite a running experiment; get explicit consent before deleting or resetting runs/checkpoints
+
+## Reproducibility and the Run Ledger
+- 🟡 State seed count, aggregation rule, and the hyperparameter search space and selection rule; a single run is never a deterministic conclusion
+- 🟡 Every run writes a config snapshot, environment versions, logs, and artifact paths
+- 🟡 The ledger is append-only: commit, config digest, metric, wall-clock, status, artifacts
+- 🟡 Keep criterion: material improvement only; comparable with simpler/faster also wins; a tiny gain bought with brittle code or higher runtime is not kept
+- 🟡 Rerun twice on the same data and compare aggregate metrics and per-example predictions; a mid-training crash must restore from a checkpoint
+- 🟡 Label runs exploratory or confirmatory; exploratory runs are never evidence for the main claim
+- 🟡 After several flat rounds, read the literature and citation graph and extract dataset + method + hyperparameters → score recipes; never jitter hyperparameters at random
+- 🔴 Do not overwrite an existing run directory; runs/, logs, and checkpoints stay out of version control — commit only the ledger and config snapshots
+
+## Code, Dependencies, and Environment
+- 🟡 Start scripts from current-version examples and docs; verify signatures and defaults
+- 🟡 Pin dependency versions; validate CUDA, bf16, and multi-GPU on GPU hardware
+- 🟡 Disable progress bars, log metrics per step and log the first step, so logs stay line-parseable
+- 🔴 Do not swallow exceptions, disable assertions, hardcode around errors, or mock the real pipeline to make a flow "run"
+
+## Large Artifacts and External Sources
+- 🟡 Before an artifact or install ≥ 1GB, choose the source: explicit > project-configured trusted > international official
+- 🟡 Verify size and hash against official metadata; record source, version, hash
+- 🔴 Do not switch sources silently by IP, timezone, or language; probing is advisory only
+- 🔴 Do not silently fall back on missing packages, version mismatches, or failed verification; fail explicitly or fall back after confirmation
+- 🔴 Third-party community mirrors are never a default source
+
+## Reporting Results
+- 🟡 Write "expected X, observed Y"; explain the gap or mark it unexplained
+- 🟡 Disclose compute: hardware, wall-clock, per-run and total; include failures and preliminary runs
+- 🟡 Give variance or intervals and state the source and method (sd or sem)
+- 🟡 Attach a model card and a dataset card on delivery or external release: intended use and limits, provenance and license, evaluation scope and known failures
+- 🔴 Do not use a single best run to represent the method; do not omit failed runs
+
+## Baseline Safety
+- 🔴 Do not invent data, field names, metric values, URLs, or API shapes; stop and ask when missing
+- 🔴 Destructive commands (deleting weights/datasets/runs, reset --hard, rm -rf) require stating the blast radius and explicit consent
+- 🔴 Secrets and .env never enter version control; logs never print credentials
+`; // spec-embed:ml-en
 
 function processInline(text) {
   // **bold** → <strong>
@@ -348,12 +469,34 @@ function renderMarkdown(md) {
 }
 
 let currentLang = 'zh';
+let currentProfile = 'general';
+
+function renderStandards() {
+  const md =
+    currentProfile === 'ml'
+      ? currentLang === 'zh'
+        ? ML_DELTA_ZH
+        : ML_DELTA_EN
+      : currentLang === 'zh'
+        ? CLAUDE_MD_ZH
+        : CLAUDE_MD_EN;
+  document.getElementById('claude-md-rendered').innerHTML = renderMarkdown(md);
+}
+
+function setProfile(profile) {
+  currentProfile = profile;
+  document.querySelectorAll('.profile-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.profile === profile);
+  });
+  renderStandards();
+}
 
 function setLanguage(lang) {
   currentLang = lang;
 
   // Update language buttons
   document.querySelectorAll('.lang-btn').forEach(btn => {
+    if (btn.dataset.profile) return;
     btn.classList.toggle('active', btn.dataset.lang === lang);
   });
 
@@ -386,12 +529,18 @@ function setLanguage(lang) {
   });
 
   // Update rendered content
-  const md = isZh ? CLAUDE_MD_ZH : CLAUDE_MD_EN;
-  document.getElementById('claude-md-rendered').innerHTML = renderMarkdown(md);
+  renderStandards();
 }
 
 function copyClaudeMd() {
-  const content = currentLang === 'zh' ? CLAUDE_MD_ZH : CLAUDE_MD_EN;
+  const content =
+    currentProfile === 'ml'
+      ? currentLang === 'zh'
+        ? ML_DELTA_ZH
+        : ML_DELTA_EN
+      : currentLang === 'zh'
+        ? CLAUDE_MD_ZH
+        : CLAUDE_MD_EN;
 
   function showCopied() {
     document.querySelectorAll('.nav-copy-btn, .claude-copy-btn').forEach(btn => {
@@ -484,7 +633,12 @@ document.addEventListener('DOMContentLoaded', () => {
   setLanguage('zh');
 
   document.querySelectorAll('.lang-btn').forEach(btn => {
+    if (btn.dataset.profile) return;
     btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
+  });
+
+  document.querySelectorAll('.profile-btn').forEach(btn => {
+    btn.addEventListener('click', () => setProfile(btn.dataset.profile));
   });
 
   // IntersectionObserver: reveal elements as they enter viewport

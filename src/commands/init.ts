@@ -97,19 +97,40 @@ import {
   type ChecklistDisposition,
   type LintConfigResult,
   type RuffTableHeader,
+  STANDARDS_FILES,
+  detectInstalledProfile,
+  type StandardsLanguage,
+  type StandardsProfile,
 } from "../shared/index.js";
 import { loadProjectStandards } from "./standards-source.js";
+import { promptSelectStandardsProfile } from "./init-standards-prompt.js";
+import { extractRuleBlockContent } from "../shared/drift.js";
 
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
 const E2E_COMMAND_SRC = fileURLToPath(
   new URL("../../templates/e2e-command.md", import.meta.url),
 );
-const EMPLOYEE_STANDARDS_SRC = fileURLToPath(
-  new URL("../../standards/employee-standards.md", import.meta.url),
-);
-const EMPLOYEE_STANDARDS_EN_SRC = fileURLToPath(
-  new URL("../../standards/employee-standards.en.md", import.meta.url),
-);
+function bundledStandardsSrc(
+  lang: StandardsLanguage,
+  profile: StandardsProfile,
+): string {
+  return fileURLToPath(
+    new URL(`../../standards/${STANDARDS_FILES[lang][profile]}`, import.meta.url),
+  );
+}
+const EMPLOYEE_STANDARDS_SRC: Record<
+  StandardsLanguage,
+  Record<StandardsProfile, string>
+> = {
+  zh: {
+    general: bundledStandardsSrc("zh", "general"),
+    ml: bundledStandardsSrc("zh", "ml"),
+  },
+  en: {
+    general: bundledStandardsSrc("en", "general"),
+    ml: bundledStandardsSrc("en", "ml"),
+  },
+};
 const TESTS_README_SRC = fileURLToPath(
   new URL("../../templates/tests-readme.md", import.meta.url),
 );
@@ -146,6 +167,8 @@ export interface InitOptions {
   autoPipeline?: boolean;
   /** Employee standards language (`--lang zh|en`); invalid values are rejected by the CLI. */
   lang?: string;
+  /** Employee standards profile (`--standards general|ml`); invalid values are rejected by the CLI. */
+  standards?: string;
   /**
    * Per-editor rules copies (`--rule-files` / `--no-rule-files`): true
    * installs them, false skips and cleans them, undefined follows the
@@ -203,6 +226,13 @@ export interface InitDeps {
   stdinIsTTY?: boolean;
   /** Override home dir for Pi/Oh My Pi global detection (tests inject an empty dir). */
   homeDir?: string;
+  /**
+   * Standards-profile prompt; defaults to @inquirer/prompts select. Receives
+   * the detected installed profile so a rerun defaults to keeping it.
+   */
+  profilePrompt?: (
+    installed: StandardsProfile | null,
+  ) => Promise<StandardsProfile>;
 }
 
 /**
@@ -712,10 +742,9 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
             "AGENTS.md",
             agentsLinked
               ? undefined
-              : [
-                  readEmployeeStandards(EMPLOYEE_STANDARDS_SRC),
-                  readEmployeeStandards(EMPLOYEE_STANDARDS_EN_SRC),
-                ],
+              : Object.values(EMPLOYEE_STANDARDS_SRC)
+                  .flatMap((byProfile) => Object.values(byProfile))
+                  .map((src) => readEmployeeStandards(src)),
           );
           if (removedAgents) {
             console.log(chalk.green("  ✓ AGENTS.md: shared openspec-pw block removed"));
@@ -1015,13 +1044,34 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   }
   if (editors.length > 0) {
     console.log(chalk.blue("\n─── Installing Employee Standards ───"));
-    const loaded = loadProjectStandards(
-      projectRoot,
-      { zh: EMPLOYEE_STANDARDS_SRC, en: EMPLOYEE_STANDARDS_EN_SRC },
-      options.lang,
+    const agentsPath = join(projectRoot, "AGENTS.md");
+    const installedProfile = detectInstalledProfile(
+      existsSync(agentsPath)
+        ? extractRuleBlockContent(readFileSync(agentsPath, "utf-8"))
+        : null,
     );
+    let standardsFlag = options.standards;
+    if (
+      standardsFlag === undefined &&
+      (deps.profilePrompt !== undefined || (isTTY && stdinIsTTY))
+    ) {
+      const profilePrompt = deps.profilePrompt ?? promptSelectStandardsProfile;
+      try {
+        standardsFlag = await profilePrompt(installedProfile);
+      } catch (err) {
+        if (isPromptCancelled(err)) {
+          reportCancelled("standards profile not selected; nothing installed.");
+          return;
+        }
+        throw err;
+      }
+    }
+    const loaded = loadProjectStandards(projectRoot, EMPLOYEE_STANDARDS_SRC, {
+      lang: options.lang,
+      standards: standardsFlag,
+    });
     if (!loaded) process.exit(1);
-    const { language, content: standards } = loaded;
+    const { language, profile, content: standards } = loaded;
     // Migrate surviving legacy OPENSPEC blocks first (same ordering rule as
     // syncEmployeeStandards — migration precedes any marker judgment).
     migrateLegacyMarkers(
@@ -1035,7 +1085,7 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     });
     console.log(
       chalk.gray(
-        `  ✓ Employee standards installed in ${language === "en" ? "English" : "Chinese"} — switch with --lang ${language === "en" ? "zh" : "en"}`,
+        `  ✓ Employee standards installed in ${language === "en" ? "English" : "Chinese"} (${profile === "ml" ? "ML" : "general"}) — switch with --lang zh|en --standards general|ml`,
       ),
     );
   }

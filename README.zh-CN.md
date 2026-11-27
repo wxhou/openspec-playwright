@@ -131,6 +131,8 @@ openspec-pw init --tools none            # 不配置编辑器，只生成脚手�
 
 **规范语言。** `init --lang zh|en` 选择 AGENTS.md 规范块的语言；未传时依次沿用已安装块的语言、操作系统 locale、终端 locale，最后英文。`update --lang` 切换已安装块。不判断 IP 或地区。
 
+**规范版本。** `init --standards general|ml` 选择安装哪一套规范；未传时沿用已安装块的版本，最后 `general`。TTY 下未传标志时会询问一次，默认选中已安装版本（回车即保持）；非交互运行不询问。`update --standards` 切换已安装块。ML 版以机器学习条款为主体——评测完整性、数据边界、训练预算、可复现、依赖、制品、结果汇报与通用底线——并承接大文件与外部制品源条款；通用版面向前端、后端与通用代码库。
+
 init 打印的预选提示**不是**安装集；`Selected editors:` 行才是。
 
 **选择忽略。** 交互式 init 以四个分组开关展示受管 `.gitignore` 路径（`--auto-pipeline` 下为三个，`openspec/` 保持可提交），默认全选——回车保持忽略；取消整组即提交该组全部路径，「自定义」进入逐项列表。被提交的路径记录在块首 `# openspec-pw: skip=…` 行，`update` 不再补回，之后可重新勾选恢复精确记录的单条路径。若 opt-out 落在某个受管目录内部，整个目录都会保持可提交（git 无法在被忽略的目录里重新包含文件），该目录也不再作为候选项出现。规范文件始终注入（`--no-rule-files` 只装 AGENTS.md）。非交互运行沿用先前选择；新项目忽略全部受管路径。
@@ -192,8 +194,8 @@ openspec-pw init --tools claude --agents   # 额外安装官方 planner agent �
 
 ```bash
 openspec-pw -v            # 打印版本（也支持 -V / --version）
-openspec-pw init          # 初始化集成（--tools all|none|ids… 可选编辑器；--agents 加装官方 agents；--frontend/--no-frontend 强制安装模式；--miniprogram/--no-miniprogram 选择小程序目标；--rule-files/--no-rule-files 开关各编辑器的规则副本；--lint-config 生成/扩展吞错清单的 ESLint 与 ruff 配置；--hook[=static|full] 安装 Claude Code Stop hook；--auto-pipeline 生成无头 CI 工作流；--lang zh|en 选择员工规范语言）
-openspec-pw update        # 更新 CLI 和命令到最新版本（--lang zh|en 切换已安装的规范块语言）
+openspec-pw init          # 初始化集成（--tools all|none|ids… 可选编辑器；--agents 加装官方 agents；--frontend/--no-frontend 强制安装模式；--miniprogram/--no-miniprogram 选择小程序目标；--rule-files/--no-rule-files 开关各编辑器的规则副本；--lint-config 生成/扩展吞错清单的 ESLint 与 ruff 配置；--hook[=static|full] 安装 Claude Code Stop hook；--auto-pipeline 生成无头 CI 工作流；--lang zh|en 选择员工规范语言；--standards general|ml 选择规范版本）
+openspec-pw update        # 更新 CLI 和命令到最新版本（--lang zh|en 与 --standards general|ml 切换已安装的规范块）
 openspec-pw doctor        # 检查前置条件 (Node, Playwright, OpenSpec, 配置, 测试) + 应用服务器诊断
 openspec-pw install --claude # 通过官方 native installer 安装或验证 Claude Code（默认只打印；--run 才执行；--verify 检查）
 openspec-pw audit         # 检查测试文件是否有孤儿文件和配置问题（--gate 有问题时退出码 1）
@@ -274,6 +276,7 @@ OpenSpec 1.x 下步骤不变，只是命令名不同（见[命名说明](#支持
 > **`--lint-config`（opt-in）**：为 eslint 9+ 且至 git 根均无配置的项目生成最小 `eslint.config.mjs`，并向 ruff 配置追加受管 `extend-select = ["B904"]` 块。已有配置绝不编辑——只打印可粘贴片段。
 4. 生成 `playwright.config.ts`，自动检测 dev 脚本与端口（Vite/Next/Nuxt/Astro、`.env`、`--port`）
 5. 按前端信号选择安装模式（见[初始化模式](#初始化模式frontend-与-minimal)）；未检测到时在 Summary 打印引导提示——monorepo 去应用目录运行 `openspec-pw init`，纯 API 项目用 Playwright `request` fixture
+6. 把员工级规范块装入 `AGENTS.md`（以及每个选中编辑器的规则副本），语言与版本由 `--lang zh|en`、`--standards general|ml` 决定；TTY 下会就版本询问一次，默认选中已安装版本
 
 ## `openspec-pw doctor` 检查清单
 

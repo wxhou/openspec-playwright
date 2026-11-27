@@ -289,6 +289,12 @@ nav.scrolled {
   border-color: var(--accent);
 }
 
+.profile-switch {
+  display: flex;
+  align-items: center;
+  margin-right: 8px;
+}
+
 /* ── Copy buttons ───────────────────── */
 .nav-copy-btn {
   display: inline-flex;

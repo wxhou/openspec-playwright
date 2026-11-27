@@ -7,6 +7,8 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 const standards = readFileSync(join(root, "standards", "employee-standards.md"), "utf-8");
 const standardsEn = readFileSync(join(root, "standards", "employee-standards.en.md"), "utf-8");
+const standardsMl = readFileSync(join(root, "standards", "employee-standards.ml.md"), "utf-8");
+const standardsMlEn = readFileSync(join(root, "standards", "employee-standards.ml.en.md"), "utf-8");
 const scriptJs = readFileSync(join(root, "docs", "script.js"), "utf-8");
 
 // Extract the CLAUDE_MD_ZH / CLAUDE_MD_EN template bodies from script.js.
@@ -19,7 +21,11 @@ const scriptJs = readFileSync(join(root, "docs", "script.js"), "utf-8");
 // than by the closing backtick: the body may legitimately contain a
 // backtick-semicolon pair, and a backtick-anchored scan stops there and
 // truncates the copy.
-function extractEmbed(script: string, name: string, tag: "zh" | "en"): string {
+function extractEmbed(
+  script: string,
+  name: string,
+  tag: "zh" | "en" | "ml-zh" | "ml-en",
+): string {
   const head = `const ${name} = \``;
   const start = script.indexOf(head);
   if (start === -1) return "";
@@ -30,6 +36,10 @@ function extractEmbed(script: string, name: string, tag: "zh" | "en"): string {
 
 const zh = extractEmbed(scriptJs, "CLAUDE_MD_ZH", "zh");
 const en = extractEmbed(scriptJs, "CLAUDE_MD_EN", "en");
+// The ML profile ships as a delta appended to the general embed:
+// `const CLAUDE_MD_ML_ZH = CLAUDE_MD_ZH + ML_DELTA_ZH`.
+const mlZh = extractEmbed(scriptJs, "ML_DELTA_ZH", "ml-zh");
+const mlEn = extractEmbed(scriptJs, "ML_DELTA_EN", "ml-en");
 
 const ZH_ANCHORS: [string, string][] = [
   ["§0 openspec help", "npx openspec --help"],
@@ -118,9 +128,6 @@ const ZH_ANCHORS: [string, string][] = [
   ["§7 无界读取禁令", "禁止无界读取进内存"],
   ["§7 无界并发禁令", "禁止无界并发"],
   ["§7 外部调用超时", "禁止无超时的外部调用"],
-  ["§8 大文件与外部制品源", "大文件与外部制品源"],
-  ["§8 不静默换源", "不按 IP、时区或语言静默切换源"],
-  ["§8 哈希校验", "按官方元数据校验大小与哈希"],
   ["§0 经验沉淀载体", "openspec/config.yaml"],
 ];
 
@@ -216,6 +223,77 @@ const EN_ANCHORS: [string, string][] = [
   ["§0 experience-distillation carrier", "openspec/config.yaml"],
 ];
 
+// The ML profile is ML-first: §1–§8 cover evaluation integrity, data
+// boundaries, run budgets, reproducibility, dependencies, artifacts,
+// reporting, and the baseline safety floor.
+const ML_ZH_ANCHORS: [string, string][] = [
+  ["ML §0 代码库所有权", "这份代码库是你的"],
+  ["ML §0 核实与求助", "不凭记忆写"],
+  ["ML §0 优先级", "结论不可信"],
+  ["ML §1 评测完整性", "评测完整性"],
+  ["ML §1 不改评测面", "不改评测面"],
+  ["ML §1 评测包装器", "评测包装器"],
+  ["ML §1 目标与指标", "主指标是目标的代理"],
+  ["ML §2 数据边界", "数据边界"],
+  ["ML §2 不变哈希键", "不变哈希键"],
+  ["ML §2 时序切分", "时间边界"],
+  ["ML §2 实体分组", "按实体分组"],
+  ["ML §2 数据不入库", "数据集不入版本控制"],
+  ["ML §3 训练运行与预算", "训练运行与预算"],
+  ["ML §3 先冒烟再批量", "先冒烟再批量"],
+  ["ML §3 实验隔离", "专用分支"],
+  ["ML §3 超时规模", "超时按作业规模设定"],
+  ["ML §3 sweep", "sweep 脚本"],
+  ["ML §4 可复现与台账", "可复现与台账"],
+  ["ML §4 只追加不改写", "只追加不改写"],
+  ["ML §4 保留判据", "也算赢"],
+  ["ML §4 重跑验证", "逐样本预测"],
+  ["ML §4 探索性", "exploratory / confirmatory"],
+  ["ML §4 文献优先", "不随机抖超参"],
+  ["ML §4 超参搜索空间", "超参搜索空间"],
+  ["ML §5 代码、依赖与环境", "代码、依赖与环境"],
+  ["ML §5 日志按行", "日志可按行解析"],
+  ["ML §6 大文件与外部制品源", "大文件与外部制品源"],
+  ["ML §6 不静默换源", "不按 IP、时区或语言静默切换源"],
+  ["ML §7 结果汇报", "结果汇报"],
+  ["ML §7 模型卡", "模型卡与数据卡"],
+  ["ML §8 通用底线", "通用底线"],
+];
+
+const ML_EN_ANCHORS: [string, string][] = [
+  ["ML §0 codebase ownership", "This codebase is yours"],
+  ["ML §0 verify and ask", "never write from memory"],
+  ["ML §0 priority", "untrustworthy or irreproducible"],
+  ["ML §1 Evaluation Integrity", "Evaluation Integrity"],
+  ["ML §1 evaluation surface", "evaluation surface"],
+  ["ML §1 evaluation wrappers", "evaluation wrapper"],
+  ["ML §1 objective proxy", "proxy for the goal"],
+  ["ML §2 Data Boundaries", "Data Boundaries"],
+  ["ML §2 invariant hash key", "invariant hash key"],
+  ["ML §2 time split", "time boundary"],
+  ["ML §2 entity grouping", "group by entity"],
+  ["ML §2 datasets out of VCS", "Datasets never enter version control"],
+  ["ML §3 Training Runs and Budgets", "Training Runs and Budgets"],
+  ["ML §3 smoke-test", "Smoke-test before batching"],
+  ["ML §3 experiment isolation", "dedicated branch"],
+  ["ML §3 timeout sizing", "Size timeouts to the job"],
+  ["ML §3 sweep", "sweep script"],
+  ["ML §4 Reproducibility and the Run Ledger", "Reproducibility and the Run Ledger"],
+  ["ML §4 append-only", "append-only"],
+  ["ML §4 keep criterion", "Keep criterion"],
+  ["ML §4 rerun check", "per-example predictions"],
+  ["ML §4 exploratory", "exploratory or confirmatory"],
+  ["ML §4 literature", "jitter hyperparameters"],
+  ["ML §4 HP search space", "hyperparameter search space"],
+  ["ML §5 Code, Dependencies, and Environment", "Code, Dependencies, and Environment"],
+  ["ML §5 line-parseable logs", "line-parseable"],
+  ["ML §6 Large Artifacts", "Large Artifacts and External Sources"],
+  ["ML §6 community mirrors", "community mirrors"],
+  ["ML §7 Reporting Results", "Reporting Results"],
+  ["ML §7 model card", "model card"],
+  ["ML §8 Baseline Safety", "Baseline Safety"],
+];
+
 // The catch clause carries four sub-bullets. The mirrors must hold the same
 // four in the same order — a standards change that adds, drops or reorders one
 // has to update both mirrors and this list. A single phrase anchor cannot catch
@@ -258,6 +336,31 @@ describe("docs/script.js embedded standards stay in sync", () => {
     expect(en, `docs/script.js CLAUDE_MD_EN missing: ${phrase}`).toContain(phrase);
   });
 
+  it("ML anchors exist in employee-standards.ml.md (guard against stale anchors)", () => {
+    for (const [label, phrase] of ML_ZH_ANCHORS) {
+      expect(standardsMl, `${label} anchor missing from the ML standards`).toContain(phrase);
+    }
+  });
+
+  it("ML EN anchors exist in employee-standards.ml.en.md", () => {
+    for (const [label, phrase] of ML_EN_ANCHORS) {
+      expect(standardsMlEn, `${label} anchor missing from the ML English standards`).toContain(phrase);
+    }
+  });
+
+  it.each(ML_ZH_ANCHORS)("ML ZH embed contains %s", (_label, phrase) => {
+    expect(mlZh, `docs/script.js ML_DELTA_ZH missing: ${phrase}`).toContain(phrase);
+  });
+
+  it.each(ML_EN_ANCHORS)("ML EN embed contains %s", (_label, phrase) => {
+    expect(mlEn, `docs/script.js ML_DELTA_EN missing: ${phrase}`).toContain(phrase);
+  });
+
+  it("keeps the ML preview standalone (ML-first, not general + appendix)", () => {
+    expect(mlZh.startsWith("# 项目规范 · ML")).toBe(true);
+    expect(mlEn.startsWith("# Project Guidelines · ML")).toBe(true);
+  });
+
   it("extracts the whole embed when the body contains a backtick-semicolon", () => {
     const fake = "const CLAUDE_MD_ZH = `a `; b`; // spec-embed:zh";
     expect(extractEmbed(fake, "CLAUDE_MD_ZH", "zh")).toBe("a `; b");
@@ -290,20 +393,24 @@ describe("docs/script.js embedded standards stay in sync", () => {
     });
   });
 
-  it("every standards section number 0..8 is represented in the ZH embed", () => {
+  it("general standards cover sections 0..7 and leave section 8 to the ML profile", () => {
     // Section HEADINGS drift in wording between the full standards and the
     // condensed copy, so match by number coverage instead of exact titles.
     const sectionCount = (standards.match(/^## \d+\./gm) ?? []).length;
-    expect(sectionCount).toBeGreaterThanOrEqual(9); // §0..§8
+    expect(sectionCount).toBeGreaterThanOrEqual(8); // §0..§7
+    expect(standards).not.toContain("## 8.");
     // The condensed ZH copy carries all major sections as headings too.
     const zhHeadings = (zh.match(/^## /gm) ?? []).length;
     expect(zhHeadings).toBeGreaterThanOrEqual(sectionCount - 1);
   });
 
-  it("English SSOT covers sections 0..7 and omits the Chinese-only section 8", () => {
+  it("English general SSOT covers sections 0..7; the ML SSOTs add section 8", () => {
     const enSections = [...standardsEn.matchAll(/^## (\d+)\./gm)].map((m) => m[1]);
     expect(enSections).toEqual(["0", "1", "2", "3", "4", "5", "6", "7"]);
-    expect(standards).toContain("## 8.");
+    const mlSections = [...standardsMl.matchAll(/^## (\d+)\./gm)].map((m) => m[1]);
+    expect(mlSections).toEqual(["0", "1", "2", "3", "4", "5", "6", "7", "8"]);
+    const mlEnSections = [...standardsMlEn.matchAll(/^## (\d+)\./gm)].map((m) => m[1]);
+    expect(mlEnSections).toEqual(["0", "1", "2", "3", "4", "5", "6", "7", "8"]);
   });
 
   it("each SSOT carries its language-detection anchor", () => {

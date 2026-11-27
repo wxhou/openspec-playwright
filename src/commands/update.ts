@@ -42,6 +42,9 @@ import {
   detectInstalledLanguage,
   resolveStandardsLanguage,
   missingEnglishSections,
+  STANDARDS_FILES,
+  detectInstalledProfile,
+  resolveStandardsProfile,
   findUncoveredManagedPaths,
   managedBlockAdvisoryHint,
   ensureGitignoreEntries,
@@ -179,6 +182,8 @@ export interface UpdateOptions {
   mcp?: boolean;
   /** Employee standards language (`--lang zh|en`); invalid values are rejected by the CLI. */
   lang?: string;
+  /** Employee standards profile (`--standards general|ml`); invalid values are rejected by the CLI. */
+  standards?: string;
 }
 
 /**
@@ -393,6 +398,7 @@ export async function update(options: UpdateOptions) {
         installed || hasRuleFileMarkers(projectRoot),
         hasCommandArtifacts(projectRoot, codebuddy) || wrapperHasMarkers(codebuddy, projectRoot),
         options.lang,
+        options.standards,
       );
 
       if (bundle.disposable) rmSync(tmpDir, { recursive: true, force: true });
@@ -452,6 +458,7 @@ export async function update(options: UpdateOptions) {
         hasAnyCommandArtifacts(projectRoot) || hasRuleFileMarkers(projectRoot),
         hasCommandArtifacts(projectRoot, codebuddy) || wrapperHasMarkers(codebuddy, projectRoot),
         options.lang,
+        options.standards,
       );
       if (bundle.disposable) rmSync(tmpDir, { recursive: true, force: true });
     } catch (err) {
@@ -841,6 +848,7 @@ export function syncEmployeeStandards(
   hasPwArtifacts: boolean,
   codebuddyAuthorized = false,
   lang?: string,
+  standardsProfile?: string,
 ): void {
   // Update employee-grade standards in project rules files (AGENTS.md +
   // wrapper files CLAUDE.md / CODEBUDDY.md). Drift-aware: only rewrite a
@@ -863,8 +871,14 @@ export function syncEmployeeStandards(
     (agentsRaw.includes(OPENSPEC_START) ||
       hasLegacyTerritoryStart(agentsRaw));
   const language = resolveStandardsLanguage({ flag: lang, installed });
-  const standardsFile =
-    language === "en" ? "employee-standards.en.md" : "employee-standards.md";
+  const installedProfile = detectInstalledProfile(
+    agentsRaw ? extractRuleBlockContent(agentsRaw) : null,
+  );
+  const profile = resolveStandardsProfile({
+    flag: standardsProfile,
+    installed: installedProfile,
+  });
+  const standardsFile = STANDARDS_FILES[language][profile];
   // The fetched bundle can predate the standards/ layout move; accept the
   // legacy root location until the first release with the new layout ships.
   const standardsSrc = [
@@ -906,6 +920,24 @@ export function syncEmployeeStandards(
     console.log(
       chalk.gray(
         `  ✓ Employee standards switched to ${language === "en" ? "English" : "Chinese"}`,
+      ),
+    );
+  }
+  if (standardsProfile && !hasStandardsBlock) {
+    console.log(
+      chalk.gray(
+        '  - --standards has no effect without an installed standards block — run "openspec-pw init"',
+      ),
+    );
+  } else if (
+    hasStandardsBlock &&
+    (installedProfile === null
+      ? Boolean(standardsProfile)
+      : installedProfile !== profile)
+  ) {
+    console.log(
+      chalk.gray(
+        `  ✓ Employee standards switched to ${profile === "ml" ? "ML" : "general"}`,
       ),
     );
   }

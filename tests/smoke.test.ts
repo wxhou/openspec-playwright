@@ -247,6 +247,40 @@ const distExists = existsSync(distDir);
     }
   });
 
+  it("init and update --help document --standards", () => {
+    for (const cmd of ["init", "update"]) {
+      const { stdout } = runCli(`${cmd} --help`);
+      expect(stdout).toContain("--standards");
+    }
+  });
+
+  it("init and update reject an invalid --standards with exit code 2", () => {
+    for (const cmd of ["init", "update"]) {
+      const { stderr, status } = runCli(`${cmd} --standards fr`);
+      expect(status).toBe(2);
+      expect(stderr).toContain('Invalid --standards "fr"');
+    }
+  });
+
+  it("init --standards validates before writing any file", () => {
+    const dir = mkdtempSync(join(tmpdir(), "openspec-pw-standards-reject-"));
+    try {
+      let status = 0;
+      try {
+        execSync(
+          `node ${join(ROOT, "dist", "index.js")} init --standards bogus`,
+          { cwd: dir, encoding: "utf-8", stdio: "pipe" },
+        );
+      } catch (err) {
+        status = (err as { status?: number }).status ?? 1;
+      }
+      expect(status).toBe(2);
+      expect(readdirSync(dir)).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("init --lang validates before writing any file", () => {
     const dir = mkdtempSync(join(tmpdir(), "openspec-pw-lang-reject-"));
     try {
@@ -320,6 +354,8 @@ const CRITICAL_PACKAGE_FILES = [
   "dist/commands/editors.js",
   "standards/employee-standards.md",
   "standards/employee-standards.en.md",
+  "standards/employee-standards.ml.md",
+  "standards/employee-standards.ml.en.md",
   "templates/seed.spec.ts",
   "templates/auth.setup.ts",
   "templates/credentials.yaml",

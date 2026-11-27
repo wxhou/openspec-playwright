@@ -3,16 +3,25 @@ import { basename, join } from "path";
 import chalk from "chalk";
 import {
   detectInstalledLanguage,
+  detectInstalledProfile,
   missingEnglishSections,
   resolveStandardsLanguage,
+  resolveStandardsProfile,
   type StandardsLanguage,
+  type StandardsProfile,
 } from "../shared/index.js";
 import { extractRuleBlockContent } from "../shared/drift.js";
 import { readEmployeeStandards } from "./editors/project-rules.js";
 
 export interface ProjectStandards {
   language: StandardsLanguage;
+  profile: StandardsProfile;
   content: string;
+}
+
+export interface StandardsSourceOptions {
+  lang?: string;
+  standards?: string;
 }
 
 /**
@@ -22,17 +31,22 @@ export interface ProjectStandards {
  */
 export function loadProjectStandards(
   projectRoot: string,
-  sources: { zh: string; en: string },
-  flag?: string,
+  sources: Record<StandardsLanguage, Record<StandardsProfile, string>>,
+  options: StandardsSourceOptions = {},
 ): ProjectStandards | null {
   const agentsPath = join(projectRoot, "AGENTS.md");
-  const installed = detectInstalledLanguage(
-    existsSync(agentsPath)
-      ? extractRuleBlockContent(readFileSync(agentsPath, "utf-8"))
-      : null,
-  );
-  const language = resolveStandardsLanguage({ flag, installed });
-  const src = language === "en" ? sources.en : sources.zh;
+  const block = existsSync(agentsPath)
+    ? extractRuleBlockContent(readFileSync(agentsPath, "utf-8"))
+    : null;
+  const language = resolveStandardsLanguage({
+    flag: options.lang,
+    installed: detectInstalledLanguage(block),
+  });
+  const profile = resolveStandardsProfile({
+    flag: options.standards,
+    installed: detectInstalledProfile(block),
+  });
+  const src = sources[language][profile];
   const content = readEmployeeStandards(src);
   if (!content) {
     console.error(
@@ -55,5 +69,5 @@ export function loadProjectStandards(
       return null;
     }
   }
-  return { language, content };
+  return { language, profile, content };
 }

@@ -29,6 +29,7 @@ import {
   resolveWxaProject,
   resolveBuildCommand,
   detectInstalledLanguage,
+  detectInstalledProfile,
   readManagedSkipsSafe,
   managedPathFor,
 } from "../shared/index.js";
@@ -824,11 +825,14 @@ export async function doctor(options: DoctorOptions = {}) {
       });
     } else {
       const fileContent = readFileSync(agentsPath, "utf-8");
-      // Compare against the SSOT in the language the project actually has —
-      // otherwise an English block would always read as drift from the
-      // Chinese template. Legacy blocks without either anchor stay Chinese.
+      // Compare against the SSOT in the language and profile the project
+      // actually has — otherwise an English or ML block would always read as
+      // drift from the general Chinese template. Legacy blocks without either
+      // anchor stay Chinese/general.
+      const blockContent = extractRuleBlockContent(fileContent);
       const standardsPath = bundledStandardsPath(
-        detectInstalledLanguage(extractRuleBlockContent(fileContent)) ?? "zh",
+        detectInstalledLanguage(blockContent) ?? "zh",
+        detectInstalledProfile(blockContent) ?? "general",
       );
       const standardsExpected = existsSync(standardsPath)
         ? readFileSync(standardsPath, "utf-8")
@@ -941,8 +945,10 @@ export async function doctor(options: DoctorOptions = {}) {
       if (read.kind !== "ok") continue;
       const fullContent = read.content;
       if (!fullContent.includes(OPENSPEC_START)) continue;
+      const fullBlockContent = extractRuleBlockContent(fullContent);
       const fullStandardsPath = bundledStandardsPath(
-        detectInstalledLanguage(extractRuleBlockContent(fullContent)) ?? "zh",
+        detectInstalledLanguage(fullBlockContent) ?? "zh",
+        detectInstalledProfile(fullBlockContent) ?? "general",
       );
       const fullExpected = existsSync(fullStandardsPath)
         ? readFileSync(fullStandardsPath, "utf-8")
