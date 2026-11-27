@@ -1,7 +1,9 @@
 import { existsSync, readFileSync } from "fs";
 import { basename, join } from "path";
+import { fileURLToPath } from "url";
 import chalk from "chalk";
 import {
+  STANDARDS_FILES,
   detectInstalledLanguage,
   detectInstalledProfile,
   missingEnglishSections,
@@ -22,6 +24,24 @@ export interface ProjectStandards {
 export interface StandardsSourceOptions {
   lang?: string;
   standards?: string;
+}
+
+/** Absolute paths to the four bundled standards files, keyed by language and profile. */
+export function bundledStandardsSources(): Record<
+  StandardsLanguage,
+  Record<StandardsProfile, string>
+> {
+  const resolve = (language: StandardsLanguage, profile: StandardsProfile) =>
+    fileURLToPath(
+      new URL(
+        `../../standards/${STANDARDS_FILES[language][profile]}`,
+        import.meta.url,
+      ),
+    );
+  return {
+    zh: { general: resolve("zh", "general"), ml: resolve("zh", "ml") },
+    en: { general: resolve("en", "general"), ml: resolve("en", "ml") },
+  };
 }
 
 /**
