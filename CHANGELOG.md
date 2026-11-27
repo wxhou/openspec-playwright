@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Docs
+- 数据库迁移条收紧工具生成、lint/审查与共享环境 DDL 边界；遗留手搓脚本须版本化、可审查、可回滚
+
 ## [0.3.125] - 2026-11-26
 
 ### Added
