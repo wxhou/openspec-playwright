@@ -1,6 +1,6 @@
 {
   "name": "openspec-playwright",
-  "version": "0.3.125",
+  "version": "0.3.126",
   "description": "OpenSpec + Playwright E2E verification setup tool for 16 AI coding editors including Claude Code, OpenCode, Cline, and Cursor",
   "type": "module",
   "bin": {

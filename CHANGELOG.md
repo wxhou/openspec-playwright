@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.126] - 2026-11-28
 
 ### Added
 - 员工规范新增 ML 版（`--standards ml`）：以评测完整性、数据边界、训练预算、可复现台账、制品源与结果汇报为主体；`init` 在 TTY 下询问一次版本，默认沿用已安装版本
