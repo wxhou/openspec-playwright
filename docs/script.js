@@ -471,22 +471,24 @@ function renderMarkdown(md) {
 let currentLang = 'zh';
 let currentProfile = 'general';
 
+function currentStandards() {
+  if (currentProfile === 'ml') {
+    return currentLang === 'zh' ? ML_DELTA_ZH : ML_DELTA_EN;
+  }
+  return currentLang === 'zh' ? CLAUDE_MD_ZH : CLAUDE_MD_EN;
+}
+
 function renderStandards() {
-  const md =
-    currentProfile === 'ml'
-      ? currentLang === 'zh'
-        ? ML_DELTA_ZH
-        : ML_DELTA_EN
-      : currentLang === 'zh'
-        ? CLAUDE_MD_ZH
-        : CLAUDE_MD_EN;
+  const md = currentStandards();
   document.getElementById('claude-md-rendered').innerHTML = renderMarkdown(md);
 }
 
 function setProfile(profile) {
   currentProfile = profile;
   document.querySelectorAll('.profile-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.profile === profile);
+    const active = btn.dataset.profile === profile;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', String(active));
   });
   renderStandards();
 }
@@ -515,6 +517,9 @@ function setLanguage(lang) {
   });
   const liveTitle = isZh ? 'npm 官方统计 · 滚动 30 天窗口' : 'Official npm stats · rolling 30-day window';
   document.querySelector('[data-live-fact]')?.setAttribute('title', liveTitle);
+  document
+    .querySelector('.profile-switch')
+    ?.setAttribute('aria-label', isZh ? '规范版本' : 'Standards profile');
 
   // Hide all zh/en elements first
   document.querySelectorAll('[class*="-zh"], [class*="-en"]').forEach(el => {
@@ -533,14 +538,7 @@ function setLanguage(lang) {
 }
 
 function copyClaudeMd() {
-  const content =
-    currentProfile === 'ml'
-      ? currentLang === 'zh'
-        ? ML_DELTA_ZH
-        : ML_DELTA_EN
-      : currentLang === 'zh'
-        ? CLAUDE_MD_ZH
-        : CLAUDE_MD_EN;
+  const content = currentStandards();
 
   function showCopied() {
     document.querySelectorAll('.nav-copy-btn, .claude-copy-btn').forEach(btn => {

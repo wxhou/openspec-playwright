@@ -36,8 +36,8 @@ function extractEmbed(
 
 const zh = extractEmbed(scriptJs, "CLAUDE_MD_ZH", "zh");
 const en = extractEmbed(scriptJs, "CLAUDE_MD_EN", "en");
-// The ML profile ships as a delta appended to the general embed:
-// `const CLAUDE_MD_ML_ZH = CLAUDE_MD_ZH + ML_DELTA_ZH`.
+// The ML profile ships as a standalone embed (`# 项目规范 · ML`), not a delta
+// appended to the general one.
 const mlZh = extractEmbed(scriptJs, "ML_DELTA_ZH", "ml-zh");
 const mlEn = extractEmbed(scriptJs, "ML_DELTA_EN", "ml-en");
 

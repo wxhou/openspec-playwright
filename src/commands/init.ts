@@ -537,6 +537,21 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     );
   }
 
+  // Resolve the standards profile before any write: a cancelled prompt then
+  // aborts cleanly, before the scaffold and editor artifacts land.
+  let standardsFlag = options.standards;
+  if (editors.length > 0) {
+    const resolved = await resolveInitStandardsProfile(projectRoot, options.standards, {
+      interactive: deps.profilePrompt !== undefined || (isTTY && stdinIsTTY),
+      profilePrompt: deps.profilePrompt,
+    });
+    if (!resolved) {
+      reportCancelled("standards profile not selected; nothing installed.");
+      return;
+    }
+    standardsFlag = resolved.flag;
+  }
+
   // 3. Init mode + template target. Resolved before the deselected-removal
   // phase so a scaffold conflict aborts before any editor artifact is
   // deleted.
@@ -1023,21 +1038,9 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   }
   if (editors.length > 0) {
     console.log(chalk.blue("\n─── Installing Employee Standards ───"));
-    const resolved = await resolveInitStandardsProfile(
-      projectRoot,
-      options.standards,
-      {
-        interactive: deps.profilePrompt !== undefined || (isTTY && stdinIsTTY),
-        profilePrompt: deps.profilePrompt,
-      },
-    );
-    if (!resolved) {
-      reportCancelled("standards profile not selected; nothing installed.");
-      return;
-    }
     const loaded = loadProjectStandards(projectRoot, EMPLOYEE_STANDARDS_SRC, {
       lang: options.lang,
-      standards: resolved.flag,
+      standards: standardsFlag,
     });
     if (!loaded) process.exit(1);
     const { language, profile, content: standards } = loaded;
@@ -1128,11 +1131,24 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     // --no-frontend override (the signal may have actually hit).
     const reason =
       options.frontend === false ? "--no-frontend" : "no frontend signal";
+    // Standards install only with an editor target; the summary must not claim
+    // them on a --tools none run.
+    const minimalInstalled = [
+      "tests/README.md",
+      ...(editors.length > 0 ? ["employee standards"] : []),
+    ];
     console.log(
       chalk.gray(
-        `  Mode: minimal (${reason}) — tests/README.md + employee standards installed`,
+        `  Mode: minimal (${reason}) — ${minimalInstalled.join(" + ")} installed`,
       ),
     );
+    if (options.standards !== undefined && editors.length === 0) {
+      console.log(
+        chalk.gray(
+          "  - No editor selected, so --standards was not applied (use --tools <editor>)",
+        ),
+      );
+    }
     console.log(chalk.bold("Next steps:"));
     // Link the contract doc only when this run generated it — a pre-existing
     // tests/README.md is the user's, not ours.

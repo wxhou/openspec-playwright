@@ -44,6 +44,38 @@ export function bundledStandardsSources(): Record<
   };
 }
 
+export interface InstalledStandards {
+  raw: string | null;
+  block: string | null;
+  language: StandardsLanguage | null;
+  profile: StandardsProfile | null;
+}
+
+export interface StandardsSignals {
+  block: string | null;
+  language: StandardsLanguage | null;
+  profile: StandardsProfile | null;
+}
+
+/** Derive the installed language/profile from a file body (any carrier). */
+export function detectStandardsSignals(
+  content: string | null,
+): StandardsSignals {
+  const block = content === null ? null : extractRuleBlockContent(content);
+  return {
+    block,
+    language: detectInstalledLanguage(block),
+    profile: detectInstalledProfile(block),
+  };
+}
+
+/** Read AGENTS.md once and derive every installed-standards signal from it. */
+export function readInstalledStandards(projectRoot: string): InstalledStandards {
+  const agentsPath = join(projectRoot, "AGENTS.md");
+  const raw = existsSync(agentsPath) ? readFileSync(agentsPath, "utf-8") : null;
+  return { raw, ...detectStandardsSignals(raw) };
+}
+
 /**
  * Pick and load the bundled standards SSOT for a project. Returns `null` after
  * printing a visible error when the file is missing or the English SSOT is
@@ -54,17 +86,14 @@ export function loadProjectStandards(
   sources: Record<StandardsLanguage, Record<StandardsProfile, string>>,
   options: StandardsSourceOptions = {},
 ): ProjectStandards | null {
-  const agentsPath = join(projectRoot, "AGENTS.md");
-  const block = existsSync(agentsPath)
-    ? extractRuleBlockContent(readFileSync(agentsPath, "utf-8"))
-    : null;
+  const installed = readInstalledStandards(projectRoot);
   const language = resolveStandardsLanguage({
     flag: options.lang,
-    installed: detectInstalledLanguage(block),
+    installed: installed.language,
   });
   const profile = resolveStandardsProfile({
     flag: options.standards,
-    installed: detectInstalledProfile(block),
+    installed: installed.profile,
   });
   const src = sources[language][profile];
   const content = readEmployeeStandards(src);

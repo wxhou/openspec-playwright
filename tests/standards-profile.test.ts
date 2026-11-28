@@ -49,6 +49,17 @@ describe("detectInstalledProfile", () => {
     expect(detectInstalledProfile(mlZh)).toBe("ml");
     expect(detectInstalledProfile(mlEn)).toBe("ml");
   });
+
+  it("keeps detecting ML after one ML-only heading is edited", () => {
+    const editedZh = mlZh.replace("## 1. 评测完整性", "## 1. 评测");
+    const editedEn = mlEn.replace(
+      "## 1. Evaluation Integrity",
+      "## 1. Evaluation",
+    );
+
+    expect(detectInstalledProfile(editedZh)).toBe("ml");
+    expect(detectInstalledProfile(editedEn)).toBe("ml");
+  });
 });
 
 describe("resolveStandardsProfile", () => {

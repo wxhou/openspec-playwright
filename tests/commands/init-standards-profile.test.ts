@@ -66,6 +66,7 @@ describe("init employee-standards profile selection", () => {
       { mcp: false, lang: "zh", ...(standards ? { standards } : {}) },
       {
         isTTY: true,
+        stdinIsTTY: false,
         prompt: async () => ["claude"],
         confirm: async () => true,
         ...(profilePrompt ? { profilePrompt } : {}),
@@ -129,9 +130,30 @@ describe("init employee-standards profile selection", () => {
   it("does not install standards with --tools none", async () => {
     await init(
       { mcp: false, tools: "none", lang: "zh", standards: "ml" },
-      { isTTY: true, prompt: async () => ["claude"], confirm: async () => true },
+      {
+        isTTY: true,
+        stdinIsTTY: false,
+        prompt: async () => ["claude"],
+        confirm: async () => true,
+      },
     );
 
     expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(false);
+    expect(logText()).toContain("--standards was not applied");
+  });
+
+  it("aborts before writing when the profile prompt is cancelled", async () => {
+    const cancelled = Object.assign(new Error("cancelled"), {
+      name: "ExitPromptError",
+    });
+
+    await runInit(undefined, async () => {
+      throw cancelled;
+    });
+
+    expect(existsSync(join(tmpRoot, "AGENTS.md"))).toBe(false);
+    expect(existsSync(join(tmpRoot, ".claude", "commands"))).toBe(false);
+    expect(logText()).toContain("Cancelled (Ctrl+C)");
+    expect(logText()).not.toContain("Installing Employee Standards");
   });
 });

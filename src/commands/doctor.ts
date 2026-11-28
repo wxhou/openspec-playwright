@@ -28,12 +28,11 @@ import {
   resolveProjectTarget,
   resolveWxaProject,
   resolveBuildCommand,
-  detectInstalledLanguage,
-  detectInstalledProfile,
   readManagedSkipsSafe,
   managedPathFor,
 } from "../shared/index.js";
-import { bundledStandardsPath, compareBlock, OPENSPEC_START, hasLegacyTerritoryStart, extractRuleBlockContent } from "../shared/drift.js";
+import { bundledStandardsPath, compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
+import { detectStandardsSignals } from "./standards-source.js";
 import {
   openSpecCliStatus,
 } from "../shared/openspec-version.js";
@@ -829,10 +828,10 @@ export async function doctor(options: DoctorOptions = {}) {
       // actually has — otherwise an English or ML block would always read as
       // drift from the general Chinese template. Legacy blocks without either
       // anchor stay Chinese/general.
-      const blockContent = extractRuleBlockContent(fileContent);
+      const signals = detectStandardsSignals(fileContent);
       const standardsPath = bundledStandardsPath(
-        detectInstalledLanguage(blockContent) ?? "zh",
-        detectInstalledProfile(blockContent) ?? "general",
+        signals.language ?? "zh",
+        signals.profile ?? "general",
       );
       const standardsExpected = existsSync(standardsPath)
         ? readFileSync(standardsPath, "utf-8")
@@ -945,10 +944,10 @@ export async function doctor(options: DoctorOptions = {}) {
       if (read.kind !== "ok") continue;
       const fullContent = read.content;
       if (!fullContent.includes(OPENSPEC_START)) continue;
-      const fullBlockContent = extractRuleBlockContent(fullContent);
+      const fullSignals = detectStandardsSignals(fullContent);
       const fullStandardsPath = bundledStandardsPath(
-        detectInstalledLanguage(fullBlockContent) ?? "zh",
-        detectInstalledProfile(fullBlockContent) ?? "general",
+        fullSignals.language ?? "zh",
+        fullSignals.profile ?? "general",
       );
       const fullExpected = existsSync(fullStandardsPath)
         ? readFileSync(fullStandardsPath, "utf-8")

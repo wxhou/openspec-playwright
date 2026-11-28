@@ -61,6 +61,8 @@ const installOpenSpecBlockMock = vi.mocked(installOpenSpecBlock);
 const installClaudeWrapperMock = vi.mocked(installClaudeWrapper);
 
 const STANDARDS = "employee-grade standards body v1";
+const ML_STANDARDS =
+  "employee-grade standards body ml\n\n## 1. 评测完整性\n\nML-only rules";
 const EN_STANDARDS = ["0", "1", "2", "3", "4", "5", "6", "7"]
   .map((n) => `## ${n}. Section ${n}`)
   .join("\n\n");
@@ -432,6 +434,62 @@ describe("syncEmployeeStandards", () => {
 
     expect(logText()).toContain("--lang has no effect");
     expect(installOpenSpecBlockMock).not.toHaveBeenCalled();
+  });
+
+  it("switches an installed general block to ML when --standards ml is passed", () => {
+    const mlSrc = join(tmpDir, "standards", "employee-standards.ml.md");
+    existingPaths.add(mlSrc);
+    contentsByPath.set(mlSrc, ML_STANDARDS);
+    existingPaths.add(agentsPath);
+    contentsByPath.set(
+      agentsPath,
+      `${OPENSPEC_START}\n中文正文\n这份代码库是你的\n${OPENSPEC_END}`,
+    );
+
+    syncEmployeeStandards(tmpDir, root, false, true, false, undefined, "ml");
+
+    expect(logText()).toContain("switched to ML");
+    expect(installOpenSpecBlockMock).toHaveBeenCalledWith(
+      root,
+      ML_STANDARDS,
+      expect.anything(),
+    );
+  });
+
+  it("keeps an installed ML block on a flagless update", () => {
+    const mlSrc = join(tmpDir, "standards", "employee-standards.ml.md");
+    existingPaths.add(mlSrc);
+    contentsByPath.set(mlSrc, ML_STANDARDS);
+    existingPaths.add(agentsPath);
+    contentsByPath.set(
+      agentsPath,
+      `${OPENSPEC_START}\n## 1. 评测完整性\n旧版正文\n${OPENSPEC_END}`,
+    );
+
+    syncEmployeeStandards(tmpDir, root, false, true);
+
+    expect(installOpenSpecBlockMock).toHaveBeenCalledWith(
+      root,
+      ML_STANDARDS,
+      expect.anything(),
+    );
+  });
+
+  it("switches an installed ML block back to general when asked", () => {
+    existingPaths.add(agentsPath);
+    contentsByPath.set(
+      agentsPath,
+      `${OPENSPEC_START}\n## 1. 评测完整性\n旧版正文\n${OPENSPEC_END}`,
+    );
+
+    syncEmployeeStandards(tmpDir, root, false, true, false, undefined, "general");
+
+    expect(logText()).toContain("switched to general");
+    expect(installOpenSpecBlockMock).toHaveBeenCalledWith(
+      root,
+      STANDARDS,
+      expect.anything(),
+    );
   });
 
   it("reads the legacy root layout when the fetched bundle predates standards/", () => {

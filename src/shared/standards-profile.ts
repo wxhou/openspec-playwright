@@ -21,11 +21,22 @@ export const STANDARDS_FILES: Record<
   },
 };
 
-/** First section heading unique to the ML profile; installs keep no metadata,
- * so the installed block itself is the only persisted signal. */
-const ML_ANCHORS: Record<StandardsLanguage, string> = {
-  zh: "## 1. 评测完整性",
-  en: "## 1. Evaluation Integrity",
+/** Section headings unique to the ML profile; installs keep no metadata, so
+ * the installed block itself is the only persisted signal. Several headings
+ * are matched so a single edited heading does not downgrade the profile. */
+const ML_ANCHORS: Record<StandardsLanguage, readonly string[]> = {
+  zh: [
+    "## 1. 评测完整性",
+    "## 2. 数据边界",
+    "## 3. 训练运行与预算",
+    "## 4. 可复现与台账",
+  ],
+  en: [
+    "## 1. Evaluation Integrity",
+    "## 2. Data Boundaries",
+    "## 3. Training Runs and Budgets",
+    "## 4. Reproducibility and the Run Ledger",
+  ],
 };
 
 /** Returns null for a valid value (or no value), or an error message. */
@@ -46,7 +57,8 @@ export function detectInstalledProfile(
   content: string | null | undefined,
 ): StandardsProfile | null {
   if (!content) return null;
-  if (content.includes(ML_ANCHORS.zh) || content.includes(ML_ANCHORS.en)) {
+  const mlAnchors = [...ML_ANCHORS.zh, ...ML_ANCHORS.en];
+  if (mlAnchors.some((anchor) => content.includes(anchor))) {
     return "ml";
   }
   return detectInstalledLanguage(content) === null ? null : "general";

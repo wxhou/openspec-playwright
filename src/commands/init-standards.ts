@@ -1,10 +1,5 @@
-import { existsSync, readFileSync } from "fs";
-import { join } from "path";
-import {
-  detectInstalledProfile,
-  type StandardsProfile,
-} from "../shared/index.js";
-import { extractRuleBlockContent } from "../shared/drift.js";
+import type { StandardsProfile } from "../shared/index.js";
+import { readInstalledStandards } from "./standards-source.js";
 import { promptSelectStandardsProfile } from "./init-standards-prompt.js";
 
 export interface InitStandardsDeps {
@@ -32,12 +27,7 @@ export async function resolveInitStandardsProfile(
   if (flag !== undefined) return { flag };
   if (!deps.interactive) return {};
 
-  const agentsPath = join(projectRoot, "AGENTS.md");
-  const installed = detectInstalledProfile(
-    existsSync(agentsPath)
-      ? extractRuleBlockContent(readFileSync(agentsPath, "utf-8"))
-      : null,
-  );
+  const installed = readInstalledStandards(projectRoot).profile;
   const prompt = deps.profilePrompt ?? promptSelectStandardsProfile;
   try {
     return { flag: await prompt(installed) };

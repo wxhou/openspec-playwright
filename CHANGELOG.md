@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - ML 版数据划分按形态三分支（时序/实体分组/哈希），消除时序数据按样本哈希切分造成的时间泄漏
+- 规范块局部被改后仍按 ML 版识别（多个锚点判定），避免下一次 `update` 静默降级为通用版
+- `update` 找不到已装版本的文件时提示 `--standards`，且失败退出时不再打印「Update complete」
+- `init --tools none --standards` 不再声称已安装规范；取消版本选择改为在写入前中止
 
 ### Docs
 - README（中英）补 `--standards` 说明；站点预览增加通用 / ML 切换

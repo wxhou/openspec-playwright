@@ -39,11 +39,9 @@ import {
   resolveProjectTarget,
   detectCodeGraphStatus,
   codegraphHintLines,
-  detectInstalledLanguage,
   resolveStandardsLanguage,
   missingEnglishSections,
   STANDARDS_FILES,
-  detectInstalledProfile,
   resolveStandardsProfile,
   findUncoveredManagedPaths,
   managedBlockAdvisoryHint,
@@ -56,7 +54,8 @@ import {
 } from "../shared/index.js";
 import { execFileAsync, execFileSync } from "../shared/exec.js";
 import { openSpecCliStatus } from "../shared/openspec-version.js";
-import { compareBlock, OPENSPEC_START, hasLegacyTerritoryStart, extractRuleBlockContent } from "../shared/drift.js";
+import { compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
+import { readInstalledStandards } from "./standards-source.js";
 import { readTextFileCapped } from "../shared/file-read.js";
 import { pipelineGitignoreOmit } from "./pipeline.js";
 import { fullRulesFile, wrapperHasMarkers, hasRuleFileMarkers } from "./editors/project-rules.js";
@@ -543,7 +542,13 @@ export async function update(options: UpdateOptions) {
 
   // Summary
   console.log(chalk.blue("\n─── Summary ───"));
-  console.log(chalk.green("  ✓ Update complete!"));
+  if (process.exitCode === 1) {
+    console.log(
+      chalk.yellow("  ⚠ Update finished with errors — see the messages above"),
+    );
+  } else {
+    console.log(chalk.green("  ✓ Update complete!"));
+  }
 
   // Self-check: detect when the actually-resolved package version
   // (by Node module resolution from this CLI script) differs from
@@ -859,24 +864,18 @@ export function syncEmployeeStandards(
   // markers is NOT created/appended here (run `openspec-pw init` to
   // install). Wrapper files are gated on their editor's command-artifact
   // authorization, not their own markers.
-  const agentsPath = join(projectRoot, "AGENTS.md");
-  const agentsRaw = existsSync(agentsPath)
-    ? readFileSync(agentsPath, "utf-8")
-    : null;
-  const installed = detectInstalledLanguage(
-    agentsRaw ? extractRuleBlockContent(agentsRaw) : null,
-  );
+  const installed = readInstalledStandards(projectRoot);
   const hasStandardsBlock =
-    agentsRaw !== null &&
-    (agentsRaw.includes(OPENSPEC_START) ||
-      hasLegacyTerritoryStart(agentsRaw));
-  const language = resolveStandardsLanguage({ flag: lang, installed });
-  const installedProfile = detectInstalledProfile(
-    agentsRaw ? extractRuleBlockContent(agentsRaw) : null,
-  );
+    installed.raw !== null &&
+    (installed.raw.includes(OPENSPEC_START) ||
+      hasLegacyTerritoryStart(installed.raw));
+  const language = resolveStandardsLanguage({
+    flag: lang,
+    installed: installed.language,
+  });
   const profile = resolveStandardsProfile({
     flag: standardsProfile,
-    installed: installedProfile,
+    installed: installed.profile,
   });
   const standardsFile = STANDARDS_FILES[language][profile];
   // The fetched bundle can predate the standards/ layout move; accept the
@@ -889,7 +888,11 @@ export function syncEmployeeStandards(
     console.error(
       chalk.red(`  ✗ Employee standards file missing: ${standardsFile}`),
     );
-    console.error(chalk.gray("    Reinstall the CLI or pass --lang zh|en"));
+    console.error(
+      chalk.gray(
+        "    Reinstall the CLI, or pass --lang zh|en / --standards general|ml",
+      ),
+    );
     process.exitCode = 1;
     return;
   }
@@ -915,7 +918,7 @@ export function syncEmployeeStandards(
     );
   } else if (
     hasStandardsBlock &&
-    (installed === null ? Boolean(lang) : installed !== language)
+    (installed.language === null ? Boolean(lang) : installed.language !== language)
   ) {
     console.log(
       chalk.gray(
@@ -931,9 +934,9 @@ export function syncEmployeeStandards(
     );
   } else if (
     hasStandardsBlock &&
-    (installedProfile === null
+    (installed.profile === null
       ? Boolean(standardsProfile)
-      : installedProfile !== profile)
+      : installed.profile !== profile)
   ) {
     console.log(
       chalk.gray(
@@ -950,6 +953,7 @@ export function syncEmployeeStandards(
 
   // Re-read after migration: the marker judgment below must see the migrated
   // markers. Language detection above only needed the content anchors.
+  const agentsPath = join(projectRoot, "AGENTS.md");
   const agentsContent = existsSync(agentsPath)
     ? readFileSync(agentsPath, "utf-8")
     : null;
