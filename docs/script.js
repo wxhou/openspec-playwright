@@ -126,6 +126,7 @@ const ML_DELTA_ZH = `# 项目规范 · ML
 - 这份代码库是你的：训练什么、以什么指标评测，按 \`openspec/config.yaml\` 的约定执行；先读它（数据集、模型、算力、主指标、预算）
 - ML 库的 API 与默认值漂移极快，不凭记忆写——已装源码/类型定义 → 官方文档 → 网络搜索，仍无法确认就问用户
 - 优先级三档：🔴 违反 → 结论不可信、不可复现或不可逆损失；🟡 偏离需说明；⚪ 可调整；冲突按 🔴 > 🟡 > ⚪ 裁决
+- 变更授权：跨文件改动或架构级变更走 OpenSpec 提案，范围由用户确认；commit/push/merge 须用户授权；高风险变更先报设计、影响面与回滚
 
 ## 评测完整性
 - 🔴 不改评测面：metric 计算、评测脚本、阈值、划分、解码/beam 参数、评分数据，以及评测包装器与超时处理，都不在可改范围；确需改 → 说清动机并取得授权
@@ -164,6 +165,11 @@ const ML_DELTA_ZH = `# 项目规范 · ML
 - 🟡 训练脚本从当前版本示例与文档出发，写前核对签名与默认值
 - 🟡 依赖锁定版本；CUDA、bf16、多卡路径在 GPU 环境验证
 - 🟡 训练脚本关进度条、按步记录指标、首步即记，保证日志可按行解析
+- 🔴 改动后跑 lint 与 typecheck，通过才算成功
+- 🟡 引入依赖按优先级链，新包先查生态注册源——AI 会幻觉包名（抢注攻击）
+- 🔴 禁止无界读取进内存：整数据集或全量预测攒齐再处理；循环内 I/O 批量化
+- 🟡 单文件 1500 行上限按职责拆；可能被重试的写操作做成幂等
+- 🟡 单测钉行为不钉实现：数据变换、切分、指标函数有确定性的测试
 - 🔴 不吞异常、不关断言/告警、不硬编码值绕过报错、不 mock 真实训练管线让流程"跑通"
 
 ## 大文件与外部制品源
@@ -182,6 +188,8 @@ const ML_DELTA_ZH = `# 项目规范 · ML
 
 ## 通用底线
 - 🔴 不编造数据、字段名、指标值、URL 或接口形态；缺就停下问
+- 🟡 缺数据四选一：拒绝 → 显式失败；占位 → \`TODO(user)\`；提供 → 真实数据；授权 → 可造并标注来源
+- 🟡 不重复相同调用、不占位轮询；不就地改写已有文件；不主动推送
 - 🔴 破坏性命令（删权重/数据集/runs、reset --hard、rm -rf）执行前声明影响范围并取得同意
 - 🔴 密钥与 .env 不入版本控制，日志不打印凭据
 `; // spec-embed:ml-zh
@@ -312,6 +320,7 @@ const ML_DELTA_EN = `# Project Guidelines · ML
 - This codebase is yours: what to train and how to evaluate it follow the conventions in \`openspec/config.yaml\` (datasets, models, compute, primary metric, budget); read it first
 - ML library APIs and defaults drift fast — never write from memory; installed source/types → official docs → web search; if still unconfirmed, ask the user
 - Priority — three tiers: 🔴 violation → untrustworthy or irreproducible results / irreversible loss; 🟡 deviations need justification; ⚪ adjustable; conflicts resolve 🔴 > 🟡 > ⚪
+- Change authorization: multi-file or architecture-level changes go through the OpenSpec proposal flow with the scope confirmed by the user; commit/push/merge need user authorization; high-risk changes report design, impact, and rollback first
 
 ## Evaluation Integrity
 - 🔴 Do not modify the evaluation surface: metric computation, eval scripts, thresholds, splits, decoding/beam parameters, scoring data, evaluation wrappers, and timeout handlers; if a change is truly needed → state the reason and get authorization
@@ -350,6 +359,11 @@ const ML_DELTA_EN = `# Project Guidelines · ML
 - 🟡 Start scripts from current-version examples and docs; verify signatures and defaults
 - 🟡 Pin dependency versions; validate CUDA, bf16, and multi-GPU on GPU hardware
 - 🟡 Disable progress bars, log metrics per step and log the first step, so logs stay line-parseable
+- 🔴 Run lint and typecheck after every edit; passing is success
+- 🟡 Dependency selection follows the priority chain; check the registry for a new package — LLMs hallucinate package names (squatting attacks)
+- 🔴 Never read unbounded data into memory: whole datasets or full prediction sets accumulated before processing; batch per-item I/O inside loops
+- 🟡 Single-file limit 1500 lines, split by responsibility; make writes that may be retried idempotent
+- 🟡 Unit tests pin behavior, not implementation: deterministic tests for data transforms, splits, and metric functions
 - 🔴 Do not swallow exceptions, disable assertions, hardcode around errors, or mock the real pipeline to make a flow "run"
 
 ## Large Artifacts and External Sources
@@ -368,6 +382,8 @@ const ML_DELTA_EN = `# Project Guidelines · ML
 
 ## Baseline Safety
 - 🔴 Do not invent data, field names, metric values, URLs, or API shapes; stop and ask when missing
+- 🟡 When data is missing, follow the user's answer: refuse → explicit failure; placeholder → \`TODO(user)\`; provide → real data; explicitly okays fake data → create it and mark the source
+- 🟡 Never generate the same call repeatedly or send placeholder polling; never rewrite existing files in place; no push unless asked
 - 🔴 Destructive commands (deleting weights/datasets/runs, reset --hard, rm -rf) require stating the blast radius and explicit consent
 - 🔴 Secrets and .env never enter version control; logs never print credentials
 `; // spec-embed:ml-en

@@ -14,6 +14,10 @@
 
 **Experience capture**: when corrected by the user, write the prevention rule into the project's `openspec/config.yaml` `context`; land it after user confirmation.
 
+**OpenSpec commands**: check `openspec --help`; if the command is not on PATH, use `npx openspec --help`.
+
+**Change authorization**: multi-file or architecture-level changes go through the OpenSpec proposal flow, with the scope confirmed by the user; commit/push/merge/release require user authorization, and one authorization covers only the specified action; high-risk changes (public interfaces, data or model contracts, auth and security) report design essentials, impact and rollback before acting.
+
 ---
 
 ## 1. Evaluation Integrity
@@ -100,6 +104,15 @@
 - 🟡 Pin dependency versions; validate CUDA, bf16, and multi-GPU paths on GPU hardware — never fake a pass on CPU
 - 🟡 Run long training in the background with logs and artifacts on disk; publish the monitoring dashboard URL at the start
 - 🟡 Disable progress bars, log metrics per step, and log the first step, so logs stay line-parseable
+- 🔴 Run the project's lint and typecheck after every edit; passing is success. On failure, auto-fix the touched files first, then rerun
+- 🟡 Dependency selection follows the priority chain: already in the codebase → standard library → installed dependency → mature maintained library → implement yourself; check the ecosystem's registry first for a new package — LLMs hallucinate package names (squatting attacks)
+- 🟡 Write only what's requested: no un-requested extension points or abstractions; touch only the lines needed and match the existing style
+- 🟡 Single-file limit 1500 lines: this edit pushing a file past 1500 splits it by responsibility
+- 🔴 Never read unbounded data into memory: whole datasets, full prediction or log sets accumulated before processing — without a confirmed upper bound, stream/batch with an explicit batch size
+- 🟡 Per-item I/O inside loops must be batched (per-sample disk reads, N+1 calls); no caches that grow without a cap or eviction
+- 🟡 Make writes that may be retried or fail midway idempotent: data preprocessing, caches and run ledgers reach the same end state when rerun
+- 🟡 Unit tests pin behavior, not implementation: data transforms, splits and metric functions get tests that assert observable results
+- 🟡 Tests are self-contained and deterministic: seeds, clock, network and environment isolated; fix by reproducing first — write a failing test before the fix
 
 **DO NOT**
 - 🔴 Do not swallow exceptions, disable assertions/warnings, hardcode values to get past an error, or mock the real training pipeline to make a flow "run"
@@ -147,6 +160,10 @@
 **DO**
 - 🟡 Put temporary artifacts under `tmp/<date>/` and never commit them
 - 🟡 Let errors propagate by default; catch only when handling changes the outcome, handle once, and log
+- 🟡 When data is missing, follow the user's answer: refuse → explicit failure (a bare `return null` does not count); placeholder → mark `TODO(user)`; provide → use real data; explicitly okays fake data → may create it and mark the source
+- 🟡 Never generate the same call repeatedly; while waiting on a background task, send no placeholder or polling calls
+- 🟡 Never rewrite existing files in place (`sed -i`, output redirection, etc.); read every file end-to-end before citing it; report changes from the actual diff
+- 🟡 No push unless explicitly requested
 
 **DO NOT**
 - 🔴 Do not invent data, field names, metric values, URLs, or API shapes; when missing, stop and ask
