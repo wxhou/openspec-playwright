@@ -79,6 +79,14 @@ export {
 } from "./standards-language.js";
 export type { StandardsLanguage } from "./standards-language.js";
 export {
+  STANDARDS_FILES,
+  detectInstalledProfile,
+  parseStandardsFlag,
+  resolveStandardsProfile,
+  validateStandardsFlag,
+} from "./standards-profile.js";
+export type { StandardsProfile } from "./standards-profile.js";
+export {
   CREDENTIALS_RELPATHS,
   credentialsIgnoreHint,
   findUnignoredFiles,

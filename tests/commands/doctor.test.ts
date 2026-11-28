@@ -927,7 +927,7 @@ describe("doctor authorization tiers", () => {
     const checks = await doctorJsonChecks();
 
     expect(checks.find((c) => c.name === "standards-agents")?.ok).toBe(true);
-    expect(bundled).toHaveBeenCalledWith("en");
+    expect(bundled).toHaveBeenCalledWith("en", "general");
   });
 
   it("minimal-mode project: no Playwright scaffold → browsers/playwright-test degrade to ok:true info lines", async () => {

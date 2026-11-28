@@ -97,19 +97,19 @@ import {
   type ChecklistDisposition,
   type LintConfigResult,
   type RuffTableHeader,
+  type StandardsProfile,
 } from "../shared/index.js";
-import { loadProjectStandards } from "./standards-source.js";
+import {
+  bundledStandardsSources,
+  loadProjectStandards,
+} from "./standards-source.js";
+import { resolveInitStandardsProfile } from "./init-standards.js";
 
 const TEMPLATE_DIR = fileURLToPath(new URL("../../templates", import.meta.url));
 const E2E_COMMAND_SRC = fileURLToPath(
   new URL("../../templates/e2e-command.md", import.meta.url),
 );
-const EMPLOYEE_STANDARDS_SRC = fileURLToPath(
-  new URL("../../standards/employee-standards.md", import.meta.url),
-);
-const EMPLOYEE_STANDARDS_EN_SRC = fileURLToPath(
-  new URL("../../standards/employee-standards.en.md", import.meta.url),
-);
+const EMPLOYEE_STANDARDS_SRC = bundledStandardsSources();
 const TESTS_README_SRC = fileURLToPath(
   new URL("../../templates/tests-readme.md", import.meta.url),
 );
@@ -146,6 +146,8 @@ export interface InitOptions {
   autoPipeline?: boolean;
   /** Employee standards language (`--lang zh|en`); invalid values are rejected by the CLI. */
   lang?: string;
+  /** Employee standards profile (`--standards general|ml`); invalid values are rejected by the CLI. */
+  standards?: string;
   /**
    * Per-editor rules copies (`--rule-files` / `--no-rule-files`): true
    * installs them, false skips and cleans them, undefined follows the
@@ -203,6 +205,13 @@ export interface InitDeps {
   stdinIsTTY?: boolean;
   /** Override home dir for Pi/Oh My Pi global detection (tests inject an empty dir). */
   homeDir?: string;
+  /**
+   * Standards-profile prompt; defaults to @inquirer/prompts select. Receives
+   * the detected installed profile so a rerun defaults to keeping it.
+   */
+  profilePrompt?: (
+    installed: StandardsProfile | null,
+  ) => Promise<StandardsProfile>;
 }
 
 /**
@@ -528,6 +537,21 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     );
   }
 
+  // Resolve the standards profile before any write: a cancelled prompt then
+  // aborts cleanly, before the scaffold and editor artifacts land.
+  let standardsFlag = options.standards;
+  if (editors.length > 0) {
+    const resolved = await resolveInitStandardsProfile(projectRoot, options.standards, {
+      interactive: deps.profilePrompt !== undefined || (isTTY && stdinIsTTY),
+      profilePrompt: deps.profilePrompt,
+    });
+    if (!resolved) {
+      reportCancelled("standards profile not selected; nothing installed.");
+      return;
+    }
+    standardsFlag = resolved.flag;
+  }
+
   // 3. Init mode + template target. Resolved before the deselected-removal
   // phase so a scaffold conflict aborts before any editor artifact is
   // deleted.
@@ -712,10 +736,9 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
             "AGENTS.md",
             agentsLinked
               ? undefined
-              : [
-                  readEmployeeStandards(EMPLOYEE_STANDARDS_SRC),
-                  readEmployeeStandards(EMPLOYEE_STANDARDS_EN_SRC),
-                ],
+              : Object.values(EMPLOYEE_STANDARDS_SRC)
+                  .flatMap((byProfile) => Object.values(byProfile))
+                  .map((src) => readEmployeeStandards(src)),
           );
           if (removedAgents) {
             console.log(chalk.green("  ✓ AGENTS.md: shared openspec-pw block removed"));
@@ -1015,13 +1038,12 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
   }
   if (editors.length > 0) {
     console.log(chalk.blue("\n─── Installing Employee Standards ───"));
-    const loaded = loadProjectStandards(
-      projectRoot,
-      { zh: EMPLOYEE_STANDARDS_SRC, en: EMPLOYEE_STANDARDS_EN_SRC },
-      options.lang,
-    );
+    const loaded = loadProjectStandards(projectRoot, EMPLOYEE_STANDARDS_SRC, {
+      lang: options.lang,
+      standards: standardsFlag,
+    });
     if (!loaded) process.exit(1);
-    const { language, content: standards } = loaded;
+    const { language, profile, content: standards } = loaded;
     // Migrate surviving legacy OPENSPEC blocks first (same ordering rule as
     // syncEmployeeStandards — migration precedes any marker judgment).
     migrateLegacyMarkers(
@@ -1035,7 +1057,7 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     });
     console.log(
       chalk.gray(
-        `  ✓ Employee standards installed in ${language === "en" ? "English" : "Chinese"} — switch with --lang ${language === "en" ? "zh" : "en"}`,
+        `  ✓ Employee standards installed in ${language === "en" ? "English" : "Chinese"} (${profile === "ml" ? "ML" : "general"}) — switch with --lang zh|en --standards general|ml`,
       ),
     );
   }
@@ -1109,11 +1131,24 @@ export async function init(options: InitOptions, deps: InitDeps = {}) {
     // --no-frontend override (the signal may have actually hit).
     const reason =
       options.frontend === false ? "--no-frontend" : "no frontend signal";
+    // Standards install only with an editor target; the summary must not claim
+    // them on a --tools none run.
+    const minimalInstalled = [
+      "tests/README.md",
+      ...(editors.length > 0 ? ["employee standards"] : []),
+    ];
     console.log(
       chalk.gray(
-        `  Mode: minimal (${reason}) — tests/README.md + employee standards installed`,
+        `  Mode: minimal (${reason}) — ${minimalInstalled.join(" + ")} installed`,
       ),
     );
+    if (options.standards !== undefined && editors.length === 0) {
+      console.log(
+        chalk.gray(
+          "  - No editor selected, so --standards was not applied (use --tools <editor>)",
+        ),
+      );
+    }
     console.log(chalk.bold("Next steps:"));
     // Link the contract doc only when this run generated it — a pre-existing
     // tests/README.md is the user's, not ours.

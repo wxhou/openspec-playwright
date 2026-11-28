@@ -10,6 +10,7 @@ import { fileURLToPath } from "url";
 import { Command } from "commander";
 import chalk from "chalk";
 import { validateLanguageFlag } from "./shared/standards-language.js";
+import { validateStandardsFlag } from "./shared/standards-profile.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -87,6 +88,10 @@ program
     "--lang <lang>",
     'employee standards language: "zh" or "en" (default: keep installed, else system language)',
   )
+  .option(
+    "--standards <profile>",
+    'employee standards profile: "general" or "ml" (default: keep installed, else general)',
+  )
   .action(async (opts) => {
     // Raw-argv check, before any import or write: commander's .conflicts()
     // cannot tell --miniprogram from --no-miniprogram (same attribute) and
@@ -113,6 +118,11 @@ program
     const langError = validateLanguageFlag(opts.lang);
     if (langError) {
       console.error(chalk.red(`\n  ✗ ${langError}\n`));
+      process.exit(2);
+    }
+    const standardsError = validateStandardsFlag(opts.standards);
+    if (standardsError) {
+      console.error(chalk.red(`\n  ✗ ${standardsError}\n`));
       process.exit(2);
     }
     const { init } = await import("./commands/init.js");
@@ -174,10 +184,19 @@ program
     "--lang <lang>",
     'employee standards language: "zh" or "en" (default: keep installed, else system language)',
   )
+  .option(
+    "--standards <profile>",
+    'employee standards profile: "general" or "ml" (default: keep installed, else general)',
+  )
   .action(async (opts) => {
     const langError = validateLanguageFlag(opts.lang);
     if (langError) {
       console.error(chalk.red(`\n  ✗ ${langError}\n`));
+      process.exit(2);
+    }
+    const standardsError = validateStandardsFlag(opts.standards);
+    if (standardsError) {
+      console.error(chalk.red(`\n  ✗ ${standardsError}\n`));
       process.exit(2);
     }
     const { update } = await import("./commands/update.js");

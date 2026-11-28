@@ -18,7 +18,12 @@ function countLines(file: string): number {
 }
 
 describe("standards length", () => {
-  for (const file of ["employee-standards.md", "employee-standards.en.md"]) {
+  for (const file of [
+    "employee-standards.md",
+    "employee-standards.en.md",
+    "employee-standards.ml.md",
+    "employee-standards.ml.en.md",
+  ]) {
     it(`${file} stays within the 200-line CLAUDE.md target`, () => {
       expect(countLines(file)).toBeLessThanOrEqual(MAX_STANDARDS_LINES);
     });

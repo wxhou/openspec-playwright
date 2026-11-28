@@ -125,6 +125,8 @@ Without `--tools`, a TTY shows a multi-select grouped as `Configured` / `Detecte
 
 **Standards language.** `init --lang zh|en` selects the language of the AGENTS.md standards block; without the flag, an installed block's language wins, then the OS locale, then the terminal locale, then English. `update --lang` switches an installed block. IP and region are never detected.
 
+**Standards profile.** `init --standards general|ml` selects which standards body is installed; without the flag an installed block's profile wins, then `general`. On a TTY with no flag, init asks once with the installed profile pre-selected, so Enter keeps it; non-interactive runs never prompt. `update --standards` switches an installed block. The ML profile is ML-first — evaluation integrity, data boundaries, training budgets, reproducibility, artifacts, and reporting — and carries the large-artifact source rules; the general profile covers frontend, backend, and general codebases.
+
 Init prints a pre-select hint (not the install set) and a `Selected editors:` line (the actual install set).
 
 **Choosing what to ignore.** Interactive init lists the managed `.gitignore` paths as four group toggles (three with `--auto-pipeline`, which keeps `openspec/` committable), all checked — Enter keeps them ignored; unchecking a group commits every path in it, and the "Customize" row opens the per-path list. Committed paths are recorded on the block's `# openspec-pw: skip=…` line, so `update` leaves them out and a later init can restore an exactly recorded path. An opt-out for a path inside a managed directory keeps that whole directory committable — git cannot re-include a file under an ignored directory — and the directory stops being offered. Rule files are always injected (use `--no-rule-files` to install only AGENTS.md). Non-interactive runs keep the previous choices; a fresh project ignores everything managed.
@@ -205,8 +207,8 @@ Ownership is content-based: unmodified snapshots are refreshed by `update` and r
 
 ```bash
 openspec-pw -v            # Print version (also -V / --version)
-openspec-pw init          # Initialize integration (--tools all|none|ids… to select editors; --agents adds the official agents; --frontend/--no-frontend force the install mode; --miniprogram/--no-miniprogram select the mini-program target; --rule-files/--no-rule-files toggle per-editor rules copies; --lint-config generates/extends ESLint and ruff config for the swallow-error checklist; --hook[=static|full] installs a Claude Code Stop hook; --auto-pipeline generates the headless CI workflow; --lang zh|en selects the employee-standards language)
-openspec-pw update        # Update CLI and commands to latest version (--lang zh|en switches an installed standards block)
+openspec-pw init          # Initialize integration (--tools all|none|ids… to select editors; --agents adds the official agents; --frontend/--no-frontend force the install mode; --miniprogram/--no-miniprogram select the mini-program target; --rule-files/--no-rule-files toggle per-editor rules copies; --lint-config generates/extends ESLint and ruff config for the swallow-error checklist; --hook[=static|full] installs a Claude Code Stop hook; --auto-pipeline generates the headless CI workflow; --lang zh|en selects the employee-standards language; --standards general|ml selects the standards profile)
+openspec-pw update        # Update CLI and commands to latest version (--lang zh|en and --standards general|ml switch an installed standards block)
 openspec-pw doctor        # Check prerequisites (Node, Playwright, OpenSpec, config, tests) + app server diagnostics
 openspec-pw install --claude # Install or verify Claude Code via the official native installer (default: print only; --run executes; --verify checks)
 openspec-pw audit         # Audit tests for orphaned specs and issues (--gate exits 1 when any issue is found)
@@ -304,6 +306,7 @@ The numbered steps are the same on OpenSpec 1.x; only the command name changes (
 > **`--lint-config` (opt-in)**: creates a minimal `eslint.config.mjs` (eslint 9+ projects with no config anywhere up to the git root) and extends the ruff config with a managed `extend-select = ["B904"]` block. Existing configs are never edited — a paste-ready snippet is printed instead.
 4. Generates `playwright.config.ts` with automatic dev script and port detection (Vite/Next/Nuxt/Astro, `.env`, and `--port`)
 5. Picks the install mode from the frontend signal (see [Init Modes](#init-modes-frontend-vs-minimal)); with none found, prints guidance in the Summary — run `openspec-pw init` in the app directory (monorepo), or use Playwright's `request` fixture for API-only projects
+6. Installs the employee-grade standards block into `AGENTS.md` (plus each selected editor's rules copy) in the chosen language and profile — `--lang zh|en`, `--standards general|ml`; on a TTY init asks for the profile once, pre-selecting what is already installed
 
 ## What `openspec-pw doctor` checks
 
@@ -402,6 +405,8 @@ In CI, set the `E2E_AUTH_*` values as repository variables; the workflow passes 
 Employee-grade standards live in **AGENTS.md** as the single source of truth; the hook column in the [Supported table](#supported-ai-coding-assistants) is how each editor reaches it. Claude Code needs CLAUDE.md to import it with `@AGENTS.md` (it does not read AGENTS.md by default): the `@` line may sit anywhere outside backticks/code blocks, and outside the OPENSPEC-PW markers. CodeBuddy prefers CODEBUDDY.md when both exist.
 
 **Per-editor rules copies.** AGENTS.md is the only mandatory rules file; the wrapper and per-editor rules files are convenience copies. `init --no-rule-files` installs AGENTS.md and removes those copies (unless they hold user content outside the block); `init --rule-files` restores them. The choice is recorded on the managed `.gitignore` block's skip line and honored by later runs.
+
+**Standards profiles.** Two bodies ship per language: `general` (§0–§7 — code quality, tooling, large tasks, anti-fabrication, temp files, testing, resource bounds) for frontend, backend, and general codebases, and `ml` (ML-first — evaluation integrity, data boundaries, training budgets, reproducibility, dependencies, artifacts, reporting, baseline safety) for training and experiment work. The installed block itself is the only persisted signal: its profile is detected from a section heading, so `update` and `doctor` follow whatever was installed unless `--standards` overrides it.
 
 > **Coexisting with the official `@fission-ai/openspec` CLI**: its `openspec update` deletes root AGENTS.md/CLAUDE.md blocks wrapped in plain `OPENSPEC:START/END` markers. openspec-pw uses the exclusive `OPENSPEC-PW:` namespace, which that matcher cannot see; if a block was already wiped, `openspec-pw init` restores it.
 

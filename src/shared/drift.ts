@@ -10,6 +10,7 @@
  */
 import { fileURLToPath } from "url";
 import { join } from "path";
+import { STANDARDS_FILES } from "./standards-profile.js";
 
 // openspec-pw-owned territory markers. The "-PW" namespace cannot match the
 // official `@fission-ai/openspec` legacy cleanup, which deletes any root
@@ -109,15 +110,12 @@ export function extractRuleBlockContent(content: string): string | null {
 
 const PKG_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
-/** Absolute path to the bundled employee-standards file for the given language. */
+/** Absolute path to the bundled employee-standards file for the given language and profile. */
 export function bundledStandardsPath(
   lang: "zh" | "en" = "zh",
+  profile: "general" | "ml" = "general",
 ): string {
-  return join(
-    PKG_ROOT,
-    "standards",
-    lang === "en" ? "employee-standards.en.md" : "employee-standards.md",
-  );
+  return join(PKG_ROOT, "standards", STANDARDS_FILES[lang][profile]);
 }
 
 /**

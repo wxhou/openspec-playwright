@@ -28,11 +28,11 @@ import {
   resolveProjectTarget,
   resolveWxaProject,
   resolveBuildCommand,
-  detectInstalledLanguage,
   readManagedSkipsSafe,
   managedPathFor,
 } from "../shared/index.js";
-import { bundledStandardsPath, compareBlock, OPENSPEC_START, hasLegacyTerritoryStart, extractRuleBlockContent } from "../shared/drift.js";
+import { bundledStandardsPath, compareBlock, OPENSPEC_START, hasLegacyTerritoryStart } from "../shared/drift.js";
+import { detectStandardsSignals } from "./standards-source.js";
 import {
   openSpecCliStatus,
 } from "../shared/openspec-version.js";
@@ -824,11 +824,14 @@ export async function doctor(options: DoctorOptions = {}) {
       });
     } else {
       const fileContent = readFileSync(agentsPath, "utf-8");
-      // Compare against the SSOT in the language the project actually has —
-      // otherwise an English block would always read as drift from the
-      // Chinese template. Legacy blocks without either anchor stay Chinese.
+      // Compare against the SSOT in the language and profile the project
+      // actually has — otherwise an English or ML block would always read as
+      // drift from the general Chinese template. Legacy blocks without either
+      // anchor stay Chinese/general.
+      const signals = detectStandardsSignals(fileContent);
       const standardsPath = bundledStandardsPath(
-        detectInstalledLanguage(extractRuleBlockContent(fileContent)) ?? "zh",
+        signals.language ?? "zh",
+        signals.profile ?? "general",
       );
       const standardsExpected = existsSync(standardsPath)
         ? readFileSync(standardsPath, "utf-8")
@@ -941,8 +944,10 @@ export async function doctor(options: DoctorOptions = {}) {
       if (read.kind !== "ok") continue;
       const fullContent = read.content;
       if (!fullContent.includes(OPENSPEC_START)) continue;
+      const fullSignals = detectStandardsSignals(fullContent);
       const fullStandardsPath = bundledStandardsPath(
-        detectInstalledLanguage(extractRuleBlockContent(fullContent)) ?? "zh",
+        fullSignals.language ?? "zh",
+        fullSignals.profile ?? "general",
       );
       const fullExpected = existsSync(fullStandardsPath)
         ? readFileSync(fullStandardsPath, "utf-8")

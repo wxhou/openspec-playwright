@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- 员工规范新增 ML 版（`--standards ml`）：以评测完整性、数据边界、训练预算、可复现台账、制品源与结果汇报为主体；`init` 在 TTY 下询问一次版本，默认沿用已安装版本
+- ML 版补齐社区模板的工程纪律：实验隔离与统一入口、保留/淘汰判据、停滞先读文献、重跑与恢复验证、探索性/结论性标注、数据与产物入库边界、评测包装器不可改、sweep 与日志格式
+- `update --standards general|ml` 切换已安装规范块；`doctor` 按已安装版本比对漂移
+
+### Changed
+- 通用版规范收敛为 §0–§7，§8 大文件与外部制品源移入 ML 版
+- ML 版补目标/指标映射、超参搜索空间与模型/数据卡，测试增加中英结构一致性校验
+- ML 版吸收通用工程纪律：资源边界、lint/typecheck gate、依赖选型与抢注核查、单测纪律、变更授权、缺数据四选一、工具使用底线
+- ML 版补制品加载信任边界（safetensors / `trust_remote_code`）、重复失败停止预算与红测分类
+
+### Fixed
+- ML 版数据划分按形态三分支（时序/实体分组/哈希），消除时序数据按样本哈希切分造成的时间泄漏
+- 规范块局部被改后仍按 ML 版识别（多个锚点判定），避免下一次 `update` 静默降级为通用版
+- `update` 找不到已装版本的文件时提示 `--standards`，且失败退出时不再打印「Update complete」
+- `init --tools none --standards` 不再声称已安装规范；取消版本选择改为在写入前中止
+
+### Docs
+- README（中英）补 `--standards` 说明；站点预览增加通用 / ML 切换
+
 ## [0.3.125] - 2026-11-26
 
 ### Added

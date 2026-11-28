@@ -17,6 +17,7 @@ import {
 import { dirname, join, basename, resolve as pathResolve, sep } from "path";
 import chalk from "chalk";
 import { isPathInsideProjectRoot } from "../../shared/path-guard.js";
+import { STANDARDS_FILES } from "../../shared/standards-profile.js";
 // The marker constants hold no regex metacharacters, so they are safe to
 // interpolate into the RegExp below.
 import {
@@ -507,9 +508,12 @@ export function wrapperLinksToAgents(projectRoot: string, adapter: EditorAdapter
   }
 }
 
-/** Bundled employee standards in every shipped language, for pristine checks. */
+/** Bundled employee standards for every language × profile, for pristine checks. */
 function bundledStandardsContents(): string[] {
-  return ["employee-standards.md", "employee-standards.en.md"]
+  const names = Object.values(STANDARDS_FILES).flatMap((byProfile) =>
+    Object.values(byProfile),
+  );
+  return names
     .map((name) => {
       try {
         return readFileSync(
