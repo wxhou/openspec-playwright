@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ML 版补目标/指标映射、超参搜索空间与模型/数据卡，测试增加中英结构一致性校验
 - ML 版吸收通用工程纪律：资源边界、lint/typecheck gate、依赖选型与抢注核查、单测纪律、变更授权、缺数据四选一、工具使用底线
 - ML 版补制品加载信任边界（safetensors / `trust_remote_code`）、重复失败停止预算与红测分类
+- ML 版 §6 更名为「外部制品与加载信任」，补外部请求超时/有限重试与红测重跑确认；§5 按训练 / 质量 / 测试分组
 
 ### Fixed
 - ML 版数据划分按形态三分支（时序/实体分组/哈希），消除时序数据按样本哈希切分造成的时间泄漏

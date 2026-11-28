@@ -66,6 +66,7 @@
 - 🟡 Handle failures as a ladder: lower per-device batch and raise gradient accumulation proportionally → enable gradient checkpointing → move to a larger GPU
 - 🟡 Run experiments on a dedicated branch or tag, never on main; launch through the single entrypoint (Makefile/script) instead of calling the trainer or container directly; confirm the interpreter and environment first, and never create a venv or install dependencies on your own
 - 🟡 Size timeouts to the job; a platform default that cannot finish the run counts as a misconfiguration
+- 🟡 Give every external request in eval/training scripts a per-request timeout and bounded retries; take the parameters from the existing config, and get §1 authorization when they are missing or must change; record retries and failures in the ledger
 - 🟡 Tune hyperparameters with a sweep script, not one at a time; keep the rest of the budget fixed while sweeping one axis
 
 **DO NOT**
@@ -100,20 +101,23 @@
 > WHY: ML library APIs and defaults drift fast; writing from memory produces arguments that do not exist.
 
 **DO**
+### Training scripts and environment
 - 🟡 Start training scripts from current-version examples and docs; verify signatures and defaults before writing
 - 🟡 Pin dependency versions; validate CUDA, bf16, and multi-GPU paths on GPU hardware — never fake a pass on CPU
 - 🟡 Run long training in the background with logs and artifacts on disk; publish the monitoring dashboard URL at the start
 - 🟡 Disable progress bars, log metrics per step, and log the first step, so logs stay line-parseable
-- 🔴 Run the project's lint and typecheck after every edit; passing is success. On failure, auto-fix the touched files first, then rerun
+### Code quality and resource bounds
+- 🔴 Run the project's lint and typecheck after every edit; passing is success. On failure, auto-fix the touched files first, then rerun; when the project has no such check, tell the user and report it as not run
 - 🟡 Dependency selection follows the priority chain: already in the codebase → standard library → installed dependency → mature maintained library → implement yourself; check the ecosystem's registry first for a new package — LLMs hallucinate package names (squatting attacks)
 - 🟡 Write only what's requested: no un-requested extension points or abstractions; touch only the lines needed and match the existing style
 - 🟡 Single-file limit 1500 lines: this edit pushing a file past 1500 splits it by responsibility
 - 🔴 Never read unbounded data into memory: whole datasets, full prediction or log sets accumulated before processing — without a confirmed upper bound, stream/batch with an explicit batch size
 - 🟡 Per-item I/O inside loops must be batched (per-sample disk reads, N+1 calls); no caches that grow without a cap or eviction
 - 🟡 Make writes that may be retried or fail midway idempotent: data preprocessing, caches and run ledgers reach the same end state when rerun
+### Tests and failure handling
 - 🟡 Unit tests pin behavior, not implementation: data transforms, splits and metric functions get tests that assert observable results
 - 🟡 Tests are self-contained and deterministic: seeds, clock, network and environment isolated; fix by reproducing first — write a failing test before the fix
-- 🔴 Keep existing tests passing; when red, classify first: intentional behavior change → update the assertion; the test contradicts the requirement → stop and explain; out of scope → report and leave it; never delete, skip, or loosen assertions to go green
+- 🔴 Keep existing tests passing; when red, classify first: intentional behavior change → rerun twice to confirm the difference reproduces before updating the assertion; the test contradicts the requirement → stop and explain; out of scope → report and leave it; never delete, skip, or loosen assertions to go green
 - 🟡 One failure (the same check or assertion) gets at most 2 rounds of repair; 3 consecutive rounds with no reduction in failing items stop the work — state the shared assumption first, no retry until it changes
 
 **DO NOT**
@@ -122,9 +126,9 @@
 
 ---
 
-## 6. Large Artifacts and External Sources
+## 6. External Artifacts and Load Trust
 
-> WHY: Large files from international sources are often unusable in mainland China; silently switching sources changes artifacts, caches, and reproducibility; loading an external artifact executes its code.
+> WHY: Large files from international sources are often unusable in mainland China; silently switching sources changes artifacts, caches, and reproducibility; loading a pickle-based artifact can execute its code.
 
 **DO**
 - 🟡 Before a single artifact or install ≥ 1GB, choose the source: explicit > project-configured trusted source (e.g. a domestic mirror) > international official source, and confirm it serves the target version; if unavailable, fail explicitly and print how to switch; config changes require the user to choose — in non-interactive environments read config only

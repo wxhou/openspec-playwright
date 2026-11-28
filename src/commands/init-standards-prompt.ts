@@ -25,7 +25,7 @@ export async function promptSelectStandardsProfile(
       {
         name: "ML — training, evaluation, data, and experiment ledgers",
         value: "ml",
-        description: "ML-specific rules, including large artifacts (§0–§8)",
+        description: "Evaluation, data boundaries, run budgets, artifact trust (§0–§8)",
       },
     ],
   });

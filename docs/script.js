@@ -148,6 +148,7 @@ const ML_DELTA_ZH = `# 项目规范 · ML
 - 🟡 对照固定预算：同数据、划分、评测、步数、超时；改预算即新实验，分数不跨预算比较
 - 🟡 实验在专用分支/标签上跑，不在 main；统一入口启动，不绕过直接调训练器或容器；不擅自建虚拟环境或装依赖
 - 🟡 超时按作业规模设定，不用平台默认值截断；超参搜索写成 sweep 脚本，不逐个手调
+- 🟡 外部请求（评测/训练 API、制品下载）逐请求带超时与有限重试；参数取现有配置，缺失或变更按 §1 授权
 - 🔴 不因 OOM/超时改方法或评测口径（SFT→LoRA、缩短序列、关监控都算换方案）
 - 🔴 不杀、不覆盖运行中的实验；删或重置 runs/checkpoints 前取得明确同意
 
@@ -165,16 +166,16 @@ const ML_DELTA_ZH = `# 项目规范 · ML
 - 🟡 训练脚本从当前版本示例与文档出发，写前核对签名与默认值
 - 🟡 依赖锁定版本；CUDA、bf16、多卡路径在 GPU 环境验证
 - 🟡 训练脚本关进度条、按步记录指标、首步即记，保证日志可按行解析
-- 🔴 改动后跑 lint 与 typecheck，通过才算成功
+- 🔴 改动后跑 lint 与 typecheck，通过才算成功；无对应检查时告知用户并注明未运行
 - 🟡 引入依赖按优先级链，新包先查生态注册源——AI 会幻觉包名（抢注攻击）
 - 🔴 禁止无界读取进内存：整数据集或全量预测攒齐再处理；循环内 I/O 批量化
 - 🟡 单文件 1500 行上限按职责拆；可能被重试的写操作做成幂等
 - 🟡 单测钉行为不钉实现：数据变换、切分、指标函数有确定性的测试
-- 🔴 保持既有测试通过；红测先分类，不删、不跳过、不放宽断言变绿
+- 🔴 保持既有测试通过；红测先分类：行为变更先重跑两次确认差异可复现，再改断言；不删、不跳过、不放宽断言变绿
 - 🟡 同一失败最多修 2 轮；连续 3 轮失败项未减少即停，先写出共同假设
 - 🔴 不吞异常、不关断言/告警、不硬编码值绕过报错、不 mock 真实训练管线让流程"跑通"
 
-## 大文件与外部制品源
+## 外部制品与加载信任
 - 🟡 单个制品或单次安装 ≥ 1GB 前先选源：显式指定 > 项目配置的可信源 > 国际官方源
 - 🟡 下载后按官方元数据校验大小与哈希，记录源、版本、哈希
 - 🔴 只从可信来源加载模型/数据集/checkpoint：优先 safetensors；pickle 系与 \`trust_remote_code\` 仅限已核对源码、固定 revision 的仓库
@@ -346,6 +347,7 @@ const ML_DELTA_EN = `# Project Guidelines · ML
 - 🟡 Hold comparisons to a fixed budget: data, split, evaluation, steps, timeout; a budget change starts a new experiment
 - 🟡 Run experiments on a dedicated branch/tag, never on main; launch through the single entrypoint, never call the trainer or container directly; never create a venv or install dependencies on your own
 - 🟡 Size timeouts to the job instead of accepting a platform default that truncates it; tune hyperparameters with a sweep script, not one at a time
+- 🟡 Give external requests (eval/training APIs, artifact downloads) a per-request timeout and bounded retries; take parameters from the existing config, and get §1 authorization to change them
 - 🔴 Do not change the method or evaluation protocol for OOM/timeout (SFT→LoRA, shorter sequences, or disabling monitoring all count as switching methods)
 - 🔴 Do not kill or overwrite a running experiment; get explicit consent before deleting or resetting runs/checkpoints
 
@@ -363,16 +365,16 @@ const ML_DELTA_EN = `# Project Guidelines · ML
 - 🟡 Start scripts from current-version examples and docs; verify signatures and defaults
 - 🟡 Pin dependency versions; validate CUDA, bf16, and multi-GPU on GPU hardware
 - 🟡 Disable progress bars, log metrics per step and log the first step, so logs stay line-parseable
-- 🔴 Run lint and typecheck after every edit; passing is success
+- 🔴 Run lint and typecheck after every edit; passing is success; when no such check exists, tell the user and report it as not run
 - 🟡 Dependency selection follows the priority chain; check the registry for a new package — LLMs hallucinate package names (squatting attacks)
 - 🔴 Never read unbounded data into memory: whole datasets or full prediction sets accumulated before processing; batch per-item I/O inside loops
 - 🟡 Single-file limit 1500 lines, split by responsibility; make writes that may be retried idempotent
 - 🟡 Unit tests pin behavior, not implementation: deterministic tests for data transforms, splits, and metric functions
-- 🔴 Keep existing tests passing; classify reds first; never delete, skip, or loosen assertions to go green
+- 🔴 Keep existing tests passing; classify reds first — rerun twice to confirm the difference reproduces before changing an assertion; never delete, skip, or loosen assertions to go green
 - 🟡 One failure gets at most 2 repair rounds; 3 consecutive rounds with no reduction stop the work — state the shared assumption first
 - 🔴 Do not swallow exceptions, disable assertions, hardcode around errors, or mock the real pipeline to make a flow "run"
 
-## Large Artifacts and External Sources
+## External Artifacts and Load Trust
 - 🟡 Before an artifact or install ≥ 1GB, choose the source: explicit > project-configured trusted > international official
 - 🟡 Verify size and hash against official metadata; record source, version, hash
 - 🔴 Load models, datasets, and checkpoints only from trusted sources; prefer safetensors; pickle formats and \`trust_remote_code\` only for reviewed, revision-pinned repositories
