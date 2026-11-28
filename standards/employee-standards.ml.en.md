@@ -113,6 +113,8 @@
 - 🟡 Make writes that may be retried or fail midway idempotent: data preprocessing, caches and run ledgers reach the same end state when rerun
 - 🟡 Unit tests pin behavior, not implementation: data transforms, splits and metric functions get tests that assert observable results
 - 🟡 Tests are self-contained and deterministic: seeds, clock, network and environment isolated; fix by reproducing first — write a failing test before the fix
+- 🔴 Keep existing tests passing; when red, classify first: intentional behavior change → update the assertion; the test contradicts the requirement → stop and explain; out of scope → report and leave it; never delete, skip, or loosen assertions to go green
+- 🟡 One failure (the same check or assertion) gets at most 2 rounds of repair; 3 consecutive rounds with no reduction in failing items stop the work — state the shared assumption first, no retry until it changes
 
 **DO NOT**
 - 🔴 Do not swallow exceptions, disable assertions/warnings, hardcode values to get past an error, or mock the real training pipeline to make a flow "run"
@@ -122,11 +124,13 @@
 
 ## 6. Large Artifacts and External Sources
 
-> WHY: Large files from international sources are often unusable in mainland China; silently switching sources changes artifacts, caches, and reproducibility.
+> WHY: Large files from international sources are often unusable in mainland China; silently switching sources changes artifacts, caches, and reproducibility; loading an external artifact executes its code.
 
 **DO**
 - 🟡 Before a single artifact or install ≥ 1GB, choose the source: explicit > project-configured trusted source (e.g. a domestic mirror) > international official source, and confirm it serves the target version; if unavailable, fail explicitly and print how to switch; config changes require the user to choose — in non-interactive environments read config only
 - 🟡 After download, verify size and hash against official metadata; record source, version, and hash
+- 🔴 Load models, datasets, and checkpoints only from trusted sources: prefer `safetensors`; pickle-based formats and `trust_remote_code` only for repositories whose source you have reviewed, with a pinned revision — loading executes code
+- 🟡 Unknown source or unpinned revision → refuse to load and tell the user; never "just get it running first"
 
 **DO NOT**
 - 🔴 Do not switch sources silently based on IP, timezone, or language; probing is only for recommendations

@@ -170,11 +170,15 @@ const ML_DELTA_ZH = `# 项目规范 · ML
 - 🔴 禁止无界读取进内存：整数据集或全量预测攒齐再处理；循环内 I/O 批量化
 - 🟡 单文件 1500 行上限按职责拆；可能被重试的写操作做成幂等
 - 🟡 单测钉行为不钉实现：数据变换、切分、指标函数有确定性的测试
+- 🔴 保持既有测试通过；红测先分类，不删、不跳过、不放宽断言变绿
+- 🟡 同一失败最多修 2 轮；连续 3 轮失败项未减少即停，先写出共同假设
 - 🔴 不吞异常、不关断言/告警、不硬编码值绕过报错、不 mock 真实训练管线让流程"跑通"
 
 ## 大文件与外部制品源
 - 🟡 单个制品或单次安装 ≥ 1GB 前先选源：显式指定 > 项目配置的可信源 > 国际官方源
 - 🟡 下载后按官方元数据校验大小与哈希，记录源、版本、哈希
+- 🔴 只从可信来源加载模型/数据集/checkpoint：优先 safetensors；pickle 系与 \`trust_remote_code\` 仅限已核对源码、固定 revision 的仓库
+- 🟡 来源不明或 revision 未固定 → 拒绝加载并告知
 - 🔴 不按 IP、时区或语言静默切换源；探测只用于推荐
 - 🔴 缺包、版本不符或校验失败不得静默回退；显式失败，或经确认后回退并记录
 - 🔴 第三方公益镜像不设为默认源，须项目显式加入可信清单
@@ -364,11 +368,15 @@ const ML_DELTA_EN = `# Project Guidelines · ML
 - 🔴 Never read unbounded data into memory: whole datasets or full prediction sets accumulated before processing; batch per-item I/O inside loops
 - 🟡 Single-file limit 1500 lines, split by responsibility; make writes that may be retried idempotent
 - 🟡 Unit tests pin behavior, not implementation: deterministic tests for data transforms, splits, and metric functions
+- 🔴 Keep existing tests passing; classify reds first; never delete, skip, or loosen assertions to go green
+- 🟡 One failure gets at most 2 repair rounds; 3 consecutive rounds with no reduction stop the work — state the shared assumption first
 - 🔴 Do not swallow exceptions, disable assertions, hardcode around errors, or mock the real pipeline to make a flow "run"
 
 ## Large Artifacts and External Sources
 - 🟡 Before an artifact or install ≥ 1GB, choose the source: explicit > project-configured trusted > international official
 - 🟡 Verify size and hash against official metadata; record source, version, hash
+- 🔴 Load models, datasets, and checkpoints only from trusted sources; prefer safetensors; pickle formats and \`trust_remote_code\` only for reviewed, revision-pinned repositories
+- 🟡 Unknown source or unpinned revision → refuse and tell the user
 - 🔴 Do not switch sources silently by IP, timezone, or language; probing is advisory only
 - 🔴 Do not silently fall back on missing packages, version mismatches, or failed verification; fail explicitly or fall back after confirmation
 - 🔴 Third-party community mirrors are never a default source
