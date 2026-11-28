@@ -129,7 +129,7 @@ Without `--tools`, a TTY shows a multi-select grouped as `Configured` / `Detecte
 
 Init prints a pre-select hint (not the install set) and a `Selected editors:` line (the actual install set).
 
-**Choosing what to ignore.** Interactive init lists the managed `.gitignore` paths as four group toggles (three with `--auto-pipeline`, which keeps `openspec/` committable), all checked — Enter keeps them ignored; unchecking a group commits every path in it, and the "Customize" row opens the per-path list. Committed paths are recorded on the block's `# openspec-pw: skip=…` line, so `update` leaves them out and a later init can restore an exactly recorded path. An opt-out for a path inside a managed directory keeps that whole directory committable — git cannot re-include a file under an ignored directory — and the directory stops being offered. Rule files are always injected (use `--no-rule-files` to install only AGENTS.md). Non-interactive runs keep the previous choices; a fresh project ignores everything managed.
+**Choosing what to ignore.** Interactive init lists the managed `.gitignore` paths as four group toggles (`--auto-pipeline` keeps `openspec/` committable), all checked — Enter keeps them ignored; unchecking a group commits every path in it, focusing a group shows all of its paths below the list, and the "Customize" row opens the per-path list. Committed paths are recorded on the block's `# openspec-pw: skip=…` line, so `update` leaves them out and a later init can restore an exactly recorded path. An opt-out for a path inside a managed directory keeps that whole directory committable — git cannot re-include a file under an ignored directory — and the directory stops being offered. Rule files are always injected (use `--no-rule-files` to install only AGENTS.md). Non-interactive runs keep the previous choices; a fresh project ignores everything managed.
 
 **Deselect = remove.** In interactive init, deselecting a detected editor offers to delete its openspec-pw products (one confirmation). Only tool-owned territory is touched — your own config entries and edited vendored agents stay. A shared `.mcp.json` entry is kept while another selected editor (Claude Code, CodeBuddy, MiniMax, Copilot) still reads that file. `--tools` and non-TTY runs never remove anything.
 
@@ -139,7 +139,7 @@ Init prints a pre-select hint (not the install set) and a `Selected editors:` li
 
 ### Managed `.gitignore` paths
 
-The block itself lists all 40 paths it covers (local data and credentials, editor commands and directories, MCP config, OpenSpec artifacts, and the always-ignored rule files) — open `.gitignore` to see them. Editor roots are ignored whole, so your own files under them (e.g. `.agents/skills/team-skill/`) need `git add -f`. If the block cannot be written, a warning lists the uncovered paths. Ignore rules do not apply to already-tracked files: if credentials were committed before, run `git rm --cached tests/playwright/credentials.yaml`.
+The block itself lists all 40 paths it covers (AI coding assistants, test artifacts and credentials, MCP config, other tools and runtime files, and the always-ignored rule files) — open `.gitignore` to see them. Editor roots are ignored whole, so your own files under them (e.g. `.agents/skills/team-skill/`) need `git add -f`. If the block cannot be written, a warning lists the uncovered paths. Ignore rules do not apply to already-tracked files: if credentials were committed before, run `git rm --cached tests/playwright/credentials.yaml`.
 
 ### Init Modes: frontend vs minimal
 

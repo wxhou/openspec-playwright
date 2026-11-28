@@ -6,29 +6,15 @@
 
 /**
  * Grouping for the .gitignore opt-out prompt. A path missing here lands in
- * "Other" rather than disappearing, so a newly managed path still reaches
- * the prompt without a second edit.
+ * "Uncategorized" rather than disappearing, so a newly managed path still
+ * reaches the prompt without a second edit.
  */
 const GITIGNORE_GROUPS: readonly {
   label: string;
   paths: readonly string[];
 }[] = [
   {
-    label: "Local data and credentials",
-    paths: [
-      "app-exploration.md",
-      ".codegraph/",
-      ".playwright-mcp/",
-      "tmp/",
-      "playwright/.auth/",
-      "tests/playwright/test-results/",
-      "tests/playwright/screenshots/",
-      "tests/playwright/credentials.yaml",
-      "tests/playwright/credentials.yaml.bak",
-    ],
-  },
-  {
-    label: "Editor commands and directories",
+    label: "AI coding assistants",
     paths: [
       ".claude/",
       ".cursor/",
@@ -50,6 +36,16 @@ const GITIGNORE_GROUPS: readonly {
     ],
   },
   {
+    label: "Test artifacts and credentials",
+    paths: [
+      "playwright/.auth/",
+      "tests/playwright/test-results/",
+      "tests/playwright/screenshots/",
+      "tests/playwright/credentials.yaml",
+      "tests/playwright/credentials.yaml.bak",
+    ],
+  },
+  {
     label: "MCP config and settings",
     paths: [
       "opencode.json",
@@ -60,8 +56,14 @@ const GITIGNORE_GROUPS: readonly {
     ],
   },
   {
-    label: "OpenSpec artifacts",
-    paths: ["openspec/"],
+    label: "Other tools and runtime files",
+    paths: [
+      ".codegraph/",
+      ".playwright-mcp/",
+      "openspec/",
+      "app-exploration.md",
+      "tmp/",
+    ],
   },
 ];
 
@@ -74,7 +76,7 @@ export function groupGitignoreCandidates(
     paths: candidates.filter((p) => g.paths.includes(p)),
   })).filter((g) => g.paths.length > 0);
   const rest = candidates.filter((p) => !known.has(p));
-  if (rest.length > 0) groups.push({ label: "Other", paths: rest });
+  if (rest.length > 0) groups.push({ label: "Uncategorized", paths: rest });
   return groups;
 }
 
@@ -114,16 +116,49 @@ export function buildCustomizeChoices(
 /** Sentinel for the customize row; cannot collide with a group label. */
 const CUSTOMIZE = "\u0000customize";
 
-/** Group row label: path count plus two examples so the row explains itself. */
-export function describeGroupChoice(group: {
-  label: string;
-  paths: readonly string[];
-}): string {
+/**
+ * Full path list for the focused group's description. Explicit newlines keep
+ * the prompt's line accounting correct — one soft-wrapped line would leave
+ * stale rows on redraw.
+ */
+export function describeGroupPaths(
+  paths: readonly string[],
+  maxWidth = 72,
+): string {
+  const lines: string[] = [];
+  let line = "";
+  for (const path of paths) {
+    const next = line === "" ? path : `${line}, ${path}`;
+    if (line !== "" && next.length > maxWidth) {
+      lines.push(line);
+      line = path;
+    } else {
+      line = next;
+    }
+  }
+  if (line !== "") lines.push(line);
+  return lines.join("\n");
+}
+
+/**
+ * Group row label: path count plus two examples so the row explains itself.
+ * Falls back to the count alone when examples would overflow the terminal —
+ * the description below still lists every path.
+ */
+export function describeGroupChoice(
+  group: {
+    label: string;
+    paths: readonly string[];
+  },
+  maxWidth = 72,
+): string {
   const count = group.paths.length;
   const noun = count === 1 ? "path" : "paths";
+  const base = `${group.label} (${count} ${noun})`;
   const examples = group.paths.slice(0, 2).map((p) => p.replace(/\/$/, ""));
   const more = count > examples.length ? "…" : "";
-  return `${group.label} (${count} ${noun} — ${examples.join(", ")}${more})`;
+  const detailed = `${base.slice(0, -1)} — ${examples.join(", ")}${more})`;
+  return detailed.length <= maxWidth ? detailed : base;
 }
 
 const MESSAGE = "Generated paths to keep out of git (uncheck to commit)";
@@ -144,6 +179,7 @@ export async function promptSelectGitignorePaths(
         name: describeGroupChoice(g),
         value: g.label,
         checked: true,
+        description: describeGroupPaths(g.paths),
       })),
       new Separator(" "),
       { name: "Customize individual paths…", value: CUSTOMIZE, checked: false },

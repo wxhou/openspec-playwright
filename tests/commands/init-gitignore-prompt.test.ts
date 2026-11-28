@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildCustomizeChoices,
   describeGroupChoice,
+  describeGroupPaths,
   expandGroupSelection,
   groupGitignoreCandidates,
 } from "../../src/commands/init-gitignore-prompt.js";
@@ -16,18 +17,26 @@ describe("gitignore prompt grouping", () => {
     expect(new Set(all)).toEqual(new Set(skippableManagedPaths()));
   });
 
-  it("puts an unregistered path into Other instead of dropping it", () => {
+  it("puts an unregistered path into Uncategorized instead of dropping it", () => {
     const withNew = groupGitignoreCandidates([
       ...skippableManagedPaths(),
       "future/path",
     ]);
-    const other = withNew.find((g) => g.label === "Other");
+    const other = withNew.find((g) => g.label === "Uncategorized");
     expect(other?.paths).toEqual(["future/path"]);
   });
 
-  it("keeps openspec/ in its own group", () => {
-    const group = groups.find((g) => g.label === "OpenSpec artifacts");
-    expect(group?.paths).toEqual(["openspec/"]);
+  it("groups AI tooling, tests, MCP, and other tools in that order", () => {
+    expect(groups.map((g) => g.label)).toEqual([
+      "AI coding assistants",
+      "Test artifacts and credentials",
+      "MCP config and settings",
+      "Other tools and runtime files",
+    ]);
+    const other = groups.find((g) => g.label === "Other tools and runtime files");
+    expect(other?.paths).toEqual(
+      expect.arrayContaining([".codegraph/", "openspec/", "tmp/"]),
+    );
   });
 
   it("ignores editor territories whole, keeping Roo/Trae files narrow", () => {
@@ -69,7 +78,7 @@ describe("group selection expansion", () => {
   });
 
   it("drops a group's paths when it is unchecked", () => {
-    const label = "Local data and credentials";
+    const label = "Test artifacts and credentials";
     const target = groups.find((g) => g.label === label);
     const picked = groups.map((g) => g.label).filter((l) => l !== label);
     const expanded = expandGroupSelection(groups, picked);
@@ -90,6 +99,35 @@ describe("group row labels", () => {
     expect(
       describeGroupChoice({ label: "M", paths: ["a", "b", "c"] }),
     ).toBe("M (3 paths — a, b…)");
+  });
+
+  it("drops examples when the row would overflow the terminal", () => {
+    expect(
+      describeGroupChoice({
+        label: "Test artifacts and credentials",
+        paths: [
+          "playwright/.auth/",
+          "tests/playwright/test-results/",
+          "tests/playwright/credentials.yaml",
+        ],
+      }),
+    ).toBe("Test artifacts and credentials (3 paths)");
+  });
+});
+
+describe("group path preview", () => {
+  it("lists every path, wrapped so no line exceeds the width", () => {
+    const paths = groups.flatMap((g) => g.paths);
+    const text = describeGroupPaths(paths, 40);
+
+    expect(text.replace(/\n/g, ", ")).toBe(paths.join(", "));
+    for (const line of text.split("\n")) {
+      expect(line.length).toBeLessThanOrEqual(40);
+    }
+  });
+
+  it("keeps a short group on one line", () => {
+    expect(describeGroupPaths(["openspec/"])).toBe("openspec/");
   });
 });
 

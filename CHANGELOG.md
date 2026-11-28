@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `update --standards general|ml` 切换已安装规范块；`doctor` 按已安装版本比对漂移
 
 ### Changed
+- `init` 的 `.gitignore` 分组改为 AI 编码助手 / 测试产物与凭据 / MCP 配置 / 其他工具与运行时文件，聚焦组行时显示该组全部路径，无需进入逐项列表
 - 通用版规范收敛为 §0–§7，§8 大文件与外部制品源移入 ML 版
 - ML 版补目标/指标映射、超参搜索空间与模型/数据卡，测试增加中英结构一致性校验
 - ML 版吸收通用工程纪律：资源边界、lint/typecheck gate、依赖选型与抢注核查、单测纪律、变更授权、缺数据四选一、工具使用底线
