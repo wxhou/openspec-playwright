@@ -276,7 +276,8 @@ nav.scrolled {
 
 .lang-btn:last-child {
   border-radius: 0 4px 4px 0;
-  border-left: none;
+  /* Collapse the shared edge; the active button paints its full border above it. */
+  margin-left: -1px;
 }
 
 .lang-btn:hover {
@@ -284,6 +285,8 @@ nav.scrolled {
 }
 
 .lang-btn.active {
+  position: relative;
+  z-index: 1;
   background: var(--accent-light);
   color: var(--accent);
   border-color: var(--accent);
